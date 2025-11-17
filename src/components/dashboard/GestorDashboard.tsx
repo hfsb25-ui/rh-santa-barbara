@@ -14,10 +14,12 @@ import {
   Shield,
   Calendar,
   FileText,
+  Clock,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import EmployeeList from "@/components/employees/EmployeeList";
 import EmployeeForm from "@/components/forms/EmployeeForm";
+import TimeOffListDialog from "@/components/dashboard/TimeOffListDialog";
 import { toast } from "sonner";
 
 interface GestorDashboardProps {
@@ -28,6 +30,7 @@ const GestorDashboard = ({ user }: GestorDashboardProps) => {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
   const [showAddDialog, setShowAddDialog] = useState(false);
+  const [showTimeOffDialog, setShowTimeOffDialog] = useState(false);
   const [stats, setStats] = useState({
     totalEmployees: 0,
     activeEmployees: 0,
@@ -155,6 +158,10 @@ const GestorDashboard = ({ user }: GestorDashboardProps) => {
               className="pl-10"
             />
           </div>
+          <Button variant="outline" onClick={() => setShowTimeOffDialog(true)}>
+            <Clock className="w-4 h-4 mr-2" />
+            Ver Folgas
+          </Button>
           <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
             <DialogTrigger asChild>
               <Button onClick={handleAddEmployee}>
@@ -176,6 +183,12 @@ const GestorDashboard = ({ user }: GestorDashboardProps) => {
             </DialogContent>
           </Dialog>
         </div>
+
+        {/* Time Off Dialog */}
+        <TimeOffListDialog 
+          open={showTimeOffDialog} 
+          onOpenChange={setShowTimeOffDialog} 
+        />
 
         {/* Employee List */}
         <EmployeeList searchQuery={searchQuery} onStatsUpdate={fetchStats} />
