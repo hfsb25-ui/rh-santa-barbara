@@ -22,33 +22,90 @@ const EmployeeForm = ({ employeeId, initialData, onSaved, onCancel }: EmployeeFo
     setLoading(true);
 
     const formData = new FormData(e.currentTarget);
+    const cpf = formData.get("cpf") as string || null;
     const data = {
       nome_completo: formData.get("nome_completo") as string,
       cargo: formData.get("cargo") as string,
       setor: formData.get("setor") as string || null,
-      cpf: formData.get("cpf") as string || null,
+      cpf: cpf,
       telefone: formData.get("telefone") as string || null,
       endereco: formData.get("endereco") as string || null,
       data_admissao: formData.get("data_admissao") as string || null,
       status: (formData.get("status") as "ativo" | "ferias" | "afastado" | "demitido") || "ativo",
     };
 
-    let error;
-    if (employeeId) {
-      ({ error } = await supabase
-        .from("employees")
-        .update(data)
-        .eq("id", employeeId));
-    } else {
-      ({ error } = await supabase.from("employees").insert([data]));
-    }
+    try {
+      if (employeeId) {
+        // Apenas atualizar funcionário existente
+        const { error } = await supabase
+          .from("employees")
+          .update(data)
+          .eq("id", employeeId);
 
-    setLoading(false);
-    if (error) {
-      toast.error("Erro ao salvar funcionário");
-    } else {
-      toast.success(employeeId ? "Funcionário atualizado!" : "Funcionário cadastrado!");
+        if (error) throw error;
+        toast.success("Funcionário atualizado!");
+      } else {
+        // Criar novo funcionário
+        if (!cpf) {
+          toast.error("CPF é obrigatório para criar novo funcionário");
+          setLoading(false);
+          return;
+        }
+
+        // Criar usuário no auth com CPF como email e senha
+        const email = `${cpf}@empresa.local`;
+        const { data: authData, error: authError } = await supabase.auth.signUp({
+          email: email,
+          password: cpf,
+          options: {
+            data: {
+              nome_completo: data.nome_completo,
+            },
+          },
+        });
+
+        if (authError) {
+          toast.error("Erro ao criar login do funcionário: " + authError.message);
+          setLoading(false);
+          return;
+        }
+
+        if (!authData.user) {
+          toast.error("Erro ao criar usuário");
+          setLoading(false);
+          return;
+        }
+
+        // Criar funcionário vinculado ao user_id
+        const { error: employeeError } = await supabase
+          .from("employees")
+          .insert([{ ...data, user_id: authData.user.id }]);
+
+        if (employeeError) {
+          toast.error("Erro ao salvar funcionário");
+          setLoading(false);
+          return;
+        }
+
+        // Criar role de funcionário
+        const { error: roleError } = await supabase
+          .from("user_roles")
+          .insert([{ user_id: authData.user.id, role: "funcionario" }]);
+
+        if (roleError) {
+          console.error("Erro ao criar role:", roleError);
+          // Não bloquear o cadastro por erro de role
+        }
+
+        toast.success("Funcionário cadastrado! Login: " + email + " | Senha: " + cpf);
+      }
+      
       onSaved();
+    } catch (error: any) {
+      console.error("Erro:", error);
+      toast.error("Erro ao salvar funcionário");
+    } finally {
+      setLoading(false);
     }
   };
 
