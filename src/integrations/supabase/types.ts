@@ -76,6 +76,7 @@ export type Database = {
           id: string
           nome_completo: string
           quantidade_folgas: number | null
+          salario: number | null
           setor: string | null
           status: Database["public"]["Enums"]["employee_status"] | null
           telefone: string | null
@@ -92,6 +93,7 @@ export type Database = {
           id?: string
           nome_completo: string
           quantidade_folgas?: number | null
+          salario?: number | null
           setor?: string | null
           status?: Database["public"]["Enums"]["employee_status"] | null
           telefone?: string | null
@@ -108,6 +110,7 @@ export type Database = {
           id?: string
           nome_completo?: string
           quantidade_folgas?: number | null
+          salario?: number | null
           setor?: string | null
           status?: Database["public"]["Enums"]["employee_status"] | null
           telefone?: string | null
@@ -408,6 +411,27 @@ export type Database = {
           email?: string
           id?: string
           nome_completo?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      setores: {
+        Row: {
+          created_at: string | null
+          id: string
+          nome: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          nome: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          nome?: string
           updated_at?: string | null
         }
         Relationships: []

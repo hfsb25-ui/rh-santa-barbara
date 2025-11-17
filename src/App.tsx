@@ -7,6 +7,8 @@ import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import EmployeeDetails from "./pages/EmployeeDetails";
 import Stock from "./pages/Stock";
+import Sectors from "./pages/Sectors";
+import Turnover from "./pages/Turnover";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -23,6 +25,8 @@ const App = () => (
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/employee/:id" element={<EmployeeDetails />} />
           <Route path="/stock" element={<Stock />} />
+          <Route path="/sectors" element={<Sectors />} />
+          <Route path="/turnover" element={<Turnover />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
