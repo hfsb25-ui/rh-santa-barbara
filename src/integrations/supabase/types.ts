@@ -71,6 +71,7 @@ export type Database = {
           cpf: string | null
           created_at: string | null
           data_admissao: string | null
+          data_desligamento: string | null
           endereco: string | null
           foto_url: string | null
           id: string
@@ -88,6 +89,7 @@ export type Database = {
           cpf?: string | null
           created_at?: string | null
           data_admissao?: string | null
+          data_desligamento?: string | null
           endereco?: string | null
           foto_url?: string | null
           id?: string
@@ -105,6 +107,7 @@ export type Database = {
           cpf?: string | null
           created_at?: string | null
           data_admissao?: string | null
+          data_desligamento?: string | null
           endereco?: string | null
           foto_url?: string | null
           id?: string

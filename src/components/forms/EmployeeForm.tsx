@@ -21,6 +21,7 @@ const EmployeeForm = ({ employeeId, initialData, onSaved, onCancel }: EmployeeFo
   const [loading, setLoading] = useState(false);
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(initialData?.foto_url || null);
+  const [selectedStatus, setSelectedStatus] = useState<string>(initialData?.status || "ativo");
 
   const { data: setores } = useQuery({
     queryKey: ["setores"],
@@ -89,6 +90,7 @@ const EmployeeForm = ({ employeeId, initialData, onSaved, onCancel }: EmployeeFo
     const formData = new FormData(e.currentTarget);
     const cpf = formData.get("cpf") as string || null;
     const salario = formData.get("salario") as string;
+    const status = formData.get("status") as "ativo" | "ferias" | "afastado" | "demitido" || "ativo";
     const data = {
       nome_completo: formData.get("nome_completo") as string,
       cargo: formData.get("cargo") as string,
@@ -98,7 +100,8 @@ const EmployeeForm = ({ employeeId, initialData, onSaved, onCancel }: EmployeeFo
       telefone: formData.get("telefone") as string || null,
       endereco: formData.get("endereco") as string || null,
       data_admissao: formData.get("data_admissao") as string || null,
-      status: (formData.get("status") as "ativo" | "ferias" | "afastado" | "demitido") || "ativo",
+      status: status,
+      data_desligamento: status === "demitido" ? (formData.get("data_desligamento") as string || null) : null,
     };
 
     try {
@@ -287,7 +290,11 @@ const EmployeeForm = ({ employeeId, initialData, onSaved, onCancel }: EmployeeFo
             </div>
             <div>
               <Label>Status</Label>
-              <Select name="status" defaultValue={initialData?.status || "ativo"}>
+              <Select 
+                name="status" 
+                defaultValue={initialData?.status || "ativo"}
+                onValueChange={(value) => setSelectedStatus(value)}
+              >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -299,6 +306,16 @@ const EmployeeForm = ({ employeeId, initialData, onSaved, onCancel }: EmployeeFo
                 </SelectContent>
               </Select>
             </div>
+            {selectedStatus === "demitido" && (
+              <div>
+                <Label>Data de Desligamento</Label>
+                <Input 
+                  name="data_desligamento" 
+                  type="date" 
+                  defaultValue={initialData?.data_desligamento}
+                />
+              </div>
+            )}
           </div>
           <div className="flex gap-2">
             <Button type="submit" disabled={loading}>Salvar</Button>
