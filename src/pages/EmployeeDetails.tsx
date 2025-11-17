@@ -4,9 +4,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { ArrowLeft, Edit, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import EmployeeInfo from "@/components/employees/EmployeeInfo";
+import EmployeeForm from "@/components/forms/EmployeeForm";
 import EpiTab from "@/components/employees/tabs/EpiTab";
 import UniformTab from "@/components/employees/tabs/UniformTab";
 import VacationTab from "@/components/employees/tabs/VacationTab";
@@ -19,6 +21,7 @@ const EmployeeDetails = () => {
   const navigate = useNavigate();
   const [employee, setEmployee] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [showEditDialog, setShowEditDialog] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -68,10 +71,28 @@ const EmployeeDetails = () => {
             <ArrowLeft className="w-4 h-4 mr-2" />
             Voltar
           </Button>
-          <Button variant="outline" onClick={() => navigate(`/employee/${id}/edit`)}>
-            <Edit className="w-4 h-4 mr-2" />
-            Editar
-          </Button>
+          <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+            <DialogTrigger asChild>
+              <Button variant="outline">
+                <Edit className="w-4 h-4 mr-2" />
+                Editar
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Editar Funcionário</DialogTitle>
+              </DialogHeader>
+              <EmployeeForm
+                employeeId={id}
+                initialData={employee}
+                onSaved={() => {
+                  setShowEditDialog(false);
+                  fetchEmployee();
+                }}
+                onCancel={() => setShowEditDialog(false)}
+              />
+            </DialogContent>
+          </Dialog>
         </div>
 
         <EmployeeInfo employee={employee} onUpdate={fetchEmployee} />
