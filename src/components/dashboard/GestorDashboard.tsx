@@ -18,6 +18,7 @@ import {
   Package,
   TrendingUp,
   Building2,
+  DollarSign,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import EmployeeList from "@/components/employees/EmployeeList";
@@ -172,6 +173,10 @@ const GestorDashboard = ({ user }: GestorDashboardProps) => {
           <Button variant="outline" onClick={() => navigate("/turnover")}>
             <TrendingUp className="w-4 h-4 mr-2" />
             Turnover
+          </Button>
+          <Button variant="outline" onClick={() => navigate("/financeiro")}>
+            <DollarSign className="w-4 h-4 mr-2" />
+            Financeiro
           </Button>
           <Button variant="outline" onClick={() => setShowTimeOffDialog(true)}>
             <Clock className="w-4 h-4 mr-2" />
