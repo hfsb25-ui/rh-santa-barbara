@@ -15,6 +15,7 @@ import {
   Calendar,
   FileText,
   Clock,
+  Package,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import EmployeeList from "@/components/employees/EmployeeList";
@@ -158,6 +159,10 @@ const GestorDashboard = ({ user }: GestorDashboardProps) => {
               className="pl-10"
             />
           </div>
+          <Button variant="outline" onClick={() => navigate("/stock")}>
+            <Package className="w-4 h-4 mr-2" />
+            Estoque
+          </Button>
           <Button variant="outline" onClick={() => setShowTimeOffDialog(true)}>
             <Clock className="w-4 h-4 mr-2" />
             Ver Folgas
