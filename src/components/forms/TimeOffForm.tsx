@@ -1,0 +1,58 @@
+import { useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { toast } from "sonner";
+
+const TimeOffForm = ({ employeeId, onSaved, onCancel }: any) => {
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setLoading(true);
+
+    const formData = new FormData(e.currentTarget);
+    const { error } = await supabase.from("folgas").insert({
+      employee_id: employeeId,
+      data: formData.get("data") as string,
+      motivo: formData.get("motivo") as string,
+    });
+
+    setLoading(false);
+    if (error) {
+      toast.error("Erro ao salvar");
+    } else {
+      toast.success("Folga registrada!");
+      onSaved();
+    }
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Registrar Folga</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <Label>Data</Label>
+            <Input name="data" type="date" required />
+          </div>
+          <div>
+            <Label>Motivo</Label>
+            <Textarea name="motivo" required />
+          </div>
+          <div className="flex gap-2">
+            <Button type="submit" disabled={loading}>Salvar</Button>
+            <Button type="button" variant="outline" onClick={onCancel}>Cancelar</Button>
+          </div>
+        </form>
+      </CardContent>
+    </Card>
+  );
+};
+
+export default TimeOffForm;
