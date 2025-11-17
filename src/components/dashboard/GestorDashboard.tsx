@@ -16,6 +16,8 @@ import {
   FileText,
   Clock,
   Package,
+  TrendingUp,
+  Building2,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import EmployeeList from "@/components/employees/EmployeeList";
@@ -162,6 +164,14 @@ const GestorDashboard = ({ user }: GestorDashboardProps) => {
           <Button variant="outline" onClick={() => navigate("/stock")}>
             <Package className="w-4 h-4 mr-2" />
             Estoque
+          </Button>
+          <Button variant="outline" onClick={() => navigate("/sectors")}>
+            <Building2 className="w-4 h-4 mr-2" />
+            Setores
+          </Button>
+          <Button variant="outline" onClick={() => navigate("/turnover")}>
+            <TrendingUp className="w-4 h-4 mr-2" />
+            Turnover
           </Button>
           <Button variant="outline" onClick={() => setShowTimeOffDialog(true)}>
             <Clock className="w-4 h-4 mr-2" />

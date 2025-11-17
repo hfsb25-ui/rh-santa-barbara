@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,6 +21,19 @@ const EmployeeForm = ({ employeeId, initialData, onSaved, onCancel }: EmployeeFo
   const [loading, setLoading] = useState(false);
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(initialData?.foto_url || null);
+
+  const { data: setores } = useQuery({
+    queryKey: ["setores"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("setores")
+        .select("*")
+        .order("nome");
+      
+      if (error) throw error;
+      return data;
+    },
+  });
 
   const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -74,10 +88,12 @@ const EmployeeForm = ({ employeeId, initialData, onSaved, onCancel }: EmployeeFo
 
     const formData = new FormData(e.currentTarget);
     const cpf = formData.get("cpf") as string || null;
+    const salario = formData.get("salario") as string;
     const data = {
       nome_completo: formData.get("nome_completo") as string,
       cargo: formData.get("cargo") as string,
       setor: formData.get("setor") as string || null,
+      salario: salario ? parseFloat(salario) : null,
       cpf: cpf,
       telefone: formData.get("telefone") as string || null,
       endereco: formData.get("endereco") as string || null,
@@ -229,7 +245,30 @@ const EmployeeForm = ({ employeeId, initialData, onSaved, onCancel }: EmployeeFo
             </div>
             <div>
               <Label>Setor</Label>
-              <Input name="setor" defaultValue={initialData?.setor} />
+              <Select name="setor" defaultValue={initialData?.setor || ""}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione o setor" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">Nenhum</SelectItem>
+                  {setores?.map((setor) => (
+                    <SelectItem key={setor.id} value={setor.nome}>
+                      {setor.nome}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Salário</Label>
+              <Input 
+                name="salario" 
+                type="number" 
+                step="0.01" 
+                min="0"
+                placeholder="0.00"
+                defaultValue={initialData?.salario} 
+              />
             </div>
             <div>
               <Label>CPF</Label>
