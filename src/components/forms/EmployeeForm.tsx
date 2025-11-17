@@ -245,12 +245,11 @@ const EmployeeForm = ({ employeeId, initialData, onSaved, onCancel }: EmployeeFo
             </div>
             <div>
               <Label>Setor</Label>
-              <Select name="setor" defaultValue={initialData?.setor || ""}>
+              <Select name="setor" defaultValue={initialData?.setor || undefined}>
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione o setor" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Nenhum</SelectItem>
                   {setores?.map((setor) => (
                     <SelectItem key={setor.id} value={setor.nome}>
                       {setor.nome}
