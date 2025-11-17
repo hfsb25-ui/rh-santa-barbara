@@ -2,8 +2,10 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Card, CardContent } from "@/components/ui/card";
-import { Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Loader2, Download } from "lucide-react";
 import { toast } from "sonner";
+import EditTimeOffDialog from "./EditTimeOffDialog";
 
 interface TimeOffListDialogProps {
   open: boolean;
@@ -14,7 +16,7 @@ interface EmployeeTimeOff {
   id: string;
   nome_completo: string;
   cargo: string;
-  timeOffCount: number;
+  quantidade_folgas: number;
 }
 
 const TimeOffListDialog = ({ open, onOpenChange }: TimeOffListDialogProps) => {
@@ -30,34 +32,14 @@ const TimeOffListDialog = ({ open, onOpenChange }: TimeOffListDialogProps) => {
   const fetchEmployeeTimeOff = async () => {
     setLoading(true);
     try {
-      // Buscar todos os funcionários
       const { data: employeesData, error: employeesError } = await supabase
         .from("employees")
-        .select("id, nome_completo, cargo")
+        .select("id, nome_completo, cargo, quantidade_folgas")
         .order("nome_completo");
 
       if (employeesError) throw employeesError;
 
-      if (employeesData) {
-        // Para cada funcionário, buscar quantidade de folgas
-        const employeesWithTimeOff = await Promise.all(
-          employeesData.map(async (employee) => {
-            const { count } = await supabase
-              .from("folgas")
-              .select("*", { count: "exact", head: true })
-              .eq("employee_id", employee.id);
-
-            return {
-              id: employee.id,
-              nome_completo: employee.nome_completo,
-              cargo: employee.cargo,
-              timeOffCount: count || 0,
-            };
-          })
-        );
-
-        setEmployees(employeesWithTimeOff);
-      }
+      setEmployees(employeesData || []);
     } catch (error) {
       console.error("Erro ao buscar folgas:", error);
       toast.error("Erro ao carregar dados de folgas");
@@ -66,11 +48,46 @@ const TimeOffListDialog = ({ open, onOpenChange }: TimeOffListDialogProps) => {
     }
   };
 
+  const handleExportCSV = () => {
+    if (employees.length === 0) {
+      toast.error("Não há dados para exportar");
+      return;
+    }
+
+    const headers = ["Nome Completo", "Cargo", "Quantidade de Folgas"];
+    const csvContent = [
+      headers.join(","),
+      ...employees.map(emp => 
+        `"${emp.nome_completo}","${emp.cargo}",${emp.quantidade_folgas}`
+      )
+    ].join("\n");
+
+    const blob = new Blob(["\ufeff" + csvContent], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    
+    link.setAttribute("href", url);
+    link.setAttribute("download", `folgas_funcionarios_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = "hidden";
+    
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    toast.success("Lista exportada com sucesso!");
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Folgas na Casa - Todos os Funcionários</DialogTitle>
+          <div className="flex items-center justify-between">
+            <DialogTitle>Folgas na Casa - Todos os Funcionários</DialogTitle>
+            <Button variant="outline" size="sm" onClick={handleExportCSV}>
+              <Download className="w-4 h-4 mr-2" />
+              Exportar CSV
+            </Button>
+          </div>
         </DialogHeader>
 
         {loading ? (
@@ -89,7 +106,7 @@ const TimeOffListDialog = ({ open, onOpenChange }: TimeOffListDialogProps) => {
                   <Card key={employee.id}>
                     <CardContent className="p-4">
                       <div className="flex items-center justify-between">
-                        <div>
+                        <div className="flex-1">
                           <h3 className="font-semibold text-foreground">
                             {employee.nome_completo}
                           </h3>
@@ -97,13 +114,21 @@ const TimeOffListDialog = ({ open, onOpenChange }: TimeOffListDialogProps) => {
                             {employee.cargo}
                           </p>
                         </div>
-                        <div className="text-right">
-                          <div className="text-2xl font-bold text-primary">
-                            {employee.timeOffCount}
+                        <div className="flex items-center gap-2">
+                          <div className="text-right">
+                            <div className="text-2xl font-bold text-primary">
+                              {employee.quantidade_folgas}
+                            </div>
+                            <p className="text-xs text-muted-foreground">
+                              {employee.quantidade_folgas === 1 ? "folga" : "folgas"}
+                            </p>
                           </div>
-                          <p className="text-xs text-muted-foreground">
-                            {employee.timeOffCount === 1 ? "folga" : "folgas"}
-                          </p>
+                          <EditTimeOffDialog
+                            employeeId={employee.id}
+                            employeeName={employee.nome_completo}
+                            currentAmount={employee.quantidade_folgas}
+                            onUpdated={fetchEmployeeTimeOff}
+                          />
                         </div>
                       </div>
                     </CardContent>
