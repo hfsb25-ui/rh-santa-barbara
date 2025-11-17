@@ -4,16 +4,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   UserCircle,
   LogOut,
   Shield,
-  Calendar,
-  FileText,
   Shirt,
-  AlertCircle,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -26,10 +21,6 @@ const FuncionarioDashboard = ({ user }: FuncionarioDashboardProps) => {
   const [employee, setEmployee] = useState<any>(null);
   const [epis, setEpis] = useState<any[]>([]);
   const [uniformes, setUniformes] = useState<any[]>([]);
-  const [ferias, setFerias] = useState<any[]>([]);
-  const [faltas, setFaltas] = useState<any[]>([]);
-  const [afastamentos, setAfastamentos] = useState<any[]>([]);
-  const [folgas, setFolgas] = useState<any[]>([]);
 
   useEffect(() => {
     fetchEmployeeData();
@@ -46,22 +37,13 @@ const FuncionarioDashboard = ({ user }: FuncionarioDashboardProps) => {
       if (empData) {
         setEmployee(empData);
 
-        const [episRes, uniformesRes, feriasRes, faltasRes, afastamentosRes, folgasRes] =
-          await Promise.all([
-            supabase.from("epis").select("*").eq("employee_id", empData.id),
-            supabase.from("uniformes").select("*").eq("employee_id", empData.id),
-            supabase.from("ferias").select("*").eq("employee_id", empData.id),
-            supabase.from("faltas").select("*").eq("employee_id", empData.id),
-            supabase.from("afastamentos").select("*").eq("employee_id", empData.id),
-            supabase.from("folgas").select("*").eq("employee_id", empData.id),
-          ]);
+        const [episRes, uniformesRes] = await Promise.all([
+          supabase.from("epis").select("*").eq("employee_id", empData.id),
+          supabase.from("uniformes").select("*").eq("employee_id", empData.id),
+        ]);
 
         setEpis(episRes.data || []);
         setUniformes(uniformesRes.data || []);
-        setFerias(feriasRes.data || []);
-        setFaltas(faltasRes.data || []);
-        setAfastamentos(afastamentosRes.data || []);
-        setFolgas(folgasRes.data || []);
       }
     } catch (error) {
       console.error("Error fetching employee data:", error);
@@ -77,15 +59,6 @@ const FuncionarioDashboard = ({ user }: FuncionarioDashboardProps) => {
     }
   };
 
-  const getStatusBadge = (status: string) => {
-    const variants: any = {
-      ativo: "default",
-      ferias: "secondary",
-      afastado: "destructive",
-      demitido: "outline",
-    };
-    return <Badge variant={variants[status] || "default"}>{status}</Badge>;
-  };
 
   if (!employee) {
     return (
@@ -115,232 +88,86 @@ const FuncionarioDashboard = ({ user }: FuncionarioDashboardProps) => {
         </div>
       </header>
 
-      <div className="container mx-auto px-4 py-8">
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle>Informações Pessoais</CardTitle>
-          </CardHeader>
-          <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <p className="text-sm text-muted-foreground">Cargo</p>
-              <p className="font-medium">{employee.cargo}</p>
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Setor</p>
-              <p className="font-medium">{employee.setor || "—"}</p>
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Status</p>
-              {getStatusBadge(employee.status)}
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Data de Admissão</p>
-              <p className="font-medium">
-                {employee.data_admissao
-                  ? new Date(employee.data_admissao).toLocaleDateString("pt-BR")
-                  : "—"}
-              </p>
-            </div>
-          </CardContent>
-        </Card>
+      <main className="container mx-auto px-4 py-8">
+        <div className="grid gap-6">
+          {/* Card de Folgas */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Folgas Disponíveis</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold text-primary">
+                {employee.quantidade_folgas || 0} folgas
+              </div>
+            </CardContent>
+          </Card>
 
-        <Tabs defaultValue="epis" className="w-full">
-          <TabsList className="grid w-full grid-cols-6">
-            <TabsTrigger value="epis">EPIs</TabsTrigger>
-            <TabsTrigger value="uniformes">Uniformes</TabsTrigger>
-            <TabsTrigger value="ferias">Férias</TabsTrigger>
-            <TabsTrigger value="faltas">Faltas</TabsTrigger>
-            <TabsTrigger value="afastamentos">Afastamentos</TabsTrigger>
-            <TabsTrigger value="folgas">Folgas</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="epis" className="mt-4">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Shield className="w-5 h-5" />
-                  EPIs Recebidos
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {epis.length === 0 ? (
-                  <p className="text-muted-foreground">Nenhum EPI registrado.</p>
-                ) : (
-                  <div className="space-y-3">
-                    {epis.map((epi) => (
-                      <div key={epi.id} className="border-b pb-3 last:border-0">
-                        <p className="font-medium">{epi.tipo_epi}</p>
-                        <div className="flex gap-4 text-sm text-muted-foreground mt-1">
-                          <span>Qtd: {epi.quantidade}</span>
-                          <span>
-                            Data: {new Date(epi.data_entrega).toLocaleDateString("pt-BR")}
-                          </span>
-                        </div>
-                        {epi.observacoes && (
-                          <p className="text-sm mt-1">{epi.observacoes}</p>
-                        )}
+          {/* EPIs */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Shield className="w-5 h-5" />
+                EPIs Recebidos
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {epis.length === 0 ? (
+                <p className="text-muted-foreground">Nenhum EPI registrado.</p>
+              ) : (
+                <div className="space-y-3">
+                  {epis.map((epi) => (
+                    <div key={epi.id} className="border-b pb-3 last:border-0">
+                      <p className="font-medium">{epi.tipo_epi}</p>
+                      <div className="flex gap-4 text-sm text-muted-foreground mt-1">
+                        <span>Qtd: {epi.quantidade}</span>
+                        <span>
+                          Data: {new Date(epi.data_entrega).toLocaleDateString("pt-BR")}
+                        </span>
                       </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
+                      {epi.observacoes && (
+                        <p className="text-sm mt-1">{epi.observacoes}</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
 
-          <TabsContent value="uniformes" className="mt-4">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Shirt className="w-5 h-5" />
-                  Uniformes Recebidos
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {uniformes.length === 0 ? (
-                  <p className="text-muted-foreground">Nenhum uniforme registrado.</p>
-                ) : (
-                  <div className="space-y-3">
-                    {uniformes.map((uniforme) => (
-                      <div key={uniforme.id} className="border-b pb-3 last:border-0">
-                        <p className="font-medium">{uniforme.tipo_uniforme}</p>
-                        <div className="flex gap-4 text-sm text-muted-foreground mt-1">
-                          <span>Tamanho: {uniforme.tamanho}</span>
-                          <span>Qtd: {uniforme.quantidade}</span>
-                          <span>
-                            Data: {new Date(uniforme.data_entrega).toLocaleDateString("pt-BR")}
-                          </span>
-                        </div>
+          {/* Uniformes */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Shirt className="w-5 h-5" />
+                Uniformes Recebidos
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {uniformes.length === 0 ? (
+                <p className="text-muted-foreground">Nenhum uniforme registrado.</p>
+              ) : (
+                <div className="space-y-3">
+                  {uniformes.map((uniforme) => (
+                    <div key={uniforme.id} className="border-b pb-3 last:border-0">
+                      <p className="font-medium">{uniforme.tipo_uniforme}</p>
+                      <div className="flex gap-4 text-sm text-muted-foreground mt-1">
+                        <span>Tamanho: {uniforme.tamanho}</span>
+                        <span>Qtd: {uniforme.quantidade}</span>
+                        <span>
+                          Data: {new Date(uniforme.data_entrega).toLocaleDateString("pt-BR")}
+                        </span>
                       </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="ferias" className="mt-4">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Calendar className="w-5 h-5" />
-                  Histórico de Férias
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {ferias.length === 0 ? (
-                  <p className="text-muted-foreground">Nenhuma féria registrada.</p>
-                ) : (
-                  <div className="space-y-3">
-                    {ferias.map((feria) => (
-                      <div key={feria.id} className="border-b pb-3 last:border-0">
-                        <p className="font-medium">
-                          {new Date(feria.periodo_gozo_inicio).toLocaleDateString("pt-BR")} até{" "}
-                          {new Date(feria.periodo_gozo_fim).toLocaleDateString("pt-BR")}
-                        </p>
-                        <p className="text-sm text-muted-foreground">
-                          {feria.dias_totais} dias
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="faltas" className="mt-4">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <AlertCircle className="w-5 h-5" />
-                  Faltas
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {faltas.length === 0 ? (
-                  <p className="text-muted-foreground">Nenhuma falta registrada.</p>
-                ) : (
-                  <div className="space-y-3">
-                    {faltas.map((falta) => (
-                      <div key={falta.id} className="border-b pb-3 last:border-0">
-                        <div className="flex items-center justify-between">
-                          <p className="font-medium">
-                            {new Date(falta.data).toLocaleDateString("pt-BR")}
-                          </p>
-                          <Badge variant={falta.justificada ? "default" : "destructive"}>
-                            {falta.justificada ? "Justificada" : "Não justificada"}
-                          </Badge>
-                        </div>
-                        {falta.motivo && (
-                          <p className="text-sm text-muted-foreground mt-1">{falta.motivo}</p>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="afastamentos" className="mt-4">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <FileText className="w-5 h-5" />
-                  Afastamentos
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {afastamentos.length === 0 ? (
-                  <p className="text-muted-foreground">Nenhum afastamento registrado.</p>
-                ) : (
-                  <div className="space-y-3">
-                    {afastamentos.map((afastamento) => (
-                      <div key={afastamento.id} className="border-b pb-3 last:border-0">
-                        <p className="font-medium">
-                          {new Date(afastamento.data_inicio).toLocaleDateString("pt-BR")} até{" "}
-                          {new Date(afastamento.data_fim).toLocaleDateString("pt-BR")}
-                        </p>
-                        <p className="text-sm mt-1">{afastamento.motivo}</p>
-                        {afastamento.cid && (
-                          <p className="text-sm text-muted-foreground">CID: {afastamento.cid}</p>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="folgas" className="mt-4">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Calendar className="w-5 h-5" />
-                  Folgas
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {folgas.length === 0 ? (
-                  <p className="text-muted-foreground">Nenhuma folga registrada.</p>
-                ) : (
-                  <div className="space-y-3">
-                    {folgas.map((folga) => (
-                      <div key={folga.id} className="border-b pb-3 last:border-0">
-                        <p className="font-medium">
-                          {new Date(folga.data).toLocaleDateString("pt-BR")}
-                        </p>
-                        <p className="text-sm text-muted-foreground">{folga.motivo}</p>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
-      </div>
+                      {uniforme.observacoes && (
+                        <p className="text-sm mt-1">{uniforme.observacoes}</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      </main>
     </div>
   );
 };

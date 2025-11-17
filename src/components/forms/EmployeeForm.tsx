@@ -89,6 +89,7 @@ const EmployeeForm = ({ employeeId, initialData, onSaved, onCancel }: EmployeeFo
 
     const formData = new FormData(e.currentTarget);
     const cpf = formData.get("cpf") as string || null;
+    const senha = formData.get("senha") as string || null;
     const salario = formData.get("salario") as string;
     const status = formData.get("status") as "ativo" | "ferias" | "afastado" | "demitido" || "ativo";
     const data = {
@@ -128,12 +129,18 @@ const EmployeeForm = ({ employeeId, initialData, onSaved, onCancel }: EmployeeFo
           setLoading(false);
           return;
         }
+        
+        if (!senha) {
+          toast.error("Senha é obrigatória para criar novo funcionário");
+          setLoading(false);
+          return;
+        }
 
-        // Criar usuário no auth com CPF como email e senha
+        // Criar usuário no auth com CPF como email
         const email = `${cpf}@empresa.local`;
         const { data: authData, error: authError } = await supabase.auth.signUp({
           email: email,
-          password: cpf,
+          password: senha,
           options: {
             data: {
               nome_completo: data.nome_completo,
@@ -187,7 +194,7 @@ const EmployeeForm = ({ employeeId, initialData, onSaved, onCancel }: EmployeeFo
           // Não bloquear o cadastro por erro de role
         }
 
-        toast.success("Funcionário cadastrado! Login: " + email + " | Senha: " + cpf);
+        toast.success("Funcionário cadastrado! Login: CPF " + cpf);
       }
       
       onSaved();
@@ -274,8 +281,24 @@ const EmployeeForm = ({ employeeId, initialData, onSaved, onCancel }: EmployeeFo
             </div>
             <div>
               <Label>CPF</Label>
-              <Input name="cpf" defaultValue={initialData?.cpf} />
+              <Input 
+                name="cpf" 
+                defaultValue={initialData?.cpf} 
+                required={!employeeId}
+                disabled={!!employeeId}
+              />
             </div>
+            {!employeeId && (
+              <div>
+                <Label>Senha</Label>
+                <Input 
+                  name="senha" 
+                  type="password"
+                  placeholder="Defina a senha do funcionário"
+                  required
+                />
+              </div>
+            )}
             <div>
               <Label>Telefone</Label>
               <Input name="telefone" defaultValue={initialData?.telefone} />
