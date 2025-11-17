@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import {
   LayoutDashboard,
   Users,
@@ -16,6 +17,7 @@ import {
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import EmployeeList from "@/components/employees/EmployeeList";
+import EmployeeForm from "@/components/forms/EmployeeForm";
 import { toast } from "sonner";
 
 interface GestorDashboardProps {
@@ -25,6 +27,7 @@ interface GestorDashboardProps {
 const GestorDashboard = ({ user }: GestorDashboardProps) => {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
+  const [showAddDialog, setShowAddDialog] = useState(false);
   const [stats, setStats] = useState({
     totalEmployees: 0,
     activeEmployees: 0,
@@ -65,7 +68,7 @@ const GestorDashboard = ({ user }: GestorDashboardProps) => {
   };
 
   const handleAddEmployee = () => {
-    navigate("/employee/new");
+    setShowAddDialog(true);
   };
 
   return (
@@ -152,10 +155,26 @@ const GestorDashboard = ({ user }: GestorDashboardProps) => {
               className="pl-10"
             />
           </div>
-          <Button onClick={handleAddEmployee}>
-            <Plus className="w-4 h-4 mr-2" />
-            Adicionar Funcionário
-          </Button>
+          <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
+            <DialogTrigger asChild>
+              <Button onClick={handleAddEmployee}>
+                <Plus className="w-4 h-4 mr-2" />
+                Adicionar Funcionário
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Novo Funcionário</DialogTitle>
+              </DialogHeader>
+              <EmployeeForm
+                onSaved={() => {
+                  setShowAddDialog(false);
+                  fetchStats();
+                }}
+                onCancel={() => setShowAddDialog(false)}
+              />
+            </DialogContent>
+          </Dialog>
         </div>
 
         {/* Employee List */}
