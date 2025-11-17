@@ -3,9 +3,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Loader2, Download } from "lucide-react";
+import { Loader2, Download, FileText } from "lucide-react";
 import { toast } from "sonner";
 import EditTimeOffDialog from "./EditTimeOffDialog";
+import jsPDF from "jspdf";
 
 interface TimeOffListDialogProps {
   open: boolean;
@@ -48,33 +49,75 @@ const TimeOffListDialog = ({ open, onOpenChange }: TimeOffListDialogProps) => {
     }
   };
 
-  const handleExportCSV = () => {
+  const handleExportPDF = () => {
     if (employees.length === 0) {
       toast.error("Não há dados para exportar");
       return;
     }
 
-    const headers = ["Nome Completo", "Cargo", "Quantidade de Folgas"];
-    const csvContent = [
-      headers.join(","),
-      ...employees.map(emp => 
-        `"${emp.nome_completo}","${emp.cargo}",${emp.quantidade_folgas}`
-      )
-    ].join("\n");
+    const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.getWidth();
+    let yPosition = 20;
 
-    const blob = new Blob(["\ufeff" + csvContent], { type: "text/csv;charset=utf-8;" });
-    const link = document.createElement("a");
-    const url = URL.createObjectURL(blob);
+    // Header
+    doc.setFontSize(16);
+    doc.setFont("helvetica", "bold");
+    doc.text("Hotel Fazenda Santa Bárbara", pageWidth / 2, yPosition, { align: "center" });
     
-    link.setAttribute("href", url);
-    link.setAttribute("download", `folgas_funcionarios_${new Date().toISOString().split('T')[0]}.csv`);
-    link.style.visibility = "hidden";
+    yPosition += 10;
+    doc.setFontSize(12);
+    doc.text("FOLGAS NA CASA - RELATÓRIO DE FUNCIONÁRIOS", pageWidth / 2, yPosition, { align: "center" });
     
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    yPosition += 10;
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "normal");
+    const currentDate = new Date().toLocaleDateString("pt-BR");
+    doc.text(`Data: ${currentDate}`, pageWidth / 2, yPosition, { align: "center" });
     
-    toast.success("Lista exportada com sucesso!");
+    yPosition += 15;
+
+    // Table header
+    doc.setFont("helvetica", "bold");
+    doc.text("Nome Completo", 20, yPosition);
+    doc.text("Cargo", 100, yPosition);
+    doc.text("Folgas", 170, yPosition);
+    
+    yPosition += 8;
+    doc.setFont("helvetica", "normal");
+
+    // Employee data
+    employees.forEach((emp) => {
+      // Check if we need a new page
+      if (yPosition > 270) {
+        doc.addPage();
+        yPosition = 20;
+      }
+
+      const nameText = doc.splitTextToSize(emp.nome_completo, 75);
+      const cargoText = doc.splitTextToSize(emp.cargo, 65);
+      
+      doc.text(nameText, 20, yPosition);
+      doc.text(cargoText, 100, yPosition);
+      doc.text(emp.quantidade_folgas.toString(), 170, yPosition);
+      
+      yPosition += Math.max(nameText.length, cargoText.length) * 5 + 3;
+    });
+
+    // Footer
+    yPosition += 10;
+    doc.setFontSize(8);
+    doc.text(
+      `Total de funcionários: ${employees.length}`,
+      pageWidth / 2,
+      yPosition,
+      { align: "center" }
+    );
+
+    // Save PDF
+    const fileName = `Folgas_Funcionarios_${currentDate.replace(/\//g, "-")}.pdf`;
+    doc.save(fileName);
+    
+    toast.success("Lista exportada em PDF com sucesso!");
   };
 
   return (
@@ -83,9 +126,9 @@ const TimeOffListDialog = ({ open, onOpenChange }: TimeOffListDialogProps) => {
         <DialogHeader>
           <div className="flex items-center justify-between">
             <DialogTitle>Folgas na Casa - Todos os Funcionários</DialogTitle>
-            <Button variant="outline" size="sm" onClick={handleExportCSV}>
-              <Download className="w-4 h-4 mr-2" />
-              Exportar CSV
+            <Button variant="outline" size="sm" onClick={handleExportPDF}>
+              <FileText className="w-4 h-4 mr-2" />
+              Exportar PDF
             </Button>
           </div>
         </DialogHeader>
