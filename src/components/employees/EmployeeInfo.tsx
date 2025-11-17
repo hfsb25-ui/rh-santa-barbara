@@ -1,5 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { User } from "lucide-react";
 
 interface EmployeeInfoProps {
   employee: any;
@@ -35,7 +37,16 @@ const EmployeeInfo = ({ employee }: EmployeeInfoProps) => {
           {getStatusBadge(employee.status)}
         </CardTitle>
       </CardHeader>
-      <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <CardContent className="space-y-6">
+        <div className="flex justify-center">
+          <Avatar className="w-32 h-32">
+            <AvatarImage src={employee.foto_url || undefined} alt={employee.nome_completo} />
+            <AvatarFallback className="bg-muted">
+              <User className="w-16 h-16 text-muted-foreground" />
+            </AvatarFallback>
+          </Avatar>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
           <p className="text-sm text-muted-foreground">Nome Completo</p>
           <p className="font-medium">{employee.nome_completo}</p>
@@ -72,6 +83,7 @@ const EmployeeInfo = ({ employee }: EmployeeInfoProps) => {
           <p className="text-sm text-muted-foreground">Endereço</p>
           <p className="font-medium">{employee.endereco || "—"}</p>
         </div>
+      </div>
       </CardContent>
     </Card>
   );

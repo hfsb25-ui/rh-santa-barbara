@@ -72,6 +72,7 @@ export type Database = {
           created_at: string | null
           data_admissao: string | null
           endereco: string | null
+          foto_url: string | null
           id: string
           nome_completo: string
           quantidade_folgas: number | null
@@ -87,6 +88,7 @@ export type Database = {
           created_at?: string | null
           data_admissao?: string | null
           endereco?: string | null
+          foto_url?: string | null
           id?: string
           nome_completo: string
           quantidade_folgas?: number | null
@@ -102,6 +104,7 @@ export type Database = {
           created_at?: string | null
           data_admissao?: string | null
           endereco?: string | null
+          foto_url?: string | null
           id?: string
           nome_completo?: string
           quantidade_folgas?: number | null

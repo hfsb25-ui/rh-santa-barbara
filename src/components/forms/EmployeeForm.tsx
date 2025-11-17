@@ -5,7 +5,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { toast } from "sonner";
+import { Upload, X } from "lucide-react";
 
 interface EmployeeFormProps {
   employeeId?: string;
@@ -16,6 +18,55 @@ interface EmployeeFormProps {
 
 const EmployeeForm = ({ employeeId, initialData, onSaved, onCancel }: EmployeeFormProps) => {
   const [loading, setLoading] = useState(false);
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(initialData?.foto_url || null);
+
+  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error("A foto deve ter no máximo 5MB");
+        return;
+      }
+      setPhotoFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPhotoPreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleRemovePhoto = () => {
+    setPhotoFile(null);
+    setPhotoPreview(null);
+  };
+
+  const uploadPhoto = async (employeeIdForUpload: string): Promise<string | null> => {
+    if (!photoFile) return null;
+
+    try {
+      const fileExt = photoFile.name.split('.').pop();
+      const fileName = `${employeeIdForUpload}.${fileExt}`;
+      const filePath = `${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('employee-photos')
+        .upload(filePath, photoFile, { upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('employee-photos')
+        .getPublicUrl(filePath);
+
+      return publicUrl;
+    } catch (error) {
+      console.error("Erro ao fazer upload da foto:", error);
+      toast.error("Erro ao fazer upload da foto");
+      return null;
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -36,10 +87,17 @@ const EmployeeForm = ({ employeeId, initialData, onSaved, onCancel }: EmployeeFo
 
     try {
       if (employeeId) {
+        // Upload da foto se houver
+        let fotoUrl = initialData?.foto_url;
+        if (photoFile) {
+          const uploadedUrl = await uploadPhoto(employeeId);
+          if (uploadedUrl) fotoUrl = uploadedUrl;
+        }
+
         // Apenas atualizar funcionário existente
         const { error } = await supabase
           .from("employees")
-          .update(data)
+          .update({ ...data, foto_url: fotoUrl })
           .eq("id", employeeId);
 
         if (error) throw error;
@@ -77,14 +135,27 @@ const EmployeeForm = ({ employeeId, initialData, onSaved, onCancel }: EmployeeFo
         }
 
         // Criar funcionário vinculado ao user_id
-        const { error: employeeError } = await supabase
+        const { data: newEmployee, error: employeeError } = await supabase
           .from("employees")
-          .insert([{ ...data, user_id: authData.user.id }]);
+          .insert([{ ...data, user_id: authData.user.id }])
+          .select()
+          .single();
 
         if (employeeError) {
           toast.error("Erro ao salvar funcionário");
           setLoading(false);
           return;
+        }
+
+        // Upload da foto se houver
+        if (photoFile && newEmployee) {
+          const uploadedUrl = await uploadPhoto(newEmployee.id);
+          if (uploadedUrl) {
+            await supabase
+              .from("employees")
+              .update({ foto_url: uploadedUrl })
+              .eq("id", newEmployee.id);
+          }
         }
 
         // Criar role de funcionário
@@ -116,6 +187,37 @@ const EmployeeForm = ({ employeeId, initialData, onSaved, onCancel }: EmployeeFo
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="flex flex-col items-center gap-4 mb-6">
+            <Avatar className="w-24 h-24">
+              <AvatarImage src={photoPreview || undefined} />
+              <AvatarFallback>
+                <Upload className="w-8 h-8 text-muted-foreground" />
+              </AvatarFallback>
+            </Avatar>
+            <div className="flex gap-2">
+              <Label htmlFor="photo-upload" className="cursor-pointer">
+                <Button type="button" variant="outline" size="sm" asChild>
+                  <span>
+                    <Upload className="w-4 h-4 mr-2" />
+                    {photoPreview ? "Trocar Foto" : "Upload Foto"}
+                  </span>
+                </Button>
+              </Label>
+              <Input
+                id="photo-upload"
+                type="file"
+                accept="image/*"
+                onChange={handlePhotoChange}
+                className="hidden"
+              />
+              {photoPreview && (
+                <Button type="button" variant="ghost" size="sm" onClick={handleRemovePhoto}>
+                  <X className="w-4 h-4 mr-2" />
+                  Remover
+                </Button>
+              )}
+            </div>
+          </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="col-span-2">
               <Label>Nome Completo</Label>
