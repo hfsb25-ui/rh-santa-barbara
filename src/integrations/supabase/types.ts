@@ -166,6 +166,84 @@ export type Database = {
           },
         ]
       }
+      estoque_epis: {
+        Row: {
+          ca: string | null
+          created_at: string | null
+          finalidade: string | null
+          id: string
+          marca_modelo: string | null
+          observacoes: string | null
+          quantidade_estoque: number
+          quantidade_minima: number | null
+          tamanho: string | null
+          tipo_epi: string
+          updated_at: string | null
+        }
+        Insert: {
+          ca?: string | null
+          created_at?: string | null
+          finalidade?: string | null
+          id?: string
+          marca_modelo?: string | null
+          observacoes?: string | null
+          quantidade_estoque?: number
+          quantidade_minima?: number | null
+          tamanho?: string | null
+          tipo_epi: string
+          updated_at?: string | null
+        }
+        Update: {
+          ca?: string | null
+          created_at?: string | null
+          finalidade?: string | null
+          id?: string
+          marca_modelo?: string | null
+          observacoes?: string | null
+          quantidade_estoque?: number
+          quantidade_minima?: number | null
+          tamanho?: string | null
+          tipo_epi?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      estoque_uniformes: {
+        Row: {
+          cor: string | null
+          created_at: string | null
+          id: string
+          observacoes: string | null
+          quantidade_estoque: number
+          quantidade_minima: number | null
+          tamanho: string
+          tipo_uniforme: string
+          updated_at: string | null
+        }
+        Insert: {
+          cor?: string | null
+          created_at?: string | null
+          id?: string
+          observacoes?: string | null
+          quantidade_estoque?: number
+          quantidade_minima?: number | null
+          tamanho: string
+          tipo_uniforme: string
+          updated_at?: string | null
+        }
+        Update: {
+          cor?: string | null
+          created_at?: string | null
+          id?: string
+          observacoes?: string | null
+          quantidade_estoque?: number
+          quantidade_minima?: number | null
+          tamanho?: string
+          tipo_uniforme?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       faltas: {
         Row: {
           created_at: string | null
