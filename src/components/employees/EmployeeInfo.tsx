@@ -64,6 +64,10 @@ const EmployeeInfo = ({ employee }: EmployeeInfoProps) => {
           <p className="text-sm text-muted-foreground">Telefone</p>
           <p className="font-medium">{employee.telefone || "—"}</p>
         </div>
+        <div>
+          <p className="text-sm text-muted-foreground">Folgas na Casa</p>
+          <p className="font-medium text-primary text-lg">{employee.quantidade_folgas || 0}</p>
+        </div>
         <div className="md:col-span-2">
           <p className="text-sm text-muted-foreground">Endereço</p>
           <p className="font-medium">{employee.endereco || "—"}</p>
