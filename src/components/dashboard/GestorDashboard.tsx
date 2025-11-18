@@ -27,6 +27,7 @@ import EmployeeForm from "@/components/forms/EmployeeForm";
 import TimeOffListDialog from "@/components/dashboard/TimeOffListDialog";
 import AvisoForm from "@/components/forms/AvisoForm";
 import ManageAvisosDialog from "@/components/dashboard/ManageAvisosDialog";
+import LoginHistoryDialog from "@/components/dashboard/LoginHistoryDialog";
 import { toast } from "sonner";
 
 interface GestorDashboardProps {
@@ -40,6 +41,7 @@ const GestorDashboard = ({ user }: GestorDashboardProps) => {
   const [showTimeOffDialog, setShowTimeOffDialog] = useState(false);
   const [showAvisoDialog, setShowAvisoDialog] = useState(false);
   const [showManageAvisosDialog, setShowManageAvisosDialog] = useState(false);
+  const [showLoginHistoryDialog, setShowLoginHistoryDialog] = useState(false);
   const [stats, setStats] = useState({
     totalEmployees: 0,
     activeEmployees: 0,
@@ -187,6 +189,10 @@ const GestorDashboard = ({ user }: GestorDashboardProps) => {
             <Clock className="w-4 h-4 mr-2" />
             Ver Folgas
           </Button>
+          <Button variant="outline" onClick={() => setShowLoginHistoryDialog(true)}>
+            <Users className="w-4 h-4 mr-2" />
+            Histórico de Login
+          </Button>
           <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
             <DialogTrigger asChild>
               <Button onClick={handleAddEmployee}>
@@ -245,6 +251,12 @@ const GestorDashboard = ({ user }: GestorDashboardProps) => {
           <Bell className="w-4 h-4 mr-2" />
           Gerenciar Avisos
         </Button>
+
+        {/* Login History Dialog */}
+        <LoginHistoryDialog 
+          open={showLoginHistoryDialog}
+          onOpenChange={setShowLoginHistoryDialog}
+        />
 
         {/* Employee List */}
         <EmployeeList searchQuery={searchQuery} onStatsUpdate={fetchStats} />
