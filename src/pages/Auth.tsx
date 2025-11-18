@@ -85,6 +85,7 @@ const Auth = () => {
         options: {
           data: {
             nome_completo: signupName,
+            role: 'gestor'
           },
         },
       });
@@ -94,20 +95,6 @@ const Auth = () => {
           description: error.message,
         });
         return;
-      }
-
-      if (data.user) {
-        // Inserir role de gestor para o novo usuário
-        const { error: roleError } = await supabase
-          .from('user_roles')
-          .insert({
-            user_id: data.user.id,
-            role: 'gestor'
-          });
-
-        if (roleError) {
-          console.error("Erro ao atribuir role:", roleError);
-        }
       }
 
       toast.success("Cadastro realizado com sucesso!");
