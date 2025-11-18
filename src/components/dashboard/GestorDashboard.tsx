@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import {
   LayoutDashboard,
@@ -44,6 +45,8 @@ const GestorDashboard = ({ user }: GestorDashboardProps) => {
   const [showAvisoDialog, setShowAvisoDialog] = useState(false);
   const [showManageAvisosDialog, setShowManageAvisosDialog] = useState(false);
   const [showLoginHistoryDialog, setShowLoginHistoryDialog] = useState(false);
+  const [selectedEmpresa, setSelectedEmpresa] = useState<string>("");
+  const [empresas, setEmpresas] = useState<Array<{ id: string; nome: string }>>([]);
   const [stats, setStats] = useState({
     totalEmployees: 0,
     activeEmployees: 0,
@@ -52,14 +55,28 @@ const GestorDashboard = ({ user }: GestorDashboardProps) => {
   });
 
   useEffect(() => {
+    fetchEmpresas();
     fetchStats();
-  }, []);
+  }, [selectedEmpresa]);
+
+  const fetchEmpresas = async () => {
+    const { data } = await supabase
+      .from("empresas")
+      .select("id, nome")
+      .order("nome");
+    
+    if (data) setEmpresas(data);
+  };
 
   const fetchStats = async () => {
     try {
-      const { data: employees } = await supabase
-        .from("employees")
-        .select("status");
+      let query = supabase.from("employees").select("status");
+      
+      if (selectedEmpresa) {
+        query = query.eq("empresa_id", selectedEmpresa);
+      }
+
+      const { data: employees } = await query;
 
       if (employees) {
         setStats({
@@ -101,10 +118,25 @@ const GestorDashboard = ({ user }: GestorDashboardProps) => {
               <p className="text-sm text-muted-foreground">Painel do Gestor</p>
             </div>
           </div>
-          <Button variant="outline" onClick={handleLogout}>
-            <LogOut className="w-4 h-4 mr-2" />
-            Sair
-          </Button>
+          <div className="flex items-center gap-4">
+            <Select value={selectedEmpresa} onValueChange={setSelectedEmpresa}>
+              <SelectTrigger className="w-[250px]">
+                <SelectValue placeholder="Todas as empresas" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">Todas as empresas</SelectItem>
+                {empresas.map((empresa) => (
+                  <SelectItem key={empresa.id} value={empresa.id}>
+                    {empresa.nome}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button variant="outline" onClick={handleLogout}>
+              <LogOut className="w-4 h-4 mr-2" />
+              Sair
+            </Button>
+          </div>
         </div>
       </header>
 
@@ -186,6 +218,10 @@ const GestorDashboard = ({ user }: GestorDashboardProps) => {
           <Button variant="outline" onClick={() => navigate("/financeiro")}>
             <DollarSign className="w-4 h-4 mr-2" />
             Financeiro
+          </Button>
+          <Button variant="outline" onClick={() => navigate("/companies")}>
+            <Building2 className="w-4 h-4 mr-2" />
+            Empresas
           </Button>
           <Button variant="outline" onClick={() => setShowTimeOffDialog(true)}>
             <Clock className="w-4 h-4 mr-2" />
@@ -271,7 +307,7 @@ const GestorDashboard = ({ user }: GestorDashboardProps) => {
         />
 
         {/* Employee List */}
-        <EmployeeList searchQuery={searchQuery} onStatsUpdate={fetchStats} />
+        <EmployeeList searchQuery={searchQuery} onStatsUpdate={fetchStats} empresaId={selectedEmpresa} />
       </div>
     </div>
   );
