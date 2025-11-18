@@ -18,6 +18,7 @@ interface EmployeeTimeOff {
   nome_completo: string;
   cargo: string;
   quantidade_folgas: number;
+  ultima_alteracao_folgas: string | null;
 }
 
 const TimeOffListDialog = ({ open, onOpenChange }: TimeOffListDialogProps) => {
@@ -35,7 +36,7 @@ const TimeOffListDialog = ({ open, onOpenChange }: TimeOffListDialogProps) => {
     try {
       const { data: employeesData, error: employeesError } = await supabase
         .from("employees")
-        .select("id, nome_completo, cargo, quantidade_folgas")
+        .select("id, nome_completo, cargo, quantidade_folgas, ultima_alteracao_folgas")
         .order("nome_completo");
 
       if (employeesError) throw employeesError;
@@ -165,6 +166,17 @@ const TimeOffListDialog = ({ open, onOpenChange }: TimeOffListDialogProps) => {
                             <p className="text-xs text-muted-foreground">
                               {employee.quantidade_folgas === 1 ? "folga" : "folgas"}
                             </p>
+                            {employee.ultima_alteracao_folgas && (
+                              <p className="text-xs text-muted-foreground mt-1">
+                                Alterado em: {new Date(employee.ultima_alteracao_folgas).toLocaleString("pt-BR", {
+                                  day: "2-digit",
+                                  month: "2-digit",
+                                  year: "numeric",
+                                  hour: "2-digit",
+                                  minute: "2-digit"
+                                })}
+                              </p>
+                            )}
                           </div>
                           <EditTimeOffDialog
                             employeeId={employee.id}

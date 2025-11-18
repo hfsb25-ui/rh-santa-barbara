@@ -78,6 +78,11 @@ const EmployeeInfo = ({ employee }: EmployeeInfoProps) => {
         <div>
           <p className="text-sm text-muted-foreground">Folgas na Casa</p>
           <p className="font-medium text-primary text-lg">{employee.quantidade_folgas || 0}</p>
+          {employee.ultima_alteracao_folgas && (
+            <p className="text-xs text-muted-foreground mt-1">
+              Última alteração: {new Date(employee.ultima_alteracao_folgas).toLocaleString("pt-BR")}
+            </p>
+          )}
         </div>
         <div className="md:col-span-2">
           <p className="text-sm text-muted-foreground">Endereço</p>
