@@ -2,8 +2,9 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus, Shield } from "lucide-react";
+import { Plus, Shield, Trash2 } from "lucide-react";
 import EpiForm from "@/components/forms/EpiForm";
+import { toast } from "sonner";
 
 interface EpiTabProps {
   employeeId: string;
@@ -32,6 +33,22 @@ const EpiTab = ({ employeeId }: EpiTabProps) => {
     fetchEpis();
   };
 
+  const handleDelete = async (id: string) => {
+    if (!confirm("Tem certeza que deseja excluir este EPI?")) return;
+
+    const { error } = await supabase
+      .from("epis")
+      .delete()
+      .eq("id", id);
+
+    if (error) {
+      toast.error("Erro ao excluir EPI");
+    } else {
+      toast.success("EPI excluído com sucesso");
+      fetchEpis();
+    }
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
@@ -57,10 +74,19 @@ const EpiTab = ({ employeeId }: EpiTabProps) => {
           {epis.map((epi) => (
             <Card key={epi.id}>
               <CardHeader>
-                <CardTitle className="text-base flex items-center gap-2">
-                  <Shield className="w-4 h-4" />
-                  {epi.tipo_epi}
-                </CardTitle>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <Shield className="w-4 h-4" />
+                    {epi.tipo_epi}
+                  </CardTitle>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => handleDelete(epi.id)}
+                  >
+                    <Trash2 className="w-4 h-4 text-destructive" />
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-2 gap-2 text-sm">
