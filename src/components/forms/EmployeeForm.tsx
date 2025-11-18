@@ -144,6 +144,7 @@ const EmployeeForm = ({ employeeId, initialData, onSaved, onCancel }: EmployeeFo
           options: {
             data: {
               nome_completo: data.nome_completo,
+              role: 'funcionario'
             },
           },
         });
