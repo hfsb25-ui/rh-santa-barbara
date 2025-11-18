@@ -138,6 +138,8 @@ const EmployeeForm = ({ employeeId, initialData, onSaved, onCancel }: EmployeeFo
 
         // Criar usuário no auth com CPF como email
         const email = `${cpf}@empresa.local`;
+        console.log("Tentando criar usuário:", email);
+        
         const { data: authData, error: authError } = await supabase.auth.signUp({
           email: email,
           password: senha,
@@ -150,10 +152,13 @@ const EmployeeForm = ({ employeeId, initialData, onSaved, onCancel }: EmployeeFo
         });
 
         if (authError) {
+          console.error("Erro auth:", authError);
           toast.error("Erro ao criar login do funcionário: " + authError.message);
           setLoading(false);
           return;
         }
+
+        console.log("Usuário criado:", authData.user?.id);
 
         if (!authData.user) {
           toast.error("Erro ao criar usuário");
@@ -162,6 +167,8 @@ const EmployeeForm = ({ employeeId, initialData, onSaved, onCancel }: EmployeeFo
         }
 
         // Criar funcionário vinculado ao user_id
+        console.log("Tentando criar funcionário com user_id:", authData.user.id);
+        
         const { data: newEmployee, error: employeeError } = await supabase
           .from("employees")
           .insert([{ ...data, user_id: authData.user.id }])
@@ -169,10 +176,13 @@ const EmployeeForm = ({ employeeId, initialData, onSaved, onCancel }: EmployeeFo
           .single();
 
         if (employeeError) {
-          toast.error("Erro ao salvar funcionário");
+          console.error("Erro ao inserir funcionário:", employeeError);
+          toast.error("Erro ao salvar funcionário: " + employeeError.message);
           setLoading(false);
           return;
         }
+
+        console.log("Funcionário criado:", newEmployee.id);
 
         // Upload da foto se houver
         if (photoFile && newEmployee) {
