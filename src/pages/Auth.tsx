@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { User, Session } from "@supabase/supabase-js";
 import { Briefcase } from "lucide-react";
@@ -15,6 +15,9 @@ const Auth = () => {
   const [loading, setLoading] = useState(false);
   const [cpf, setCpf] = useState("");
   const [password, setPassword] = useState("");
+  const [signupCpf, setSignupCpf] = useState("");
+  const [signupPassword, setSignupPassword] = useState("");
+  const [signupName, setSignupName] = useState("");
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
 
@@ -45,7 +48,6 @@ const Auth = () => {
     setLoading(true);
 
     try {
-      // Converte CPF em email fictício
       const email = `${cpf}@empresa.local`;
       
       const { error } = await supabase.auth.signInWithPassword({
@@ -70,6 +72,54 @@ const Auth = () => {
     }
   };
 
+  const handleSignup = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+
+    try {
+      const email = `${signupCpf}@empresa.local`;
+      
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password: signupPassword,
+        options: {
+          data: {
+            nome_completo: signupName,
+          },
+        },
+      });
+
+      if (error) {
+        toast.error("Erro ao cadastrar", {
+          description: error.message,
+        });
+        return;
+      }
+
+      if (data.user) {
+        // Inserir role de gestor para o novo usuário
+        const { error: roleError } = await supabase
+          .from('user_roles')
+          .insert({
+            user_id: data.user.id,
+            role: 'gestor'
+          });
+
+        if (roleError) {
+          console.error("Erro ao atribuir role:", roleError);
+        }
+      }
+
+      toast.success("Cadastro realizado com sucesso!");
+    } catch (error: any) {
+      toast.error("Erro inesperado", {
+        description: error.message,
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 via-background to-secondary/5 p-4">
@@ -84,33 +134,83 @@ const Auth = () => {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleLogin} className="space-y-4 mt-4">
-            <div className="space-y-2">
-              <Label htmlFor="cpf">CPF</Label>
-              <Input
-                id="cpf"
-                type="text"
-                placeholder="Seu CPF"
-                value={cpf}
-                onChange={(e) => setCpf(e.target.value)}
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">Senha</Label>
-              <Input
-                id="password"
-                type="password"
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
-            </div>
-            <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? "Entrando..." : "Entrar"}
-            </Button>
-          </form>
+          <Tabs defaultValue="login" className="w-full">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="login">Login</TabsTrigger>
+              <TabsTrigger value="signup">Cadastrar Admin</TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="login">
+              <form onSubmit={handleLogin} className="space-y-4 mt-4">
+                <div className="space-y-2">
+                  <Label htmlFor="cpf">CPF</Label>
+                  <Input
+                    id="cpf"
+                    type="text"
+                    placeholder="Seu CPF"
+                    value={cpf}
+                    onChange={(e) => setCpf(e.target.value)}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="password">Senha</Label>
+                  <Input
+                    id="password"
+                    type="password"
+                    placeholder="••••••••"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                  />
+                </div>
+                <Button type="submit" className="w-full" disabled={loading}>
+                  {loading ? "Entrando..." : "Entrar"}
+                </Button>
+              </form>
+            </TabsContent>
+
+            <TabsContent value="signup">
+              <form onSubmit={handleSignup} className="space-y-4 mt-4">
+                <div className="space-y-2">
+                  <Label htmlFor="signupName">Nome Completo</Label>
+                  <Input
+                    id="signupName"
+                    type="text"
+                    placeholder="Seu nome completo"
+                    value={signupName}
+                    onChange={(e) => setSignupName(e.target.value)}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="signupCpf">CPF</Label>
+                  <Input
+                    id="signupCpf"
+                    type="text"
+                    placeholder="Seu CPF"
+                    value={signupCpf}
+                    onChange={(e) => setSignupCpf(e.target.value)}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="signupPassword">Senha</Label>
+                  <Input
+                    id="signupPassword"
+                    type="password"
+                    placeholder="••••••••"
+                    value={signupPassword}
+                    onChange={(e) => setSignupPassword(e.target.value)}
+                    required
+                  />
+                </div>
+                <Button type="submit" className="w-full" disabled={loading}>
+                  {loading ? "Cadastrando..." : "Cadastrar Admin"}
+                </Button>
+              </form>
+            </TabsContent>
+          </Tabs>
         </CardContent>
       </Card>
     </div>
