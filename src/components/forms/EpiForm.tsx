@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { FileDown } from "lucide-react";
 import { generateEpiReceipt } from "@/lib/pdfGenerator";
@@ -18,16 +19,48 @@ interface EpiFormProps {
 const EpiForm = ({ employeeId, onSaved, onCancel }: EpiFormProps) => {
   const [loading, setLoading] = useState(false);
   const [lastInsertedData, setLastInsertedData] = useState<any>(null);
+  const [stockItems, setStockItems] = useState<any[]>([]);
+  const [selectedItem, setSelectedItem] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchStockItems();
+  }, []);
+
+  const fetchStockItems = async () => {
+    const { data, error } = await supabase
+      .from("estoque_epis")
+      .select("*")
+      .gt("quantidade_estoque", 0)
+      .order("tipo_epi");
+    
+    if (!error && data) {
+      setStockItems(data);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setLoading(true);
 
+    if (!selectedItem) {
+      toast.error("Selecione um EPI do estoque");
+      setLoading(false);
+      return;
+    }
+
     const formData = new FormData(e.currentTarget);
+    const selectedStock = stockItems.find(item => item.id === selectedItem);
+    
+    if (!selectedStock) {
+      toast.error("Item não encontrado no estoque");
+      setLoading(false);
+      return;
+    }
+
     const epiData = {
       employee_id: employeeId,
-      tipo_epi: formData.get("tipo_epi") as string,
-      quantidade: parseInt(formData.get("quantidade") as string),
+      tipo_epi: selectedStock.tipo_epi,
+      quantidade: 1,
       data_entrega: formData.get("data_entrega") as string,
       observacoes: formData.get("observacoes") as string || null,
     };
@@ -39,18 +72,35 @@ const EpiForm = ({ employeeId, onSaved, onCancel }: EpiFormProps) => {
       .eq("id", employeeId)
       .single();
 
+    // Insert EPI record
     const { error } = await supabase.from("epis").insert(epiData);
 
-    setLoading(false);
     if (error) {
       toast.error("Erro ao salvar");
+      setLoading(false);
+      return;
+    }
+
+    // Decrease stock
+    const { error: stockError } = await supabase
+      .from("estoque_epis")
+      .update({ quantidade_estoque: selectedStock.quantidade_estoque - 1 })
+      .eq("id", selectedItem);
+
+    setLoading(false);
+    if (stockError) {
+      toast.error("Erro ao atualizar estoque");
     } else {
-      toast.success("EPI registrado!");
+      toast.success("EPI registrado e estoque atualizado!");
       setLastInsertedData({
         ...epiData,
         employeeName: employee?.nome_completo || "",
         employeeCpf: employee?.cpf || "",
         employeeRole: employee?.cargo || "",
+        marcaModelo: selectedStock.marca_modelo,
+        ca: selectedStock.ca,
+        tamanho: selectedStock.tamanho,
+        finalidade: selectedStock.finalidade,
       });
     }
   };
@@ -80,12 +130,30 @@ const EpiForm = ({ employeeId, onSaved, onCancel }: EpiFormProps) => {
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <Label>Tipo de EPI</Label>
-            <Input name="tipo_epi" required />
-          </div>
-          <div>
-            <Label>Quantidade</Label>
-            <Input name="quantidade" type="number" defaultValue="1" required />
+            <Label>Selecione o EPI do Estoque</Label>
+            <div className="space-y-2 max-h-60 overflow-y-auto border rounded-md p-4">
+              {stockItems.length === 0 ? (
+                <p className="text-sm text-muted-foreground">Nenhum EPI disponível no estoque</p>
+              ) : (
+                stockItems.map((item) => (
+                  <div key={item.id} className="flex items-center space-x-2">
+                    <Checkbox
+                      id={item.id}
+                      checked={selectedItem === item.id}
+                      onCheckedChange={(checked) => {
+                        setSelectedItem(checked ? item.id : null);
+                      }}
+                    />
+                    <label
+                      htmlFor={item.id}
+                      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                    >
+                      {item.tipo_epi} {item.marca_modelo && `- ${item.marca_modelo}`} {item.tamanho && `(${item.tamanho})`} - Estoque: {item.quantidade_estoque}
+                    </label>
+                  </div>
+                ))
+              )}
+            </div>
           </div>
           <div>
             <Label>Data de Entrega</Label>
