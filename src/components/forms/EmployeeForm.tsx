@@ -136,42 +136,40 @@ const EmployeeForm = ({ employeeId, initialData, onSaved, onCancel }: EmployeeFo
           return;
         }
 
-        // Criar usuário no auth com CPF como email
-        const email = `${cpf}@empresa.local`;
-        console.log("Tentando criar usuário:", email);
+        // Criar usuário via edge function (mais seguro e evita rate limiting)
+        console.log("Criando usuário via edge function");
         
-        const { data: authData, error: authError } = await supabase.auth.signUp({
-          email: email,
-          password: senha,
-          options: {
-            data: {
-              nome_completo: data.nome_completo,
-              role: 'funcionario'
-            },
-          },
+        const { data: functionData, error: functionError } = await supabase.functions.invoke('create-employee-user', {
+          body: {
+            cpf: cpf,
+            senha: senha,
+            nome_completo: data.nome_completo
+          }
         });
 
-        if (authError) {
-          console.error("Erro auth:", authError);
-          toast.error("Erro ao criar login do funcionário: " + authError.message);
+        if (functionError) {
+          console.error("Erro na função:", functionError);
+          toast.error("Erro ao criar login: " + functionError.message);
           setLoading(false);
           return;
         }
 
-        console.log("Usuário criado:", authData.user?.id);
-
-        if (!authData.user) {
-          toast.error("Erro ao criar usuário");
+        if (functionData.error) {
+          console.error("Erro retornado pela função:", functionData.error);
+          toast.error("Erro ao criar login: " + functionData.error);
           setLoading(false);
           return;
         }
+
+        const userId = functionData.user.id;
+        console.log("Usuário criado com sucesso:", userId);
 
         // Criar funcionário vinculado ao user_id
-        console.log("Tentando criar funcionário com user_id:", authData.user.id);
+        console.log("Tentando criar funcionário com user_id:", userId);
         
         const { data: newEmployee, error: employeeError } = await supabase
           .from("employees")
-          .insert([{ ...data, user_id: authData.user.id }])
+          .insert([{ ...data, user_id: userId }])
           .select()
           .single();
 
@@ -195,15 +193,7 @@ const EmployeeForm = ({ employeeId, initialData, onSaved, onCancel }: EmployeeFo
           }
         }
 
-        // Criar role de funcionário
-        const { error: roleError } = await supabase
-          .from("user_roles")
-          .insert([{ user_id: authData.user.id, role: "funcionario" }]);
-
-        if (roleError) {
-          console.error("Erro ao criar role:", roleError);
-          // Não bloquear o cadastro por erro de role
-        }
+        // A role já é criada automaticamente pelo trigger handle_new_user
 
         toast.success("Funcionário cadastrado! Login: CPF " + cpf);
       }
