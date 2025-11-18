@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Building2, Plus } from "lucide-react";
+import { Building2, Plus, Pencil } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import CompanyForm from "./CompanyForm";
 
@@ -15,6 +15,7 @@ interface Company {
 export default function CompanyList() {
   const [companies, setCompanies] = useState<Company[]>([]);
   const [showForm, setShowForm] = useState(false);
+  const [editingCompany, setEditingCompany] = useState<Company | null>(null);
 
   const fetchCompanies = async () => {
     const { data } = await supabase
@@ -31,14 +32,25 @@ export default function CompanyList() {
 
   const handleSaved = () => {
     setShowForm(false);
+    setEditingCompany(null);
     fetchCompanies();
+  };
+
+  const handleEdit = (company: Company) => {
+    setEditingCompany(company);
+    setShowForm(true);
+  };
+
+  const handleNewCompany = () => {
+    setEditingCompany(null);
+    setShowForm(true);
   };
 
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold">Empresas</h2>
-        <Button onClick={() => setShowForm(true)}>
+        <Button onClick={handleNewCompany}>
           <Plus className="w-4 h-4 mr-2" />
           Nova Empresa
         </Button>
@@ -54,20 +66,42 @@ export default function CompanyList() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              {company.cnpj && (
-                <p className="text-sm text-muted-foreground">CNPJ: {company.cnpj}</p>
-              )}
+              <div className="space-y-2">
+                {company.cnpj && (
+                  <p className="text-sm text-muted-foreground">CNPJ: {company.cnpj}</p>
+                )}
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => handleEdit(company)}
+                  className="w-full"
+                >
+                  <Pencil className="w-4 h-4 mr-2" />
+                  Editar
+                </Button>
+              </div>
             </CardContent>
           </Card>
         ))}
       </div>
 
-      <Dialog open={showForm} onOpenChange={setShowForm}>
+      <Dialog open={showForm} onOpenChange={(open) => {
+        setShowForm(open);
+        if (!open) setEditingCompany(null);
+      }}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Nova Empresa</DialogTitle>
+            <DialogTitle>{editingCompany ? "Editar Empresa" : "Nova Empresa"}</DialogTitle>
           </DialogHeader>
-          <CompanyForm onSaved={handleSaved} onCancel={() => setShowForm(false)} />
+          <CompanyForm 
+            companyId={editingCompany?.id}
+            initialData={editingCompany}
+            onSaved={handleSaved} 
+            onCancel={() => {
+              setShowForm(false);
+              setEditingCompany(null);
+            }} 
+          />
         </DialogContent>
       </Dialog>
     </div>
