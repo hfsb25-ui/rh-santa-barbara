@@ -47,7 +47,7 @@ const Auth = () => {
     try {
       const email = `${cpf}@empresa.local`;
       
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
@@ -57,6 +57,22 @@ const Auth = () => {
           description: "CPF ou senha incorretos",
         });
         return;
+      }
+
+      // Registrar login no histórico
+      if (data.user) {
+        const { data: employeeData } = await supabase
+          .from("employees")
+          .select("id")
+          .eq("user_id", data.user.id)
+          .maybeSingle();
+
+        await supabase.from("login_history").insert({
+          user_id: data.user.id,
+          employee_id: employeeData?.id,
+          ip_address: null,
+          user_agent: navigator.userAgent,
+        });
       }
 
       toast.success("Login realizado com sucesso!");
