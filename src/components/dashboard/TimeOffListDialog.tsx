@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2, Download, FileText } from "lucide-react";
 import { toast } from "sonner";
 import EditTimeOffDialog from "./EditTimeOffDialog";
@@ -17,26 +18,44 @@ interface EmployeeTimeOff {
   id: string;
   nome_completo: string;
   cargo: string;
+  setor: string | null;
   quantidade_folgas: number;
   ultima_alteracao_folgas: string | null;
 }
 
+interface Setor {
+  id: string;
+  nome: string;
+}
+
 const TimeOffListDialog = ({ open, onOpenChange }: TimeOffListDialogProps) => {
   const [employees, setEmployees] = useState<EmployeeTimeOff[]>([]);
+  const [filteredEmployees, setFilteredEmployees] = useState<EmployeeTimeOff[]>([]);
+  const [setores, setSetores] = useState<Setor[]>([]);
+  const [selectedSetor, setSelectedSetor] = useState<string>("todos");
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (open) {
       fetchEmployeeTimeOff();
+      fetchSetores();
     }
   }, [open]);
+
+  useEffect(() => {
+    if (selectedSetor === "todos") {
+      setFilteredEmployees(employees);
+    } else {
+      setFilteredEmployees(employees.filter(emp => emp.setor === selectedSetor));
+    }
+  }, [selectedSetor, employees]);
 
   const fetchEmployeeTimeOff = async () => {
     setLoading(true);
     try {
       const { data: employeesData, error: employeesError } = await supabase
         .from("employees")
-        .select("id, nome_completo, cargo, quantidade_folgas, ultima_alteracao_folgas")
+        .select("id, nome_completo, cargo, setor, quantidade_folgas, ultima_alteracao_folgas")
         .order("nome_completo");
 
       if (employeesError) throw employeesError;
@@ -50,8 +69,13 @@ const TimeOffListDialog = ({ open, onOpenChange }: TimeOffListDialogProps) => {
     }
   };
 
+  const fetchSetores = async () => {
+    const { data } = await supabase.from("setores").select("*").order("nome");
+    if (data) setSetores(data);
+  };
+
   const handleExportPDF = () => {
-    if (employees.length === 0) {
+    if (filteredEmployees.length === 0) {
       toast.error("Não há dados para exportar");
       return;
     }
@@ -75,6 +99,10 @@ const TimeOffListDialog = ({ open, onOpenChange }: TimeOffListDialogProps) => {
     const currentDate = new Date().toLocaleDateString("pt-BR");
     doc.text(`Data: ${currentDate}`, pageWidth / 2, yPosition, { align: "center" });
     
+    yPosition += 5;
+    const setorName = selectedSetor === "todos" ? "Todos os Setores" : setores.find(s => s.nome === selectedSetor)?.nome || selectedSetor;
+    doc.text(`Setor: ${setorName}`, pageWidth / 2, yPosition, { align: "center" });
+    
     yPosition += 15;
 
     // Table header
@@ -87,7 +115,7 @@ const TimeOffListDialog = ({ open, onOpenChange }: TimeOffListDialogProps) => {
     doc.setFont("helvetica", "normal");
 
     // Employee data
-    employees.forEach((emp) => {
+    filteredEmployees.forEach((emp) => {
       // Check if we need a new page
       if (yPosition > 270) {
         doc.addPage();
@@ -108,7 +136,7 @@ const TimeOffListDialog = ({ open, onOpenChange }: TimeOffListDialogProps) => {
     yPosition += 10;
     doc.setFontSize(8);
     doc.text(
-      `Total de funcionários: ${employees.length}`,
+      `Total de funcionários: ${filteredEmployees.length}`,
       pageWidth / 2,
       yPosition,
       { align: "center" }
@@ -125,8 +153,23 @@ const TimeOffListDialog = ({ open, onOpenChange }: TimeOffListDialogProps) => {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
         <DialogHeader>
-          <div className="flex items-center justify-between">
-            <DialogTitle>Folgas na Casa - Todos os Funcionários</DialogTitle>
+          <DialogTitle>Folgas na Casa - Relatório de Funcionários</DialogTitle>
+          <div className="mt-4 flex items-center gap-4">
+            <div className="flex-1">
+              <Select value={selectedSetor} onValueChange={setSelectedSetor}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione um setor" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todos">Todos os Setores</SelectItem>
+                  {setores.map((setor) => (
+                    <SelectItem key={setor.id} value={setor.nome}>
+                      {setor.nome}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             <Button variant="outline" size="sm" onClick={handleExportPDF}>
               <FileText className="w-4 h-4 mr-2" />
               Exportar PDF
@@ -140,13 +183,15 @@ const TimeOffListDialog = ({ open, onOpenChange }: TimeOffListDialogProps) => {
           </div>
         ) : (
           <div className="space-y-3">
-            {employees.length === 0 ? (
+            {filteredEmployees.length === 0 ? (
               <p className="text-center text-muted-foreground py-8">
-                Nenhum funcionário cadastrado
+                {selectedSetor === "todos" 
+                  ? "Nenhum funcionário cadastrado" 
+                  : "Nenhum funcionário encontrado neste setor"}
               </p>
             ) : (
               <div className="grid gap-3">
-                {employees.map((employee) => (
+                {filteredEmployees.map((employee) => (
                   <Card key={employee.id}>
                     <CardContent className="p-4">
                       <div className="flex items-center justify-between">
