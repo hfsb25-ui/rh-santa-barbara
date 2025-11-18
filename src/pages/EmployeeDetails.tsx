@@ -7,6 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { ArrowLeft, Edit, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { useIsMobile } from "@/hooks/use-mobile";
 import EmployeeInfo from "@/components/employees/EmployeeInfo";
 import EmployeeForm from "@/components/forms/EmployeeForm";
 import EpiTab from "@/components/employees/tabs/EpiTab";
@@ -19,6 +20,7 @@ import TimeOffTab from "@/components/employees/tabs/TimeOffTab";
 const EmployeeDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   const [employee, setEmployee] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [showEditDialog, setShowEditDialog] = useState(false);
@@ -98,13 +100,13 @@ const EmployeeDetails = () => {
         <EmployeeInfo employee={employee} onUpdate={fetchEmployee} />
 
         <Tabs defaultValue="epis" className="mt-6">
-          <TabsList className="grid w-full grid-cols-6">
-            <TabsTrigger value="epis">EPIs</TabsTrigger>
-            <TabsTrigger value="uniformes">Uniformes</TabsTrigger>
-            <TabsTrigger value="ferias">Férias</TabsTrigger>
-            <TabsTrigger value="afastamentos">Afastamentos</TabsTrigger>
-            <TabsTrigger value="folgas">Folgas</TabsTrigger>
-            <TabsTrigger value="faltas">Faltas</TabsTrigger>
+          <TabsList className={isMobile ? "inline-flex w-full overflow-x-auto justify-start" : "grid w-full grid-cols-6"}>
+            <TabsTrigger value="epis" className={isMobile ? "flex-shrink-0" : ""}>EPIs</TabsTrigger>
+            <TabsTrigger value="uniformes" className={isMobile ? "flex-shrink-0" : ""}>Uniformes</TabsTrigger>
+            <TabsTrigger value="ferias" className={isMobile ? "flex-shrink-0" : ""}>Férias</TabsTrigger>
+            <TabsTrigger value="afastamentos" className={isMobile ? "flex-shrink-0" : ""}>Afastamentos</TabsTrigger>
+            <TabsTrigger value="folgas" className={isMobile ? "flex-shrink-0" : ""}>Folgas</TabsTrigger>
+            <TabsTrigger value="faltas" className={isMobile ? "flex-shrink-0" : ""}>Faltas</TabsTrigger>
           </TabsList>
 
           <TabsContent value="epis">
