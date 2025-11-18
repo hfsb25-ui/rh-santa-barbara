@@ -9,7 +9,9 @@ import {
   LogOut,
   Shield,
   Shirt,
+  Bell,
 } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { toast } from "sonner";
 
 interface FuncionarioDashboardProps {
@@ -21,6 +23,7 @@ const FuncionarioDashboard = ({ user }: FuncionarioDashboardProps) => {
   const [employee, setEmployee] = useState<any>(null);
   const [epis, setEpis] = useState<any[]>([]);
   const [uniformes, setUniformes] = useState<any[]>([]);
+  const [avisos, setAvisos] = useState<any[]>([]);
 
   useEffect(() => {
     fetchEmployeeData();
@@ -37,13 +40,20 @@ const FuncionarioDashboard = ({ user }: FuncionarioDashboardProps) => {
       if (empData) {
         setEmployee(empData);
 
-        const [episRes, uniformesRes] = await Promise.all([
+        const [episRes, uniformesRes, avisosRes] = await Promise.all([
           supabase.from("epis").select("*").eq("employee_id", empData.id),
           supabase.from("uniformes").select("*").eq("employee_id", empData.id),
+          supabase
+            .from("avisos")
+            .select("*")
+            .contains("setores", [empData.setor])
+            .gte("data_expiracao", new Date().toISOString().split("T")[0])
+            .order("created_at", { ascending: false }),
         ]);
 
         setEpis(episRes.data || []);
         setUniformes(uniformesRes.data || []);
+        setAvisos(avisosRes.data || []);
       }
     } catch (error) {
       console.error("Error fetching employee data:", error);
@@ -90,6 +100,24 @@ const FuncionarioDashboard = ({ user }: FuncionarioDashboardProps) => {
 
       <main className="container mx-auto px-4 py-8">
         <div className="grid gap-6">
+          {/* Avisos */}
+          {avisos.length > 0 && (
+            <div className="space-y-3">
+              {avisos.map((aviso) => (
+                <Alert key={aviso.id} className="border-primary bg-primary/10">
+                  <Bell className="h-5 w-5 text-primary" />
+                  <AlertTitle className="font-semibold text-lg">Aviso Importante</AlertTitle>
+                  <AlertDescription className="text-base mt-2">
+                    {aviso.mensagem}
+                    <p className="text-xs text-muted-foreground mt-2">
+                      Válido até: {new Date(aviso.data_expiracao).toLocaleDateString("pt-BR")}
+                    </p>
+                  </AlertDescription>
+                </Alert>
+              ))}
+            </div>
+          )}
+
           {/* Card de Folgas */}
           <Card>
             <CardHeader>

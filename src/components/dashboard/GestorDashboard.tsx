@@ -19,11 +19,13 @@ import {
   TrendingUp,
   Building2,
   DollarSign,
+  Bell,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import EmployeeList from "@/components/employees/EmployeeList";
 import EmployeeForm from "@/components/forms/EmployeeForm";
 import TimeOffListDialog from "@/components/dashboard/TimeOffListDialog";
+import AvisoForm from "@/components/forms/AvisoForm";
 import { toast } from "sonner";
 
 interface GestorDashboardProps {
@@ -35,6 +37,7 @@ const GestorDashboard = ({ user }: GestorDashboardProps) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [showTimeOffDialog, setShowTimeOffDialog] = useState(false);
+  const [showAvisoDialog, setShowAvisoDialog] = useState(false);
   const [stats, setStats] = useState({
     totalEmployees: 0,
     activeEmployees: 0,
@@ -209,6 +212,22 @@ const GestorDashboard = ({ user }: GestorDashboardProps) => {
           open={showTimeOffDialog} 
           onOpenChange={setShowTimeOffDialog} 
         />
+
+        {/* Aviso Dialog */}
+        <Dialog open={showAvisoDialog} onOpenChange={setShowAvisoDialog}>
+          <DialogTrigger asChild>
+            <Button variant="outline" className="mb-4">
+              <Bell className="w-4 h-4 mr-2" />
+              Criar Aviso
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Criar Novo Aviso</DialogTitle>
+            </DialogHeader>
+            <AvisoForm onSuccess={() => setShowAvisoDialog(false)} />
+          </DialogContent>
+        </Dialog>
 
         {/* Employee List */}
         <EmployeeList searchQuery={searchQuery} onStatsUpdate={fetchStats} />
