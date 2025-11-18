@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Edit } from "lucide-react";
 import { toast } from "sonner";
@@ -24,23 +25,44 @@ const EditTimeOffDialog = ({ employeeId, employeeName, currentAmount, onUpdated 
 
     const formData = new FormData(e.currentTarget);
     const newAmount = parseInt(formData.get("quantidade_folgas") as string);
+    const observacao = formData.get("observacao") as string;
 
-    const { error } = await supabase
-      .from("employees")
-      .update({ 
-        quantidade_folgas: newAmount,
-        ultima_alteracao_folgas: new Date().toISOString()
-      })
-      .eq("id", employeeId);
+    try {
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser();
 
-    setLoading(false);
-    if (error) {
-      toast.error("Erro ao atualizar quantidade de folgas");
-      console.error(error);
-    } else {
+      // Update employee
+      const { error: updateError } = await supabase
+        .from("employees")
+        .update({ 
+          quantidade_folgas: newAmount,
+          ultima_alteracao_folgas: new Date().toISOString()
+        })
+        .eq("id", employeeId);
+
+      if (updateError) throw updateError;
+
+      // Insert history record
+      const { error: historyError } = await supabase
+        .from("historico_folgas")
+        .insert({
+          employee_id: employeeId,
+          quantidade_anterior: currentAmount,
+          quantidade_nova: newAmount,
+          alterado_por: user?.id,
+          observacao: observacao || null,
+        });
+
+      if (historyError) throw historyError;
+
       toast.success("Quantidade de folgas atualizada!");
       setOpen(false);
       onUpdated();
+    } catch (error) {
+      console.error("Erro ao atualizar folgas:", error);
+      toast.error("Erro ao atualizar quantidade de folgas");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -68,6 +90,14 @@ const EditTimeOffDialog = ({ employeeId, employeeName, currentAmount, onUpdated 
             <p className="text-sm text-muted-foreground mt-1">
               Quantidade atual: {currentAmount}
             </p>
+          </div>
+          <div>
+            <Label>Observação (opcional)</Label>
+            <Textarea
+              name="observacao"
+              placeholder="Motivo da alteração..."
+              rows={3}
+            />
           </div>
           <div className="flex gap-2">
             <Button type="submit" disabled={loading}>

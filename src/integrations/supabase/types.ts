@@ -432,6 +432,54 @@ export type Database = {
           },
         ]
       }
+      historico_folgas: {
+        Row: {
+          alterado_em: string
+          alterado_por: string | null
+          created_at: string | null
+          employee_id: string
+          id: string
+          observacao: string | null
+          quantidade_anterior: number
+          quantidade_nova: number
+        }
+        Insert: {
+          alterado_em?: string
+          alterado_por?: string | null
+          created_at?: string | null
+          employee_id: string
+          id?: string
+          observacao?: string | null
+          quantidade_anterior: number
+          quantidade_nova: number
+        }
+        Update: {
+          alterado_em?: string
+          alterado_por?: string | null
+          created_at?: string | null
+          employee_id?: string
+          id?: string
+          observacao?: string | null
+          quantidade_anterior?: number
+          quantidade_nova?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "historico_folgas_alterado_por_fkey"
+            columns: ["alterado_por"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "historico_folgas_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       login_history: {
         Row: {
           employee_id: string | null

@@ -25,6 +25,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import EmployeeList from "@/components/employees/EmployeeList";
 import EmployeeForm from "@/components/forms/EmployeeForm";
 import TimeOffListDialog from "@/components/dashboard/TimeOffListDialog";
+import TimeOffHistoryDialog from "@/components/dashboard/TimeOffHistoryDialog";
 import AvisoForm from "@/components/forms/AvisoForm";
 import ManageAvisosDialog from "@/components/dashboard/ManageAvisosDialog";
 import LoginHistoryDialog from "@/components/dashboard/LoginHistoryDialog";
@@ -39,6 +40,7 @@ const GestorDashboard = ({ user }: GestorDashboardProps) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [showTimeOffDialog, setShowTimeOffDialog] = useState(false);
+  const [showTimeOffHistoryDialog, setShowTimeOffHistoryDialog] = useState(false);
   const [showAvisoDialog, setShowAvisoDialog] = useState(false);
   const [showManageAvisosDialog, setShowManageAvisosDialog] = useState(false);
   const [showLoginHistoryDialog, setShowLoginHistoryDialog] = useState(false);
@@ -189,6 +191,10 @@ const GestorDashboard = ({ user }: GestorDashboardProps) => {
             <Clock className="w-4 h-4 mr-2" />
             Ver Folgas
           </Button>
+          <Button variant="outline" onClick={() => setShowTimeOffHistoryDialog(true)}>
+            <FileText className="w-4 h-4 mr-2" />
+            Histórico de Folgas
+          </Button>
           <Button variant="outline" onClick={() => setShowLoginHistoryDialog(true)}>
             <Users className="w-4 h-4 mr-2" />
             Histórico de Login
@@ -219,6 +225,12 @@ const GestorDashboard = ({ user }: GestorDashboardProps) => {
         <TimeOffListDialog 
           open={showTimeOffDialog} 
           onOpenChange={setShowTimeOffDialog} 
+        />
+
+        {/* Time Off History Dialog */}
+        <TimeOffHistoryDialog 
+          open={showTimeOffHistoryDialog} 
+          onOpenChange={setShowTimeOffHistoryDialog} 
         />
 
         {/* Aviso Dialog */}
