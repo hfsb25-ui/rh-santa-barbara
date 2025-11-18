@@ -16,9 +16,10 @@ import {
 interface EmployeeListProps {
   searchQuery: string;
   onStatsUpdate: () => void;
+  empresaId?: string;
 }
 
-const EmployeeList = ({ searchQuery, onStatsUpdate }: EmployeeListProps) => {
+const EmployeeList = ({ searchQuery, onStatsUpdate, empresaId }: EmployeeListProps) => {
   const navigate = useNavigate();
   const [employees, setEmployees] = useState<any[]>([]);
   const [filteredEmployees, setFilteredEmployees] = useState<any[]>([]);
@@ -27,7 +28,7 @@ const EmployeeList = ({ searchQuery, onStatsUpdate }: EmployeeListProps) => {
 
   useEffect(() => {
     fetchEmployees();
-  }, []);
+  }, [empresaId]);
 
   useEffect(() => {
     filterEmployees();
@@ -35,10 +36,16 @@ const EmployeeList = ({ searchQuery, onStatsUpdate }: EmployeeListProps) => {
 
   const fetchEmployees = async () => {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from("employees")
         .select("*")
         .order("nome_completo");
+
+      if (empresaId) {
+        query = query.eq("empresa_id", empresaId);
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
 

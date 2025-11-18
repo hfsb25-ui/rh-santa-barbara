@@ -36,6 +36,19 @@ const EmployeeForm = ({ employeeId, initialData, onSaved, onCancel }: EmployeeFo
     },
   });
 
+  const { data: empresas } = useQuery({
+    queryKey: ["empresas"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("empresas")
+        .select("*")
+        .order("nome");
+      
+      if (error) throw error;
+      return data;
+    },
+  });
+
   const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -96,6 +109,7 @@ const EmployeeForm = ({ employeeId, initialData, onSaved, onCancel }: EmployeeFo
       nome_completo: formData.get("nome_completo") as string,
       cargo: formData.get("cargo") as string,
       setor: formData.get("setor") as string || null,
+      empresa_id: formData.get("empresa_id") as string || null,
       salario: salario ? parseFloat(salario) : null,
       cpf: cpf,
       telefone: formData.get("telefone") as string || null,
@@ -264,6 +278,21 @@ const EmployeeForm = ({ employeeId, initialData, onSaved, onCancel }: EmployeeFo
                   {setores?.map((setor) => (
                     <SelectItem key={setor.id} value={setor.nome}>
                       {setor.nome}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Empresa</Label>
+              <Select name="empresa_id" defaultValue={initialData?.empresa_id || undefined}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione a empresa" />
+                </SelectTrigger>
+                <SelectContent>
+                  {empresas?.map((empresa) => (
+                    <SelectItem key={empresa.id} value={empresa.id}>
+                      {empresa.nome}
                     </SelectItem>
                   ))}
                 </SelectContent>
