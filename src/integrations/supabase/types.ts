@@ -116,6 +116,7 @@ export type Database = {
           setor: string | null
           status: Database["public"]["Enums"]["employee_status"] | null
           telefone: string | null
+          ultima_alteracao_folgas: string | null
           updated_at: string | null
           user_id: string | null
         }
@@ -134,6 +135,7 @@ export type Database = {
           setor?: string | null
           status?: Database["public"]["Enums"]["employee_status"] | null
           telefone?: string | null
+          ultima_alteracao_folgas?: string | null
           updated_at?: string | null
           user_id?: string | null
         }
@@ -152,6 +154,7 @@ export type Database = {
           setor?: string | null
           status?: Database["public"]["Enums"]["employee_status"] | null
           telefone?: string | null
+          ultima_alteracao_folgas?: string | null
           updated_at?: string | null
           user_id?: string | null
         }
