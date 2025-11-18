@@ -27,7 +27,10 @@ const EditTimeOffDialog = ({ employeeId, employeeName, currentAmount, onUpdated 
 
     const { error } = await supabase
       .from("employees")
-      .update({ quantidade_folgas: newAmount })
+      .update({ 
+        quantidade_folgas: newAmount,
+        ultima_alteracao_folgas: new Date().toISOString()
+      })
       .eq("id", employeeId);
 
     setLoading(false);
