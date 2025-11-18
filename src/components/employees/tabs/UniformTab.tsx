@@ -2,8 +2,9 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus, Shirt } from "lucide-react";
+import { Plus, Shirt, Trash2 } from "lucide-react";
 import UniformForm from "@/components/forms/UniformForm";
+import { toast } from "sonner";
 
 interface UniformTabProps {
   employeeId: string;
@@ -30,6 +31,22 @@ const UniformTab = ({ employeeId }: UniformTabProps) => {
   const handleSaved = () => {
     setShowForm(false);
     fetchUniformes();
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm("Tem certeza que deseja excluir este uniforme?")) return;
+
+    const { error } = await supabase
+      .from("uniformes")
+      .delete()
+      .eq("id", id);
+
+    if (error) {
+      toast.error("Erro ao excluir uniforme");
+    } else {
+      toast.success("Uniforme excluído com sucesso");
+      fetchUniformes();
+    }
   };
 
   return (
@@ -61,10 +78,19 @@ const UniformTab = ({ employeeId }: UniformTabProps) => {
           {uniformes.map((uniforme) => (
             <Card key={uniforme.id}>
               <CardHeader>
-                <CardTitle className="text-base flex items-center gap-2">
-                  <Shirt className="w-4 h-4" />
-                  {uniforme.tipo_uniforme}
-                </CardTitle>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <Shirt className="w-4 h-4" />
+                    {uniforme.tipo_uniforme}
+                  </CardTitle>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => handleDelete(uniforme.id)}
+                  >
+                    <Trash2 className="w-4 h-4 text-destructive" />
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-3 gap-2 text-sm">
