@@ -65,6 +65,41 @@ export type Database = {
           },
         ]
       }
+      avisos: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          data_expiracao: string
+          id: string
+          mensagem: string
+          setores: string[]
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          data_expiracao: string
+          id?: string
+          mensagem: string
+          setores: string[]
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          data_expiracao?: string
+          id?: string
+          mensagem?: string
+          setores?: string[]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "avisos_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       employees: {
         Row: {
           cargo: string
