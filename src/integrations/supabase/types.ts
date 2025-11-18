@@ -432,6 +432,41 @@ export type Database = {
           },
         ]
       }
+      login_history: {
+        Row: {
+          employee_id: string | null
+          id: string
+          ip_address: string | null
+          login_at: string
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          employee_id?: string | null
+          id?: string
+          ip_address?: string | null
+          login_at?: string
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          employee_id?: string | null
+          id?: string
+          ip_address?: string | null
+          login_at?: string
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "login_history_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string | null
