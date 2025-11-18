@@ -19,7 +19,7 @@ const Dashboard = () => {
       setSession(session);
       setUser(session?.user ?? null);
       
-      if (!session?.user) {
+      if (event === 'SIGNED_OUT') {
         navigate("/auth");
       }
     });
