@@ -41,7 +41,7 @@ const EmployeeList = ({ searchQuery, onStatsUpdate, empresaId }: EmployeeListPro
         .select("*")
         .order("nome_completo");
 
-      if (empresaId) {
+      if (empresaId && empresaId !== "all") {
         query = query.eq("empresa_id", empresaId);
       }
 

@@ -45,7 +45,7 @@ const GestorDashboard = ({ user }: GestorDashboardProps) => {
   const [showAvisoDialog, setShowAvisoDialog] = useState(false);
   const [showManageAvisosDialog, setShowManageAvisosDialog] = useState(false);
   const [showLoginHistoryDialog, setShowLoginHistoryDialog] = useState(false);
-  const [selectedEmpresa, setSelectedEmpresa] = useState<string>("");
+  const [selectedEmpresa, setSelectedEmpresa] = useState<string>("all");
   const [empresas, setEmpresas] = useState<Array<{ id: string; nome: string }>>([]);
   const [stats, setStats] = useState({
     totalEmployees: 0,
@@ -72,7 +72,7 @@ const GestorDashboard = ({ user }: GestorDashboardProps) => {
     try {
       let query = supabase.from("employees").select("status");
       
-      if (selectedEmpresa) {
+      if (selectedEmpresa && selectedEmpresa !== "all") {
         query = query.eq("empresa_id", selectedEmpresa);
       }
 
@@ -121,10 +121,10 @@ const GestorDashboard = ({ user }: GestorDashboardProps) => {
           <div className="flex items-center gap-4">
             <Select value={selectedEmpresa} onValueChange={setSelectedEmpresa}>
               <SelectTrigger className="w-[250px]">
-                <SelectValue placeholder="Todas as empresas" />
+                <SelectValue placeholder="Selecione uma empresa" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Todas as empresas</SelectItem>
+                <SelectItem value="all">Todas as empresas</SelectItem>
                 {empresas.map((empresa) => (
                   <SelectItem key={empresa.id} value={empresa.id}>
                     {empresa.nome}
