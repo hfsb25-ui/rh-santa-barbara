@@ -26,6 +26,7 @@ import EmployeeList from "@/components/employees/EmployeeList";
 import EmployeeForm from "@/components/forms/EmployeeForm";
 import TimeOffListDialog from "@/components/dashboard/TimeOffListDialog";
 import AvisoForm from "@/components/forms/AvisoForm";
+import ManageAvisosDialog from "@/components/dashboard/ManageAvisosDialog";
 import { toast } from "sonner";
 
 interface GestorDashboardProps {
@@ -38,6 +39,7 @@ const GestorDashboard = ({ user }: GestorDashboardProps) => {
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [showTimeOffDialog, setShowTimeOffDialog] = useState(false);
   const [showAvisoDialog, setShowAvisoDialog] = useState(false);
+  const [showManageAvisosDialog, setShowManageAvisosDialog] = useState(false);
   const [stats, setStats] = useState({
     totalEmployees: 0,
     activeEmployees: 0,
@@ -228,6 +230,21 @@ const GestorDashboard = ({ user }: GestorDashboardProps) => {
             <AvisoForm onSuccess={() => setShowAvisoDialog(false)} />
           </DialogContent>
         </Dialog>
+
+        {/* Manage Avisos Dialog */}
+        <ManageAvisosDialog 
+          open={showManageAvisosDialog}
+          onOpenChange={setShowManageAvisosDialog}
+        />
+
+        <Button 
+          variant="secondary" 
+          className="mb-4 ml-2"
+          onClick={() => setShowManageAvisosDialog(true)}
+        >
+          <Bell className="w-4 h-4 mr-2" />
+          Gerenciar Avisos
+        </Button>
 
         {/* Employee List */}
         <EmployeeList searchQuery={searchQuery} onStatsUpdate={fetchStats} />
