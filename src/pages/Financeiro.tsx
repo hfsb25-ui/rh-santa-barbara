@@ -6,6 +6,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft, Download } from "lucide-react";
 import { toast } from "sonner";
 import jsPDF from "jspdf";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface SetorGasto {
   setor: string;
@@ -13,22 +20,54 @@ interface SetorGasto {
   quantidadeFuncionarios: number;
 }
 
+interface Empresa {
+  id: string;
+  nome: string;
+}
+
 const Financeiro = () => {
   const navigate = useNavigate();
   const [gastoPorSetor, setGastoPorSetor] = useState<SetorGasto[]>([]);
   const [gastoTotal, setGastoTotal] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [empresas, setEmpresas] = useState<Empresa[]>([]);
+  const [selectedEmpresa, setSelectedEmpresa] = useState<string>("all");
+
+  useEffect(() => {
+    fetchEmpresas();
+  }, []);
 
   useEffect(() => {
     fetchFinancialData();
-  }, []);
+  }, [selectedEmpresa]);
+
+  const fetchEmpresas = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("empresas")
+        .select("id, nome")
+        .order("nome");
+
+      if (error) throw error;
+      setEmpresas(data || []);
+    } catch (error) {
+      console.error("Erro ao buscar empresas:", error);
+      toast.error("Erro ao carregar empresas");
+    }
+  };
 
   const fetchFinancialData = async () => {
     try {
-      const { data: employees, error } = await supabase
+      let query = supabase
         .from("employees")
-        .select("setor, salario, status")
+        .select("setor, salario, status, empresa_id")
         .eq("status", "ativo");
+
+      if (selectedEmpresa !== "all") {
+        query = query.eq("empresa_id", selectedEmpresa);
+      }
+
+      const { data: employees, error } = await query;
 
       if (error) throw error;
 
@@ -71,24 +110,29 @@ const Financeiro = () => {
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.getWidth();
     
+    const empresaNome = selectedEmpresa === "all" 
+      ? "TODAS AS EMPRESAS" 
+      : empresas.find(e => e.id === selectedEmpresa)?.nome || "";
+    
     // Título
     doc.setFontSize(18);
     doc.text("RELATÓRIO FINANCEIRO - GASTOS COM PESSOAL", pageWidth / 2, 20, { align: "center" });
     
     doc.setFontSize(12);
     doc.text(`Data: ${new Date().toLocaleDateString("pt-BR")}`, pageWidth / 2, 30, { align: "center" });
+    doc.text(`Empresa: ${empresaNome}`, pageWidth / 2, 36, { align: "center" });
     
     // Gasto Total
     doc.setFontSize(14);
-    doc.text("GASTO TOTAL COM PESSOAL", 20, 45);
+    doc.text("GASTO TOTAL COM PESSOAL", 20, 50);
     doc.setFontSize(16);
-    doc.text(`R$ ${gastoTotal.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, 20, 55);
+    doc.text(`R$ ${gastoTotal.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, 20, 60);
     
     // Gastos por Setor
     doc.setFontSize(14);
-    doc.text("GASTOS POR SETOR", 20, 70);
+    doc.text("GASTOS POR SETOR", 20, 75);
     
-    let yPosition = 80;
+    let yPosition = 85;
     doc.setFontSize(10);
     
     gastoPorSetor.forEach((setor) => {
@@ -131,10 +175,25 @@ const Financeiro = () => {
             </Button>
             <h1 className="text-3xl font-bold">Relatório Financeiro</h1>
           </div>
-          <Button onClick={exportToPDF}>
-            <Download className="w-4 h-4 mr-2" />
-            Exportar PDF
-          </Button>
+          <div className="flex items-center gap-4">
+            <Select value={selectedEmpresa} onValueChange={setSelectedEmpresa}>
+              <SelectTrigger className="w-[250px]">
+                <SelectValue placeholder="Selecione a empresa" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas as empresas</SelectItem>
+                {empresas.map((empresa) => (
+                  <SelectItem key={empresa.id} value={empresa.id}>
+                    {empresa.nome}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button onClick={exportToPDF}>
+              <Download className="w-4 h-4 mr-2" />
+              Exportar PDF
+            </Button>
+          </div>
         </div>
 
         <Card className="mb-6">
