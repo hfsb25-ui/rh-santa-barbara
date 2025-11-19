@@ -292,14 +292,12 @@ const Payroll = () => {
       doc.text(`Funcionário: ${pag.employees.nome_completo}`, 20, yPosition);
       doc.text(`Cargo: ${pag.employees.cargo}`, 20, yPosition + 6);
       doc.text(`Tipo: ${tipoContratoLabel}`, 20, yPosition + 12);
-      doc.text(`Valor Bruto: R$ ${pag.valor_bruto.toFixed(2)}`, 20, yPosition + 18);
-      doc.text(`Descontos: R$ ${pag.descontos.toFixed(2)}`, 20, yPosition + 24);
-      doc.text(`Valor Líquido: R$ ${pag.valor_liquido.toFixed(2)}`, 20, yPosition + 30);
+      doc.text(`Valor Líquido: R$ ${pag.valor_liquido.toFixed(2)}`, 20, yPosition + 18);
       if (pag.observacoes) {
-        doc.text(`Obs: ${pag.observacoes}`, 20, yPosition + 36);
+        doc.text(`Obs: ${pag.observacoes}`, 20, yPosition + 24);
       }
       
-      yPosition += 46;
+      yPosition += 34;
     });
     
     if (yPosition > 200) {
@@ -319,18 +317,14 @@ const Payroll = () => {
                         'Prestador de Serviço';
       
       doc.text(`${tipoLabel} (${valores.count} funcionário${valores.count > 1 ? 's' : ''}):`, 20, yPosition);
-      doc.text(`  Bruto: R$ ${valores.bruto.toFixed(2)}`, 25, yPosition + 6);
-      doc.text(`  Descontos: R$ ${valores.descontos.toFixed(2)}`, 25, yPosition + 12);
-      doc.text(`  Líquido: R$ ${valores.liquido.toFixed(2)}`, 25, yPosition + 18);
-      yPosition += 28;
+      doc.text(`  Líquido: R$ ${valores.liquido.toFixed(2)}`, 25, yPosition + 6);
+      yPosition += 16;
     });
     
     yPosition += 5;
     doc.setFontSize(12);
     doc.text("TOTAL GERAL", 20, yPosition);
-    doc.text(`Total Bruto: R$ ${totalBruto.toFixed(2)}`, 20, yPosition + 8);
-    doc.text(`Total Descontos: R$ ${totalDescontos.toFixed(2)}`, 20, yPosition + 16);
-    doc.text(`Total Líquido: R$ ${totalLiquido.toFixed(2)}`, 20, yPosition + 24);
+    doc.text(`Total Líquido: R$ ${totalLiquido.toFixed(2)}`, 20, yPosition + 8);
     
     doc.save(`folha-pagamento-${mesNome}-${ano}.pdf`);
   };
