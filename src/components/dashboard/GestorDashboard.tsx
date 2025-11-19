@@ -194,8 +194,8 @@ const GestorDashboard = ({ user }: GestorDashboardProps) => {
         </div>
 
         {/* Search and Actions */}
-        <div className="flex flex-col sm:flex-row gap-4 mb-6">
-          <div className="relative flex-1">
+        <div className="mb-6 space-y-4">
+          <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
             <Input
               placeholder="Buscar por nome, cargo ou setor..."
@@ -204,62 +204,57 @@ const GestorDashboard = ({ user }: GestorDashboardProps) => {
               className="pl-10"
             />
           </div>
-          <Button variant="outline" onClick={() => navigate("/stock")}>
-            <Package className="w-4 h-4 mr-2" />
-            Estoque
-          </Button>
-          <Button variant="outline" onClick={() => navigate("/sectors")}>
-            <Building2 className="w-4 h-4 mr-2" />
-            Setores
-          </Button>
-          <Button variant="outline" onClick={() => navigate("/turnover")}>
-            <TrendingUp className="w-4 h-4 mr-2" />
-            Turnover
-          </Button>
-          <Button variant="outline" onClick={() => navigate("/financeiro")}>
-            <DollarSign className="w-4 h-4 mr-2" />
-            Financeiro
-          </Button>
-          <Button variant="outline" onClick={() => navigate("/payroll")}>
-            <Receipt className="w-4 h-4 mr-2" />
-            Folha de Pagamento
-          </Button>
-          <Button variant="outline" onClick={() => navigate("/companies")}>
-            <Building2 className="w-4 h-4 mr-2" />
-            Empresas
-          </Button>
-          <Button variant="outline" onClick={() => setShowTimeOffDialog(true)}>
-            <Clock className="w-4 h-4 mr-2" />
-            Ver Folgas
-          </Button>
-          <Button variant="outline" onClick={() => setShowTimeOffHistoryDialog(true)}>
-            <FileText className="w-4 h-4 mr-2" />
-            Histórico de Folgas
-          </Button>
-          <Button variant="outline" onClick={() => setShowLoginHistoryDialog(true)}>
-            <Users className="w-4 h-4 mr-2" />
-            Histórico de Login
-          </Button>
-          <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
-            <DialogTrigger asChild>
-              <Button onClick={handleAddEmployee}>
-                <Plus className="w-4 h-4 mr-2" />
-                Adicionar Funcionário
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-              <DialogHeader>
-                <DialogTitle>Novo Funcionário</DialogTitle>
-              </DialogHeader>
-              <EmployeeForm
-                onSaved={() => {
-                  setShowAddDialog(false);
-                  fetchStats();
-                }}
-                onCancel={() => setShowAddDialog(false)}
-              />
-            </DialogContent>
-          </Dialog>
+          
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
+            <Button variant="outline" onClick={() => navigate("/stock")} className="w-full">
+              <Package className="w-4 h-4 mr-2" />
+              Estoque
+            </Button>
+            <Button variant="outline" onClick={() => navigate("/sectors")} className="w-full">
+              <Building2 className="w-4 h-4 mr-2" />
+              Setores
+            </Button>
+            <Button variant="outline" onClick={() => navigate("/turnover")} className="w-full">
+              <TrendingUp className="w-4 h-4 mr-2" />
+              Turnover
+            </Button>
+            <Button variant="outline" onClick={() => navigate("/financeiro")} className="w-full">
+              <DollarSign className="w-4 h-4 mr-2" />
+              Financeiro
+            </Button>
+            <Button variant="outline" onClick={() => navigate("/payroll")} className="w-full">
+              <Receipt className="w-4 h-4 mr-2" />
+              Folha de Pagamento
+            </Button>
+            <Button variant="outline" onClick={() => navigate("/companies")} className="w-full">
+              <Building2 className="w-4 h-4 mr-2" />
+              Empresas
+            </Button>
+            <Button variant="outline" onClick={handleAddEmployee} className="w-full">
+              <Plus className="w-4 h-4 mr-2" />
+              Novo Funcionário
+            </Button>
+            <Button variant="outline" onClick={() => setShowTimeOffDialog(true)} className="w-full">
+              <Clock className="w-4 h-4 mr-2" />
+              Folgas
+            </Button>
+            <Button variant="outline" onClick={() => setShowTimeOffHistoryDialog(true)} className="w-full">
+              <FileText className="w-4 h-4 mr-2" />
+              Histórico Folgas
+            </Button>
+            <Button variant="outline" onClick={() => setShowAvisoDialog(true)} className="w-full">
+              <Bell className="w-4 h-4 mr-2" />
+              Novo Aviso
+            </Button>
+            <Button variant="outline" onClick={() => setShowManageAvisosDialog(true)} className="w-full">
+              <Shield className="w-4 h-4 mr-2" />
+              Gerenciar Avisos
+            </Button>
+            <Button variant="outline" onClick={() => setShowLoginHistoryDialog(true)} className="w-full">
+              <Clock className="w-4 h-4 mr-2" />
+              Histórico Login
+            </Button>
+          </div>
         </div>
 
         {/* Time Off Dialog */}

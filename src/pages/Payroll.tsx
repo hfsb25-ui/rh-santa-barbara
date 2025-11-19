@@ -49,6 +49,8 @@ const Payroll = () => {
   const [pagamentos, setPagamentos] = useState<Pagamento[]>([]);
   const [loading, setLoading] = useState(false);
   const [editingPagamento, setEditingPagamento] = useState<Pagamento | null>(null);
+  const [showLancamentoForm, setShowLancamentoForm] = useState(false);
+  const [lancamentoValues, setLancamentoValues] = useState<Record<string, { valor_bruto: number; descontos: number }>>({});
 
   useEffect(() => {
     fetchEmpresas();
@@ -114,22 +116,44 @@ const Payroll = () => {
     setPagamentos(data || []);
   };
 
-  const lancarPagamentosEmLote = async () => {
+  const handleOpenLancamentoForm = () => {
     if (!selectedEmpresa || employees.length === 0) {
       toast.error("Selecione uma empresa com funcionários ativos");
       return;
     }
+    
+    const initialValues: Record<string, { valor_bruto: number; descontos: number }> = {};
+    employees.forEach((emp) => {
+      initialValues[emp.id] = {
+        valor_bruto: emp.salario || 0,
+        descontos: 0,
+      };
+    });
+    setLancamentoValues(initialValues);
+    setShowLancamentoForm(true);
+  };
 
+  const handleLancamentoValueChange = (empId: string, field: 'valor_bruto' | 'descontos', value: number) => {
+    setLancamentoValues(prev => ({
+      ...prev,
+      [empId]: {
+        ...prev[empId],
+        [field]: value,
+      }
+    }));
+  };
+
+  const handleConfirmLancamento = async () => {
     setLoading(true);
     try {
-      const pagamentosParaInserir = employees.map((emp) => ({
-        employee_id: emp.id,
+      const pagamentosParaInserir = Object.entries(lancamentoValues).map(([empId, values]) => ({
+        employee_id: empId,
         empresa_id: selectedEmpresa,
         mes,
         ano,
-        valor_bruto: emp.salario || 0,
-        descontos: 0,
-        valor_liquido: emp.salario || 0,
+        valor_bruto: values.valor_bruto,
+        descontos: values.descontos,
+        valor_liquido: values.valor_bruto - values.descontos,
       }));
 
       const { error } = await supabase
@@ -139,6 +163,7 @@ const Payroll = () => {
       if (error) throw error;
 
       toast.success("Pagamentos lançados com sucesso!");
+      setShowLancamentoForm(false);
       fetchPagamentos();
     } catch (error: any) {
       console.error("Erro ao lançar pagamentos:", error);
@@ -330,14 +355,63 @@ const Payroll = () => {
         {selectedEmpresa && (
           <>
             <div className="flex justify-between items-center mb-4">
-              <Button onClick={lancarPagamentosEmLote} disabled={loading}>
+              <Button onClick={handleOpenLancamentoForm} disabled={loading}>
                 <Plus className="w-4 h-4 mr-2" />
-                Lançar Pagamentos em Lote
+                Lançar Pagamentos
               </Button>
               <div className="text-lg font-semibold">
                 Total: R$ {valorTotal.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
               </div>
             </div>
+
+            <Dialog open={showLancamentoForm} onOpenChange={setShowLancamentoForm}>
+              <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>Lançar Pagamentos - {new Date(ano, mes - 1).toLocaleString("pt-BR", { month: "long", year: "numeric" })}</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4">
+                  {employees.map((emp) => (
+                    <div key={emp.id} className="p-4 border rounded-lg">
+                      <p className="font-semibold mb-2">{emp.nome_completo}</p>
+                      <p className="text-sm text-muted-foreground mb-3">{emp.cargo} - {emp.setor}</p>
+                      <div className="grid grid-cols-3 gap-4">
+                        <div>
+                          <Label>Valor Bruto</Label>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            value={lancamentoValues[emp.id]?.valor_bruto || 0}
+                            onChange={(e) => handleLancamentoValueChange(emp.id, 'valor_bruto', parseFloat(e.target.value) || 0)}
+                          />
+                        </div>
+                        <div>
+                          <Label>Descontos</Label>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            value={lancamentoValues[emp.id]?.descontos || 0}
+                            onChange={(e) => handleLancamentoValueChange(emp.id, 'descontos', parseFloat(e.target.value) || 0)}
+                          />
+                        </div>
+                        <div>
+                          <Label>Valor Líquido</Label>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            value={(lancamentoValues[emp.id]?.valor_bruto || 0) - (lancamentoValues[emp.id]?.descontos || 0)}
+                            disabled
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  <div className="flex justify-end gap-2 pt-4">
+                    <Button variant="outline" onClick={() => setShowLancamentoForm(false)}>Cancelar</Button>
+                    <Button onClick={handleConfirmLancamento} disabled={loading}>Confirmar Lançamento</Button>
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
 
             <Card>
               <CardHeader>
