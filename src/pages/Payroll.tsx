@@ -266,6 +266,19 @@ const Payroll = () => {
     const totalDescontos = pagamentos.reduce((sum, p) => sum + p.descontos, 0);
     const totalLiquido = pagamentos.reduce((sum, p) => sum + p.valor_liquido, 0);
     
+    // Calcular totais por tipo de contrato
+    const totaisPorTipo = pagamentos.reduce((acc, pag) => {
+      const tipo = pag.employees.tipo_contrato;
+      if (!acc[tipo]) {
+        acc[tipo] = { bruto: 0, descontos: 0, liquido: 0, count: 0 };
+      }
+      acc[tipo].bruto += pag.valor_bruto;
+      acc[tipo].descontos += pag.descontos;
+      acc[tipo].liquido += pag.valor_liquido;
+      acc[tipo].count += 1;
+      return acc;
+    }, {} as Record<string, { bruto: number; descontos: number; liquido: number; count: number }>);
+    
     pagamentos.forEach((pag) => {
       if (yPosition > 270) {
         doc.addPage();
@@ -289,14 +302,32 @@ const Payroll = () => {
       yPosition += 46;
     });
     
-    if (yPosition > 240) {
+    if (yPosition > 200) {
       doc.addPage();
       yPosition = 20;
     }
     
     doc.setFontSize(12);
     yPosition += 10;
-    doc.text("TOTAIS", 20, yPosition);
+    doc.text("TOTAIS POR TIPO DE CONTRATO", 20, yPosition);
+    yPosition += 10;
+    
+    doc.setFontSize(10);
+    Object.entries(totaisPorTipo).forEach(([tipo, valores]) => {
+      const tipoLabel = tipo === 'fixo' ? 'Fixo' : 
+                        tipo === 'intermitente' ? 'Intermitente' : 
+                        'Prestador de Serviço';
+      
+      doc.text(`${tipoLabel} (${valores.count} funcionário${valores.count > 1 ? 's' : ''}):`, 20, yPosition);
+      doc.text(`  Bruto: R$ ${valores.bruto.toFixed(2)}`, 25, yPosition + 6);
+      doc.text(`  Descontos: R$ ${valores.descontos.toFixed(2)}`, 25, yPosition + 12);
+      doc.text(`  Líquido: R$ ${valores.liquido.toFixed(2)}`, 25, yPosition + 18);
+      yPosition += 28;
+    });
+    
+    yPosition += 5;
+    doc.setFontSize(12);
+    doc.text("TOTAL GERAL", 20, yPosition);
     doc.text(`Total Bruto: R$ ${totalBruto.toFixed(2)}`, 20, yPosition + 8);
     doc.text(`Total Descontos: R$ ${totalDescontos.toFixed(2)}`, 20, yPosition + 16);
     doc.text(`Total Líquido: R$ ${totalLiquido.toFixed(2)}`, 20, yPosition + 24);
