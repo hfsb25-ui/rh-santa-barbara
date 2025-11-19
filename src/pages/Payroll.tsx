@@ -36,6 +36,7 @@ interface Pagamento {
   employees: {
     nome_completo: string;
     cargo: string;
+    tipo_contrato: string;
   };
 }
 
@@ -45,6 +46,7 @@ const Payroll = () => {
   const [selectedEmpresa, setSelectedEmpresa] = useState<string>("");
   const [mes, setMes] = useState<number>(new Date().getMonth() + 1);
   const [ano, setAno] = useState<number>(new Date().getFullYear());
+  const [tipoContrato, setTipoContrato] = useState<string>("all");
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [pagamentos, setPagamentos] = useState<Pagamento[]>([]);
   const [loading, setLoading] = useState(false);
@@ -61,7 +63,7 @@ const Payroll = () => {
       fetchEmployees();
       fetchPagamentos();
     }
-  }, [selectedEmpresa, mes, ano]);
+  }, [selectedEmpresa, mes, ano, tipoContrato]);
 
   const fetchEmpresas = async () => {
     const { data, error } = await supabase
@@ -77,11 +79,17 @@ const Payroll = () => {
   };
 
   const fetchEmployees = async () => {
-    const { data, error } = await supabase
+    let query = supabase
       .from("employees")
       .select("id, nome_completo, cargo, setor, salario, tipo_contrato")
       .eq("empresa_id", selectedEmpresa)
       .eq("status", "ativo");
+
+    if (tipoContrato && tipoContrato !== "all") {
+      query = query.eq("tipo_contrato", tipoContrato as any);
+    }
+
+    const { data, error } = await query;
 
     if (error) {
       toast.error("Erro ao carregar funcionários");
@@ -91,7 +99,7 @@ const Payroll = () => {
   };
 
   const fetchPagamentos = async () => {
-    const { data, error } = await supabase
+    let query = supabase
       .from("folha_pagamento")
       .select(`
         id,
@@ -102,18 +110,32 @@ const Payroll = () => {
         observacoes,
         employees (
           nome_completo,
-          cargo
+          cargo,
+          tipo_contrato
         )
       `)
       .eq("empresa_id", selectedEmpresa)
       .eq("mes", mes)
       .eq("ano", ano);
 
+    if (tipoContrato && tipoContrato !== "all") {
+      query = query.eq("employees.tipo_contrato", tipoContrato as any);
+    }
+
+    const { data, error } = await query;
+
     if (error) {
       console.error("Erro ao carregar pagamentos:", error);
       return;
     }
-    setPagamentos(data || []);
+    
+    // Filter by tipo_contrato if needed (in case the query filter on relation didn't work)
+    let filteredData = data || [];
+    if (tipoContrato && tipoContrato !== "all") {
+      filteredData = filteredData.filter((p: any) => p.employees?.tipo_contrato === tipoContrato);
+    }
+    
+    setPagamentos(filteredData);
   };
 
   const handleOpenLancamentoForm = () => {
@@ -250,16 +272,21 @@ const Payroll = () => {
         yPosition = 20;
       }
       
+      const tipoContratoLabel = pag.employees.tipo_contrato === 'fixo' ? 'Fixo' : 
+                                pag.employees.tipo_contrato === 'intermitente' ? 'Intermitente' : 
+                                'Prestador de Serviço';
+      
       doc.text(`Funcionário: ${pag.employees.nome_completo}`, 20, yPosition);
       doc.text(`Cargo: ${pag.employees.cargo}`, 20, yPosition + 6);
-      doc.text(`Valor Bruto: R$ ${pag.valor_bruto.toFixed(2)}`, 20, yPosition + 12);
-      doc.text(`Descontos: R$ ${pag.descontos.toFixed(2)}`, 20, yPosition + 18);
-      doc.text(`Valor Líquido: R$ ${pag.valor_liquido.toFixed(2)}`, 20, yPosition + 24);
+      doc.text(`Tipo: ${tipoContratoLabel}`, 20, yPosition + 12);
+      doc.text(`Valor Bruto: R$ ${pag.valor_bruto.toFixed(2)}`, 20, yPosition + 18);
+      doc.text(`Descontos: R$ ${pag.descontos.toFixed(2)}`, 20, yPosition + 24);
+      doc.text(`Valor Líquido: R$ ${pag.valor_liquido.toFixed(2)}`, 20, yPosition + 30);
       if (pag.observacoes) {
-        doc.text(`Obs: ${pag.observacoes}`, 20, yPosition + 30);
+        doc.text(`Obs: ${pag.observacoes}`, 20, yPosition + 36);
       }
       
-      yPosition += 40;
+      yPosition += 46;
     });
     
     if (yPosition > 240) {
@@ -302,7 +329,7 @@ const Payroll = () => {
             <CardTitle>Filtros</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-4 gap-4">
               <div>
                 <Label>Empresa</Label>
                 <Select value={selectedEmpresa} onValueChange={setSelectedEmpresa}>
@@ -345,6 +372,20 @@ const Payroll = () => {
                         {y}
                       </SelectItem>
                     ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Tipo de Contrato</Label>
+                <Select value={tipoContrato} onValueChange={setTipoContrato}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Todos" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos</SelectItem>
+                    <SelectItem value="fixo">Fixo</SelectItem>
+                    <SelectItem value="intermitente">Intermitente</SelectItem>
+                    <SelectItem value="prestador_servico">Prestador de Serviço</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -421,9 +462,14 @@ const Payroll = () => {
                 <div className="space-y-4">
                   {pagamentos.map((pag) => (
                     <div key={pag.id} className="flex items-center justify-between p-4 border rounded-lg">
-                      <div className="flex-1">
+                      <div>
                         <p className="font-semibold">{pag.employees.nome_completo}</p>
                         <p className="text-sm text-muted-foreground">{pag.employees.cargo}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {pag.employees.tipo_contrato === 'fixo' ? 'Fixo' : 
+                           pag.employees.tipo_contrato === 'intermitente' ? 'Intermitente' : 
+                           'Prestador de Serviço'}
+                        </p>
                         <div className="mt-2 text-sm">
                           <p>Bruto: R$ {pag.valor_bruto.toFixed(2)}</p>
                           <p>Descontos: R$ {pag.descontos.toFixed(2)}</p>
