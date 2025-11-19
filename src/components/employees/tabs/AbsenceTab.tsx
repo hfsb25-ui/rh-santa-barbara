@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus, FileText } from "lucide-react";
+import { Plus, FileText, Download, Eye } from "lucide-react";
 import AbsenceForm from "@/components/forms/AbsenceForm";
 
 interface AbsenceTabProps {
@@ -90,6 +90,34 @@ const AbsenceTab = ({ employeeId }: AbsenceTabProps) => {
                     <div>
                       <p className="text-muted-foreground">CID</p>
                       <p className="font-medium">{afastamento.cid}</p>
+                    </div>
+                  )}
+                  {afastamento.documento_url && (
+                    <div>
+                      <p className="text-muted-foreground mb-2">Atestado</p>
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => window.open(afastamento.documento_url, '_blank')}
+                        >
+                          <Eye className="w-4 h-4 mr-1" />
+                          Visualizar
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            const link = document.createElement('a');
+                            link.href = afastamento.documento_url;
+                            link.download = `atestado_${afastamento.id}`;
+                            link.click();
+                          }}
+                        >
+                          <Download className="w-4 h-4 mr-1" />
+                          Baixar
+                        </Button>
+                      </div>
                     </div>
                   )}
                 </div>
