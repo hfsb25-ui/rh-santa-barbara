@@ -117,6 +117,7 @@ export type Database = {
           setor: string | null
           status: Database["public"]["Enums"]["employee_status"] | null
           telefone: string | null
+          tipo_contrato: Database["public"]["Enums"]["tipo_contrato"] | null
           ultima_alteracao_folgas: string | null
           updated_at: string | null
           user_id: string | null
@@ -137,6 +138,7 @@ export type Database = {
           setor?: string | null
           status?: Database["public"]["Enums"]["employee_status"] | null
           telefone?: string | null
+          tipo_contrato?: Database["public"]["Enums"]["tipo_contrato"] | null
           ultima_alteracao_folgas?: string | null
           updated_at?: string | null
           user_id?: string | null
@@ -157,6 +159,7 @@ export type Database = {
           setor?: string | null
           status?: Database["public"]["Enums"]["employee_status"] | null
           telefone?: string | null
+          tipo_contrato?: Database["public"]["Enums"]["tipo_contrato"] | null
           ultima_alteracao_folgas?: string | null
           updated_at?: string | null
           user_id?: string | null
@@ -466,6 +469,66 @@ export type Database = {
           },
         ]
       }
+      folha_pagamento: {
+        Row: {
+          ano: number
+          created_at: string | null
+          created_by: string | null
+          descontos: number | null
+          employee_id: string
+          empresa_id: string
+          id: string
+          mes: number
+          observacoes: string | null
+          updated_at: string | null
+          valor_bruto: number
+          valor_liquido: number
+        }
+        Insert: {
+          ano: number
+          created_at?: string | null
+          created_by?: string | null
+          descontos?: number | null
+          employee_id: string
+          empresa_id: string
+          id?: string
+          mes: number
+          observacoes?: string | null
+          updated_at?: string | null
+          valor_bruto?: number
+          valor_liquido?: number
+        }
+        Update: {
+          ano?: number
+          created_at?: string | null
+          created_by?: string | null
+          descontos?: number | null
+          employee_id?: string
+          empresa_id?: string
+          id?: string
+          mes?: number
+          observacoes?: string | null
+          updated_at?: string | null
+          valor_bruto?: number
+          valor_liquido?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "folha_pagamento_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "folha_pagamento_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       historico_folgas: {
         Row: {
           alterado_em: string
@@ -687,6 +750,7 @@ export type Database = {
     Enums: {
       app_role: "gestor" | "funcionario"
       employee_status: "ativo" | "ferias" | "afastado" | "demitido"
+      tipo_contrato: "fixo" | "intermitente" | "prestador_servico"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -816,6 +880,7 @@ export const Constants = {
     Enums: {
       app_role: ["gestor", "funcionario"],
       employee_status: ["ativo", "ferias", "afastado", "demitido"],
+      tipo_contrato: ["fixo", "intermitente", "prestador_servico"],
     },
   },
 } as const

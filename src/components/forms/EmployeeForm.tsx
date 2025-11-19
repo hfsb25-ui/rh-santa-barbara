@@ -111,6 +111,7 @@ const EmployeeForm = ({ employeeId, initialData, onSaved, onCancel }: EmployeeFo
       setor: formData.get("setor") as string || null,
       empresa_id: formData.get("empresa_id") as string || null,
       salario: salario ? parseFloat(salario) : null,
+      tipo_contrato: formData.get("tipo_contrato") as "fixo" | "intermitente" | "prestador_servico" || "fixo",
       cpf: cpf,
       telefone: formData.get("telefone") as string || null,
       endereco: formData.get("endereco") as string || null,
@@ -295,6 +296,19 @@ const EmployeeForm = ({ employeeId, initialData, onSaved, onCancel }: EmployeeFo
                       {empresa.nome}
                     </SelectItem>
                   ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Tipo de Contrato</Label>
+              <Select name="tipo_contrato" defaultValue={initialData?.tipo_contrato || "fixo"}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione o tipo" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="fixo">Fixo</SelectItem>
+                  <SelectItem value="intermitente">Intermitente</SelectItem>
+                  <SelectItem value="prestador_servico">Prestador de Serviço</SelectItem>
                 </SelectContent>
               </Select>
             </div>
