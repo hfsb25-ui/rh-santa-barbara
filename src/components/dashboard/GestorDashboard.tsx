@@ -21,6 +21,7 @@ import {
   Building2,
   DollarSign,
   Bell,
+  Receipt,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import EmployeeList from "@/components/employees/EmployeeList";
@@ -218,6 +219,10 @@ const GestorDashboard = ({ user }: GestorDashboardProps) => {
           <Button variant="outline" onClick={() => navigate("/financeiro")}>
             <DollarSign className="w-4 h-4 mr-2" />
             Financeiro
+          </Button>
+          <Button variant="outline" onClick={() => navigate("/payroll")}>
+            <Receipt className="w-4 h-4 mr-2" />
+            Folha de Pagamento
           </Button>
           <Button variant="outline" onClick={() => navigate("/companies")}>
             <Building2 className="w-4 h-4 mr-2" />

@@ -11,6 +11,7 @@ import Sectors from "./pages/Sectors";
 import Turnover from "./pages/Turnover";
 import Financeiro from "./pages/Financeiro";
 import Companies from "./pages/Companies";
+import Payroll from "./pages/Payroll";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -31,6 +32,7 @@ const App = () => (
           <Route path="/turnover" element={<Turnover />} />
           <Route path="/financeiro" element={<Financeiro />} />
           <Route path="/companies" element={<Companies />} />
+          <Route path="/payroll" element={<Payroll />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
