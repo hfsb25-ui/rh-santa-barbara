@@ -29,14 +29,51 @@ const UniformStockForm = ({ initialData, onSaved, onCancel }: UniformStockFormPr
       observacoes: formData.get("observacoes") as string || null,
     };
 
+    // Get current user
+    const { data: { user } } = await supabase.auth.getUser();
+
     let error;
+    let insertedData;
+    
     if (initialData) {
+      const oldQuantity = initialData.quantidade_estoque;
+      const newQuantity = data.quantidade_estoque;
+      
       ({ error } = await supabase
         .from("estoque_uniformes")
         .update(data)
         .eq("id", initialData.id));
+      
+      // Register movement if quantity changed
+      if (!error && oldQuantity !== newQuantity) {
+        const diff = newQuantity - oldQuantity;
+        await supabase.from("historico_estoque_uniformes").insert({
+          estoque_uniforme_id: initialData.id,
+          tipo_movimentacao: diff > 0 ? "entrada" : "saida",
+          quantidade: Math.abs(diff),
+          quantidade_anterior: oldQuantity,
+          quantidade_nova: newQuantity,
+          motivo: diff > 0 ? "Ajuste de estoque - entrada" : "Ajuste de estoque - saída",
+          created_by: user?.id,
+        });
+      }
     } else {
-      ({ error } = await supabase.from("estoque_uniformes").insert(data));
+      const result = await supabase.from("estoque_uniformes").insert(data).select().single();
+      error = result.error;
+      insertedData = result.data;
+      
+      // Register initial entry
+      if (!error && insertedData) {
+        await supabase.from("historico_estoque_uniformes").insert({
+          estoque_uniforme_id: insertedData.id,
+          tipo_movimentacao: "entrada",
+          quantidade: data.quantidade_estoque,
+          quantidade_anterior: 0,
+          quantidade_nova: data.quantidade_estoque,
+          motivo: "Cadastro inicial no estoque",
+          created_by: user?.id,
+        });
+      }
     }
 
     setLoading(false);

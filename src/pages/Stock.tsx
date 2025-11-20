@@ -10,6 +10,8 @@ import EpiStockForm from "@/components/stock/EpiStockForm";
 import UniformStockForm from "@/components/stock/UniformStockForm";
 import EpiDistributionHistory from "@/components/stock/EpiDistributionHistory";
 import UniformDistributionHistory from "@/components/stock/UniformDistributionHistory";
+import EpiStockHistory from "@/components/stock/EpiStockHistory";
+import UniformStockHistory from "@/components/stock/UniformStockHistory";
 
 const Stock = () => {
   const navigate = useNavigate();
@@ -32,11 +34,13 @@ const Stock = () => {
         </div>
 
         <Tabs defaultValue="epis" className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-6">
             <TabsTrigger value="epis">Estoque EPIs</TabsTrigger>
             <TabsTrigger value="uniformes">Estoque Uniformes</TabsTrigger>
-            <TabsTrigger value="historico-epis">Histórico EPIs</TabsTrigger>
-            <TabsTrigger value="historico-uniformes">Histórico Uniformes</TabsTrigger>
+            <TabsTrigger value="movimentacao-epis">Movimentações EPIs</TabsTrigger>
+            <TabsTrigger value="movimentacao-uniformes">Movimentações Uniformes</TabsTrigger>
+            <TabsTrigger value="historico-epis">Distribuições EPIs</TabsTrigger>
+            <TabsTrigger value="historico-uniformes">Distribuições Uniformes</TabsTrigger>
           </TabsList>
 
           <TabsContent value="epis" className="space-y-4">
@@ -89,6 +93,14 @@ const Stock = () => {
               </Dialog>
             </div>
             <UniformStockList key={refreshUniform} />
+          </TabsContent>
+
+          <TabsContent value="movimentacao-epis" className="space-y-4">
+            <EpiStockHistory />
+          </TabsContent>
+
+          <TabsContent value="movimentacao-uniformes" className="space-y-4">
+            <UniformStockHistory />
           </TabsContent>
 
           <TabsContent value="historico-epis" className="space-y-4">

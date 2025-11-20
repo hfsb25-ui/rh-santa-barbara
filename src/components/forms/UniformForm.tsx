@@ -93,6 +93,23 @@ const UniformForm = ({ employeeId, onSaved, onCancel }: UniformFormProps) => {
       .update({ quantidade_estoque: selectedStock.quantidade_estoque - 1 })
       .eq("id", selectedItem);
 
+    // Get current user
+    const { data: { user } } = await supabase.auth.getUser();
+
+    // Register stock movement
+    if (!stockError) {
+      await supabase.from("historico_estoque_uniformes").insert({
+        estoque_uniforme_id: selectedItem,
+        tipo_movimentacao: "saida",
+        quantidade: 1,
+        quantidade_anterior: selectedStock.quantidade_estoque,
+        quantidade_nova: selectedStock.quantidade_estoque - 1,
+        motivo: "Distribuição para funcionário",
+        employee_id: employeeId,
+        created_by: user?.id,
+      });
+    }
+
     setLoading(false);
     if (stockError) {
       toast.error("Erro ao atualizar estoque");
