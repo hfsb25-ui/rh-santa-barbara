@@ -25,6 +25,7 @@ import {
   Briefcase,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
 import EmployeeList from "@/components/employees/EmployeeList";
 import EmployeeForm from "@/components/forms/EmployeeForm";
 import TimeOffListDialog from "@/components/dashboard/TimeOffListDialog";
@@ -55,10 +56,12 @@ const GestorDashboard = ({ user }: GestorDashboardProps) => {
     onVacation: 0,
     onLeave: 0,
   });
+  const [employeesOnVacation, setEmployeesOnVacation] = useState<any[]>([]);
 
   useEffect(() => {
     fetchEmpresas();
     fetchStats();
+    fetchEmployeesOnVacation();
   }, [selectedEmpresa]);
 
   const fetchEmpresas = async () => {
@@ -91,6 +94,59 @@ const GestorDashboard = ({ user }: GestorDashboardProps) => {
     } catch (error) {
       console.error("Error fetching stats:", error);
     }
+  };
+
+  const fetchEmployeesOnVacation = async () => {
+    try {
+      let employeeQuery = supabase
+        .from("employees")
+        .select("id, nome_completo, cargo")
+        .eq("status", "ferias");
+
+      if (selectedEmpresa && selectedEmpresa !== "all") {
+        employeeQuery = employeeQuery.eq("empresa_id", selectedEmpresa);
+      }
+
+      const { data: employees } = await employeeQuery;
+
+      if (employees && employees.length > 0) {
+        const employeeIds = employees.map(e => e.id);
+        
+        const { data: vacations } = await supabase
+          .from("ferias")
+          .select("*")
+          .in("employee_id", employeeIds)
+          .eq("data_retorno_confirmada", false)
+          .gte("periodo_gozo_fim", new Date().toISOString().split("T")[0])
+          .order("periodo_gozo_inicio", { ascending: false });
+
+        const employeesWithVacations = employees.map(emp => {
+          const vacation = vacations?.find(v => v.employee_id === emp.id);
+          return vacation ? { ...emp, vacation } : null;
+        }).filter(Boolean);
+
+        setEmployeesOnVacation(employeesWithVacations);
+      } else {
+        setEmployeesOnVacation([]);
+      }
+    } catch (error) {
+      console.error("Error fetching employees on vacation:", error);
+    }
+  };
+
+  const calculateVacationProgress = (inicio: string, fim: string) => {
+    const startDate = new Date(inicio);
+    const endDate = new Date(fim);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const totalDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+    const daysPassed = Math.ceil((today.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+    const daysRemaining = totalDays - daysPassed;
+
+    const progress = Math.min(100, Math.max(0, (daysPassed / totalDays) * 100));
+
+    return { progress, daysRemaining: Math.max(0, daysRemaining), totalDays };
   };
 
   const handleLogout = async () => {
@@ -193,6 +249,61 @@ const GestorDashboard = ({ user }: GestorDashboardProps) => {
             </CardContent>
           </Card>
         </div>
+
+        {/* Employees on Vacation */}
+        {employeesOnVacation.length > 0 && (
+          <div className="mb-8">
+            <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+              <Calendar className="w-5 h-5" />
+              Funcionários em Férias ({employeesOnVacation.length})
+            </h2>
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {employeesOnVacation.map((employee) => {
+                const { progress, daysRemaining } = calculateVacationProgress(
+                  employee.vacation.periodo_gozo_inicio,
+                  employee.vacation.periodo_gozo_fim
+                );
+
+                return (
+                  <Card key={employee.id} className="border-primary/50">
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-base">{employee.nome_completo}</CardTitle>
+                      <p className="text-sm text-muted-foreground">{employee.cargo}</p>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Retorno</span>
+                        <span className="font-medium">
+                          {new Date(employee.vacation.periodo_gozo_fim).toLocaleDateString("pt-BR")}
+                        </span>
+                      </div>
+                      <div className="space-y-2">
+                        <div className="flex justify-between text-sm">
+                          <span className="text-muted-foreground">Dias restantes</span>
+                          <span className="font-bold">
+                            {daysRemaining} {daysRemaining === 1 ? 'dia' : 'dias'}
+                          </span>
+                        </div>
+                        <Progress value={progress} className="h-2" />
+                        <p className="text-xs text-muted-foreground text-right">
+                          {Math.round(progress)}% concluído
+                        </p>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="w-full mt-2"
+                        onClick={() => navigate(`/employee/${employee.id}`)}
+                      >
+                        Ver Detalhes
+                      </Button>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* Search and Actions */}
         <div className="mb-6 space-y-4">
