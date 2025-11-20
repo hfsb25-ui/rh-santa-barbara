@@ -100,19 +100,18 @@ const VacationTab = ({ employeeId, isManager = false }: VacationTabProps) => {
     setDeletingVacationId(null);
   };
 
-  const calculateProgress = (inicio: string, fim: string) => {
+  const calculateProgress = (inicio: string, fim: string, diasTotais: number) => {
     const startDate = new Date(inicio);
     const endDate = new Date(fim);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
-    const totalDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
     const daysPassed = Math.ceil((today.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
-    const daysRemaining = totalDays - daysPassed;
+    const daysRemaining = diasTotais - daysPassed;
     
-    const progress = Math.min(100, Math.max(0, (daysPassed / totalDays) * 100));
+    const progress = Math.min(100, Math.max(0, (daysPassed / diasTotais) * 100));
     
-    return { progress, daysRemaining: Math.max(0, daysRemaining), totalDays };
+    return { progress, daysRemaining: Math.max(0, daysRemaining), totalDays: diasTotais };
   };
 
   return (
@@ -146,7 +145,8 @@ const VacationTab = ({ employeeId, isManager = false }: VacationTabProps) => {
           {ferias.map((feria) => {
             const { progress, daysRemaining, totalDays } = calculateProgress(
               feria.periodo_gozo_inicio,
-              feria.periodo_gozo_fim
+              feria.periodo_gozo_fim,
+              feria.dias_totais
             );
             const isOngoing = daysRemaining > 0 && progress > 0;
             const isFinished = daysRemaining === 0 && !feria.data_retorno_confirmada;
