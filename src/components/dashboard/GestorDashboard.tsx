@@ -134,19 +134,17 @@ const GestorDashboard = ({ user }: GestorDashboardProps) => {
     }
   };
 
-  const calculateVacationProgress = (inicio: string, fim: string) => {
+  const calculateVacationProgress = (inicio: string, diasTotais: number) => {
     const startDate = new Date(inicio);
-    const endDate = new Date(fim);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    const totalDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
     const daysPassed = Math.ceil((today.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
-    const daysRemaining = totalDays - daysPassed;
+    const daysRemaining = diasTotais - daysPassed;
 
-    const progress = Math.min(100, Math.max(0, (daysPassed / totalDays) * 100));
+    const progress = Math.min(100, Math.max(0, (daysPassed / diasTotais) * 100));
 
-    return { progress, daysRemaining: Math.max(0, daysRemaining), totalDays };
+    return { progress, daysRemaining: Math.max(0, daysRemaining), totalDays: diasTotais };
   };
 
   const handleLogout = async () => {
@@ -261,7 +259,7 @@ const GestorDashboard = ({ user }: GestorDashboardProps) => {
               {employeesOnVacation.map((employee) => {
                 const { progress, daysRemaining } = calculateVacationProgress(
                   employee.vacation.periodo_gozo_inicio,
-                  employee.vacation.periodo_gozo_fim
+                  employee.vacation.dias_totais
                 );
 
                 return (
