@@ -407,6 +407,22 @@ const GestorDashboard = ({ user }: GestorDashboardProps) => {
           onOpenChange={setShowTimeOffDialog} 
         />
 
+        {/* Add Employee Dialog */}
+        <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Adicionar Novo Funcionário</DialogTitle>
+            </DialogHeader>
+            <EmployeeForm
+              onSaved={() => {
+                setShowAddDialog(false);
+                fetchStats();
+              }}
+              onCancel={() => setShowAddDialog(false)}
+            />
+          </DialogContent>
+        </Dialog>
+
         {/* Time Off History Dialog */}
         <TimeOffHistoryDialog 
           open={showTimeOffHistoryDialog} 

@@ -112,8 +112,10 @@ const EmployeeForm = ({ employeeId, initialData, onSaved, onCancel }: EmployeeFo
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setLoading(true);
-
+    
+    console.log("=== INICIANDO CADASTRO DE FUNCIONÁRIO ===");
     const formData = new FormData(e.currentTarget);
+    console.log("FormData capturado");
     const cpf = formData.get("cpf") as string || null;
     const senha = formData.get("senha") as string || null;
     const salario = formData.get("salario") as string;
