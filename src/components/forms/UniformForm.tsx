@@ -9,6 +9,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { FileDown } from "lucide-react";
 import { generateUniformReceipt } from "@/lib/pdfGenerator";
+import SignatureCanvas from "./SignatureCanvas";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 interface UniformFormProps {
   employeeId: string;
@@ -21,6 +23,9 @@ const UniformForm = ({ employeeId, onSaved, onCancel }: UniformFormProps) => {
   const [lastInsertedData, setLastInsertedData] = useState<any>(null);
   const [stockItems, setStockItems] = useState<any[]>([]);
   const [selectedItem, setSelectedItem] = useState<string | null>(null);
+  const [showSignatureDialog, setShowSignatureDialog] = useState(false);
+  const [signature, setSignature] = useState<string | null>(null);
+  const [lastInsertedId, setLastInsertedId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchStockItems();
@@ -74,7 +79,7 @@ const UniformForm = ({ employeeId, onSaved, onCancel }: UniformFormProps) => {
       .single();
 
     // Insert uniform record
-    const { error } = await supabase.from("uniformes").insert(uniformData);
+    const { data: insertedUniform, error } = await supabase.from("uniformes").insert(uniformData).select().single();
 
     if (error) {
       toast.error("Erro ao salvar");
@@ -93,13 +98,41 @@ const UniformForm = ({ employeeId, onSaved, onCancel }: UniformFormProps) => {
       toast.error("Erro ao atualizar estoque");
     } else {
       toast.success("Uniforme registrado e estoque atualizado!");
+      setLastInsertedId(insertedUniform.id);
       setLastInsertedData({
         ...uniformData,
         employeeName: employee?.nome_completo || "",
         employeeCpf: employee?.cpf || "",
         employeeRole: employee?.cargo || "",
       });
+      setShowSignatureDialog(true);
     }
+  };
+
+  const handleSaveSignature = async (signatureData: string) => {
+    if (!lastInsertedId) return;
+
+    const { error } = await supabase
+      .from("uniformes")
+      .update({
+        assinatura_funcionario: signatureData,
+        data_assinatura: new Date().toISOString(),
+      })
+      .eq("id", lastInsertedId);
+
+    if (error) {
+      toast.error("Erro ao salvar assinatura");
+      return;
+    }
+
+    setSignature(signatureData);
+    setShowSignatureDialog(false);
+    toast.success("Assinatura salva com sucesso!");
+  };
+
+  const handleSkipSignature = () => {
+    setShowSignatureDialog(false);
+    toast.info("Lembre o funcionário de assinar após o login");
   };
 
   const handleDownloadReceipt = () => {
@@ -113,19 +146,40 @@ const UniformForm = ({ employeeId, onSaved, onCancel }: UniformFormProps) => {
         quantidade: lastInsertedData.quantidade,
         dataEntrega: lastInsertedData.data_entrega,
         observacoes: lastInsertedData.observacoes,
+        assinatura: signature,
       });
       toast.success("Recibo baixado!");
       onSaved();
       setLastInsertedData(null);
+      setSignature(null);
+      setLastInsertedId(null);
     }
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Registrar Uniforme</CardTitle>
-      </CardHeader>
-      <CardContent>
+    <>
+      <Dialog open={showSignatureDialog} onOpenChange={setShowSignatureDialog}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Capturar Assinatura do Funcionário</DialogTitle>
+          </DialogHeader>
+          <SignatureCanvas
+            onSave={handleSaveSignature}
+            onCancel={handleSkipSignature}
+          />
+          <div className="flex justify-end">
+            <Button variant="outline" onClick={handleSkipSignature}>
+              Pular (funcionário assinará depois)
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Registrar Uniforme</CardTitle>
+        </CardHeader>
+        <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <Label>Selecione o Uniforme do Estoque</Label>
@@ -182,6 +236,7 @@ const UniformForm = ({ employeeId, onSaved, onCancel }: UniformFormProps) => {
         </form>
       </CardContent>
     </Card>
+    </>
   );
 };
 

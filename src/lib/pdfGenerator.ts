@@ -1,20 +1,21 @@
 import jsPDF from "jspdf";
 
-interface EpiReceiptData {
+export interface EpiReceiptData {
   employeeName: string;
   employeeCpf: string;
   employeeRole: string;
   tipoEpi: string;
   quantidade: number;
   dataEntrega: string;
-  observacoes?: string;
-  marcaModelo?: string;
-  ca?: string;
-  tamanho?: string;
-  finalidade?: string;
+  observacoes?: string | null;
+  marcaModelo?: string | null;
+  ca?: string | null;
+  tamanho?: string | null;
+  finalidade?: string | null;
+  assinatura?: string | null;
 }
 
-interface UniformReceiptData {
+export interface UniformReceiptData {
   employeeName: string;
   employeeCpf: string;
   employeeRole: string;
@@ -22,7 +23,8 @@ interface UniformReceiptData {
   tamanho: string;
   quantidade: number;
   dataEntrega: string;
-  observacoes?: string;
+  observacoes?: string | null;
+  assinatura?: string | null;
 }
 
 export const generateEpiReceipt = (data: EpiReceiptData) => {
@@ -211,8 +213,15 @@ export const generateUniformReceipt = (data: UniformReceiptData) => {
   // Colaborador
   doc.text("Colaborador(a):", 20, yPosition);
   yPosition += 6;
-  doc.text("Assinatura: ____________________________________", 20, yPosition);
-  yPosition += 6;
+  
+  if (data.assinatura) {
+    doc.addImage(data.assinatura, 'PNG', 20, yPosition, 80, 20);
+    yPosition += 25;
+  } else {
+    doc.text("Assinatura: ____________________________________", 20, yPosition);
+    yPosition += 10;
+  }
+  
   doc.text(`Data: ${formattedDate}`, 20, yPosition);
   yPosition += 12;
 

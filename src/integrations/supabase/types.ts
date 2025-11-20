@@ -207,8 +207,10 @@ export type Database = {
       }
       epis: {
         Row: {
+          assinatura_funcionario: string | null
           created_at: string | null
           created_by: string | null
+          data_assinatura: string | null
           data_entrega: string
           employee_id: string
           id: string
@@ -217,8 +219,10 @@ export type Database = {
           tipo_epi: string
         }
         Insert: {
+          assinatura_funcionario?: string | null
           created_at?: string | null
           created_by?: string | null
+          data_assinatura?: string | null
           data_entrega: string
           employee_id: string
           id?: string
@@ -227,8 +231,10 @@ export type Database = {
           tipo_epi: string
         }
         Update: {
+          assinatura_funcionario?: string | null
           created_at?: string | null
           created_by?: string | null
+          data_assinatura?: string | null
           data_entrega?: string
           employee_id?: string
           id?: string
@@ -699,8 +705,10 @@ export type Database = {
       }
       uniformes: {
         Row: {
+          assinatura_funcionario: string | null
           created_at: string | null
           created_by: string | null
+          data_assinatura: string | null
           data_entrega: string
           employee_id: string
           id: string
@@ -710,8 +718,10 @@ export type Database = {
           tipo_uniforme: string
         }
         Insert: {
+          assinatura_funcionario?: string | null
           created_at?: string | null
           created_by?: string | null
+          data_assinatura?: string | null
           data_entrega: string
           employee_id: string
           id?: string
@@ -721,8 +731,10 @@ export type Database = {
           tipo_uniforme: string
         }
         Update: {
+          assinatura_funcionario?: string | null
           created_at?: string | null
           created_by?: string | null
+          data_assinatura?: string | null
           data_entrega?: string
           employee_id?: string
           id?: string

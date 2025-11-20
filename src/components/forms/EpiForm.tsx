@@ -7,8 +7,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
-import { FileDown } from "lucide-react";
+import { FileDown, PenTool } from "lucide-react";
 import { generateEpiReceipt } from "@/lib/pdfGenerator";
+import SignatureCanvas from "./SignatureCanvas";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 interface EpiFormProps {
   employeeId: string;
@@ -21,6 +23,9 @@ const EpiForm = ({ employeeId, onSaved, onCancel }: EpiFormProps) => {
   const [lastInsertedData, setLastInsertedData] = useState<any>(null);
   const [stockItems, setStockItems] = useState<any[]>([]);
   const [selectedItem, setSelectedItem] = useState<string | null>(null);
+  const [showSignatureDialog, setShowSignatureDialog] = useState(false);
+  const [signature, setSignature] = useState<string | null>(null);
+  const [lastInsertedId, setLastInsertedId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchStockItems();
@@ -73,7 +78,7 @@ const EpiForm = ({ employeeId, onSaved, onCancel }: EpiFormProps) => {
       .single();
 
     // Insert EPI record
-    const { error } = await supabase.from("epis").insert(epiData);
+    const { data: insertedEpi, error } = await supabase.from("epis").insert(epiData).select().single();
 
     if (error) {
       toast.error("Erro ao salvar");
@@ -92,17 +97,45 @@ const EpiForm = ({ employeeId, onSaved, onCancel }: EpiFormProps) => {
       toast.error("Erro ao atualizar estoque");
     } else {
       toast.success("EPI registrado e estoque atualizado!");
+      setLastInsertedId(insertedEpi.id);
       setLastInsertedData({
         ...epiData,
         employeeName: employee?.nome_completo || "",
         employeeCpf: employee?.cpf || "",
         employeeRole: employee?.cargo || "",
-        marcaModelo: selectedStock.marca_modelo,
-        ca: selectedStock.ca,
-        tamanho: selectedStock.tamanho,
-        finalidade: selectedStock.finalidade,
+        marca: selectedStock.marca_modelo || "",
+        ca: selectedStock.ca || "",
+        finalidade: selectedStock.finalidade || "",
+        tamanho: selectedStock.tamanho || "",
       });
+      setShowSignatureDialog(true);
     }
+  };
+
+  const handleSaveSignature = async (signatureData: string) => {
+    if (!lastInsertedId) return;
+
+    const { error } = await supabase
+      .from("epis")
+      .update({
+        assinatura_funcionario: signatureData,
+        data_assinatura: new Date().toISOString(),
+      })
+      .eq("id", lastInsertedId);
+
+    if (error) {
+      toast.error("Erro ao salvar assinatura");
+      return;
+    }
+
+    setSignature(signatureData);
+    setShowSignatureDialog(false);
+    toast.success("Assinatura salva com sucesso!");
+  };
+
+  const handleSkipSignature = () => {
+    setShowSignatureDialog(false);
+    toast.info("Lembre o funcionário de assinar após o login");
   };
 
   const handleDownloadReceipt = () => {
@@ -112,26 +145,47 @@ const EpiForm = ({ employeeId, onSaved, onCancel }: EpiFormProps) => {
         employeeCpf: lastInsertedData.employeeCpf,
         employeeRole: lastInsertedData.employeeRole,
         tipoEpi: lastInsertedData.tipo_epi,
-        quantidade: lastInsertedData.quantidade,
-        dataEntrega: lastInsertedData.data_entrega,
-        observacoes: lastInsertedData.observacoes,
-        marcaModelo: lastInsertedData.marcaModelo,
+        marcaModelo: lastInsertedData.marca,
         ca: lastInsertedData.ca,
+        quantidade: lastInsertedData.quantidade,
         tamanho: lastInsertedData.tamanho,
         finalidade: lastInsertedData.finalidade,
+        dataEntrega: lastInsertedData.data_entrega,
+        observacoes: lastInsertedData.observacoes,
+        assinatura: signature,
       });
       toast.success("Recibo baixado!");
       onSaved();
       setLastInsertedData(null);
+      setSignature(null);
+      setLastInsertedId(null);
     }
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Registrar EPI</CardTitle>
-      </CardHeader>
-      <CardContent>
+    <>
+      <Dialog open={showSignatureDialog} onOpenChange={setShowSignatureDialog}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Capturar Assinatura do Funcionário</DialogTitle>
+          </DialogHeader>
+          <SignatureCanvas
+            onSave={handleSaveSignature}
+            onCancel={handleSkipSignature}
+          />
+          <div className="flex justify-end">
+            <Button variant="outline" onClick={handleSkipSignature}>
+              Pular (funcionário assinará depois)
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Registrar EPI</CardTitle>
+        </CardHeader>
+        <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <Label>Selecione o EPI do Estoque</Label>
@@ -188,6 +242,7 @@ const EpiForm = ({ employeeId, onSaved, onCancel }: EpiFormProps) => {
         </form>
       </CardContent>
     </Card>
+    </>
   );
 };
 
