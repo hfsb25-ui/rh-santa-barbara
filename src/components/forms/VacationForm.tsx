@@ -1,11 +1,12 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
-import { addYears, differenceInDays, format } from "date-fns";
+import { addYears, differenceInDays, format, addDays } from "date-fns";
 
 interface VacationFormProps {
   employeeId: string;
@@ -20,6 +21,25 @@ const VacationForm = ({ employeeId, onSaved, onCancel }: VacationFormProps) => {
   const [periodoGozoInicio, setPeriodoGozoInicio] = useState("");
   const [periodoGozoFim, setPeriodoGozoFim] = useState("");
   const [diasCalculados, setDiasCalculados] = useState(0);
+  const [usarFolgas, setUsarFolgas] = useState(false);
+  const [diasFolgas, setDiasFolgas] = useState(0);
+  const [folgasDisponiveis, setFolgasDisponiveis] = useState(0);
+
+  useEffect(() => {
+    fetchEmployeeFolgas();
+  }, [employeeId]);
+
+  const fetchEmployeeFolgas = async () => {
+    const { data } = await supabase
+      .from("employees")
+      .select("quantidade_folgas")
+      .eq("id", employeeId)
+      .single();
+
+    if (data) {
+      setFolgasDisponiveis(data.quantidade_folgas || 0);
+    }
+  };
 
   const handlePeriodoAquisitivoInicioChange = (dateString: string) => {
     setPeriodoAquisitivoInicio(dateString);
@@ -49,14 +69,25 @@ const VacationForm = ({ employeeId, onSaved, onCancel }: VacationFormProps) => {
     e.preventDefault();
     setLoading(true);
 
+    // Calculate final end date with time off days
+    let finalEndDate = periodoGozoFim;
+    let totalDays = diasCalculados;
+    
+    if (usarFolgas && diasFolgas > 0) {
+      const endDate = new Date(periodoGozoFim);
+      const newEndDate = addDays(endDate, diasFolgas);
+      finalEndDate = format(newEndDate, 'yyyy-MM-dd');
+      totalDays = diasCalculados + diasFolgas;
+    }
+
     // Insert vacation record
     const { error: feriaError } = await supabase.from("ferias").insert({
       employee_id: employeeId,
       periodo_aquisitivo_inicio: periodoAquisitivoInicio,
       periodo_aquisitivo_fim: periodoAquisitivoFim,
       periodo_gozo_inicio: periodoGozoInicio,
-      periodo_gozo_fim: periodoGozoFim,
-      dias_totais: diasCalculados,
+      periodo_gozo_fim: finalEndDate,
+      dias_totais: totalDays,
     });
 
     if (feriaError) {
@@ -71,14 +102,50 @@ const VacationForm = ({ employeeId, onSaved, onCancel }: VacationFormProps) => {
       .update({ status: "ferias" })
       .eq("id", employeeId);
 
-    setLoading(false);
-    
     if (statusError) {
+      setLoading(false);
       toast.error("Férias registradas, mas erro ao atualizar status");
-    } else {
-      toast.success("Férias registradas e status atualizado!");
+      return;
     }
-    
+
+    // If using time off, deduct from employee's balance
+    if (usarFolgas && diasFolgas > 0) {
+      const { data: { user } } = await supabase.auth.getUser();
+      const novaQuantidade = folgasDisponiveis - diasFolgas;
+
+      // Update employee time off balance
+      const { error: folgasError } = await supabase
+        .from("employees")
+        .update({ 
+          quantidade_folgas: novaQuantidade,
+          ultima_alteracao_folgas: new Date().toISOString()
+        })
+        .eq("id", employeeId);
+
+      if (folgasError) {
+        setLoading(false);
+        toast.error("Férias registradas, mas erro ao atualizar folgas");
+        return;
+      }
+
+      // Record in time off history
+      const { error: historicoError } = await supabase
+        .from("historico_folgas")
+        .insert({
+          employee_id: employeeId,
+          quantidade_anterior: folgasDisponiveis,
+          quantidade_nova: novaQuantidade,
+          alterado_por: user?.id,
+          observacao: `Folgas utilizadas em férias (${diasFolgas} dias)`,
+        });
+
+      if (historicoError) {
+        console.error("Error recording time off history:", historicoError);
+      }
+    }
+
+    setLoading(false);
+    toast.success("Férias registradas e status atualizado!");
     onSaved();
   };
 
@@ -142,15 +209,72 @@ const VacationForm = ({ employeeId, onSaved, onCancel }: VacationFormProps) => {
               {diasCalculados > 0 && (
                 <div className="mt-3 p-3 bg-primary/10 rounded-md">
                   <p className="text-sm font-medium">
-                    Total de dias: <span className="text-lg">{diasCalculados}</span> {diasCalculados === 1 ? 'dia' : 'dias'}
+                    Total de dias de férias: <span className="text-lg">{diasCalculados}</span> {diasCalculados === 1 ? 'dia' : 'dias'}
                   </p>
+                </div>
+              )}
+            </div>
+
+            {/* Time Off Section */}
+            <div className="border-t pt-4 space-y-4">
+              <div className="flex items-center space-x-2">
+                <Checkbox 
+                  id="usar-folgas" 
+                  checked={usarFolgas}
+                  onCheckedChange={(checked) => {
+                    setUsarFolgas(checked as boolean);
+                    if (!checked) setDiasFolgas(0);
+                  }}
+                />
+                <label
+                  htmlFor="usar-folgas"
+                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                >
+                  Adicionar folgas acumuladas às férias
+                </label>
+              </div>
+
+              {usarFolgas && (
+                <div className="space-y-3 pl-6">
+                  <p className="text-sm text-muted-foreground">
+                    Folgas disponíveis: <span className="font-semibold">{folgasDisponiveis} dias</span>
+                  </p>
+                  <div>
+                    <Label>Quantidade de dias de folga a usar</Label>
+                    <Input
+                      type="number"
+                      min="0"
+                      max={folgasDisponiveis}
+                      value={diasFolgas}
+                      onChange={(e) => setDiasFolgas(parseInt(e.target.value) || 0)}
+                      placeholder="0"
+                    />
+                  </div>
+                  {diasFolgas > 0 && (
+                    <div className="p-3 bg-secondary/20 rounded-md space-y-1">
+                      <p className="text-sm">
+                        <span className="text-muted-foreground">Dias de férias:</span>{" "}
+                        <span className="font-medium">{diasCalculados} dias</span>
+                      </p>
+                      <p className="text-sm">
+                        <span className="text-muted-foreground">+ Folgas:</span>{" "}
+                        <span className="font-medium">{diasFolgas} dias</span>
+                      </p>
+                      <p className="text-sm font-bold border-t pt-1">
+                        Total: {diasCalculados + diasFolgas} dias
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-2">
+                        Nova data de retorno: {periodoGozoFim && format(addDays(new Date(periodoGozoFim), diasFolgas), 'dd/MM/yyyy')}
+                      </p>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
           </div>
 
           <div className="flex gap-2">
-            <Button type="submit" disabled={loading || diasCalculados === 0}>
+            <Button type="submit" disabled={loading || diasCalculados === 0 || (usarFolgas && diasFolgas > folgasDisponiveis)}>
               Salvar
             </Button>
             <Button type="button" variant="outline" onClick={onCancel}>
