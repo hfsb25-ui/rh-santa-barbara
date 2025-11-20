@@ -451,7 +451,7 @@ const Payroll = () => {
                           />
                         </div>
                         <div>
-                          <Label>Descontos</Label>
+                          <Label>Valor em conta</Label>
                           <Input
                             type="number"
                             step="0.01"
@@ -497,7 +497,7 @@ const Payroll = () => {
                         </p>
                         <div className="mt-2 text-sm">
                           <p>Bruto: R$ {pag.valor_bruto.toFixed(2)}</p>
-                          <p>Descontos: R$ {pag.descontos.toFixed(2)}</p>
+                          <p>Valor em conta: R$ {pag.descontos.toFixed(2)}</p>
                           <p className="font-semibold">Líquido: R$ {pag.valor_liquido.toFixed(2)}</p>
                           {pag.observacoes && <p className="text-muted-foreground mt-1">{pag.observacoes}</p>}
                         </div>
@@ -525,7 +525,7 @@ const Payroll = () => {
                                 />
                               </div>
                               <div>
-                                <Label>Descontos</Label>
+                                <Label>Valor em conta</Label>
                                 <Input
                                   name="descontos"
                                   type="number"
