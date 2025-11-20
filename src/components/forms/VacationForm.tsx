@@ -49,7 +49,8 @@ const VacationForm = ({ employeeId, onSaved, onCancel }: VacationFormProps) => {
     e.preventDefault();
     setLoading(true);
 
-    const { error } = await supabase.from("ferias").insert({
+    // Insert vacation record
+    const { error: feriaError } = await supabase.from("ferias").insert({
       employee_id: employeeId,
       periodo_aquisitivo_inicio: periodoAquisitivoInicio,
       periodo_aquisitivo_fim: periodoAquisitivoFim,
@@ -58,13 +59,27 @@ const VacationForm = ({ employeeId, onSaved, onCancel }: VacationFormProps) => {
       dias_totais: diasCalculados,
     });
 
-    setLoading(false);
-    if (error) {
-      toast.error("Erro ao salvar");
-    } else {
-      toast.success("Férias registradas!");
-      onSaved();
+    if (feriaError) {
+      setLoading(false);
+      toast.error("Erro ao salvar férias");
+      return;
     }
+
+    // Update employee status to "ferias"
+    const { error: statusError } = await supabase
+      .from("employees")
+      .update({ status: "ferias" })
+      .eq("id", employeeId);
+
+    setLoading(false);
+    
+    if (statusError) {
+      toast.error("Férias registradas, mas erro ao atualizar status");
+    } else {
+      toast.success("Férias registradas e status atualizado!");
+    }
+    
+    onSaved();
   };
 
   return (
