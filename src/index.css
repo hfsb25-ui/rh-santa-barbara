@@ -38,6 +38,9 @@ All colors MUST be HSL.
 
     --radius: 0.5rem;
     
+    --warning: 43 96% 56%;
+    --warning-foreground: 0 0% 100%;
+    
     --chart-1: 217 91% 60%;
     --chart-2: 160 84% 39%;
     --chart-3: 43 74% 66%;

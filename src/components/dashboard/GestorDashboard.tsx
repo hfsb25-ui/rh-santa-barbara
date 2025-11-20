@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
+import { VacationProgress } from "@/components/ui/vacation-progress";
 import EmployeeList from "@/components/employees/EmployeeList";
 import EmployeeForm from "@/components/forms/EmployeeForm";
 import TimeOffListDialog from "@/components/dashboard/TimeOffListDialog";
@@ -134,8 +135,9 @@ const GestorDashboard = ({ user }: GestorDashboardProps) => {
     }
   };
 
-  const calculateVacationProgress = (inicio: string, diasTotais: number) => {
+  const calculateVacationProgress = (inicio: string, fim: string, diasTotais: number) => {
     const startDate = new Date(inicio);
+    const endDate = new Date(fim);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
@@ -143,8 +145,17 @@ const GestorDashboard = ({ user }: GestorDashboardProps) => {
     const daysRemaining = diasTotais - daysPassed;
 
     const progress = Math.min(100, Math.max(0, (daysPassed / diasTotais) * 100));
+    
+    const realVacationDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+    const timeOffDays = diasTotais - realVacationDays;
 
-    return { progress, daysRemaining: Math.max(0, daysRemaining), totalDays: diasTotais };
+    return { 
+      progress, 
+      daysRemaining: Math.max(0, daysRemaining), 
+      totalDays: diasTotais,
+      vacationDays: realVacationDays,
+      timeOffDays
+    };
   };
 
   const handleLogout = async () => {
@@ -257,8 +268,9 @@ const GestorDashboard = ({ user }: GestorDashboardProps) => {
             </h2>
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {employeesOnVacation.map((employee) => {
-                const { progress, daysRemaining } = calculateVacationProgress(
+                const { progress, daysRemaining, totalDays, vacationDays, timeOffDays } = calculateVacationProgress(
                   employee.vacation.periodo_gozo_inicio,
+                  employee.vacation.periodo_gozo_fim,
                   employee.vacation.dias_totais
                 );
 
@@ -282,7 +294,25 @@ const GestorDashboard = ({ user }: GestorDashboardProps) => {
                             {daysRemaining} {daysRemaining === 1 ? 'dia' : 'dias'}
                           </span>
                         </div>
-                        <Progress value={progress} className="h-2" />
+                        <VacationProgress 
+                          totalDays={totalDays}
+                          daysPassed={totalDays - daysRemaining}
+                          vacationDays={vacationDays}
+                          timeOffDays={timeOffDays}
+                          className="h-2"
+                        />
+                        {timeOffDays > 0 && (
+                          <div className="flex gap-2 text-xs text-muted-foreground">
+                            <div className="flex items-center gap-1">
+                              <div className="w-2 h-2 rounded-full bg-secondary" />
+                              <span>{vacationDays}d</span>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <div className="w-2 h-2 rounded-full bg-warning" />
+                              <span>{timeOffDays}d</span>
+                            </div>
+                          </div>
+                        )}
                         <p className="text-xs text-muted-foreground text-right">
                           {Math.round(progress)}% concluído
                         </p>

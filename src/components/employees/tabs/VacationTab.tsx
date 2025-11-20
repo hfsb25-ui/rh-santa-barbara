@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Plus, Calendar, Check, Pencil, Trash2 } from "lucide-react";
 import VacationForm from "@/components/forms/VacationForm";
 import EditVacationDialog from "@/components/forms/EditVacationDialog";
-import { Progress } from "@/components/ui/progress";
+import { VacationProgress } from "@/components/ui/vacation-progress";
 import { toast } from "sonner";
 import {
   AlertDialog,
@@ -111,7 +111,11 @@ const VacationTab = ({ employeeId, isManager = false }: VacationTabProps) => {
     
     const progress = Math.min(100, Math.max(0, (daysPassed / diasTotais) * 100));
     
-    return { progress, daysRemaining: Math.max(0, daysRemaining), totalDays: diasTotais };
+    // Calcular dias de férias normais vs dias de folgas
+    const realVacationDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+    const timeOffDays = diasTotais - realVacationDays;
+    
+    return { progress, daysRemaining: Math.max(0, daysRemaining), totalDays: diasTotais, vacationDays: realVacationDays, timeOffDays };
   };
 
   return (
@@ -143,7 +147,7 @@ const VacationTab = ({ employeeId, isManager = false }: VacationTabProps) => {
       ) : (
         <div className="grid gap-4">
           {ferias.map((feria) => {
-            const { progress, daysRemaining, totalDays } = calculateProgress(
+            const { progress, daysRemaining, totalDays, vacationDays, timeOffDays } = calculateProgress(
               feria.periodo_gozo_inicio,
               feria.periodo_gozo_fim,
               feria.dias_totais
@@ -191,7 +195,24 @@ const VacationTab = ({ employeeId, isManager = false }: VacationTabProps) => {
                           {daysRemaining} {daysRemaining === 1 ? 'dia restante' : 'dias restantes'}
                         </span>
                       </div>
-                      <Progress value={progress} className="h-2" />
+                      <VacationProgress 
+                        totalDays={totalDays}
+                        daysPassed={totalDays - daysRemaining}
+                        vacationDays={vacationDays}
+                        timeOffDays={timeOffDays}
+                      />
+                      {timeOffDays > 0 && (
+                        <div className="flex gap-2 text-xs text-muted-foreground">
+                          <div className="flex items-center gap-1">
+                            <div className="w-3 h-3 rounded-full bg-secondary" />
+                            <span>Férias ({vacationDays} dias)</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <div className="w-3 h-3 rounded-full bg-warning" />
+                            <span>Folgas ({timeOffDays} dias)</span>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )}
 
