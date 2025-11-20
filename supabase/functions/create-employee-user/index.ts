@@ -34,7 +34,9 @@ Deno.serve(async (req) => {
       )
     }
 
-    const email = `${cpf}@empresa.local`
+    // Formatar CPF para criar um email válido (remover caracteres especiais)
+    const cpfLimpo = cpf.replace(/\D/g, '')
+    const email = `funcionario.${cpfLimpo}@rhsantabarbara.app`
 
     // Criar usuário usando service role key
     const { data: authData, error: authError } = await supabaseClient.auth.admin.createUser({

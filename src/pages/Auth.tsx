@@ -45,7 +45,9 @@ const Auth = () => {
     setLoading(true);
 
     try {
-      const email = `${cpf}@empresa.local`;
+      // Formatar CPF para criar email no mesmo formato da edge function
+      const cpfLimpo = cpf.replace(/\D/g, '')
+      const email = `funcionario.${cpfLimpo}@rhsantabarbara.app`;
       
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
