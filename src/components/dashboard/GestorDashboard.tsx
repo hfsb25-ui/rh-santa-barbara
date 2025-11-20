@@ -23,6 +23,7 @@ import {
   Bell,
   Receipt,
   Briefcase,
+  FileSignature,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -397,6 +398,10 @@ const GestorDashboard = ({ user }: GestorDashboardProps) => {
             <Button variant="outline" onClick={() => navigate("/funcoes")} className="w-full">
               <Briefcase className="w-4 h-4 mr-2" />
               Funções
+            </Button>
+            <Button variant="outline" onClick={() => navigate("/contracts")} className="w-full">
+              <FileSignature className="w-4 h-4 mr-2" />
+              Contratos
             </Button>
           </div>
         </div>
