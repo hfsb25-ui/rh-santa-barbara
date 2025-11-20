@@ -15,6 +15,7 @@ import {
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { toast } from "sonner";
 import { VacationProgress } from "@/components/ui/vacation-progress";
+import PendingSignaturesAlert from "./PendingSignaturesAlert";
 
 interface FuncionarioDashboardProps {
   user: User;
@@ -118,6 +119,8 @@ const FuncionarioDashboard = ({ user }: FuncionarioDashboardProps) => {
 
   return (
     <div className="min-h-screen bg-background">
+      <PendingSignaturesAlert />
+      
       <header className="border-b bg-card">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
