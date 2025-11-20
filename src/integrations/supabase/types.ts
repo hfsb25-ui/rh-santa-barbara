@@ -529,6 +529,30 @@ export type Database = {
           },
         ]
       }
+      funcoes: {
+        Row: {
+          cbo: string | null
+          created_at: string | null
+          id: string
+          nome: string
+          updated_at: string | null
+        }
+        Insert: {
+          cbo?: string | null
+          created_at?: string | null
+          id?: string
+          nome: string
+          updated_at?: string | null
+        }
+        Update: {
+          cbo?: string | null
+          created_at?: string | null
+          id?: string
+          nome?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       historico_folgas: {
         Row: {
           alterado_em: string

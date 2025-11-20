@@ -12,6 +12,7 @@ import Turnover from "./pages/Turnover";
 import Financeiro from "./pages/Financeiro";
 import Companies from "./pages/Companies";
 import Payroll from "./pages/Payroll";
+import Funcoes from "./pages/Funcoes";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -33,6 +34,7 @@ const App = () => (
           <Route path="/financeiro" element={<Financeiro />} />
           <Route path="/companies" element={<Companies />} />
           <Route path="/payroll" element={<Payroll />} />
+          <Route path="/funcoes" element={<Funcoes />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

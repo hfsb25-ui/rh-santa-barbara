@@ -22,6 +22,7 @@ import {
   DollarSign,
   Bell,
   Receipt,
+  Briefcase,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import EmployeeList from "@/components/employees/EmployeeList";
@@ -253,6 +254,10 @@ const GestorDashboard = ({ user }: GestorDashboardProps) => {
             <Button variant="outline" onClick={() => setShowLoginHistoryDialog(true)} className="w-full">
               <Clock className="w-4 h-4 mr-2" />
               Histórico Login
+            </Button>
+            <Button variant="outline" onClick={() => navigate("/funcoes")} className="w-full">
+              <Briefcase className="w-4 h-4 mr-2" />
+              Funções
             </Button>
           </div>
         </div>
