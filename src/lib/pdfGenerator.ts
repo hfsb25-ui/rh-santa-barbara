@@ -8,6 +8,10 @@ interface EpiReceiptData {
   quantidade: number;
   dataEntrega: string;
   observacoes?: string;
+  marcaModelo?: string;
+  ca?: string;
+  tamanho?: string;
+  finalidade?: string;
 }
 
 interface UniformReceiptData {
@@ -54,19 +58,19 @@ export const generateEpiReceipt = (data: EpiReceiptData) => {
   doc.text(`EPI: ${data.tipoEpi}`, 20, yPosition);
   yPosition += 6;
   
-  doc.text("Marca/Modelo: _______________________________", 20, yPosition);
+  doc.text(`Marca/Modelo: ${data.marcaModelo || 'Não informado'}`, 20, yPosition);
   yPosition += 6;
   
-  doc.text("CA (Certificado de Aprovação): _____________", 20, yPosition);
+  doc.text(`CA (Certificado de Aprovação): ${data.ca || 'Não informado'}`, 20, yPosition);
   yPosition += 6;
   
   doc.text(`Quantidade: ${data.quantidade}`, 20, yPosition);
   yPosition += 6;
   
-  doc.text("Tamanho (se aplicável): ____________________", 20, yPosition);
+  doc.text(`Tamanho (se aplicável): ${data.tamanho || 'Não aplicável'}`, 20, yPosition);
   yPosition += 6;
   
-  doc.text("Finalidade/Proteção: _______________________", 20, yPosition);
+  doc.text(`Finalidade/Proteção: ${data.finalidade || 'Não informado'}`, 20, yPosition);
   yPosition += 6;
   
   const formattedDate = new Date(data.dataEntrega).toLocaleDateString("pt-BR");

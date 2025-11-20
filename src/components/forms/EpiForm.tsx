@@ -115,6 +115,10 @@ const EpiForm = ({ employeeId, onSaved, onCancel }: EpiFormProps) => {
         quantidade: lastInsertedData.quantidade,
         dataEntrega: lastInsertedData.data_entrega,
         observacoes: lastInsertedData.observacoes,
+        marcaModelo: lastInsertedData.marcaModelo,
+        ca: lastInsertedData.ca,
+        tamanho: lastInsertedData.tamanho,
+        finalidade: lastInsertedData.finalidade,
       });
       toast.success("Recibo baixado!");
       onSaved();
