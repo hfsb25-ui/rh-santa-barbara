@@ -118,7 +118,7 @@ const EmployeeDetails = () => {
           </TabsContent>
 
           <TabsContent value="ferias">
-            <VacationTab employeeId={id!} />
+            <VacationTab employeeId={id!} isManager={true} />
           </TabsContent>
 
           <TabsContent value="afastamentos">
