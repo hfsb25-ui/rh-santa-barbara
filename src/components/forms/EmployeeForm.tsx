@@ -49,6 +49,19 @@ const EmployeeForm = ({ employeeId, initialData, onSaved, onCancel }: EmployeeFo
     },
   });
 
+  const { data: funcoes } = useQuery({
+    queryKey: ["funcoes"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("funcoes")
+        .select("*")
+        .order("nome");
+      
+      if (error) throw error;
+      return data;
+    },
+  });
+
   const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -266,8 +279,19 @@ const EmployeeForm = ({ employeeId, initialData, onSaved, onCancel }: EmployeeFo
               <Input name="nome_completo" defaultValue={initialData?.nome_completo} required />
             </div>
             <div>
-              <Label>Cargo</Label>
-              <Input name="cargo" defaultValue={initialData?.cargo} required />
+              <Label>Função</Label>
+              <Select name="cargo" defaultValue={initialData?.cargo || undefined} required>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione a função" />
+                </SelectTrigger>
+                <SelectContent>
+                  {funcoes?.map((funcao) => (
+                    <SelectItem key={funcao.id} value={funcao.nome}>
+                      {funcao.nome} {funcao.cbo ? `(CBO: ${funcao.cbo})` : ''}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div>
               <Label>Setor</Label>
