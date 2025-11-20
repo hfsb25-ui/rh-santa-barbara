@@ -114,8 +114,21 @@ export const generateEpiReceipt = (data: EpiReceiptData) => {
   // Colaborador
   doc.text("Colaborador(a):", 20, yPosition);
   yPosition += 6;
-  doc.text("Assinatura: ____________________________________", 20, yPosition);
-  yPosition += 6;
+  
+  if (data.assinatura) {
+    doc.addImage(data.assinatura, 'PNG', 20, yPosition, 80, 20);
+    yPosition += 22;
+    doc.setFontSize(8);
+    doc.setFont("helvetica", "italic");
+    doc.text("* ASSINATURA COLHIDA DIGITALMENTE", 20, yPosition);
+    yPosition += 5;
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "normal");
+  } else {
+    doc.text("Assinatura: ____________________________________", 20, yPosition);
+    yPosition += 10;
+  }
+  
   doc.text(`Data: ${formattedDate}`, 20, yPosition);
   yPosition += 12;
 
@@ -216,7 +229,13 @@ export const generateUniformReceipt = (data: UniformReceiptData) => {
   
   if (data.assinatura) {
     doc.addImage(data.assinatura, 'PNG', 20, yPosition, 80, 20);
-    yPosition += 25;
+    yPosition += 22;
+    doc.setFontSize(8);
+    doc.setFont("helvetica", "italic");
+    doc.text("* ASSINATURA COLHIDA DIGITALMENTE", 20, yPosition);
+    yPosition += 5;
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "normal");
   } else {
     doc.text("Assinatura: ____________________________________", 20, yPosition);
     yPosition += 10;
