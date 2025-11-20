@@ -152,8 +152,15 @@ const UniformForm = ({ employeeId, onSaved, onCancel }: UniformFormProps) => {
     toast.info("Lembre o funcionário de assinar após o login");
   };
 
-  const handleDownloadReceipt = () => {
-    if (lastInsertedData) {
+  const handleDownloadReceipt = async () => {
+    if (lastInsertedData && lastInsertedId) {
+      // Buscar assinatura do banco de dados
+      const { data: uniformeData } = await supabase
+        .from("uniformes")
+        .select("assinatura_funcionario")
+        .eq("id", lastInsertedId)
+        .single();
+
       generateUniformReceipt({
         employeeName: lastInsertedData.employeeName,
         employeeCpf: lastInsertedData.employeeCpf,
@@ -163,7 +170,7 @@ const UniformForm = ({ employeeId, onSaved, onCancel }: UniformFormProps) => {
         quantidade: lastInsertedData.quantidade,
         dataEntrega: lastInsertedData.data_entrega,
         observacoes: lastInsertedData.observacoes,
-        assinatura: signature,
+        assinatura: uniformeData?.assinatura_funcionario || signature,
       });
       toast.success("Recibo baixado!");
       onSaved();

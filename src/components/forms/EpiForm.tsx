@@ -155,8 +155,15 @@ const EpiForm = ({ employeeId, onSaved, onCancel }: EpiFormProps) => {
     toast.info("Lembre o funcionário de assinar após o login");
   };
 
-  const handleDownloadReceipt = () => {
-    if (lastInsertedData) {
+  const handleDownloadReceipt = async () => {
+    if (lastInsertedData && lastInsertedId) {
+      // Buscar assinatura do banco de dados
+      const { data: epiData } = await supabase
+        .from("epis")
+        .select("assinatura_funcionario")
+        .eq("id", lastInsertedId)
+        .single();
+
       generateEpiReceipt({
         employeeName: lastInsertedData.employeeName,
         employeeCpf: lastInsertedData.employeeCpf,
@@ -169,7 +176,7 @@ const EpiForm = ({ employeeId, onSaved, onCancel }: EpiFormProps) => {
         finalidade: lastInsertedData.finalidade,
         dataEntrega: lastInsertedData.data_entrega,
         observacoes: lastInsertedData.observacoes,
-        assinatura: signature,
+        assinatura: epiData?.assinatura_funcionario || signature,
       });
       toast.success("Recibo baixado!");
       onSaved();
