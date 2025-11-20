@@ -44,6 +44,7 @@ const EmployeeDetails = () => {
     } catch (error) {
       console.error("Error fetching employee:", error);
       toast.error("Erro ao carregar funcionário");
+      navigate("/dashboard");
     } finally {
       setLoading(false);
     }
