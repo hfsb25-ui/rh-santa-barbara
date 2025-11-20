@@ -575,6 +575,128 @@ export type Database = {
         }
         Relationships: []
       }
+      historico_estoque_epis: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          employee_id: string | null
+          estoque_epi_id: string
+          id: string
+          motivo: string | null
+          quantidade: number
+          quantidade_anterior: number
+          quantidade_nova: number
+          tipo_movimentacao: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          employee_id?: string | null
+          estoque_epi_id: string
+          id?: string
+          motivo?: string | null
+          quantidade: number
+          quantidade_anterior: number
+          quantidade_nova: number
+          tipo_movimentacao: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          employee_id?: string | null
+          estoque_epi_id?: string
+          id?: string
+          motivo?: string | null
+          quantidade?: number
+          quantidade_anterior?: number
+          quantidade_nova?: number
+          tipo_movimentacao?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "historico_estoque_epis_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "historico_estoque_epis_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "historico_estoque_epis_estoque_epi_id_fkey"
+            columns: ["estoque_epi_id"]
+            isOneToOne: false
+            referencedRelation: "estoque_epis"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      historico_estoque_uniformes: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          employee_id: string | null
+          estoque_uniforme_id: string
+          id: string
+          motivo: string | null
+          quantidade: number
+          quantidade_anterior: number
+          quantidade_nova: number
+          tipo_movimentacao: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          employee_id?: string | null
+          estoque_uniforme_id: string
+          id?: string
+          motivo?: string | null
+          quantidade: number
+          quantidade_anterior: number
+          quantidade_nova: number
+          tipo_movimentacao: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          employee_id?: string | null
+          estoque_uniforme_id?: string
+          id?: string
+          motivo?: string | null
+          quantidade?: number
+          quantidade_anterior?: number
+          quantidade_nova?: number
+          tipo_movimentacao?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "historico_estoque_uniformes_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "historico_estoque_uniformes_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "historico_estoque_uniformes_estoque_uniforme_id_fkey"
+            columns: ["estoque_uniforme_id"]
+            isOneToOne: false
+            referencedRelation: "estoque_uniformes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       historico_folgas: {
         Row: {
           alterado_em: string
