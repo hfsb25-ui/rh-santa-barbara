@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Eye, Loader2 } from "lucide-react";
+import { Eye, Loader2, Filter } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -25,14 +25,21 @@ const EmployeeList = ({ searchQuery, onStatsUpdate, empresaId }: EmployeeListPro
   const [filteredEmployees, setFilteredEmployees] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [empresaFilter, setEmpresaFilter] = useState<string>("all");
+  const [setorFilter, setSetorFilter] = useState<string>("all");
+  const [contratoFilter, setContratoFilter] = useState<string>("all");
+  const [empresas, setEmpresas] = useState<any[]>([]);
+  const [setores, setSetores] = useState<any[]>([]);
 
   useEffect(() => {
     fetchEmployees();
+    fetchEmpresas();
+    fetchSetores();
   }, [empresaId]);
 
   useEffect(() => {
     filterEmployees();
-  }, [searchQuery, statusFilter, employees]);
+  }, [searchQuery, statusFilter, empresaFilter, setorFilter, contratoFilter, employees]);
 
   const fetchEmployees = async () => {
     try {
@@ -57,11 +64,51 @@ const EmployeeList = ({ searchQuery, onStatsUpdate, empresaId }: EmployeeListPro
     }
   };
 
+  const fetchEmpresas = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("empresas")
+        .select("*")
+        .order("nome");
+
+      if (error) throw error;
+      setEmpresas(data || []);
+    } catch (error) {
+      console.error("Error fetching empresas:", error);
+    }
+  };
+
+  const fetchSetores = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("setores")
+        .select("*")
+        .order("nome");
+
+      if (error) throw error;
+      setSetores(data || []);
+    } catch (error) {
+      console.error("Error fetching setores:", error);
+    }
+  };
+
   const filterEmployees = () => {
     let filtered = employees;
 
     if (statusFilter !== "all") {
       filtered = filtered.filter((emp) => emp.status === statusFilter);
+    }
+
+    if (empresaFilter !== "all") {
+      filtered = filtered.filter((emp) => emp.empresa_id === empresaFilter);
+    }
+
+    if (setorFilter !== "all") {
+      filtered = filtered.filter((emp) => emp.setor === setorFilter);
+    }
+
+    if (contratoFilter !== "all") {
+      filtered = filtered.filter((emp) => emp.tipo_contrato === contratoFilter);
     }
 
     if (searchQuery) {
@@ -107,17 +154,62 @@ const EmployeeList = ({ searchQuery, onStatsUpdate, empresaId }: EmployeeListPro
 
   return (
     <div>
-      <div className="mb-4">
+      <div className="mb-4 flex flex-wrap gap-3">
+        <div className="flex items-center gap-2">
+          <Filter className="w-4 h-4 text-muted-foreground" />
+          <span className="text-sm font-medium text-muted-foreground">Filtros:</span>
+        </div>
+        
         <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-[200px]">
-            <SelectValue placeholder="Filtrar por status" />
+          <SelectTrigger className="w-[180px]">
+            <SelectValue placeholder="Status" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">Todos</SelectItem>
+            <SelectItem value="all">Todos os status</SelectItem>
             <SelectItem value="ativo">Ativo</SelectItem>
             <SelectItem value="ferias">Férias</SelectItem>
             <SelectItem value="afastado">Afastado</SelectItem>
             <SelectItem value="demitido">Demitido</SelectItem>
+          </SelectContent>
+        </Select>
+
+        <Select value={empresaFilter} onValueChange={setEmpresaFilter}>
+          <SelectTrigger className="w-[200px]">
+            <SelectValue placeholder="Empresa" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todas as empresas</SelectItem>
+            {empresas.map((empresa) => (
+              <SelectItem key={empresa.id} value={empresa.id}>
+                {empresa.nome}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <Select value={setorFilter} onValueChange={setSetorFilter}>
+          <SelectTrigger className="w-[180px]">
+            <SelectValue placeholder="Setor" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos os setores</SelectItem>
+            {setores.map((setor) => (
+              <SelectItem key={setor.id} value={setor.nome}>
+                {setor.nome}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <Select value={contratoFilter} onValueChange={setContratoFilter}>
+          <SelectTrigger className="w-[200px]">
+            <SelectValue placeholder="Tipo de Contrato" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos os contratos</SelectItem>
+            <SelectItem value="fixo">Fixo</SelectItem>
+            <SelectItem value="intermitente">Intermitente</SelectItem>
+            <SelectItem value="prestador_servico">Prestador de Serviço</SelectItem>
           </SelectContent>
         </Select>
       </div>
