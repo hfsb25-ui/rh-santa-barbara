@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import { useIsMobile } from "@/hooks/use-mobile";
 import EmployeeInfo from "@/components/employees/EmployeeInfo";
 import EmployeeForm from "@/components/forms/EmployeeForm";
+import { GenerateContractButton } from "@/components/contracts/GenerateContractButton";
 import EpiTab from "@/components/employees/tabs/EpiTab";
 import UniformTab from "@/components/employees/tabs/UniformTab";
 import VacationTab from "@/components/employees/tabs/VacationTab";
@@ -74,7 +75,9 @@ const EmployeeDetails = () => {
             <ArrowLeft className="w-4 h-4 mr-2" />
             Voltar
           </Button>
-          <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+          <div className="flex gap-2">
+            <GenerateContractButton employee={employee} />
+            <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
             <DialogTrigger asChild>
               <Button variant="outline">
                 <Edit className="w-4 h-4 mr-2" />
@@ -96,6 +99,7 @@ const EmployeeDetails = () => {
               />
             </DialogContent>
           </Dialog>
+          </div>
         </div>
 
         <EmployeeInfo employee={employee} onUpdate={fetchEmployee} />

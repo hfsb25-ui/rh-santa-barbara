@@ -780,6 +780,41 @@ export type Database = {
           },
         ]
       }
+      modelos_contrato: {
+        Row: {
+          conteudo_template: string
+          created_at: string
+          funcao_id: string
+          id: string
+          tipo_contrato: Database["public"]["Enums"]["tipo_contrato"]
+          updated_at: string
+        }
+        Insert: {
+          conteudo_template: string
+          created_at?: string
+          funcao_id: string
+          id?: string
+          tipo_contrato: Database["public"]["Enums"]["tipo_contrato"]
+          updated_at?: string
+        }
+        Update: {
+          conteudo_template?: string
+          created_at?: string
+          funcao_id?: string
+          id?: string
+          tipo_contrato?: Database["public"]["Enums"]["tipo_contrato"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "modelos_contrato_funcao_id_fkey"
+            columns: ["funcao_id"]
+            isOneToOne: false
+            referencedRelation: "funcoes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string | null
