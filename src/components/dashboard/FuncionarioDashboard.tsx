@@ -10,9 +10,11 @@ import {
   Shield,
   Shirt,
   Bell,
+  Calendar,
 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { toast } from "sonner";
+import { Progress } from "@/components/ui/progress";
 
 interface FuncionarioDashboardProps {
   user: User;
@@ -24,6 +26,7 @@ const FuncionarioDashboard = ({ user }: FuncionarioDashboardProps) => {
   const [epis, setEpis] = useState<any[]>([]);
   const [uniformes, setUniformes] = useState<any[]>([]);
   const [avisos, setAvisos] = useState<any[]>([]);
+  const [activeVacation, setActiveVacation] = useState<any>(null);
 
   useEffect(() => {
     fetchEmployeeData();
@@ -40,7 +43,7 @@ const FuncionarioDashboard = ({ user }: FuncionarioDashboardProps) => {
       if (empData) {
         setEmployee(empData);
 
-        const [episRes, uniformesRes, avisosRes] = await Promise.all([
+        const [episRes, uniformesRes, avisosRes, feriasRes] = await Promise.all([
           supabase.from("epis").select("*").eq("employee_id", empData.id),
           supabase.from("uniformes").select("*").eq("employee_id", empData.id),
           supabase
@@ -49,15 +52,42 @@ const FuncionarioDashboard = ({ user }: FuncionarioDashboardProps) => {
             .contains("setores", [empData.setor])
             .gte("data_expiracao", new Date().toISOString().split("T")[0])
             .order("created_at", { ascending: false }),
+          supabase
+            .from("ferias")
+            .select("*")
+            .eq("employee_id", empData.id)
+            .eq("data_retorno_confirmada", false)
+            .gte("periodo_gozo_fim", new Date().toISOString().split("T")[0])
+            .order("periodo_gozo_inicio", { ascending: false })
+            .limit(1)
+            .maybeSingle(),
         ]);
 
         setEpis(episRes.data || []);
         setUniformes(uniformesRes.data || []);
         setAvisos(avisosRes.data || []);
+        setActiveVacation(feriasRes.data || null);
       }
     } catch (error) {
       console.error("Error fetching employee data:", error);
     }
+  };
+
+  const calculateVacationProgress = () => {
+    if (!activeVacation) return null;
+
+    const startDate = new Date(activeVacation.periodo_gozo_inicio);
+    const endDate = new Date(activeVacation.periodo_gozo_fim);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const totalDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+    const daysPassed = Math.ceil((today.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+    const daysRemaining = totalDays - daysPassed;
+
+    const progress = Math.min(100, Math.max(0, (daysPassed / totalDays) * 100));
+
+    return { progress, daysRemaining: Math.max(0, daysRemaining), totalDays };
   };
 
   const handleLogout = async () => {
@@ -100,6 +130,44 @@ const FuncionarioDashboard = ({ user }: FuncionarioDashboardProps) => {
 
       <main className="container mx-auto px-4 py-8">
         <div className="grid gap-6">
+          {/* Vacation Progress */}
+          {activeVacation && (() => {
+            const vacationProgress = calculateVacationProgress();
+            if (vacationProgress && vacationProgress.daysRemaining > 0) {
+              return (
+                <Card className="border-primary">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Calendar className="w-5 h-5" />
+                      Férias em Andamento
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Retorno previsto</span>
+                      <span className="font-medium">
+                        {new Date(activeVacation.periodo_gozo_fim).toLocaleDateString("pt-BR")}
+                      </span>
+                    </div>
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Dias restantes</span>
+                        <span className="font-bold text-lg">
+                          {vacationProgress.daysRemaining} {vacationProgress.daysRemaining === 1 ? 'dia' : 'dias'}
+                        </span>
+                      </div>
+                      <Progress value={vacationProgress.progress} className="h-3" />
+                      <p className="text-xs text-muted-foreground text-center">
+                        {Math.round(vacationProgress.progress)}% concluído
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            }
+            return null;
+          })()}
+
           {/* Avisos */}
           {avisos.length > 0 && (
             <div className="space-y-3">

@@ -20,17 +20,21 @@ const VacationForm = ({ employeeId, onSaved, onCancel }: VacationFormProps) => {
     setLoading(true);
 
     const formData = new FormData(e.currentTarget);
-    const inicio = new Date(formData.get("periodo_gozo_inicio") as string);
-    const fim = new Date(formData.get("periodo_gozo_fim") as string);
-    const dias = Math.ceil((fim.getTime() - inicio.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+    const dataInicio = formData.get("data_inicio") as string;
+    const diasTotais = parseInt(formData.get("dias_totais") as string);
+    
+    // Calculate end date
+    const inicio = new Date(dataInicio);
+    const fim = new Date(inicio);
+    fim.setDate(fim.getDate() + diasTotais - 1);
 
     const { error } = await supabase.from("ferias").insert({
       employee_id: employeeId,
-      periodo_aquisitivo_inicio: formData.get("periodo_aquisitivo_inicio") as string,
-      periodo_aquisitivo_fim: formData.get("periodo_aquisitivo_fim") as string,
-      periodo_gozo_inicio: formData.get("periodo_gozo_inicio") as string,
-      periodo_gozo_fim: formData.get("periodo_gozo_fim") as string,
-      dias_totais: dias,
+      periodo_aquisitivo_inicio: dataInicio,
+      periodo_aquisitivo_fim: fim.toISOString().split('T')[0],
+      periodo_gozo_inicio: dataInicio,
+      periodo_gozo_fim: fim.toISOString().split('T')[0],
+      dias_totais: diasTotais,
     });
 
     setLoading(false);
@@ -51,20 +55,12 @@ const VacationForm = ({ employeeId, onSaved, onCancel }: VacationFormProps) => {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <Label>Período Aquisitivo - Início</Label>
-              <Input name="periodo_aquisitivo_inicio" type="date" required />
+              <Label>Data de Início das Férias</Label>
+              <Input name="data_inicio" type="date" required />
             </div>
             <div>
-              <Label>Período Aquisitivo - Fim</Label>
-              <Input name="periodo_aquisitivo_fim" type="date" required />
-            </div>
-            <div>
-              <Label>Período de Gozo - Início</Label>
-              <Input name="periodo_gozo_inicio" type="date" required />
-            </div>
-            <div>
-              <Label>Período de Gozo - Fim</Label>
-              <Input name="periodo_gozo_fim" type="date" required />
+              <Label>Quantidade de Dias</Label>
+              <Input name="dias_totais" type="number" min="1" max="30" required />
             </div>
           </div>
           <div className="flex gap-2">

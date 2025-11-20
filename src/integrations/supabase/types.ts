@@ -378,8 +378,11 @@ export type Database = {
       }
       ferias: {
         Row: {
+          confirmado_por: string | null
           created_at: string | null
           created_by: string | null
+          data_confirmacao: string | null
+          data_retorno_confirmada: boolean | null
           dias_totais: number
           employee_id: string
           id: string
@@ -389,8 +392,11 @@ export type Database = {
           periodo_gozo_inicio: string
         }
         Insert: {
+          confirmado_por?: string | null
           created_at?: string | null
           created_by?: string | null
+          data_confirmacao?: string | null
+          data_retorno_confirmada?: boolean | null
           dias_totais: number
           employee_id: string
           id?: string
@@ -400,8 +406,11 @@ export type Database = {
           periodo_gozo_inicio: string
         }
         Update: {
+          confirmado_por?: string | null
           created_at?: string | null
           created_by?: string | null
+          data_confirmacao?: string | null
+          data_retorno_confirmada?: boolean | null
           dias_totais?: number
           employee_id?: string
           id?: string
@@ -411,6 +420,13 @@ export type Database = {
           periodo_gozo_inicio?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "ferias_confirmado_por_fkey"
+            columns: ["confirmado_por"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "ferias_created_by_fkey"
             columns: ["created_by"]
