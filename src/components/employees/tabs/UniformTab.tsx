@@ -2,9 +2,10 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus, Shirt, Trash2 } from "lucide-react";
+import { Plus, Shirt, Trash2, FileDown } from "lucide-react";
 import UniformForm from "@/components/forms/UniformForm";
 import { toast } from "sonner";
+import { generateUniformReceipt } from "@/lib/pdfGenerator";
 
 interface UniformTabProps {
   employeeId: string;
@@ -49,6 +50,34 @@ const UniformTab = ({ employeeId }: UniformTabProps) => {
     }
   };
 
+  const handleReprintReceipt = async (uniforme: any) => {
+    // Buscar dados completos do funcionário
+    const { data: employee } = await supabase
+      .from("employees")
+      .select("nome_completo, cpf, cargo")
+      .eq("id", employeeId)
+      .single();
+
+    if (!employee) {
+      toast.error("Erro ao buscar dados do funcionário");
+      return;
+    }
+
+    generateUniformReceipt({
+      employeeName: employee.nome_completo,
+      employeeCpf: employee.cpf || "Não informado",
+      employeeRole: employee.cargo,
+      tipoUniforme: uniforme.tipo_uniforme,
+      tamanho: uniforme.tamanho,
+      quantidade: uniforme.quantidade,
+      dataEntrega: uniforme.data_entrega,
+      observacoes: uniforme.observacoes,
+      assinatura: uniforme.assinatura_funcionario,
+    });
+
+    toast.success("Recibo gerado com sucesso!");
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
@@ -83,13 +112,23 @@ const UniformTab = ({ employeeId }: UniformTabProps) => {
                     <Shirt className="w-4 h-4" />
                     {uniforme.tipo_uniforme}
                   </CardTitle>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => handleDelete(uniforme.id)}
-                  >
-                    <Trash2 className="w-4 h-4 text-destructive" />
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => handleReprintReceipt(uniforme)}
+                      title="Reimprimir Recibo"
+                    >
+                      <FileDown className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleDelete(uniforme.id)}
+                    >
+                      <Trash2 className="w-4 h-4 text-destructive" />
+                    </Button>
+                  </div>
                 </div>
               </CardHeader>
               <CardContent>
@@ -108,6 +147,12 @@ const UniformTab = ({ employeeId }: UniformTabProps) => {
                       {new Date(uniforme.data_entrega).toLocaleDateString("pt-BR")}
                     </p>
                   </div>
+                  {uniforme.assinatura_funcionario && (
+                    <div className="col-span-3">
+                      <p className="text-muted-foreground">Status da Assinatura</p>
+                      <p className="font-medium text-green-600">✓ Assinado digitalmente</p>
+                    </div>
+                  )}
                   {uniforme.observacoes && (
                     <div className="col-span-3">
                       <p className="text-muted-foreground">Observações</p>

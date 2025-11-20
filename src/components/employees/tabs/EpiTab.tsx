@@ -2,9 +2,10 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus, Shield, Trash2 } from "lucide-react";
+import { Plus, Shield, Trash2, FileDown } from "lucide-react";
 import EpiForm from "@/components/forms/EpiForm";
 import { toast } from "sonner";
+import { generateEpiReceipt } from "@/lib/pdfGenerator";
 
 interface EpiTabProps {
   employeeId: string;
@@ -49,6 +50,45 @@ const EpiTab = ({ employeeId }: EpiTabProps) => {
     }
   };
 
+  const handleReprintReceipt = async (epi: any) => {
+    // Buscar dados completos do funcionário
+    const { data: employee } = await supabase
+      .from("employees")
+      .select("nome_completo, cpf, cargo")
+      .eq("id", employeeId)
+      .single();
+
+    // Buscar dados completos do EPI do estoque (se disponível)
+    const { data: stockData } = await supabase
+      .from("estoque_epis")
+      .select("marca_modelo, ca, tamanho, finalidade")
+      .eq("tipo_epi", epi.tipo_epi)
+      .limit(1)
+      .maybeSingle();
+
+    if (!employee) {
+      toast.error("Erro ao buscar dados do funcionário");
+      return;
+    }
+
+    generateEpiReceipt({
+      employeeName: employee.nome_completo,
+      employeeCpf: employee.cpf || "Não informado",
+      employeeRole: employee.cargo,
+      tipoEpi: epi.tipo_epi,
+      marcaModelo: stockData?.marca_modelo || null,
+      ca: stockData?.ca || null,
+      quantidade: epi.quantidade,
+      tamanho: stockData?.tamanho || null,
+      finalidade: stockData?.finalidade || null,
+      dataEntrega: epi.data_entrega,
+      observacoes: epi.observacoes,
+      assinatura: epi.assinatura_funcionario,
+    });
+
+    toast.success("Recibo gerado com sucesso!");
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
@@ -79,13 +119,23 @@ const EpiTab = ({ employeeId }: EpiTabProps) => {
                     <Shield className="w-4 h-4" />
                     {epi.tipo_epi}
                   </CardTitle>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => handleDelete(epi.id)}
-                  >
-                    <Trash2 className="w-4 h-4 text-destructive" />
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => handleReprintReceipt(epi)}
+                      title="Reimprimir Recibo"
+                    >
+                      <FileDown className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleDelete(epi.id)}
+                    >
+                      <Trash2 className="w-4 h-4 text-destructive" />
+                    </Button>
+                  </div>
                 </div>
               </CardHeader>
               <CardContent>
@@ -100,6 +150,12 @@ const EpiTab = ({ employeeId }: EpiTabProps) => {
                       {new Date(epi.data_entrega).toLocaleDateString("pt-BR")}
                     </p>
                   </div>
+                  {epi.assinatura_funcionario && (
+                    <div className="col-span-2">
+                      <p className="text-muted-foreground">Status da Assinatura</p>
+                      <p className="font-medium text-green-600">✓ Assinado digitalmente</p>
+                    </div>
+                  )}
                   {epi.observacoes && (
                     <div className="col-span-2">
                       <p className="text-muted-foreground">Observações</p>
