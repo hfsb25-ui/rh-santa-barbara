@@ -2,10 +2,21 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus, Calendar, Check } from "lucide-react";
+import { Plus, Calendar, Check, Pencil, Trash2 } from "lucide-react";
 import VacationForm from "@/components/forms/VacationForm";
+import EditVacationDialog from "@/components/forms/EditVacationDialog";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface VacationTabProps {
   employeeId: string;
@@ -15,6 +26,8 @@ interface VacationTabProps {
 const VacationTab = ({ employeeId, isManager = false }: VacationTabProps) => {
   const [ferias, setFerias] = useState<any[]>([]);
   const [showForm, setShowForm] = useState(false);
+  const [editingVacation, setEditingVacation] = useState<any>(null);
+  const [deletingVacationId, setDeletingVacationId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchFerias();
@@ -39,7 +52,8 @@ const VacationTab = ({ employeeId, isManager = false }: VacationTabProps) => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
-    const { error } = await supabase
+    // Update vacation record
+    const { error: feriaError } = await supabase
       .from("ferias")
       .update({
         data_retorno_confirmada: true,
@@ -48,12 +62,42 @@ const VacationTab = ({ employeeId, isManager = false }: VacationTabProps) => {
       })
       .eq("id", feriaId);
 
-    if (error) {
+    if (feriaError) {
       toast.error("Erro ao confirmar retorno");
+      return;
+    }
+
+    // Update employee status back to "ativo"
+    const { error: statusError } = await supabase
+      .from("employees")
+      .update({ status: "ativo" })
+      .eq("id", employeeId);
+
+    if (statusError) {
+      toast.error("Retorno confirmado, mas erro ao atualizar status");
     } else {
-      toast.success("Retorno confirmado!");
+      toast.success("Retorno confirmado e status atualizado!");
+    }
+    
+    fetchFerias();
+  };
+
+  const handleDeleteVacation = async () => {
+    if (!deletingVacationId) return;
+
+    const { error } = await supabase
+      .from("ferias")
+      .delete()
+      .eq("id", deletingVacationId);
+
+    if (error) {
+      toast.error("Erro ao excluir férias");
+    } else {
+      toast.success("Férias excluídas!");
       fetchFerias();
     }
+    
+    setDeletingVacationId(null);
   };
 
   const calculateProgress = (inicio: string, fim: string) => {
@@ -75,13 +119,15 @@ const VacationTab = ({ employeeId, isManager = false }: VacationTabProps) => {
     <div className="space-y-4">
       <div className="flex justify-between items-center">
         <h3 className="text-lg font-semibold">Férias</h3>
-        <Button onClick={() => setShowForm(!showForm)}>
-          <Plus className="w-4 h-4 mr-2" />
-          Registrar Férias
-        </Button>
+        {isManager && (
+          <Button onClick={() => setShowForm(!showForm)}>
+            <Plus className="w-4 h-4 mr-2" />
+            Registrar Férias
+          </Button>
+        )}
       </div>
 
-      {showForm && (
+      {showForm && isManager && (
         <VacationForm
           employeeId={employeeId}
           onSaved={handleSaved}
@@ -159,12 +205,61 @@ const VacationTab = ({ employeeId, isManager = false }: VacationTabProps) => {
                       Confirmar Retorno
                     </Button>
                   )}
+
+                  {isManager && (
+                    <div className="flex gap-2 pt-2 border-t">
+                      <Button
+                        onClick={() => setEditingVacation(feria)}
+                        variant="outline"
+                        size="sm"
+                        className="flex-1"
+                      >
+                        <Pencil className="w-4 h-4 mr-2" />
+                        Editar
+                      </Button>
+                      <Button
+                        onClick={() => setDeletingVacationId(feria.id)}
+                        variant="destructive"
+                        size="sm"
+                        className="flex-1"
+                      >
+                        <Trash2 className="w-4 h-4 mr-2" />
+                        Excluir
+                      </Button>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             );
           })}
         </div>
       )}
+
+      {editingVacation && (
+        <EditVacationDialog
+          vacation={editingVacation}
+          open={!!editingVacation}
+          onOpenChange={(open) => !open && setEditingVacation(null)}
+          onUpdated={fetchFerias}
+        />
+      )}
+
+      <AlertDialog open={!!deletingVacationId} onOpenChange={(open) => !open && setDeletingVacationId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir este registro de férias? Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteVacation}>
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
