@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { toast } from "sonner";
-import { Progress } from "@/components/ui/progress";
+import { VacationProgress } from "@/components/ui/vacation-progress";
 
 interface FuncionarioDashboardProps {
   user: User;
@@ -77,6 +77,7 @@ const FuncionarioDashboard = ({ user }: FuncionarioDashboardProps) => {
     if (!activeVacation) return null;
 
     const startDate = new Date(activeVacation.periodo_gozo_inicio);
+    const endDate = new Date(activeVacation.periodo_gozo_fim);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
@@ -84,8 +85,17 @@ const FuncionarioDashboard = ({ user }: FuncionarioDashboardProps) => {
     const daysRemaining = activeVacation.dias_totais - daysPassed;
 
     const progress = Math.min(100, Math.max(0, (daysPassed / activeVacation.dias_totais) * 100));
+    
+    const realVacationDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+    const timeOffDays = activeVacation.dias_totais - realVacationDays;
 
-    return { progress, daysRemaining: Math.max(0, daysRemaining), totalDays: activeVacation.dias_totais };
+    return { 
+      progress, 
+      daysRemaining: Math.max(0, daysRemaining), 
+      totalDays: activeVacation.dias_totais,
+      vacationDays: realVacationDays,
+      timeOffDays 
+    };
   };
 
   const handleLogout = async () => {
@@ -154,7 +164,25 @@ const FuncionarioDashboard = ({ user }: FuncionarioDashboardProps) => {
                           {vacationProgress.daysRemaining} {vacationProgress.daysRemaining === 1 ? 'dia' : 'dias'}
                         </span>
                       </div>
-                      <Progress value={vacationProgress.progress} className="h-3" />
+                      <VacationProgress 
+                        totalDays={vacationProgress.totalDays}
+                        daysPassed={vacationProgress.totalDays - vacationProgress.daysRemaining}
+                        vacationDays={vacationProgress.vacationDays}
+                        timeOffDays={vacationProgress.timeOffDays}
+                        className="h-3"
+                      />
+                      {vacationProgress.timeOffDays > 0 && (
+                        <div className="flex gap-2 text-xs text-muted-foreground justify-center">
+                          <div className="flex items-center gap-1">
+                            <div className="w-3 h-3 rounded-full bg-secondary" />
+                            <span>Férias ({vacationProgress.vacationDays})</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <div className="w-3 h-3 rounded-full bg-warning" />
+                            <span>Folgas ({vacationProgress.timeOffDays})</span>
+                          </div>
+                        </div>
+                      )}
                       <p className="text-xs text-muted-foreground text-center">
                         {Math.round(vacationProgress.progress)}% concluído
                       </p>
