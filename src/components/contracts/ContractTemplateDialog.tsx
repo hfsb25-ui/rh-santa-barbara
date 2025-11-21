@@ -9,9 +9,9 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Info } from "lucide-react";
+import { RichTextEditor } from "./RichTextEditor";
 
 interface Funcao {
   id: string;
@@ -52,42 +52,42 @@ export const ContractTemplateDialog = ({
   }, [existingTemplate, tipoContrato, funcao]);
 
   const getDefaultTemplate = () => {
-    return `CONTRATO DE TRABALHO - ${tipoContrato.toUpperCase()}
+    return `<h1 style="text-align: center;">CONTRATO DE TRABALHO - ${tipoContrato.toUpperCase()}</h1>
 
-CONTRATANTE: Hotel Fazenda Santa Bárbara
-CNPJ: [CNPJ da empresa]
+<p><strong>CONTRATANTE:</strong> Hotel Fazenda Santa Bárbara<br>
+<strong>CNPJ:</strong> [CNPJ da empresa]</p>
 
-CONTRATADO: {{NOME_COMPLETO}}
-CPF: {{CPF}}
-Endereço: {{ENDERECO}}
-Telefone: {{TELEFONE}}
+<p><strong>CONTRATADO:</strong> {{NOME_COMPLETO}}<br>
+<strong>CPF:</strong> {{CPF}}<br>
+<strong>Endereço:</strong> {{ENDERECO}}<br>
+<strong>Telefone:</strong> {{TELEFONE}}</p>
 
-FUNÇÃO: {{CARGO}}
-SETOR: {{SETOR}}
-DATA DE ADMISSÃO: {{DATA_ADMISSAO}}
-SALÁRIO: R$ {{SALARIO}}
+<p><strong>FUNÇÃO:</strong> {{CARGO}}<br>
+<strong>SETOR:</strong> {{SETOR}}<br>
+<strong>DATA DE ADMISSÃO:</strong> {{DATA_ADMISSAO}}<br>
+<strong>SALÁRIO:</strong> R$ {{SALARIO}}</p>
 
-[Adicione aqui as cláusulas específicas do contrato ${tipoContrato}]
+<p>[Adicione aqui as cláusulas específicas do contrato ${tipoContrato}]</p>
 
-CLÁUSULA PRIMEIRA - DO OBJETO
-...
+<h3>CLÁUSULA PRIMEIRA - DO OBJETO</h3>
+<p>...</p>
 
-CLÁUSULA SEGUNDA - DAS OBRIGAÇÕES
-...
+<h3>CLÁUSULA SEGUNDA - DAS OBRIGAÇÕES</h3>
+<p>...</p>
 
-CLÁUSULA TERCEIRA - DA REMUNERAÇÃO
-...
+<h3>CLÁUSULA TERCEIRA - DA REMUNERAÇÃO</h3>
+<p>...</p>
 
-CLÁUSULA QUARTA - DO PRAZO
-...
+<h3>CLÁUSULA QUARTA - DO PRAZO</h3>
+<p>...</p>
 
-Data: {{DATA_ATUAL}}
+<p>Data: {{DATA_ATUAL}}</p>
 
-_________________________
-Assinatura do Contratante
+<p>_________________________<br>
+Assinatura do Contratante</p>
 
-_________________________
-Assinatura do Contratado`;
+<p>_________________________<br>
+Assinatura do Contratado</p>`;
   };
 
   const handleSave = async () => {
@@ -183,11 +183,9 @@ Assinatura do Contratado`;
           </AlertDescription>
         </Alert>
 
-        <Textarea
-          value={conteudo}
-          onChange={(e) => setConteudo(e.target.value)}
-          className="min-h-[400px] font-mono text-sm"
-          placeholder="Digite o modelo do contrato..."
+        <RichTextEditor
+          content={conteudo}
+          onChange={setConteudo}
         />
 
         <div className="flex justify-end gap-2">

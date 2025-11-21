@@ -80,7 +80,7 @@ export const GenerateContractButton = ({
         format(new Date(), "dd/MM/yyyy", { locale: ptBR })
       );
 
-      // Gerar PDF
+      // Gerar PDF com suporte a HTML
       const doc = new jsPDF();
       const pageWidth = doc.internal.pageSize.width;
       const pageHeight = doc.internal.pageSize.height;
@@ -88,20 +88,97 @@ export const GenerateContractButton = ({
       const lineHeight = 7;
       let y = margin;
 
-      // Dividir o conteúdo em linhas
-      const lines = doc.splitTextToSize(
-        conteudo,
-        pageWidth - 2 * margin
-      );
-
-      // Adicionar linhas ao PDF
-      lines.forEach((line: string) => {
+      // Converter HTML para texto formatado
+      const tempDiv = document.createElement('div');
+      tempDiv.innerHTML = conteudo;
+      
+      // Processar cada elemento do HTML
+      const processElement = (element: HTMLElement, fontSize = 12, isBold = false, isItalic = false) => {
         if (y > pageHeight - margin) {
           doc.addPage();
           y = margin;
         }
-        doc.text(line, margin, y);
-        y += lineHeight;
+
+        const tagName = element.tagName?.toLowerCase();
+        
+        // Determinar estilo baseado na tag
+        if (tagName === 'h1') {
+          fontSize = 18;
+          isBold = true;
+        } else if (tagName === 'h2') {
+          fontSize = 16;
+          isBold = true;
+        } else if (tagName === 'h3') {
+          fontSize = 14;
+          isBold = true;
+        } else if (tagName === 'strong' || tagName === 'b') {
+          isBold = true;
+        } else if (tagName === 'em' || tagName === 'i') {
+          isItalic = true;
+        }
+
+        // Aplicar estilo
+        doc.setFontSize(fontSize);
+        const fontStyle = isBold && isItalic ? 'bolditalic' : isBold ? 'bold' : isItalic ? 'italic' : 'normal';
+        doc.setFont('helvetica', fontStyle);
+
+        // Processar texto ou filhos
+        if (element.childNodes.length === 0 || (element.childNodes.length === 1 && element.childNodes[0].nodeType === 3)) {
+          const text = element.textContent || '';
+          if (text.trim()) {
+            const lines = doc.splitTextToSize(text, pageWidth - 2 * margin);
+            lines.forEach((line: string) => {
+              if (y > pageHeight - margin) {
+                doc.addPage();
+                y = margin;
+              }
+              
+              // Alinhamento
+              const align = element.style?.textAlign || 'left';
+              let x = margin;
+              if (align === 'center') {
+                x = pageWidth / 2;
+                doc.text(line, x, y, { align: 'center' });
+              } else if (align === 'right') {
+                x = pageWidth - margin;
+                doc.text(line, x, y, { align: 'right' });
+              } else {
+                doc.text(line, x, y);
+              }
+              
+              y += lineHeight;
+            });
+          }
+        } else {
+          element.childNodes.forEach((child) => {
+            if (child.nodeType === 3) {
+              const text = child.textContent || '';
+              if (text.trim()) {
+                const lines = doc.splitTextToSize(text, pageWidth - 2 * margin);
+                lines.forEach((line: string) => {
+                  if (y > pageHeight - margin) {
+                    doc.addPage();
+                    y = margin;
+                  }
+                  doc.text(line, margin, y);
+                  y += lineHeight;
+                });
+              }
+            } else if (child.nodeType === 1) {
+              processElement(child as HTMLElement, fontSize, isBold, isItalic);
+            }
+          });
+        }
+
+        // Adicionar espaço extra após cabeçalhos e parágrafos
+        if (['h1', 'h2', 'h3', 'p', 'li'].includes(tagName)) {
+          y += 3;
+        }
+      };
+
+      // Processar todos os elementos do HTML
+      Array.from(tempDiv.children).forEach((child) => {
+        processElement(child as HTMLElement);
       });
 
       // Salvar PDF
