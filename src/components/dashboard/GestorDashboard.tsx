@@ -399,6 +399,10 @@ const GestorDashboard = ({ user }: GestorDashboardProps) => {
               <Briefcase className="w-4 h-4 mr-2" />
               Funções
             </Button>
+            <Button variant="outline" onClick={() => navigate("/managers")} className="w-full">
+              <Shield className="w-4 h-4 mr-2" />
+              Gestores
+            </Button>
             <Button variant="outline" onClick={() => navigate("/contracts")} className="w-full">
               <FileSignature className="w-4 h-4 mr-2" />
               Contratos
