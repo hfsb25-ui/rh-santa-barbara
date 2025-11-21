@@ -3,12 +3,34 @@ import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, UserCog } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Loader2, UserCog, Pencil, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import ManagerForm from "./ManagerForm";
+import EditManagerDialog from "./EditManagerDialog";
+import { toast } from "sonner";
+
+interface Manager {
+  user_id: string;
+  profiles: {
+    nome_completo: string;
+    email: string;
+  } | null;
+}
 
 export default function ManagerList() {
   const [showForm, setShowForm] = useState(false);
+  const [editingManager, setEditingManager] = useState<Manager | null>(null);
+  const [deletingManager, setDeletingManager] = useState<Manager | null>(null);
 
   const { data: managers, isLoading, refetch } = useQuery({
     queryKey: ["managers"],
@@ -25,9 +47,31 @@ export default function ManagerList() {
         .eq("role", "gestor");
 
       if (error) throw error;
-      return data;
+      return data as Manager[];
     },
   });
+
+  const handleDelete = async () => {
+    if (!deletingManager) return;
+
+    try {
+      const { error } = await supabase.functions.invoke('delete-user', {
+        body: {
+          user_id: deletingManager.user_id,
+        }
+      });
+
+      if (error) throw error;
+
+      toast.success("Gestor excluído com sucesso!");
+      refetch();
+    } catch (error: any) {
+      console.error("Erro ao excluir gestor:", error);
+      toast.error(error.message || "Erro ao excluir gestor");
+    } finally {
+      setDeletingManager(null);
+    }
+  };
 
   if (showForm) {
     return (
@@ -72,12 +116,54 @@ export default function ManagerList() {
                     {manager.profiles?.email}
                   </p>
                 </div>
-                <Badge variant="secondary">Gestor</Badge>
+                <div className="flex items-center gap-2">
+                  <Badge variant="secondary">Gestor</Badge>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setEditingManager(manager)}
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setDeletingManager(manager)}
+                  >
+                    <Trash2 className="h-4 w-4 text-destructive" />
+                  </Button>
+                </div>
               </div>
             </CardContent>
           </Card>
         ))}
       </div>
+
+      <EditManagerDialog
+        manager={editingManager}
+        open={!!editingManager}
+        onOpenChange={(open) => !open && setEditingManager(null)}
+        onSuccess={refetch}
+      />
+
+      <AlertDialog open={!!deletingManager} onOpenChange={(open) => !open && setDeletingManager(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir o gestor{" "}
+              <strong>{deletingManager?.profiles?.nome_completo}</strong>?
+              Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
