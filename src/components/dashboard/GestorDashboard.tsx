@@ -726,6 +726,10 @@ const GestorDashboard = ({ user }: GestorDashboardProps) => {
                   <FileSignature className="w-4 h-4 mr-2" />
                   Contratos
                 </Button>
+                <Button variant="outline" onClick={() => navigate("/recrutamento")} className="w-full">
+                  <Briefcase className="w-4 h-4 mr-2" />
+                  Recrutamento
+                </Button>
               </div>
             </div>
 
