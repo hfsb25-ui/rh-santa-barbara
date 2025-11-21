@@ -10,6 +10,7 @@ interface Company {
   id: string;
   nome: string;
   cnpj: string | null;
+  endereco: string | null;
 }
 
 export default function CompanyList() {
@@ -70,7 +71,10 @@ export default function CompanyList() {
                 {company.cnpj && (
                   <p className="text-sm text-muted-foreground">CNPJ: {company.cnpj}</p>
                 )}
-                <Button 
+                {company.endereco && (
+                  <p className="text-sm text-muted-foreground">Endereço: {company.endereco}</p>
+                )}
+                <Button
                   variant="outline" 
                   size="sm" 
                   onClick={() => handleEdit(company)}
