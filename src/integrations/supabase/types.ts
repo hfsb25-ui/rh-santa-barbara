@@ -158,12 +158,14 @@ export type Database = {
           created_at: string | null
           data_admissao: string | null
           data_desligamento: string | null
+          data_nascimento: string | null
           empresa_id: string | null
           endereco: string | null
           foto_url: string | null
           id: string
           nome_completo: string
           quantidade_folgas: number | null
+          rg: string | null
           salario: number | null
           setor: string | null
           sexo: string | null
@@ -181,12 +183,14 @@ export type Database = {
           created_at?: string | null
           data_admissao?: string | null
           data_desligamento?: string | null
+          data_nascimento?: string | null
           empresa_id?: string | null
           endereco?: string | null
           foto_url?: string | null
           id?: string
           nome_completo: string
           quantidade_folgas?: number | null
+          rg?: string | null
           salario?: number | null
           setor?: string | null
           sexo?: string | null
@@ -204,12 +208,14 @@ export type Database = {
           created_at?: string | null
           data_admissao?: string | null
           data_desligamento?: string | null
+          data_nascimento?: string | null
           empresa_id?: string | null
           endereco?: string | null
           foto_url?: string | null
           id?: string
           nome_completo?: string
           quantidade_folgas?: number | null
+          rg?: string | null
           salario?: number | null
           setor?: string | null
           sexo?: string | null

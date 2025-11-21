@@ -129,8 +129,10 @@ const EmployeeForm = ({ employeeId, initialData, onSaved, onCancel }: EmployeeFo
       tipo_salario: formData.get("tipo_salario") as "mensal" | "diario" | "por_hora" || "mensal",
       tipo_contrato: formData.get("tipo_contrato") as "fixo" | "intermitente" | "prestador_servico" || "fixo",
       cpf: cpf,
+      rg: formData.get("rg") as string || null,
       telefone: formData.get("telefone") as string || null,
       endereco: formData.get("endereco") as string || null,
+      data_nascimento: formData.get("data_nascimento") as string || null,
       data_admissao: formData.get("data_admissao") as string || null,
       status: status,
       data_desligamento: status === "demitido" ? (formData.get("data_desligamento") as string || null) : null,
@@ -385,6 +387,21 @@ const EmployeeForm = ({ employeeId, initialData, onSaved, onCancel }: EmployeeFo
                 defaultValue={initialData?.cpf} 
                 required={!employeeId}
                 disabled={!!employeeId}
+              />
+            </div>
+            <div>
+              <Label>RG</Label>
+              <Input 
+                name="rg" 
+                defaultValue={initialData?.rg}
+              />
+            </div>
+            <div>
+              <Label>Data de Nascimento</Label>
+              <Input 
+                name="data_nascimento" 
+                type="date" 
+                defaultValue={initialData?.data_nascimento}
               />
             </div>
             {!employeeId && (
