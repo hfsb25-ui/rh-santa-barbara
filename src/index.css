@@ -121,3 +121,22 @@ All colors MUST be HSL.
     @apply bg-background text-foreground;
   }
 }
+
+/* Scroll suave para tabs no mobile */
+.tabs-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(var(--muted-foreground)) transparent;
+}
+
+.tabs-scroll::-webkit-scrollbar {
+  height: 4px;
+}
+
+.tabs-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.tabs-scroll::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted-foreground));
+  border-radius: 2px;
+}
