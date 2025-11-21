@@ -809,6 +809,57 @@ export type Database = {
           },
         ]
       }
+      historico_reajustes_salariais: {
+        Row: {
+          aplicado_em: string
+          aplicado_por: string | null
+          created_at: string | null
+          employee_id: string
+          id: string
+          justificativa: string
+          percentual_reajuste: number | null
+          salario_anterior: number
+          salario_novo: number
+        }
+        Insert: {
+          aplicado_em?: string
+          aplicado_por?: string | null
+          created_at?: string | null
+          employee_id: string
+          id?: string
+          justificativa: string
+          percentual_reajuste?: number | null
+          salario_anterior: number
+          salario_novo: number
+        }
+        Update: {
+          aplicado_em?: string
+          aplicado_por?: string | null
+          created_at?: string | null
+          employee_id?: string
+          id?: string
+          justificativa?: string
+          percentual_reajuste?: number | null
+          salario_anterior?: number
+          salario_novo?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "historico_reajustes_salariais_aplicado_por_fkey"
+            columns: ["aplicado_por"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "historico_reajustes_salariais_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       login_history: {
         Row: {
           employee_id: string | null

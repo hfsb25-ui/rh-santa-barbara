@@ -24,6 +24,7 @@ import {
   Receipt,
   Briefcase,
   FileSignature,
+  TrendingUp as TrendingUpIcon,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -366,6 +367,10 @@ const GestorDashboard = ({ user }: GestorDashboardProps) => {
             <Button variant="outline" onClick={() => navigate("/payroll")} className="w-full">
               <Receipt className="w-4 h-4 mr-2" />
               Folha de Pagamento
+            </Button>
+            <Button variant="outline" onClick={() => navigate("/salary-adjustment")} className="w-full">
+              <TrendingUpIcon className="w-4 h-4 mr-2" />
+              Reajuste Salarial
             </Button>
             <Button variant="outline" onClick={() => navigate("/companies")} className="w-full">
               <Building2 className="w-4 h-4 mr-2" />
