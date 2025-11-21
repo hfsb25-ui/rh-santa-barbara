@@ -18,6 +18,7 @@ import AbsenceTab from "@/components/employees/tabs/AbsenceTab";
 import FaultTab from "@/components/employees/tabs/FaultTab";
 import TimeOffTab from "@/components/employees/tabs/TimeOffTab";
 import FilesTab from "@/components/employees/tabs/FilesTab";
+import { SalaryHistoryTab } from "@/components/employees/tabs/SalaryHistoryTab";
 
 const EmployeeDetails = () => {
   const { id } = useParams();
@@ -106,7 +107,7 @@ const EmployeeDetails = () => {
         <EmployeeInfo employee={employee} onUpdate={fetchEmployee} />
 
         <Tabs defaultValue="epis" className="mt-6">
-          <TabsList className={isMobile ? "inline-flex w-full overflow-x-auto justify-start" : "grid w-full grid-cols-7"}>
+          <TabsList className={isMobile ? "inline-flex w-full overflow-x-auto justify-start" : "grid w-full grid-cols-8"}>
             <TabsTrigger value="epis" className={isMobile ? "flex-shrink-0" : ""}>EPIs</TabsTrigger>
             <TabsTrigger value="uniformes" className={isMobile ? "flex-shrink-0" : ""}>Uniformes</TabsTrigger>
             <TabsTrigger value="ferias" className={isMobile ? "flex-shrink-0" : ""}>Férias</TabsTrigger>
@@ -114,6 +115,7 @@ const EmployeeDetails = () => {
             <TabsTrigger value="folgas" className={isMobile ? "flex-shrink-0" : ""}>Folgas</TabsTrigger>
             <TabsTrigger value="faltas" className={isMobile ? "flex-shrink-0" : ""}>Faltas</TabsTrigger>
             <TabsTrigger value="arquivos" className={isMobile ? "flex-shrink-0" : ""}>Arquivos</TabsTrigger>
+            <TabsTrigger value="reajustes" className={isMobile ? "flex-shrink-0" : ""}>Histórico Salarial</TabsTrigger>
           </TabsList>
 
           <TabsContent value="epis">
@@ -142,6 +144,10 @@ const EmployeeDetails = () => {
 
           <TabsContent value="arquivos">
             <FilesTab employeeId={id!} />
+          </TabsContent>
+
+          <TabsContent value="reajustes">
+            <SalaryHistoryTab employeeId={id!} />
           </TabsContent>
         </Tabs>
       </div>
