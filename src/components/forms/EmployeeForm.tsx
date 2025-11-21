@@ -126,6 +126,7 @@ const EmployeeForm = ({ employeeId, initialData, onSaved, onCancel }: EmployeeFo
       setor: formData.get("setor") as string || null,
       empresa_id: formData.get("empresa_id") as string || null,
       salario: salario ? parseFloat(salario) : null,
+      tipo_salario: formData.get("tipo_salario") as "mensal" | "diario" | "por_hora" || "mensal",
       tipo_contrato: formData.get("tipo_contrato") as "fixo" | "intermitente" | "prestador_servico" || "fixo",
       cpf: cpf,
       telefone: formData.get("telefone") as string || null,
@@ -348,6 +349,19 @@ const EmployeeForm = ({ employeeId, initialData, onSaved, onCancel }: EmployeeFo
                 placeholder="0.00"
                 defaultValue={initialData?.salario} 
               />
+            </div>
+            <div>
+              <Label>Tipo de Salário</Label>
+              <Select name="tipo_salario" defaultValue={initialData?.tipo_salario || "mensal"}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione o tipo" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="mensal">Mensal</SelectItem>
+                  <SelectItem value="diario">Diário</SelectItem>
+                  <SelectItem value="por_hora">Por Hora</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div>
               <Label>CPF</Label>
