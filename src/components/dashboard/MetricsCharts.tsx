@@ -27,7 +27,7 @@ const MetricsCharts = ({ statusData, sectorData, evolutionData }: MetricsChartsP
                 cx="50%"
                 cy="50%"
                 labelLine={false}
-                label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                label={false}
                 outerRadius={80}
                 fill="hsl(var(--primary))"
                 dataKey="value"
@@ -36,7 +36,18 @@ const MetricsCharts = ({ statusData, sectorData, evolutionData }: MetricsChartsP
                   <Cell key={`cell-${index}`} fill={entry.color} />
                 ))}
               </Pie>
-              <Tooltip />
+              <Tooltip 
+                contentStyle={{ 
+                  backgroundColor: "hsl(var(--card))", 
+                  border: "1px solid hsl(var(--border))",
+                  borderRadius: "var(--radius)"
+                }}
+              />
+              <Legend 
+                verticalAlign="bottom" 
+                height={36}
+                formatter={(value, entry: any) => `${entry.payload.name}: ${entry.payload.value}`}
+              />
             </PieChart>
           </ResponsiveContainer>
         </CardContent>
