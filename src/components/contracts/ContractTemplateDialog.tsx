@@ -55,7 +55,8 @@ export const ContractTemplateDialog = ({
     return `<h1 style="text-align: center;">CONTRATO DE TRABALHO - ${tipoContrato.toUpperCase()}</h1>
 
 <p><strong>CONTRATANTE:</strong> {{NOME_EMPRESA}}<br>
-<strong>CNPJ:</strong> {{CNPJ_EMPRESA}}</p>
+<strong>CNPJ:</strong> {{CNPJ_EMPRESA}}<br>
+<strong>Endereço:</strong> {{ENDERECO_EMPRESA}}</p>
 
 <p><strong>CONTRATADO:</strong> {{NOME_COMPLETO}}<br>
 <strong>CPF:</strong> {{CPF}}<br>
@@ -157,6 +158,9 @@ Assinatura do Contratado</p>`;
               </li>
               <li>
                 <code>{"{{CNPJ_EMPRESA}}"}</code> - CNPJ da empresa
+              </li>
+              <li>
+                <code>{"{{ENDERECO_EMPRESA}}"}</code> - Endereço da empresa
               </li>
               <li>
                 <code>{"{{NOME_COMPLETO}}"}</code> - Nome completo do funcionário

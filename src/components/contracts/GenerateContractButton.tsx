@@ -31,17 +31,19 @@ export const GenerateContractButton = ({
       // Buscar dados da empresa
       let empresaNome = "";
       let empresaCnpj = "";
+      let empresaEndereco = "";
       
       if (employee.empresa_id) {
         const { data: empresaData, error: empresaError } = await supabase
           .from("empresas")
-          .select("nome, cnpj")
+          .select("nome, cnpj, endereco")
           .eq("id", employee.empresa_id)
           .maybeSingle();
 
         if (!empresaError && empresaData) {
           empresaNome = empresaData.nome;
           empresaCnpj = empresaData.cnpj || "";
+          empresaEndereco = empresaData.endereco || "";
         }
       }
 
@@ -71,6 +73,7 @@ export const GenerateContractButton = ({
       let conteudo = templateData.conteudo_template;
       conteudo = conteudo.replace(/\{\{NOME_EMPRESA\}\}/g, empresaNome);
       conteudo = conteudo.replace(/\{\{CNPJ_EMPRESA\}\}/g, empresaCnpj);
+      conteudo = conteudo.replace(/\{\{ENDERECO_EMPRESA\}\}/g, empresaEndereco);
       conteudo = conteudo.replace(/\{\{NOME_COMPLETO\}\}/g, employee.nome_completo || "");
       conteudo = conteudo.replace(/\{\{CPF\}\}/g, employee.cpf || "");
       conteudo = conteudo.replace(/\{\{ENDERECO\}\}/g, employee.endereco || "");
