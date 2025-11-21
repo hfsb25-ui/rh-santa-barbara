@@ -17,6 +17,10 @@ import Contracts from "./pages/Contracts";
 import Managers from "./pages/Managers";
 import SalaryAdjustment from "./pages/SalaryAdjustment";
 import NotFound from "./pages/NotFound";
+import Vagas from "./pages/Vagas";
+import VagaDetalhes from "./pages/VagaDetalhes";
+import Recrutamento from "./pages/Recrutamento";
+import CandidaturasVaga from "./pages/CandidaturasVaga";
 
 const queryClient = new QueryClient();
 
@@ -41,6 +45,10 @@ const App = () => (
           <Route path="/contracts" element={<Contracts />} />
           <Route path="/managers" element={<Managers />} />
           <Route path="/salary-adjustment" element={<SalaryAdjustment />} />
+          <Route path="/vagas" element={<Vagas />} />
+          <Route path="/vaga/:id" element={<VagaDetalhes />} />
+          <Route path="/recrutamento" element={<Recrutamento />} />
+          <Route path="/recrutamento/vaga/:id/candidaturas" element={<CandidaturasVaga />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

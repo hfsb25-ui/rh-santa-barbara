@@ -100,6 +100,93 @@ export type Database = {
           },
         ]
       }
+      candidaturas: {
+        Row: {
+          avaliacao_gestor: string | null
+          avaliado_por: string | null
+          carta_apresentacao: string | null
+          cpf: string
+          created_at: string | null
+          curriculum_url: string | null
+          data_avaliacao: string | null
+          data_candidatura: string | null
+          data_entrevista: string | null
+          data_nascimento: string
+          email: string
+          endereco: string | null
+          experiencia_resumo: string | null
+          id: string
+          motivo_reprovacao: string | null
+          nome_completo: string
+          nota_avaliacao: number | null
+          status: Database["public"]["Enums"]["candidatura_status"] | null
+          telefone: string
+          updated_at: string | null
+          vaga_id: string
+        }
+        Insert: {
+          avaliacao_gestor?: string | null
+          avaliado_por?: string | null
+          carta_apresentacao?: string | null
+          cpf: string
+          created_at?: string | null
+          curriculum_url?: string | null
+          data_avaliacao?: string | null
+          data_candidatura?: string | null
+          data_entrevista?: string | null
+          data_nascimento: string
+          email: string
+          endereco?: string | null
+          experiencia_resumo?: string | null
+          id?: string
+          motivo_reprovacao?: string | null
+          nome_completo: string
+          nota_avaliacao?: number | null
+          status?: Database["public"]["Enums"]["candidatura_status"] | null
+          telefone: string
+          updated_at?: string | null
+          vaga_id: string
+        }
+        Update: {
+          avaliacao_gestor?: string | null
+          avaliado_por?: string | null
+          carta_apresentacao?: string | null
+          cpf?: string
+          created_at?: string | null
+          curriculum_url?: string | null
+          data_avaliacao?: string | null
+          data_candidatura?: string | null
+          data_entrevista?: string | null
+          data_nascimento?: string
+          email?: string
+          endereco?: string | null
+          experiencia_resumo?: string | null
+          id?: string
+          motivo_reprovacao?: string | null
+          nome_completo?: string
+          nota_avaliacao?: number | null
+          status?: Database["public"]["Enums"]["candidatura_status"] | null
+          telefone?: string
+          updated_at?: string | null
+          vaga_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "candidaturas_avaliado_por_fkey"
+            columns: ["avaliado_por"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "candidaturas_vaga_id_fkey"
+            columns: ["vaga_id"]
+            isOneToOne: false
+            referencedRelation: "vagas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       employee_files: {
         Row: {
           created_at: string
@@ -869,6 +956,57 @@ export type Database = {
           },
         ]
       }
+      historico_status_candidatura: {
+        Row: {
+          alterado_em: string | null
+          alterado_por: string | null
+          candidatura_id: string
+          id: string
+          observacao: string | null
+          status_anterior:
+            | Database["public"]["Enums"]["candidatura_status"]
+            | null
+          status_novo: Database["public"]["Enums"]["candidatura_status"]
+        }
+        Insert: {
+          alterado_em?: string | null
+          alterado_por?: string | null
+          candidatura_id: string
+          id?: string
+          observacao?: string | null
+          status_anterior?:
+            | Database["public"]["Enums"]["candidatura_status"]
+            | null
+          status_novo: Database["public"]["Enums"]["candidatura_status"]
+        }
+        Update: {
+          alterado_em?: string | null
+          alterado_por?: string | null
+          candidatura_id?: string
+          id?: string
+          observacao?: string | null
+          status_anterior?:
+            | Database["public"]["Enums"]["candidatura_status"]
+            | null
+          status_novo?: Database["public"]["Enums"]["candidatura_status"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "historico_status_candidatura_alterado_por_fkey"
+            columns: ["alterado_por"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "historico_status_candidatura_candidatura_id_fkey"
+            columns: ["candidatura_id"]
+            isOneToOne: false
+            referencedRelation: "candidaturas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       login_history: {
         Row: {
           employee_id: string | null
@@ -1067,6 +1205,101 @@ export type Database = {
           },
         ]
       }
+      vagas: {
+        Row: {
+          beneficios: string | null
+          created_at: string | null
+          created_by: string | null
+          data_abertura: string
+          data_fechamento: string | null
+          descricao: string
+          empresa_id: string | null
+          exibir_salario: boolean | null
+          funcao_id: string | null
+          id: string
+          quantidade_vagas: number | null
+          requisitos: string
+          salario: number | null
+          setor_id: string | null
+          status: Database["public"]["Enums"]["vaga_status"] | null
+          tipo_contrato: Database["public"]["Enums"]["tipo_contrato"]
+          tipo_salario: Database["public"]["Enums"]["tipo_salario"]
+          titulo: string
+          updated_at: string | null
+        }
+        Insert: {
+          beneficios?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          data_abertura?: string
+          data_fechamento?: string | null
+          descricao: string
+          empresa_id?: string | null
+          exibir_salario?: boolean | null
+          funcao_id?: string | null
+          id?: string
+          quantidade_vagas?: number | null
+          requisitos: string
+          salario?: number | null
+          setor_id?: string | null
+          status?: Database["public"]["Enums"]["vaga_status"] | null
+          tipo_contrato: Database["public"]["Enums"]["tipo_contrato"]
+          tipo_salario: Database["public"]["Enums"]["tipo_salario"]
+          titulo: string
+          updated_at?: string | null
+        }
+        Update: {
+          beneficios?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          data_abertura?: string
+          data_fechamento?: string | null
+          descricao?: string
+          empresa_id?: string | null
+          exibir_salario?: boolean | null
+          funcao_id?: string | null
+          id?: string
+          quantidade_vagas?: number | null
+          requisitos?: string
+          salario?: number | null
+          setor_id?: string | null
+          status?: Database["public"]["Enums"]["vaga_status"] | null
+          tipo_contrato?: Database["public"]["Enums"]["tipo_contrato"]
+          tipo_salario?: Database["public"]["Enums"]["tipo_salario"]
+          titulo?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vagas_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vagas_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vagas_funcao_id_fkey"
+            columns: ["funcao_id"]
+            isOneToOne: false
+            referencedRelation: "funcoes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vagas_setor_id_fkey"
+            columns: ["setor_id"]
+            isOneToOne: false
+            referencedRelation: "setores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -1082,9 +1315,17 @@ export type Database = {
     }
     Enums: {
       app_role: "gestor" | "funcionario"
+      candidatura_status:
+        | "nova"
+        | "em_analise"
+        | "entrevista_agendada"
+        | "aprovada"
+        | "reprovada"
+        | "contratada"
       employee_status: "ativo" | "ferias" | "afastado" | "demitido"
       tipo_contrato: "fixo" | "intermitente" | "prestador_servico"
       tipo_salario: "mensal" | "diario" | "por_hora"
+      vaga_status: "aberta" | "pausada" | "fechada"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1213,9 +1454,18 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["gestor", "funcionario"],
+      candidatura_status: [
+        "nova",
+        "em_analise",
+        "entrevista_agendada",
+        "aprovada",
+        "reprovada",
+        "contratada",
+      ],
       employee_status: ["ativo", "ferias", "afastado", "demitido"],
       tipo_contrato: ["fixo", "intermitente", "prestador_servico"],
       tipo_salario: ["mensal", "diario", "por_hora"],
+      vaga_status: ["aberta", "pausada", "fechada"],
     },
   },
 } as const
