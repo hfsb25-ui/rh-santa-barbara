@@ -730,6 +730,10 @@ const GestorDashboard = ({ user }: GestorDashboardProps) => {
                   <Briefcase className="w-4 h-4 mr-2" />
                   Recrutamento
                 </Button>
+                <Button variant="outline" onClick={() => navigate("/vagas")} className="w-full">
+                  <Users className="w-4 h-4 mr-2" />
+                  Vagas Públicas
+                </Button>
               </div>
             </div>
 
