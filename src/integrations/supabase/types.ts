@@ -169,6 +169,7 @@ export type Database = {
           status: Database["public"]["Enums"]["employee_status"] | null
           telefone: string | null
           tipo_contrato: Database["public"]["Enums"]["tipo_contrato"] | null
+          tipo_salario: Database["public"]["Enums"]["tipo_salario"] | null
           ultima_alteracao_folgas: string | null
           updated_at: string | null
           user_id: string | null
@@ -190,6 +191,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["employee_status"] | null
           telefone?: string | null
           tipo_contrato?: Database["public"]["Enums"]["tipo_contrato"] | null
+          tipo_salario?: Database["public"]["Enums"]["tipo_salario"] | null
           ultima_alteracao_folgas?: string | null
           updated_at?: string | null
           user_id?: string | null
@@ -211,6 +213,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["employee_status"] | null
           telefone?: string | null
           tipo_contrato?: Database["public"]["Enums"]["tipo_contrato"] | null
+          tipo_salario?: Database["public"]["Enums"]["tipo_salario"] | null
           ultima_alteracao_folgas?: string | null
           updated_at?: string | null
           user_id?: string | null
@@ -1021,6 +1024,7 @@ export type Database = {
       app_role: "gestor" | "funcionario"
       employee_status: "ativo" | "ferias" | "afastado" | "demitido"
       tipo_contrato: "fixo" | "intermitente" | "prestador_servico"
+      tipo_salario: "mensal" | "diario" | "por_hora"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1151,6 +1155,7 @@ export const Constants = {
       app_role: ["gestor", "funcionario"],
       employee_status: ["ativo", "ferias", "afastado", "demitido"],
       tipo_contrato: ["fixo", "intermitente", "prestador_servico"],
+      tipo_salario: ["mensal", "diario", "por_hora"],
     },
   },
 } as const
