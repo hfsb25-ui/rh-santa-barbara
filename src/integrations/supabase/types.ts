@@ -166,6 +166,7 @@ export type Database = {
           quantidade_folgas: number | null
           salario: number | null
           setor: string | null
+          sexo: string | null
           status: Database["public"]["Enums"]["employee_status"] | null
           telefone: string | null
           tipo_contrato: Database["public"]["Enums"]["tipo_contrato"] | null
@@ -188,6 +189,7 @@ export type Database = {
           quantidade_folgas?: number | null
           salario?: number | null
           setor?: string | null
+          sexo?: string | null
           status?: Database["public"]["Enums"]["employee_status"] | null
           telefone?: string | null
           tipo_contrato?: Database["public"]["Enums"]["tipo_contrato"] | null
@@ -210,6 +212,7 @@ export type Database = {
           quantidade_folgas?: number | null
           salario?: number | null
           setor?: string | null
+          sexo?: string | null
           status?: Database["public"]["Enums"]["employee_status"] | null
           telefone?: string | null
           tipo_contrato?: Database["public"]["Enums"]["tipo_contrato"] | null
