@@ -22,10 +22,12 @@ export default function CompanyForm({ companyId, initialData, onSaved, onCancel 
     const formData = new FormData(e.currentTarget);
     const nome = formData.get("nome") as string;
     const cnpj = formData.get("cnpj") as string;
+    const endereco = formData.get("endereco") as string;
 
     const companyData = {
       nome,
       cnpj: cnpj || null,
+      endereco: endereco || null,
     };
 
     let error;
@@ -61,6 +63,11 @@ export default function CompanyForm({ companyId, initialData, onSaved, onCancel 
       <div>
         <Label htmlFor="cnpj">CNPJ</Label>
         <Input id="cnpj" name="cnpj" defaultValue={initialData?.cnpj} />
+      </div>
+
+      <div>
+        <Label htmlFor="endereco">Endereço</Label>
+        <Input id="endereco" name="endereco" defaultValue={initialData?.endereco} />
       </div>
 
       <div className="flex gap-2 justify-end">
