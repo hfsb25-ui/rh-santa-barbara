@@ -539,6 +539,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "folha_pagamento_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "folha_pagamento_employee_id_fkey"
             columns: ["employee_id"]
             isOneToOne: false
