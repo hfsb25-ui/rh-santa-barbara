@@ -134,6 +134,7 @@ const EmployeeForm = ({ employeeId, initialData, onSaved, onCancel }: EmployeeFo
       data_admissao: formData.get("data_admissao") as string || null,
       status: status,
       data_desligamento: status === "demitido" ? (formData.get("data_desligamento") as string || null) : null,
+      sexo: formData.get("sexo") as string || null,
     };
 
     try {
@@ -360,6 +361,20 @@ const EmployeeForm = ({ employeeId, initialData, onSaved, onCancel }: EmployeeFo
                   <SelectItem value="mensal">Mensal</SelectItem>
                   <SelectItem value="diario">Diário</SelectItem>
                   <SelectItem value="por_hora">Por Hora</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Sexo</Label>
+              <Select name="sexo" defaultValue={initialData?.sexo || undefined}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione o sexo" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Masculino">Masculino</SelectItem>
+                  <SelectItem value="Feminino">Feminino</SelectItem>
+                  <SelectItem value="Outro">Outro</SelectItem>
+                  <SelectItem value="Prefiro não informar">Prefiro não informar</SelectItem>
                 </SelectContent>
               </Select>
             </div>
