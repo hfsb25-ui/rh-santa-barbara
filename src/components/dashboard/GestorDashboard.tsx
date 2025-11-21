@@ -490,24 +490,24 @@ const GestorDashboard = ({ user }: GestorDashboardProps) => {
       <div className="container mx-auto px-4 py-8 space-y-8">
         {/* Navigation Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-2 lg:grid-cols-5">
-            <TabsTrigger value="overview" className="flex items-center gap-2">
+          <TabsList className="inline-flex lg:grid w-full lg:grid-cols-5 overflow-x-auto tabs-scroll">
+            <TabsTrigger value="overview" className="flex items-center gap-2 flex-shrink-0 min-w-fit">
               <LayoutDashboard className="w-4 h-4" />
               Visão Geral
             </TabsTrigger>
-            <TabsTrigger value="charts" className="flex items-center gap-2">
+            <TabsTrigger value="charts" className="flex items-center gap-2 flex-shrink-0 min-w-fit">
               <BarChart3 className="w-4 h-4" />
               Gráficos
             </TabsTrigger>
-            <TabsTrigger value="financial" className="flex items-center gap-2">
+            <TabsTrigger value="financial" className="flex items-center gap-2 flex-shrink-0 min-w-fit">
               <DollarSign className="w-4 h-4" />
               Financeiro
             </TabsTrigger>
-            <TabsTrigger value="stock" className="flex items-center gap-2">
+            <TabsTrigger value="stock" className="flex items-center gap-2 flex-shrink-0 min-w-fit">
               <Package className="w-4 h-4" />
               Estoque
             </TabsTrigger>
-            <TabsTrigger value="attendance" className="flex items-center gap-2">
+            <TabsTrigger value="attendance" className="flex items-center gap-2 flex-shrink-0 min-w-fit">
               <FileText className="w-4 h-4" />
               Frequência
             </TabsTrigger>
