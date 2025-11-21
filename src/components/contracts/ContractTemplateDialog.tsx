@@ -54,8 +54,8 @@ export const ContractTemplateDialog = ({
   const getDefaultTemplate = () => {
     return `<h1 style="text-align: center;">CONTRATO DE TRABALHO - ${tipoContrato.toUpperCase()}</h1>
 
-<p><strong>CONTRATANTE:</strong> Hotel Fazenda Santa Bárbara<br>
-<strong>CNPJ:</strong> [CNPJ da empresa]</p>
+<p><strong>CONTRATANTE:</strong> {{NOME_EMPRESA}}<br>
+<strong>CNPJ:</strong> {{CNPJ_EMPRESA}}</p>
 
 <p><strong>CONTRATADO:</strong> {{NOME_COMPLETO}}<br>
 <strong>CPF:</strong> {{CPF}}<br>
@@ -150,8 +150,14 @@ Assinatura do Contratado</p>`;
           <Info className="h-4 w-4" />
           <AlertDescription>
             Use as variáveis abaixo no texto do contrato. Elas serão substituídas
-            automaticamente pelos dados do funcionário:
+            automaticamente pelos dados do funcionário e da empresa:
             <ul className="list-disc list-inside mt-2 text-xs space-y-1">
+              <li>
+                <code>{"{{NOME_EMPRESA}}"}</code> - Nome da empresa
+              </li>
+              <li>
+                <code>{"{{CNPJ_EMPRESA}}"}</code> - CNPJ da empresa
+              </li>
               <li>
                 <code>{"{{NOME_COMPLETO}}"}</code> - Nome completo do funcionário
               </li>

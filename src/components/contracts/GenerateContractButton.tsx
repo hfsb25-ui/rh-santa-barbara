@@ -28,6 +28,23 @@ export const GenerateContractButton = ({
 
       if (funcaoError) throw new Error("Função não encontrada");
 
+      // Buscar dados da empresa
+      let empresaNome = "";
+      let empresaCnpj = "";
+      
+      if (employee.empresa_id) {
+        const { data: empresaData, error: empresaError } = await supabase
+          .from("empresas")
+          .select("nome, cnpj")
+          .eq("id", employee.empresa_id)
+          .maybeSingle();
+
+        if (!empresaError && empresaData) {
+          empresaNome = empresaData.nome;
+          empresaCnpj = empresaData.cnpj || "";
+        }
+      }
+
       // Mapear o tipo de contrato do funcionário para o formato do banco de dados
       const tipoContratoDb = employee.tipo_contrato === "Prestador de Serviço" 
         ? "prestador_servico" 
@@ -52,6 +69,8 @@ export const GenerateContractButton = ({
 
       // Substituir variáveis no template
       let conteudo = templateData.conteudo_template;
+      conteudo = conteudo.replace(/\{\{NOME_EMPRESA\}\}/g, empresaNome);
+      conteudo = conteudo.replace(/\{\{CNPJ_EMPRESA\}\}/g, empresaCnpj);
       conteudo = conteudo.replace(/\{\{NOME_COMPLETO\}\}/g, employee.nome_completo || "");
       conteudo = conteudo.replace(/\{\{CPF\}\}/g, employee.cpf || "");
       conteudo = conteudo.replace(/\{\{ENDERECO\}\}/g, employee.endereco || "");
