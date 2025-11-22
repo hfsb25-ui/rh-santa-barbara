@@ -28,7 +28,7 @@ const ExamesMedicosTab = ({ employeeId }: ExamesMedicosTabProps) => {
     try {
       const { data, error } = await supabase
         .from("encaminhamentos_medicos")
-        .select("*, empresas(nome, cnpj, endereco)")
+        .select("*, empresas(nome, cnpj, endereco, logo_url)")
         .eq("employee_id", employeeId)
         .order("created_at", { ascending: false });
 
@@ -66,18 +66,27 @@ const ExamesMedicosTab = ({ employeeId }: ExamesMedicosTabProps) => {
 
   const handleGerarPDF = async (encaminhamento: any) => {
     try {
-      // Buscar dados completos do funcionário para o PDF
-      const { data: employee, error } = await supabase
+      // Buscar dados completos do funcionário e empresa com logo para o PDF
+      const { data: employee, error: empError } = await supabase
         .from("employees")
         .select("*")
         .eq("id", employeeId)
         .single();
 
-      if (error) throw error;
+      if (empError) throw empError;
+
+      const { data: empresa, error: empError2 } = await supabase
+        .from("empresas")
+        .select("*")
+        .eq("id", employee.empresa_id)
+        .single();
+
+      if (empError2) throw empError2;
 
       const encaminhamentoCompleto = {
         ...encaminhamento,
         employees: employee,
+        empresas: empresa,
       };
 
       await generateEncaminhamentoPDF(encaminhamentoCompleto);

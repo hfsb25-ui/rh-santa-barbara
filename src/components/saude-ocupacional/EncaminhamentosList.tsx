@@ -30,7 +30,7 @@ export const EncaminhamentosList = () => {
         .select(`
           *,
           employees(nome_completo, cpf, cargo, setor),
-          empresas(nome, cnpj, endereco)
+          empresas(nome, cnpj, endereco, logo_url)
         `)
         .order("created_at", { ascending: false });
 
