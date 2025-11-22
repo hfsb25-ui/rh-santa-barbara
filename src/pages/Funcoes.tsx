@@ -4,11 +4,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Plus } from "lucide-react";
+import { Plus, ArrowLeft } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import FuncaoForm from "@/components/funcoes/FuncaoForm";
 import FuncaoList from "@/components/funcoes/FuncaoList";
 
 const Funcoes = () => {
+  const navigate = useNavigate();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingFuncaoId, setEditingFuncaoId] = useState<string | undefined>();
 
@@ -42,6 +44,14 @@ const Funcoes = () => {
 
   return (
     <div className="container mx-auto p-6 space-y-6">
+      <Button
+        variant="ghost"
+        onClick={() => navigate("/dashboard")}
+        className="mb-4"
+      >
+        <ArrowLeft className="w-4 h-4 mr-2" />
+        Voltar
+      </Button>
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold">Funções</h1>
