@@ -5,6 +5,26 @@ export const generateEncaminhamentoPDF = async (encaminhamento: any) => {
   const pageWidth = doc.internal.pageSize.getWidth();
   let yPos = 20;
 
+  // Logo da empresa (se existir)
+  if (encaminhamento.empresas?.logo_url) {
+    try {
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      await new Promise((resolve, reject) => {
+        img.onload = resolve;
+        img.onerror = reject;
+        img.src = encaminhamento.empresas.logo_url;
+      });
+      
+      const logoX = (pageWidth - 50) / 2; // Centralizar
+      doc.addImage(img, "PNG", logoX, yPos, 50, 50);
+      yPos += 60;
+    } catch (error) {
+      console.error("Erro ao carregar logo:", error);
+      // Continua sem a logo se houver erro
+    }
+  }
+
   // Título
   doc.setFontSize(16);
   doc.setFont("helvetica", "bold");

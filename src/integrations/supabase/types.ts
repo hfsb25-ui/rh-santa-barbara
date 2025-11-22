@@ -337,6 +337,7 @@ export type Database = {
           created_at: string
           endereco: string | null
           id: string
+          logo_url: string | null
           nome: string
           updated_at: string
         }
@@ -345,6 +346,7 @@ export type Database = {
           created_at?: string
           endereco?: string | null
           id?: string
+          logo_url?: string | null
           nome: string
           updated_at?: string
         }
@@ -353,6 +355,7 @@ export type Database = {
           created_at?: string
           endereco?: string | null
           id?: string
+          logo_url?: string | null
           nome?: string
           updated_at?: string
         }
