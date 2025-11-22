@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Edit, Trash2, AlertTriangle } from "lucide-react";
+import { Edit, Trash2, AlertTriangle, Copy } from "lucide-react";
 import { toast } from "sonner";
 import UniformStockForm from "./UniformStockForm";
 
@@ -53,6 +53,24 @@ const UniformStockList = () => {
     setShowEditDialog(true);
   };
 
+  const handleDuplicate = async (item: any) => {
+    const { id, created_at, updated_at, ...itemData } = item;
+    
+    const { error } = await supabase
+      .from("estoque_uniformes")
+      .insert({
+        ...itemData,
+        tipo_uniforme: `${itemData.tipo_uniforme} (Cópia)`,
+      });
+
+    if (error) {
+      toast.error("Erro ao duplicar item");
+    } else {
+      toast.success("Item duplicado com sucesso");
+      fetchItems();
+    }
+  };
+
   if (loading) {
     return <div className="text-center py-8">Carregando...</div>;
   }
@@ -87,6 +105,14 @@ const UniformStockList = () => {
                     onClick={() => handleEdit(item)}
                   >
                     <Edit className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={() => handleDuplicate(item)}
+                  >
+                    <Copy className="h-4 w-4" />
                   </Button>
                   <Button
                     variant="ghost"
