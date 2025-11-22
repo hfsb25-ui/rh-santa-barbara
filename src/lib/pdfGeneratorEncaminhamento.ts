@@ -60,8 +60,6 @@ export const generateEncaminhamentoPDF = async (encaminhamento: any) => {
   yPos += 6;
   doc.text(`CBO: ${encaminhamento.cbo || ""}`, 20, yPos);
   yPos += 6;
-  doc.text(`SETOR: ${encaminhamento.setor || ""}`, 20, yPos);
-  yPos += 6;
   doc.text(`MATRICULA E-SOCIAL: ${encaminhamento.matricula_esocial || ""}`, 20, yPos);
   yPos += 10;
 
