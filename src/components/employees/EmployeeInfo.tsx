@@ -2,6 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { User } from "lucide-react";
+import ChangePasswordDialog from "./ChangePasswordDialog";
 
 interface EmployeeInfoProps {
   employee: any;
@@ -32,10 +33,16 @@ const EmployeeInfo = ({ employee }: EmployeeInfoProps) => {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center justify-between">
-          <span>Informações do Funcionário</span>
-          {getStatusBadge(employee.status)}
-        </CardTitle>
+        <div className="flex items-center justify-between">
+          <CardTitle className="flex items-center gap-2">
+            <span>Informações do Funcionário</span>
+            {getStatusBadge(employee.status)}
+          </CardTitle>
+          <ChangePasswordDialog 
+            userId={employee.user_id} 
+            employeeName={employee.nome_completo}
+          />
+        </div>
       </CardHeader>
       <CardContent className="space-y-6">
         <div className="flex justify-center">
