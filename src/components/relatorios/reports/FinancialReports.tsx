@@ -1,19 +1,22 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
 import ExportButtons from "../ExportButtons";
 import jsPDF from "jspdf";
 import * as XLSX from "xlsx";
-import { Loader2 } from "lucide-react";
+import { Loader2, ChevronLeft, ChevronRight } from "lucide-react";
 
 const FinancialReports = () => {
   const [reportType, setReportType] = useState("payroll");
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
   const { data: payroll, isLoading: loadingPayroll } = useQuery({
     queryKey: ["payroll-report", selectedMonth, selectedYear],
@@ -137,6 +140,14 @@ const FinancialReports = () => {
   const isLoading = loadingPayroll || loadingSalaryHistory;
   const currentData = reportType === "payroll" ? payroll : salaryHistory;
 
+  const paginatedData = useMemo(() => {
+    if (!currentData) return [];
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    return currentData.slice(startIndex, endIndex);
+  }, [currentData, currentPage]);
+
+  const totalPages = Math.ceil((currentData?.length || 0) / itemsPerPage);
   const totalPayroll = payroll?.reduce((sum, p) => sum + Number(p.valor_liquido), 0) || 0;
 
   return (
@@ -225,7 +236,7 @@ const FinancialReports = () => {
           </CardTitle>
           <p className="text-sm text-muted-foreground">
             {reportType === "payroll" && `Total: R$ ${totalPayroll.toFixed(2)} | `}
-            {currentData?.length || 0} registros
+            {currentData?.length || 0} registros | Página {currentPage} de {totalPages}
           </p>
         </CardHeader>
         <CardContent>
@@ -234,54 +245,80 @@ const FinancialReports = () => {
               <Loader2 className="w-8 h-8 animate-spin" />
             </div>
           ) : currentData && currentData.length > 0 ? (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Funcionário</TableHead>
-                    <TableHead>Cargo</TableHead>
-                    {reportType === "payroll" ? (
-                      <>
-                        <TableHead>Empresa</TableHead>
-                        <TableHead>Valor Bruto</TableHead>
-                        <TableHead>Valor Líquido</TableHead>
-                      </>
-                    ) : (
-                      <>
-                        <TableHead>Anterior</TableHead>
-                        <TableHead>Novo</TableHead>
-                        <TableHead>Reajuste %</TableHead>
-                        <TableHead>Justificativa</TableHead>
-                      </>
-                    )}
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {currentData.map((item: any) => (
-                    <TableRow key={item.id}>
-                      <TableCell className="font-medium">
-                        {item.employees?.nome_completo}
-                      </TableCell>
-                      <TableCell>{item.employees?.cargo}</TableCell>
+            <>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="py-2">Funcionário</TableHead>
+                      <TableHead className="py-2">Cargo</TableHead>
                       {reportType === "payroll" ? (
                         <>
-                          <TableCell>{item.empresas?.nome}</TableCell>
-                          <TableCell>R$ {Number(item.valor_bruto).toFixed(2)}</TableCell>
-                          <TableCell>R$ {Number(item.valor_liquido).toFixed(2)}</TableCell>
+                          <TableHead className="py-2">Empresa</TableHead>
+                          <TableHead className="py-2">Valor Bruto</TableHead>
+                          <TableHead className="py-2">Valor Líquido</TableHead>
                         </>
                       ) : (
                         <>
-                          <TableCell>R$ {Number(item.salario_anterior).toFixed(2)}</TableCell>
-                          <TableCell>R$ {Number(item.salario_novo).toFixed(2)}</TableCell>
-                          <TableCell>{item.percentual_reajuste}%</TableCell>
-                          <TableCell>{item.justificativa}</TableCell>
+                          <TableHead className="py-2">Anterior</TableHead>
+                          <TableHead className="py-2">Novo</TableHead>
+                          <TableHead className="py-2">Reajuste %</TableHead>
+                          <TableHead className="py-2">Justificativa</TableHead>
                         </>
                       )}
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
+                  </TableHeader>
+                  <TableBody>
+                    {paginatedData.map((item: any) => (
+                      <TableRow key={item.id}>
+                        <TableCell className="py-2 font-medium">
+                          {item.employees?.nome_completo}
+                        </TableCell>
+                        <TableCell className="py-2">{item.employees?.cargo}</TableCell>
+                        {reportType === "payroll" ? (
+                          <>
+                            <TableCell className="py-2">{item.empresas?.nome}</TableCell>
+                            <TableCell className="py-2">R$ {Number(item.valor_bruto).toFixed(2)}</TableCell>
+                            <TableCell className="py-2">R$ {Number(item.valor_liquido).toFixed(2)}</TableCell>
+                          </>
+                        ) : (
+                          <>
+                            <TableCell className="py-2">R$ {Number(item.salario_anterior).toFixed(2)}</TableCell>
+                            <TableCell className="py-2">R$ {Number(item.salario_novo).toFixed(2)}</TableCell>
+                            <TableCell className="py-2">{item.percentual_reajuste}%</TableCell>
+                            <TableCell className="py-2">{item.justificativa}</TableCell>
+                          </>
+                        )}
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+
+              {totalPages > 1 && (
+                <div className="flex items-center justify-center gap-2 mt-4">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                    disabled={currentPage === 1}
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </Button>
+                  <span className="text-sm">
+                    Página {currentPage} de {totalPages}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                    disabled={currentPage === totalPages}
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </Button>
+                </div>
+              )}
+            </>
           ) : (
             <p className="text-center text-muted-foreground py-8">
               Nenhum registro encontrado

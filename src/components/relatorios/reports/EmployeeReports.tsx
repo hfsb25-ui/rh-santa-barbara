@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,7 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import ExportButtons from "../ExportButtons";
 import jsPDF from "jspdf";
 import * as XLSX from "xlsx";
-import { Loader2 } from "lucide-react";
+import { Loader2, ChevronLeft, ChevronRight } from "lucide-react";
 
 const EmployeeReports = () => {
   const [reportType, setReportType] = useState("all");
@@ -18,6 +18,8 @@ const EmployeeReports = () => {
   const [selectedContractType, setSelectedContractType] = useState("all");
   const [selectedStatus, setSelectedStatus] = useState("all");
   const [selectedGender, setSelectedGender] = useState("all");
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
   // Fetch companies
   const { data: companies } = useQuery({
@@ -75,6 +77,15 @@ const EmployeeReports = () => {
       return data;
     },
   });
+
+  const paginatedData = useMemo(() => {
+    if (!employees) return [];
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    return employees.slice(startIndex, endIndex);
+  }, [employees, currentPage]);
+
+  const totalPages = Math.ceil((employees?.length || 0) / itemsPerPage);
 
   const getReportTitle = () => {
     switch (reportType) {
@@ -275,7 +286,7 @@ const EmployeeReports = () => {
         <CardHeader>
           <CardTitle>{getReportTitle()}</CardTitle>
           <p className="text-sm text-muted-foreground">
-            Total: {employees?.length || 0} funcionários
+            {employees?.length || 0} registros | Página {currentPage} de {totalPages}
           </p>
         </CardHeader>
         <CardContent>
@@ -284,34 +295,60 @@ const EmployeeReports = () => {
               <Loader2 className="w-8 h-8 animate-spin" />
             </div>
           ) : employees && employees.length > 0 ? (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Nome</TableHead>
-                    <TableHead>Cargo</TableHead>
-                    <TableHead>Empresa</TableHead>
-                    <TableHead>Setor</TableHead>
-                    <TableHead>Contrato</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Sexo</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {employees.map((employee) => (
-                    <TableRow key={employee.id}>
-                      <TableCell className="font-medium">{employee.nome_completo}</TableCell>
-                      <TableCell>{employee.cargo}</TableCell>
-                      <TableCell>{employee.empresas?.nome || "-"}</TableCell>
-                      <TableCell>{employee.setor || "-"}</TableCell>
-                      <TableCell>{employee.tipo_contrato}</TableCell>
-                      <TableCell>{getStatusLabel(employee.status || "")}</TableCell>
-                      <TableCell>{employee.sexo || "-"}</TableCell>
+            <>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="py-2">Nome</TableHead>
+                      <TableHead className="py-2">Cargo</TableHead>
+                      <TableHead className="py-2">Empresa</TableHead>
+                      <TableHead className="py-2">Setor</TableHead>
+                      <TableHead className="py-2">Contrato</TableHead>
+                      <TableHead className="py-2">Status</TableHead>
+                      <TableHead className="py-2">Sexo</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
+                  </TableHeader>
+                  <TableBody>
+                    {paginatedData.map((employee) => (
+                      <TableRow key={employee.id}>
+                        <TableCell className="py-2 font-medium">{employee.nome_completo}</TableCell>
+                        <TableCell className="py-2">{employee.cargo}</TableCell>
+                        <TableCell className="py-2">{employee.empresas?.nome || "-"}</TableCell>
+                        <TableCell className="py-2">{employee.setor || "-"}</TableCell>
+                        <TableCell className="py-2">{employee.tipo_contrato}</TableCell>
+                        <TableCell className="py-2">{getStatusLabel(employee.status || "")}</TableCell>
+                        <TableCell className="py-2">{employee.sexo || "-"}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+
+              {totalPages > 1 && (
+                <div className="flex items-center justify-center gap-2 mt-4">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                    disabled={currentPage === 1}
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </Button>
+                  <span className="text-sm">
+                    Página {currentPage} de {totalPages}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                    disabled={currentPage === totalPages}
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </Button>
+                </div>
+              )}
+            </>
           ) : (
             <p className="text-center text-muted-foreground py-8">
               Nenhum funcionário encontrado com os filtros selecionados
