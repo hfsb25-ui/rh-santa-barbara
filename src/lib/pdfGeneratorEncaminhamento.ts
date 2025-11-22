@@ -8,26 +8,27 @@ export const generateEncaminhamentoPDF = async (encaminhamento: any) => {
   // Logo da empresa (se existir)
   if (encaminhamento.empresas?.logo_url) {
     try {
-      // Criar uma promise para carregar a imagem
-      const loadImage = (url: string): Promise<HTMLImageElement> => {
-        return new Promise((resolve, reject) => {
-          const img = new Image();
-          img.crossOrigin = "anonymous";
-          img.onload = () => resolve(img);
-          img.onerror = () => reject(new Error("Falha ao carregar imagem"));
-          img.src = url;
-        });
-      };
+      // Baixar a imagem e converter para base64
+      const response = await fetch(encaminhamento.empresas.logo_url);
+      if (!response.ok) {
+        throw new Error("Falha ao baixar logo");
+      }
 
-      const img = await loadImage(encaminhamento.empresas.logo_url);
-      
-      // Centralizar a logo
+      const blob = await response.blob();
+      const dataUrl: string = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.onerror = () => reject(new Error("Falha ao ler logo"));
+        reader.readAsDataURL(blob);
+      });
+
+      // Centralizar a logo 50x50
       const logoX = (pageWidth - 50) / 2;
-      
-      // Determinar formato da imagem
-      const format = encaminhamento.empresas.logo_url.includes('.png') ? 'PNG' : 'JPEG';
-      
-      doc.addImage(img, format, logoX, yPos, 50, 50);
+
+      // Detectar formato pela dataURL
+      const format = dataUrl.includes("image/png") ? "PNG" : "JPEG";
+
+      doc.addImage(dataUrl, format, logoX, yPos, 50, 50);
       yPos += 55;
     } catch (error) {
       console.error("Erro ao carregar logo:", error);
