@@ -8,7 +8,7 @@ export const generateEncaminhamentoPDF = async (encaminhamento: any) => {
   // Título
   doc.setFontSize(16);
   doc.setFont("helvetica", "bold");
-  doc.text("GUIA DE ENCAMINHAMENTO EM SAÚDE OCUPACIONAL", pageWidth / 2, yPos, {
+  doc.text("GUIA DE ENCAMINHAMENTO EM SAUDE OCUPACIONAL", pageWidth / 2, yPos, {
     align: "center",
   });
   yPos += 15;
@@ -23,7 +23,7 @@ export const generateEncaminhamentoPDF = async (encaminhamento: any) => {
 
   // Dados do Funcionário
   doc.setFont("helvetica", "bold");
-  doc.text("DADOS DO FUNCIONÁRIO", 20, yPos);
+  doc.text("DADOS DO FUNCIONARIO", 20, yPos);
   yPos += 7;
   doc.setFont("helvetica", "normal");
   
@@ -39,14 +39,15 @@ export const generateEncaminhamentoPDF = async (encaminhamento: any) => {
     yPos
   );
   yPos += 6;
-  doc.text(`ENDEREÇO: ${encaminhamento.employees?.endereco || ""}`, 20, yPos);
+  doc.text(`ENDERECO: ${encaminhamento.employees?.endereco || ""}`, 20, yPos);
   yPos += 6;
   
   const rgCpf = `RG: ${encaminhamento.employees?.rg || ""}                  CPF: ${encaminhamento.employees?.cpf || ""}`;
   doc.text(rgCpf, 20, yPos);
   yPos += 6;
   
-  doc.text(`CTPS: ${encaminhamento.employees?.ctps || ""}`, 20, yPos);
+  const ctpsInfo = `CTPS: ${encaminhamento.employees?.ctps || ""}`;
+  doc.text(ctpsInfo, 20, yPos);
   yPos += 10;
 
   // Dados Ocupacionais
@@ -55,51 +56,46 @@ export const generateEncaminhamentoPDF = async (encaminhamento: any) => {
   yPos += 7;
   doc.setFont("helvetica", "normal");
   
-  doc.text(`FUNÇÃO: ${encaminhamento.funcao || ""}`, 20, yPos);
+  doc.text(`FUNCAO: ${encaminhamento.funcao || ""}`, 20, yPos);
   yPos += 6;
   doc.text(`CBO: ${encaminhamento.cbo || ""}`, 20, yPos);
   yPos += 6;
   doc.text(`SETOR: ${encaminhamento.setor || ""}`, 20, yPos);
   yPos += 6;
-  doc.text(`MATRÍCULA E-SOCIAL: ${encaminhamento.matricula_esocial || ""}`, 20, yPos);
+  doc.text(`MATRICULA E-SOCIAL: ${encaminhamento.matricula_esocial || ""}`, 20, yPos);
   yPos += 10;
 
-  // Condições Especiais
-  doc.setFont("helvetica", "bold");
-  doc.text("CONDIÇÕES ESPECIAIS", 20, yPos);
-  yPos += 7;
-  doc.setFont("helvetica", "normal");
-  
-  const checkbox = (checked: boolean) => (checked ? "☑" : "☐");
-  
-  doc.text(
-    `${checkbox(encaminhamento.beneficiario_reabilitado)} BENEFICIÁRIO REABILITADO`,
-    20,
-    yPos
-  );
-  yPos += 6;
-  doc.text(
-    `${checkbox(encaminhamento.portador_deficiencia)} PORTADOR DE DEFICIÊNCIA HABILITADO`,
-    20,
-    yPos
-  );
-  yPos += 6;
-  doc.text(
-    `${checkbox(encaminhamento.trabalho_altura)} REALIZA TRABALHO EM ALTURA`,
-    20,
-    yPos
-  );
-  yPos += 6;
-  doc.text(
-    `${checkbox(encaminhamento.espaco_confinado)} TRABALHA EM ESPAÇO CONFINADO`,
-    20,
-    yPos
-  );
-  yPos += 10;
+  // Condições Especiais - APENAS as selecionadas
+  const condicoesAtivas = [];
+  if (encaminhamento.beneficiario_reabilitado) {
+    condicoesAtivas.push("BENEFICIARIO REABILITADO");
+  }
+  if (encaminhamento.portador_deficiencia) {
+    condicoesAtivas.push("PORTADOR DE DEFICIENCIA HABILITADO");
+  }
+  if (encaminhamento.trabalho_altura) {
+    condicoesAtivas.push("REALIZA TRABALHO EM ALTURA");
+  }
+  if (encaminhamento.espaco_confinado) {
+    condicoesAtivas.push("TRABALHA EM ESPACO CONFINADO");
+  }
+
+  if (condicoesAtivas.length > 0) {
+    doc.setFont("helvetica", "bold");
+    doc.text("CONDICOES ESPECIAIS", 20, yPos);
+    yPos += 7;
+    doc.setFont("helvetica", "normal");
+    
+    condicoesAtivas.forEach((condicao) => {
+      doc.text(`- ${condicao}`, 20, yPos);
+      yPos += 6;
+    });
+    yPos += 4;
+  }
 
   // Data de Admissão
   doc.text(
-    `DATA DE ADMISSÃO: ${
+    `DATA DE ADMISSAO: ${
       encaminhamento.employees?.data_admissao
         ? new Date(encaminhamento.employees.data_admissao).toLocaleDateString("pt-BR")
         : ""
@@ -109,7 +105,7 @@ export const generateEncaminhamentoPDF = async (encaminhamento: any) => {
   );
   yPos += 10;
 
-  // Tipo de Exame
+  // Tipo de Exame - APENAS o selecionado
   doc.setFont("helvetica", "bold");
   doc.text("TIPO DE EXAME:", 20, yPos);
   yPos += 7;
@@ -118,21 +114,21 @@ export const generateEncaminhamentoPDF = async (encaminhamento: any) => {
   const tipoExameMap: Record<string, string> = {
     admissional: "ADMISSIONAL",
     demissional: "DEMISSIONAL",
-    periodico: "PERIÓDICO",
-    mudanca_riscos: "MUDANÇA DE RISCOS OCUPACIONAIS",
+    periodico: "PERIODICO",
+    mudanca_riscos: "MUDANCA DE RISCOS OCUPACIONAIS",
     retorno_trabalho: "RETORNO AO TRABALHO",
   };
   
-  Object.entries(tipoExameMap).forEach(([key, label]) => {
-    doc.text(`${checkbox(encaminhamento.tipo_exame === key)} ${label}`, 20, yPos);
-    yPos += 6;
-  });
-  yPos += 5;
+  const tipoSelecionado = tipoExameMap[encaminhamento.tipo_exame];
+  if (tipoSelecionado) {
+    doc.text(`- ${tipoSelecionado}`, 20, yPos);
+    yPos += 10;
+  }
 
   // Descrição da Atividade
   if (encaminhamento.descricao_atividade) {
     doc.setFont("helvetica", "bold");
-    doc.text("DESCRIÇÃO DA ATIVIDADE:", 20, yPos);
+    doc.text("DESCRICAO DA ATIVIDADE:", 20, yPos);
     yPos += 7;
     doc.setFont("helvetica", "normal");
     
@@ -144,7 +140,7 @@ export const generateEncaminhamentoPDF = async (encaminhamento: any) => {
   // Observações
   if (encaminhamento.observacoes) {
     doc.setFont("helvetica", "bold");
-    doc.text("OBSERVAÇÕES:", 20, yPos);
+    doc.text("OBSERVACOES:", 20, yPos);
     yPos += 7;
     doc.setFont("helvetica", "normal");
     
@@ -158,13 +154,13 @@ export const generateEncaminhamentoPDF = async (encaminhamento: any) => {
   doc.line(20, yPos, 90, yPos);
   yPos += 5;
   doc.setFontSize(8);
-  doc.text("Assinatura e Carimbo do Médico", 20, yPos);
+  doc.text("Assinatura e Carimbo do Medico", 20, yPos);
 
   // Data de emissão
   yPos += 15;
   doc.setFontSize(9);
   doc.text(
-    `Data de Emissão: ${new Date(encaminhamento.data_encaminhamento).toLocaleDateString("pt-BR")}`,
+    `Data de Emissao: ${new Date(encaminhamento.data_encaminhamento).toLocaleDateString("pt-BR")}`,
     20,
     yPos
   );
@@ -176,3 +172,4 @@ export const generateEncaminhamentoPDF = async (encaminhamento: any) => {
   )}_${new Date().getTime()}.pdf`;
   doc.save(fileName);
 };
+
