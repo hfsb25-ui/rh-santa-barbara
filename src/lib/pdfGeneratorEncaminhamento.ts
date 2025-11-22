@@ -8,17 +8,27 @@ export const generateEncaminhamentoPDF = async (encaminhamento: any) => {
   // Logo da empresa (se existir)
   if (encaminhamento.empresas?.logo_url) {
     try {
-      const img = new Image();
-      img.crossOrigin = "anonymous";
-      await new Promise((resolve, reject) => {
-        img.onload = resolve;
-        img.onerror = reject;
-        img.src = encaminhamento.empresas.logo_url;
-      });
+      // Criar uma promise para carregar a imagem
+      const loadImage = (url: string): Promise<HTMLImageElement> => {
+        return new Promise((resolve, reject) => {
+          const img = new Image();
+          img.crossOrigin = "anonymous";
+          img.onload = () => resolve(img);
+          img.onerror = () => reject(new Error("Falha ao carregar imagem"));
+          img.src = url;
+        });
+      };
+
+      const img = await loadImage(encaminhamento.empresas.logo_url);
       
-      const logoX = (pageWidth - 50) / 2; // Centralizar
-      doc.addImage(img, "PNG", logoX, yPos, 50, 50);
-      yPos += 60;
+      // Centralizar a logo
+      const logoX = (pageWidth - 50) / 2;
+      
+      // Determinar formato da imagem
+      const format = encaminhamento.empresas.logo_url.includes('.png') ? 'PNG' : 'JPEG';
+      
+      doc.addImage(img, format, logoX, yPos, 50, 50);
+      yPos += 55;
     } catch (error) {
       console.error("Erro ao carregar logo:", error);
       // Continua sem a logo se houver erro

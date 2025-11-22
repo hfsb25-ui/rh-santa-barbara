@@ -102,7 +102,20 @@ export const EncaminhamentoCard = ({ encaminhamento, onRefresh }: Encaminhamento
 
   const handleGerarPDF = async () => {
     try {
-      await generateEncaminhamentoPDF(encaminhamento);
+      // Buscar dados completos incluindo logo
+      const { data: encData, error } = await supabase
+        .from("encaminhamentos_medicos")
+        .select(`
+          *,
+          employees(*),
+          empresas(nome, cnpj, endereco, logo_url)
+        `)
+        .eq("id", encaminhamento.id)
+        .single();
+
+      if (error) throw error;
+
+      await generateEncaminhamentoPDF(encData);
       toast.success("PDF gerado com sucesso!");
     } catch (error) {
       console.error("Erro ao gerar PDF:", error);
