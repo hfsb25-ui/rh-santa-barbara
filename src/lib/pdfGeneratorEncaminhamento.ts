@@ -178,13 +178,6 @@ export const generateEncaminhamentoPDF = async (encaminhamento: any) => {
     yPos += splitObs.length * 6 + 10;
   }
 
-  // Espaço para assinatura
-  yPos += 20;
-  doc.line(20, yPos, 90, yPos);
-  yPos += 5;
-  doc.setFontSize(8);
-  doc.text("Assinatura e Carimbo do Medico", 20, yPos);
-
   // Data de emissão
   yPos += 15;
   doc.setFontSize(9);
