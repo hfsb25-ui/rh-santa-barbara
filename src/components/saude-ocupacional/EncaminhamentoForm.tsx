@@ -101,13 +101,25 @@ export const EncaminhamentoForm = ({ onSaved, onCancel, encaminhamentoId }: Enca
     try {
       const { data: { user } } = await supabase.auth.getUser();
 
+      // Buscar CBO da função
+      let cbo = null;
+      if (selectedEmployee.cargo) {
+        const { data: funcaoData } = await supabase
+          .from("funcoes")
+          .select("cbo")
+          .eq("nome", selectedEmployee.cargo)
+          .maybeSingle();
+        
+        cbo = funcaoData?.cbo || null;
+      }
+
       const encaminhamentoData = {
         employee_id: selectedEmployee.id,
         empresa_id: selectedEmployee.empresa_id,
         tipo_exame: tipoExame as "admissional" | "demissional" | "periodico" | "mudanca_riscos" | "retorno_trabalho",
         data_agendamento: dataAgendamento ? format(dataAgendamento, "yyyy-MM-dd") : null,
         funcao: selectedEmployee.cargo,
-        cbo: selectedEmployee.funcoes?.cbo || null,
+        cbo: cbo,
         setor: selectedEmployee.setor,
         matricula_esocial: formData.matricula_esocial,
         descricao_atividade: formData.descricao_atividade,
