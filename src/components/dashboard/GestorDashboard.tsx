@@ -765,9 +765,11 @@ const GestorDashboard = ({ user }: GestorDashboardProps) => {
               </div>
             ) : metricsData ? (
               <MetricsCharts
-                statusData={metricsData.statusData}
-                sectorData={metricsData.sectorData}
-                evolutionData={metricsData.evolutionData}
+                selectedEmpresa={selectedEmpresa}
+                setSelectedEmpresa={setSelectedEmpresa}
+                empresas={empresas}
+                period={period}
+                setPeriod={setPeriod}
               />
             ) : null}
           </TabsContent>
