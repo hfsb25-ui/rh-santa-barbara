@@ -106,34 +106,27 @@ const EmployeeReports = () => {
 
   const exportToPDF = () => {
     const doc = new jsPDF();
-    const title = getReportTitle();
-    
-    doc.setFontSize(16);
-    doc.text(title, 14, 20);
-    
-    doc.setFontSize(10);
-    doc.text(`Data: ${new Date().toLocaleDateString()}`, 14, 30);
-    doc.text(`Total: ${employees?.length || 0} funcionários`, 14, 36);
+    doc.setFontSize(14);
+    doc.text(getReportTitle(), 14, 15);
+    doc.setFontSize(9);
+    doc.text(`${new Date().toLocaleDateString()} | Total: ${employees?.length || 0}`, 14, 22);
 
-    let yPos = 46;
+    // Tabela compacta
+    let yPos = 30;
+    const lineHeight = 6;
     
-    employees?.forEach((emp, index) => {
-      if (yPos > 270) {
+    employees?.forEach((emp, i) => {
+      if (yPos > 280) {
         doc.addPage();
-        yPos = 20;
+        yPos = 15;
       }
       
-      doc.text(`${index + 1}. ${emp.nome_completo}`, 14, yPos);
-      doc.text(`Cargo: ${emp.cargo}`, 20, yPos + 6);
-      if (emp.empresas) doc.text(`Empresa: ${emp.empresas.nome}`, 20, yPos + 12);
-      if (emp.setor) doc.text(`Setor: ${emp.setor}`, 20, yPos + 18);
-      doc.text(`Status: ${emp.status}`, 20, yPos + 24);
-      if (emp.sexo) doc.text(`Sexo: ${emp.sexo}`, 20, yPos + 30);
-      
-      yPos += 40;
+      const line = `${i + 1}. ${emp.nome_completo} | ${emp.cargo} | ${emp.empresas?.nome || '-'} | ${emp.status}`;
+      doc.text(line, 14, yPos);
+      yPos += lineHeight;
     });
 
-    doc.save(`relatorio-funcionarios-${new Date().getTime()}.pdf`);
+    doc.save(`funcionarios-${new Date().getTime()}.pdf`);
   };
 
   const exportToExcel = () => {
