@@ -734,6 +734,10 @@ const GestorDashboard = ({ user }: GestorDashboardProps) => {
                   <Users className="w-4 h-4 mr-2" />
                   Vagas Públicas
                 </Button>
+                <Button variant="outline" onClick={() => navigate("/relatorios")} className="w-full">
+                  <BarChart3 className="w-4 h-4 mr-2" />
+                  Relatórios
+                </Button>
               </div>
             </div>
 

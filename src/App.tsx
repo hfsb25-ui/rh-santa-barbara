@@ -21,6 +21,7 @@ import Vagas from "./pages/Vagas";
 import VagaDetalhes from "./pages/VagaDetalhes";
 import Recrutamento from "./pages/Recrutamento";
 import CandidaturasVaga from "./pages/CandidaturasVaga";
+import Relatorios from "./pages/Relatorios";
 
 const queryClient = new QueryClient();
 
@@ -49,6 +50,7 @@ const App = () => (
           <Route path="/vaga/:id" element={<VagaDetalhes />} />
           <Route path="/recrutamento" element={<Recrutamento />} />
           <Route path="/recrutamento/vaga/:id/candidaturas" element={<CandidaturasVaga />} />
+          <Route path="/relatorios" element={<Relatorios />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
