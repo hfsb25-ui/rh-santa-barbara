@@ -47,56 +47,41 @@ const FinancialReports = () => {
 
   const exportToPDF = () => {
     const doc = new jsPDF();
-    const title =
-      reportType === "payroll"
-        ? `Relatório de Folha de Pagamento - ${selectedMonth}/${selectedYear}`
-        : "Relatório de Histórico Salarial";
+    const title = reportType === "payroll"
+      ? `Folha ${selectedMonth}/${selectedYear}`
+      : "Histórico Salarial";
 
-    doc.setFontSize(16);
-    doc.text(title, 14, 20);
-    doc.setFontSize(10);
-    doc.text(`Data: ${new Date().toLocaleDateString()}`, 14, 30);
+    doc.setFontSize(14);
+    doc.text(title, 14, 15);
+    doc.setFontSize(9);
+    doc.text(new Date().toLocaleDateString(), 14, 22);
 
     if (reportType === "payroll") {
       const total = payroll?.reduce((sum, p) => sum + Number(p.valor_liquido), 0) || 0;
-      doc.text(`Total Geral: R$ ${total.toFixed(2)}`, 14, 36);
+      doc.text(`Total: R$ ${total.toFixed(2)}`, 14, 28);
 
-      let yPos = 46;
-      payroll?.forEach((item, index) => {
-        if (yPos > 260) {
+      let yPos = 36;
+      payroll?.forEach((item, i) => {
+        if (yPos > 280) {
           doc.addPage();
-          yPos = 20;
+          yPos = 15;
         }
-
-        doc.text(`${index + 1}. ${item.employees?.nome_completo}`, 14, yPos);
-        doc.text(`Empresa: ${item.empresas?.nome}`, 20, yPos + 6);
-        doc.text(`Valor Bruto: R$ ${Number(item.valor_bruto).toFixed(2)}`, 20, yPos + 12);
-        doc.text(`Valor Líquido: R$ ${Number(item.valor_liquido).toFixed(2)}`, 20, yPos + 18);
-
-        yPos += 26;
+        doc.text(`${i + 1}. ${item.employees?.nome_completo} | R$ ${Number(item.valor_liquido).toFixed(2)}`, 14, yPos);
+        yPos += 6;
       });
     } else {
-      let yPos = 46;
-      salaryHistory?.forEach((item, index) => {
-        if (yPos > 260) {
+      let yPos = 30;
+      salaryHistory?.forEach((item, i) => {
+        if (yPos > 280) {
           doc.addPage();
-          yPos = 20;
+          yPos = 15;
         }
-
-        doc.text(`${index + 1}. ${item.employees?.nome_completo}`, 14, yPos);
-        doc.text(
-          `Anterior: R$ ${Number(item.salario_anterior).toFixed(2)} → Novo: R$ ${Number(item.salario_novo).toFixed(2)}`,
-          20,
-          yPos + 6
-        );
-        doc.text(`Reajuste: ${item.percentual_reajuste}%`, 20, yPos + 12);
-        doc.text(`Justificativa: ${item.justificativa}`, 20, yPos + 18);
-
-        yPos += 26;
+        doc.text(`${i + 1}. ${item.employees?.nome_completo} | R$ ${Number(item.salario_anterior).toFixed(2)} → R$ ${Number(item.salario_novo).toFixed(2)}`, 14, yPos);
+        yPos += 6;
       });
     }
 
-    doc.save(`relatorio-financeiro-${new Date().getTime()}.pdf`);
+    doc.save(`financeiro-${new Date().getTime()}.pdf`);
   };
 
   const exportToExcel = () => {
