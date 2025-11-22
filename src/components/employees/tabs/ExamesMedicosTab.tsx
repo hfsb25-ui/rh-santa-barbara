@@ -28,7 +28,7 @@ const ExamesMedicosTab = ({ employeeId }: ExamesMedicosTabProps) => {
     try {
       const { data, error } = await supabase
         .from("encaminhamentos_medicos")
-        .select("*, empresas(nome)")
+        .select("*, empresas(nome, cnpj, endereco)")
         .eq("employee_id", employeeId)
         .order("created_at", { ascending: false });
 
