@@ -13,8 +13,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { ArrowLeft } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 export default function SalaryAdjustment() {
+  const navigate = useNavigate();
   const { toast } = useToast();
   const [selectedEmployees, setSelectedEmployees] = useState<Set<string>>(new Set());
   const [adjustmentValue, setAdjustmentValue] = useState("");
@@ -172,6 +175,14 @@ export default function SalaryAdjustment() {
 
   return (
     <div className="container mx-auto p-6">
+      <Button
+        variant="ghost"
+        onClick={() => navigate("/dashboard")}
+        className="mb-4"
+      >
+        <ArrowLeft className="w-4 h-4 mr-2" />
+        Voltar
+      </Button>
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold">Reajuste Salarial</h1>
         <Button onClick={() => setShowHistory(true)}>Ver Histórico Completo</Button>

@@ -4,9 +4,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { ArrowLeft } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { format, parseISO, isWithinInterval } from "date-fns";
 
 export default function Turnover() {
+  const navigate = useNavigate();
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
 
@@ -74,6 +78,14 @@ export default function Turnover() {
 
   return (
     <div className="container mx-auto p-6 max-w-6xl">
+      <Button
+        variant="ghost"
+        onClick={() => navigate("/dashboard")}
+        className="mb-4"
+      >
+        <ArrowLeft className="w-4 h-4 mr-2" />
+        Voltar
+      </Button>
       <h1 className="text-3xl font-bold mb-6">Relatório de Turnover</h1>
 
       <Card className="mb-6">

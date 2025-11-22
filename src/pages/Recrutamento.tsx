@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Briefcase, Users, Clock, CheckCircle } from "lucide-react";
+import { Plus, Briefcase, Users, Clock, CheckCircle, ArrowLeft } from "lucide-react";
 import VagaForm from "@/components/recrutamento/VagaForm";
 import { useNavigate } from "react-router-dom";
 
@@ -114,6 +114,14 @@ export default function Recrutamento() {
 
   return (
     <div className="container mx-auto px-4 py-8">
+      <Button
+        variant="ghost"
+        onClick={() => navigate("/dashboard")}
+        className="mb-4"
+      >
+        <ArrowLeft className="w-4 h-4 mr-2" />
+        Voltar
+      </Button>
       <div className="flex justify-between items-center mb-8">
         <div>
           <h1 className="text-3xl font-bold">Recrutamento e Seleção</h1>

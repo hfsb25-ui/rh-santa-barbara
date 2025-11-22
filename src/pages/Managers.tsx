@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import ManagerList from "@/components/managers/ManagerList";
-import { Loader2, LogOut, Shield } from "lucide-react";
+import { Loader2, LogOut, Shield, ArrowLeft } from "lucide-react";
 
 export default function Managers() {
   const navigate = useNavigate();
@@ -81,11 +81,14 @@ export default function Managers() {
       </header>
 
       <div className="container mx-auto px-4 py-8">
-        <div className="mb-6">
-          <Button variant="outline" onClick={() => navigate("/dashboard")}>
-            Voltar ao Dashboard
-          </Button>
-        </div>
+        <Button
+          variant="ghost"
+          onClick={() => navigate("/dashboard")}
+          className="mb-4"
+        >
+          <ArrowLeft className="w-4 h-4 mr-2" />
+          Voltar
+        </Button>
         
         <ManagerList />
       </div>

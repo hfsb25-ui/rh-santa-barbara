@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Users,
@@ -8,7 +9,9 @@ import {
   DollarSign,
   Briefcase,
   BarChart3,
+  ArrowLeft,
 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import EmployeeReports from "@/components/relatorios/reports/EmployeeReports";
 import AttendanceReports from "@/components/relatorios/reports/AttendanceReports";
 import StockReports from "@/components/relatorios/reports/StockReports";
@@ -16,10 +19,19 @@ import FinancialReports from "@/components/relatorios/reports/FinancialReports";
 import RecruitmentReports from "@/components/relatorios/reports/RecruitmentReports";
 
 const Relatorios = () => {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("employees");
 
   return (
     <div className="container mx-auto px-4 py-8">
+      <Button
+        variant="ghost"
+        onClick={() => navigate("/dashboard")}
+        className="mb-4"
+      >
+        <ArrowLeft className="w-4 h-4 mr-2" />
+        Voltar
+      </Button>
       <div className="mb-8">
         <h1 className="text-3xl font-bold flex items-center gap-2">
           <BarChart3 className="w-8 h-8" />
