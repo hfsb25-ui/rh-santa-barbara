@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Card, CardContent } from "@/components/ui/card";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -19,7 +20,6 @@ const EpiDistributionHistory = () => {
         *,
         employees (
           nome_completo,
-          cargo,
           setor
         )
       `)
@@ -32,7 +32,7 @@ const EpiDistributionHistory = () => {
   };
 
   if (loading) {
-    return <p>Carregando...</p>;
+    return <p className="text-center py-4">Carregando...</p>;
   }
 
   if (distributions.length === 0) {
@@ -46,47 +46,34 @@ const EpiDistributionHistory = () => {
   }
 
   return (
-    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-      {distributions.map((item) => (
-        <Card key={item.id}>
-          <CardHeader>
-            <CardTitle className="text-lg">{item.tipo_epi}</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            <div>
-              <p className="text-sm font-medium">Funcionário:</p>
-              <p className="text-sm text-muted-foreground">{item.employees?.nome_completo}</p>
-            </div>
-            <div>
-              <p className="text-sm font-medium">Cargo:</p>
-              <p className="text-sm text-muted-foreground">{item.employees?.cargo}</p>
-            </div>
-            {item.employees?.setor && (
-              <div>
-                <p className="text-sm font-medium">Setor:</p>
-                <p className="text-sm text-muted-foreground">{item.employees.setor}</p>
-              </div>
-            )}
-            <div>
-              <p className="text-sm font-medium">Quantidade:</p>
-              <p className="text-sm text-muted-foreground">{item.quantidade}</p>
-            </div>
-            <div>
-              <p className="text-sm font-medium">Data de Entrega:</p>
-              <p className="text-sm text-muted-foreground">
-                {format(new Date(item.data_entrega), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
-              </p>
-            </div>
-            {item.observacoes && (
-              <div>
-                <p className="text-sm font-medium">Observações:</p>
-                <p className="text-sm text-muted-foreground">{item.observacoes}</p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      ))}
-    </div>
+    <Card>
+      <CardContent className="p-0">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>EPI</TableHead>
+              <TableHead>Funcionário</TableHead>
+              <TableHead>Setor</TableHead>
+              <TableHead>Quantidade</TableHead>
+              <TableHead>Data</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {distributions.map((item) => (
+              <TableRow key={item.id}>
+                <TableCell className="font-medium">{item.tipo_epi}</TableCell>
+                <TableCell>{item.employees?.nome_completo}</TableCell>
+                <TableCell>{item.employees?.setor || "-"}</TableCell>
+                <TableCell>{item.quantidade}</TableCell>
+                <TableCell>
+                  {format(new Date(item.data_entrega), "dd/MM/yyyy", { locale: ptBR })}
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </CardContent>
+    </Card>
   );
 };
 
