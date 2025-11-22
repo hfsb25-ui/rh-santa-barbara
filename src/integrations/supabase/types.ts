@@ -358,6 +358,106 @@ export type Database = {
         }
         Relationships: []
       }
+      encaminhamentos_medicos: {
+        Row: {
+          apto_trabalho: boolean | null
+          beneficiario_reabilitado: boolean
+          cbo: string | null
+          created_at: string
+          created_by: string | null
+          data_agendamento: string | null
+          data_encaminhamento: string
+          data_realizacao: string | null
+          descricao_atividade: string | null
+          employee_id: string
+          empresa_id: string
+          espaco_confinado: boolean
+          funcao: string
+          id: string
+          matricula_esocial: string | null
+          observacoes: string | null
+          portador_deficiencia: boolean
+          resultado_exame: string | null
+          setor: string | null
+          status: Database["public"]["Enums"]["status_encaminhamento"]
+          tipo_exame: Database["public"]["Enums"]["tipo_exame_medico"]
+          trabalho_altura: boolean
+          updated_at: string
+        }
+        Insert: {
+          apto_trabalho?: boolean | null
+          beneficiario_reabilitado?: boolean
+          cbo?: string | null
+          created_at?: string
+          created_by?: string | null
+          data_agendamento?: string | null
+          data_encaminhamento?: string
+          data_realizacao?: string | null
+          descricao_atividade?: string | null
+          employee_id: string
+          empresa_id: string
+          espaco_confinado?: boolean
+          funcao: string
+          id?: string
+          matricula_esocial?: string | null
+          observacoes?: string | null
+          portador_deficiencia?: boolean
+          resultado_exame?: string | null
+          setor?: string | null
+          status?: Database["public"]["Enums"]["status_encaminhamento"]
+          tipo_exame: Database["public"]["Enums"]["tipo_exame_medico"]
+          trabalho_altura?: boolean
+          updated_at?: string
+        }
+        Update: {
+          apto_trabalho?: boolean | null
+          beneficiario_reabilitado?: boolean
+          cbo?: string | null
+          created_at?: string
+          created_by?: string | null
+          data_agendamento?: string | null
+          data_encaminhamento?: string
+          data_realizacao?: string | null
+          descricao_atividade?: string | null
+          employee_id?: string
+          empresa_id?: string
+          espaco_confinado?: boolean
+          funcao?: string
+          id?: string
+          matricula_esocial?: string | null
+          observacoes?: string | null
+          portador_deficiencia?: boolean
+          resultado_exame?: string | null
+          setor?: string | null
+          status?: Database["public"]["Enums"]["status_encaminhamento"]
+          tipo_exame?: Database["public"]["Enums"]["tipo_exame_medico"]
+          trabalho_altura?: boolean
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "encaminhamentos_medicos_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "encaminhamentos_medicos_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "encaminhamentos_medicos_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       epis: {
         Row: {
           assinatura_funcionario: string | null
@@ -1323,7 +1423,14 @@ export type Database = {
         | "reprovada"
         | "contratada"
       employee_status: "ativo" | "ferias" | "afastado" | "demitido"
+      status_encaminhamento: "pendente" | "agendado" | "realizado" | "cancelado"
       tipo_contrato: "fixo" | "intermitente" | "prestador_servico"
+      tipo_exame_medico:
+        | "admissional"
+        | "demissional"
+        | "periodico"
+        | "mudanca_riscos"
+        | "retorno_trabalho"
       tipo_salario: "mensal" | "diario" | "por_hora"
       vaga_status: "aberta" | "pausada" | "fechada"
     }
@@ -1463,7 +1570,15 @@ export const Constants = {
         "contratada",
       ],
       employee_status: ["ativo", "ferias", "afastado", "demitido"],
+      status_encaminhamento: ["pendente", "agendado", "realizado", "cancelado"],
       tipo_contrato: ["fixo", "intermitente", "prestador_servico"],
+      tipo_exame_medico: [
+        "admissional",
+        "demissional",
+        "periodico",
+        "mudanca_riscos",
+        "retorno_trabalho",
+      ],
       tipo_salario: ["mensal", "diario", "por_hora"],
       vaga_status: ["aberta", "pausada", "fechada"],
     },

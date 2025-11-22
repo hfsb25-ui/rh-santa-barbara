@@ -27,6 +27,7 @@ import {
   FileSignature,
   TrendingUp as TrendingUpIcon,
   BarChart3,
+  Activity,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -737,6 +738,10 @@ const GestorDashboard = ({ user }: GestorDashboardProps) => {
                 <Button variant="outline" onClick={() => navigate("/relatorios")} className="w-full">
                   <BarChart3 className="w-4 h-4 mr-2" />
                   Relatórios
+                </Button>
+                <Button variant="outline" onClick={() => navigate("/saude-ocupacional")} className="w-full">
+                  <Activity className="w-4 h-4 mr-2" />
+                  Saúde Ocupacional
                 </Button>
               </div>
             </div>
