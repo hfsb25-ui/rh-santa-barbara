@@ -47,10 +47,7 @@ export const EncaminhamentoForm = ({ onSaved, onCancel, encaminhamentoId }: Enca
     try {
       const { data, error } = await supabase
         .from("employees")
-        .select(`
-          *,
-          empresas!employees_empresa_id_fkey(nome, cnpj, endereco, logo_url)
-        `)
+        .select("*, empresas(nome, cnpj, endereco, logo_url)")
         .order("nome_completo");
 
       if (error) throw error;
