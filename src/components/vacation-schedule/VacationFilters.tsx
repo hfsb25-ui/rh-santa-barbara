@@ -11,7 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Search, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { VacationFiltersType } from "@/pages/VacationSchedule";
+import type { VacationFiltersType } from "@/components/vacation-schedule/types";
 
 interface VacationFiltersProps {
   filters: VacationFiltersType;

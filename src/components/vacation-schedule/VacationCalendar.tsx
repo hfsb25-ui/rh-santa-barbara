@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { VacationFiltersType } from "@/pages/VacationSchedule";
+import type { VacationFiltersType } from "@/components/vacation-schedule/types";
 import { Badge } from "@/components/ui/badge";
 import { AddVacationDialog } from "./AddVacationDialog";
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isToday, isSameDay } from "date-fns";

@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Calendar, Users, AlertTriangle, CheckCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { VacationFiltersType } from "@/pages/VacationSchedule";
+import type { VacationFiltersType } from "@/components/vacation-schedule/types";
 
 interface VacationMetricsProps {
   filters: VacationFiltersType;

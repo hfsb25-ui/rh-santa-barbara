@@ -2,8 +2,8 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
-import { VacationFiltersType } from "@/pages/VacationSchedule";
-import { format, differenceInDays } from "date-fns";
+import type { VacationFiltersType } from "@/components/vacation-schedule/types";
+import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
 interface VacationTimelineProps {
