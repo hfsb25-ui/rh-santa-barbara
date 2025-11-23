@@ -12,9 +12,13 @@ interface VacationFormProps {
   employeeId: string;
   onSaved: () => void;
   onCancel: () => void;
+  initialData?: {
+    periodoGozoInicio?: string;
+    periodoGozoFim?: string;
+  };
 }
 
-const VacationForm = ({ employeeId, onSaved, onCancel }: VacationFormProps) => {
+const VacationForm = ({ employeeId, onSaved, onCancel, initialData }: VacationFormProps) => {
   const [loading, setLoading] = useState(false);
   const [periodoAquisitivoInicio, setPeriodoAquisitivoInicio] = useState("");
   const [periodoAquisitivoFim, setPeriodoAquisitivoFim] = useState("");
@@ -27,7 +31,20 @@ const VacationForm = ({ employeeId, onSaved, onCancel }: VacationFormProps) => {
 
   useEffect(() => {
     fetchEmployeeFolgas();
-  }, [employeeId]);
+    
+    // Preencher dados iniciais se fornecidos
+    if (initialData) {
+      if (initialData.periodoGozoInicio) {
+        setPeriodoGozoInicio(initialData.periodoGozoInicio);
+      }
+      if (initialData.periodoGozoFim) {
+        setPeriodoGozoFim(initialData.periodoGozoFim);
+      }
+      if (initialData.periodoGozoInicio && initialData.periodoGozoFim) {
+        handlePeriodoGozoChange(initialData.periodoGozoInicio, initialData.periodoGozoFim);
+      }
+    }
+  }, [employeeId, initialData]);
 
   const fetchEmployeeFolgas = async () => {
     const { data } = await supabase

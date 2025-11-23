@@ -10,12 +10,13 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Edit, Trash2, AlertCircle } from "lucide-react";
+import { Edit, Trash2, AlertCircle, CheckCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import type { VacationFiltersType } from "@/components/vacation-schedule/types";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
+import { ApproveVacationDialog } from "./ApproveVacationDialog";
 
 interface VacationListProps {
   filters: VacationFiltersType;
@@ -24,6 +25,7 @@ interface VacationListProps {
 
 interface VacationItem {
   id: string;
+  employee_id: string;
   employee_name: string;
   setor: string;
   empresa_nome: string;
@@ -37,6 +39,8 @@ interface VacationItem {
 export function VacationList({ filters, onRefresh }: VacationListProps) {
   const [vacations, setVacations] = useState<VacationItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showApproveDialog, setShowApproveDialog] = useState(false);
+  const [selectedVacation, setSelectedVacation] = useState<any>(null);
 
   useEffect(() => {
     fetchVacations();
@@ -110,6 +114,7 @@ export function VacationList({ filters, onRefresh }: VacationListProps) {
       const emp = employeesById[item.employee_id];
       allVacations.push({
         id: item.id,
+        employee_id: item.employee_id,
         employee_name: emp?.nome_completo || "Funcionário não encontrado",
         setor: emp?.setor || "Sem Setor",
         empresa_nome: emp?.empresas?.nome || "Sem Empresa",
@@ -132,6 +137,7 @@ export function VacationList({ filters, onRefresh }: VacationListProps) {
 
       allVacations.push({
         id: item.id,
+        employee_id: item.employee_id,
         employee_name: emp?.nome_completo || "Funcionário não encontrado",
         setor: emp?.setor || "Sem Setor",
         empresa_nome: emp?.empresas?.nome || "Sem Empresa",
@@ -157,6 +163,12 @@ export function VacationList({ filters, onRefresh }: VacationListProps) {
     setVacations(filteredVacations);
     setLoading(false);
   };
+
+  const handleApprove = (vacation: VacationItem) => {
+    setSelectedVacation(vacation);
+    setShowApproveDialog(true);
+  };
+
   const getStatusBadge = (status: string) => {
     const variants: Record<string, { variant: any; label: string }> = {
       planejado: { variant: "secondary", label: "Planejado" },
@@ -170,6 +182,7 @@ export function VacationList({ filters, onRefresh }: VacationListProps) {
   };
 
   return (
+    <>
     <Card>
       <CardHeader>
         <CardTitle>Lista de Férias</CardTitle>
@@ -215,6 +228,16 @@ export function VacationList({ filters, onRefresh }: VacationListProps) {
                   <TableCell>{getStatusBadge(vacation.status)}</TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">
+                      {vacation.status === "planejado" && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleApprove(vacation)}
+                          title="Aprovar férias"
+                        >
+                          <CheckCircle className="h-4 w-4 text-green-600" />
+                        </Button>
+                      )}
                       <Button variant="ghost" size="icon">
                         <Edit className="h-4 w-4" />
                       </Button>
@@ -230,5 +253,16 @@ export function VacationList({ filters, onRefresh }: VacationListProps) {
         )}
       </CardContent>
     </Card>
+    
+    <ApproveVacationDialog
+      open={showApproveDialog}
+      onOpenChange={setShowApproveDialog}
+      plannedVacation={selectedVacation}
+      onSuccess={() => {
+        fetchVacations();
+        onRefresh();
+      }}
+    />
+    </>
   );
 }
