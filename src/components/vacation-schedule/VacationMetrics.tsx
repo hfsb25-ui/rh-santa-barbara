@@ -23,30 +23,32 @@ export function VacationMetrics({ filters }: VacationMetricsProps) {
   const fetchMetrics = async () => {
     const now = new Date();
     
-    let query = supabase.from("ferias").select("*", { count: "exact" });
+    let query = supabase.from("ferias_planejadas").select("*, employees!inner(empresa_id, setor)", { count: "exact" });
 
     if (filters.empresa && filters.empresa !== "all") {
-      const { data: employees } = await supabase
-        .from("employees")
-        .select("id")
-        .eq("empresa_id", filters.empresa);
-      
-      if (employees) {
-        const employeeIds = employees.map(e => e.id);
-        query = query.in("employee_id", employeeIds);
-      }
+      query = query.eq("employees.empresa_id", filters.empresa);
     }
 
-    const { count: total } = await query;
+    if (filters.setor && filters.setor !== "all") {
+      query = query.eq("employees.setor", filters.setor);
+    }
 
-    const { count: active } = await query
-      .lte("periodo_gozo_inicio", now.toISOString())
-      .gte("periodo_gozo_fim", now.toISOString());
+    const { count: total, data: allVacations } = await query;
+
+    const { count: planned } = await supabase
+      .from("ferias_planejadas")
+      .select("*", { count: "exact" })
+      .eq("status", "planejado");
+
+    const { count: active } = await supabase
+      .from("ferias_planejadas")
+      .select("*", { count: "exact" })
+      .eq("status", "em_andamento");
 
     setMetrics({
       totalVacations: total || 0,
       activeVacations: active || 0,
-      plannedVacations: 0,
+      plannedVacations: planned || 0,
       conflicts: 0,
     });
   };
