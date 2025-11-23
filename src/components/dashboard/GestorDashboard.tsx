@@ -95,7 +95,7 @@ const GestorDashboard = ({ user }: GestorDashboardProps) => {
 
   const fetchStats = async () => {
     try {
-      let query = supabase.from("employees").select("status");
+      let query = supabase.from("employees").select("id, status");
       
       if (selectedEmpresa && selectedEmpresa !== "all") {
         query = query.eq("empresa_id", selectedEmpresa);
@@ -103,12 +103,30 @@ const GestorDashboard = ({ user }: GestorDashboardProps) => {
 
       const { data: employees } = await query;
 
-      if (employees) {
+      if (employees && employees.length > 0) {
+        const employeeIds = employees.map((e: any) => e.id);
+        const todayStr = new Date().toISOString().split("T")[0];
+
+        const { count: onVacationCount } = await supabase
+          .from("ferias")
+          .select("*", { count: "exact", head: true })
+          .in("employee_id", employeeIds)
+          .eq("data_retorno_confirmada", false)
+          .lte("periodo_gozo_inicio", todayStr)
+          .gte("periodo_gozo_fim", todayStr);
+
         setStats({
           totalEmployees: employees.length,
-          activeEmployees: employees.filter((e) => e.status === "ativo").length,
-          onVacation: employees.filter((e) => e.status === "ferias").length,
-          onLeave: employees.filter((e) => e.status === "afastado").length,
+          activeEmployees: employees.filter((e: any) => e.status === "ativo").length,
+          onVacation: onVacationCount || 0,
+          onLeave: employees.filter((e: any) => e.status === "afastado").length,
+        });
+      } else {
+        setStats({
+          totalEmployees: 0,
+          activeEmployees: 0,
+          onVacation: 0,
+          onLeave: 0,
         });
       }
     } catch (error) {
@@ -118,39 +136,51 @@ const GestorDashboard = ({ user }: GestorDashboardProps) => {
 
   const fetchEmployeesOnVacation = async () => {
     try {
+      const todayStr = new Date().toISOString().split("T")[0];
+
+      // Buscar férias ativas (gozo) no período atual
+      const { data: activeVacations, error: vacationsError } = await supabase
+        .from("ferias")
+        .select("*")
+        .eq("data_retorno_confirmada", false)
+        .lte("periodo_gozo_inicio", todayStr)
+        .gte("periodo_gozo_fim", todayStr);
+
+      if (vacationsError || !activeVacations || activeVacations.length === 0) {
+        setEmployeesOnVacation([]);
+        return;
+      }
+
+      const employeeIds = Array.from(new Set(activeVacations.map((v: any) => v.employee_id)));
+
       let employeeQuery = supabase
         .from("employees")
-        .select("id, nome_completo, cargo")
-        .eq("status", "ferias");
+        .select("id, nome_completo, cargo, empresa_id");
+
+      employeeQuery = employeeQuery.in("id", employeeIds);
 
       if (selectedEmpresa && selectedEmpresa !== "all") {
         employeeQuery = employeeQuery.eq("empresa_id", selectedEmpresa);
       }
 
-      const { data: employees } = await employeeQuery;
+      const { data: employees, error: employeesError } = await employeeQuery;
 
-      if (employees && employees.length > 0) {
-        const employeeIds = employees.map(e => e.id);
-        
-        const { data: vacations } = await supabase
-          .from("ferias")
-          .select("*")
-          .in("employee_id", employeeIds)
-          .eq("data_retorno_confirmada", false)
-          .gte("periodo_gozo_fim", new Date().toISOString().split("T")[0])
-          .order("periodo_gozo_inicio", { ascending: false });
-
-        const employeesWithVacations = employees.map(emp => {
-          const vacation = vacations?.find(v => v.employee_id === emp.id);
-          return vacation ? { ...emp, vacation } : null;
-        }).filter(Boolean);
-
-        setEmployeesOnVacation(employeesWithVacations);
-      } else {
+      if (employeesError || !employees || employees.length === 0) {
         setEmployeesOnVacation([]);
+        return;
       }
+
+      const employeesWithVacations = employees
+        .map((emp: any) => {
+          const vacation = activeVacations.find((v: any) => v.employee_id === emp.id);
+          return vacation ? { ...emp, vacation } : null;
+        })
+        .filter(Boolean) as any[];
+
+      setEmployeesOnVacation(employeesWithVacations);
     } catch (error) {
       console.error("Error fetching employees on vacation:", error);
+      setEmployeesOnVacation([]);
     }
   };
 
