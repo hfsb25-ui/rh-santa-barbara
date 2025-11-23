@@ -45,6 +45,7 @@ import FinancialMetrics from "@/components/dashboard/FinancialMetrics";
 import StockAlerts from "@/components/dashboard/StockAlerts";
 import AttendanceMetrics from "@/components/dashboard/AttendanceMetrics";
 import DashboardFilters from "@/components/dashboard/DashboardFilters";
+import { WorkforceAlerts } from "@/components/dashboard/WorkforceAlerts";
 import { toast } from "sonner";
 
 interface GestorDashboardProps {
@@ -575,6 +576,9 @@ const GestorDashboard = ({ user }: GestorDashboardProps) => {
                 </CardContent>
               </Card>
             </div>
+
+            {/* Workforce Alerts */}
+            <WorkforceAlerts />
 
             {/* Employees on Vacation */}
             {employeesOnVacation.length > 0 && (

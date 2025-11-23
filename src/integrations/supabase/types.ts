@@ -187,6 +187,38 @@ export type Database = {
           },
         ]
       }
+      configuracao_setor: {
+        Row: {
+          created_at: string | null
+          id: string
+          quantidade_media: number
+          setor_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          quantidade_media?: number
+          setor_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          quantidade_media?: number
+          setor_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "configuracao_setor_setor_id_fkey"
+            columns: ["setor_id"]
+            isOneToOne: true
+            referencedRelation: "setores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       configuracoes_ferias: {
         Row: {
           cobertura_minima: number | null
