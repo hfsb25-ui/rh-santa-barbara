@@ -187,6 +187,39 @@ export type Database = {
           },
         ]
       }
+      configuracoes_ferias: {
+        Row: {
+          cobertura_minima: number | null
+          created_at: string | null
+          empresa_id: string | null
+          funcionarios_chave: string[] | null
+          id: string
+          percentual_maximo_ausencia: number | null
+          setor_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          cobertura_minima?: number | null
+          created_at?: string | null
+          empresa_id?: string | null
+          funcionarios_chave?: string[] | null
+          id?: string
+          percentual_maximo_ausencia?: number | null
+          setor_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          cobertura_minima?: number | null
+          created_at?: string | null
+          empresa_id?: string | null
+          funcionarios_chave?: string[] | null
+          id?: string
+          percentual_maximo_ausencia?: number | null
+          setor_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       employee_files: {
         Row: {
           created_at: string
@@ -704,6 +737,51 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      ferias_planejadas: {
+        Row: {
+          aprovado_por: string | null
+          created_at: string | null
+          criado_por: string | null
+          data_aprovacao: string | null
+          dias_totais: number
+          employee_id: string
+          id: string
+          observacoes: string | null
+          periodo_fim: string
+          periodo_inicio: string
+          status: string
+          updated_at: string | null
+        }
+        Insert: {
+          aprovado_por?: string | null
+          created_at?: string | null
+          criado_por?: string | null
+          data_aprovacao?: string | null
+          dias_totais: number
+          employee_id: string
+          id?: string
+          observacoes?: string | null
+          periodo_fim: string
+          periodo_inicio: string
+          status?: string
+          updated_at?: string | null
+        }
+        Update: {
+          aprovado_por?: string | null
+          created_at?: string | null
+          criado_por?: string | null
+          data_aprovacao?: string | null
+          dias_totais?: number
+          employee_id?: string
+          id?: string
+          observacoes?: string | null
+          periodo_fim?: string
+          periodo_inicio?: string
+          status?: string
+          updated_at?: string | null
+        }
+        Relationships: []
       }
       folgas: {
         Row: {

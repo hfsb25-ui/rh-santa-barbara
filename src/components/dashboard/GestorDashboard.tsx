@@ -743,6 +743,10 @@ const GestorDashboard = ({ user }: GestorDashboardProps) => {
                   <Activity className="w-4 h-4 mr-2" />
                   Saúde Ocupacional
                 </Button>
+                <Button variant="outline" onClick={() => navigate("/vacation-schedule")} className="w-full">
+                  <Calendar className="w-4 h-4 mr-2" />
+                  Escala de Férias
+                </Button>
               </div>
             </div>
 

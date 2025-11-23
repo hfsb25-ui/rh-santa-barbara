@@ -23,6 +23,7 @@ import Recrutamento from "./pages/Recrutamento";
 import CandidaturasVaga from "./pages/CandidaturasVaga";
 import Relatorios from "./pages/Relatorios";
 import SaudeOcupacional from "./pages/SaudeOcupacional";
+import VacationSchedule from "./pages/VacationSchedule";
 
 const queryClient = new QueryClient();
 
@@ -53,6 +54,7 @@ const App = () => (
           <Route path="/recrutamento/vaga/:id/candidaturas" element={<CandidaturasVaga />} />
           <Route path="/relatorios" element={<Relatorios />} />
           <Route path="/saude-ocupacional" element={<SaudeOcupacional />} />
+          <Route path="/vacation-schedule" element={<VacationSchedule />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
