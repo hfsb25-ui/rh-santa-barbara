@@ -64,6 +64,8 @@ export function VacationList({ filters, onRefresh }: VacationListProps) {
     setLoading(true);
     const now = new Date();
 
+    console.log("🔍 VacationList - Iniciando busca de férias", { filters });
+
     // 1) Buscar funcionários conforme os filtros
     let employeesQuery = supabase
       .from("employees")
@@ -83,7 +85,10 @@ export function VacationList({ filters, onRefresh }: VacationListProps) {
 
     const { data: employees, error: employeesError } = await employeesQuery;
 
+    console.log("📋 VacationList - Funcionários encontrados:", employees?.length, { employees, employeesError });
+
     if (employeesError) {
+      console.error("❌ VacationList - Erro ao buscar funcionários:", employeesError);
       toast.error("Erro ao carregar funcionários para as férias");
       setVacations([]);
       setLoading(false);
@@ -91,6 +96,7 @@ export function VacationList({ filters, onRefresh }: VacationListProps) {
     }
 
     if (!employees || employees.length === 0) {
+      console.log("⚠️ VacationList - Nenhum funcionário encontrado");
       setVacations([]);
       setLoading(false);
       return;
@@ -109,13 +115,18 @@ export function VacationList({ filters, onRefresh }: VacationListProps) {
       .select("*")
       .in("employee_id", employeeIds);
 
+    console.log("📅 VacationList - Férias planejadas:", plannedData?.length, { plannedData, plannedError });
+
     // 3) Férias confirmadas (tabela ferias)
     const { data: confirmedData, error: confirmedError } = await supabase
       .from("ferias")
       .select("*")
       .in("employee_id", employeeIds);
 
+    console.log("✅ VacationList - Férias confirmadas:", confirmedData?.length, { confirmedData, confirmedError });
+
     if (plannedError || confirmedError) {
+      console.error("❌ VacationList - Erro ao buscar férias:", { plannedError, confirmedError });
       toast.error("Erro ao carregar férias");
       setVacations([]);
       setLoading(false);
@@ -163,11 +174,15 @@ export function VacationList({ filters, onRefresh }: VacationListProps) {
       });
     });
 
+    console.log("🔄 VacationList - Total de férias combinadas:", allVacations.length, { allVacations });
+
     // Filtro por status (aplicado após combinar planejadas + confirmadas)
     const filteredVacations =
       filters.status && filters.status !== "all"
         ? allVacations.filter((v) => v.status === filters.status)
         : allVacations;
+
+    console.log("🎯 VacationList - Após filtro de status:", filteredVacations.length, { filters, filteredVacations });
 
     // Ordenar por início desc
     filteredVacations.sort(
@@ -176,6 +191,7 @@ export function VacationList({ filters, onRefresh }: VacationListProps) {
 
     setVacations(filteredVacations);
     setLoading(false);
+    console.log("✨ VacationList - Busca finalizada. Total exibido:", filteredVacations.length);
   };
 
   const handleApprove = (vacation: VacationItem) => {
