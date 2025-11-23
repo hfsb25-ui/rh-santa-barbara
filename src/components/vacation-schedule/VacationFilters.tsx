@@ -39,10 +39,10 @@ export function VacationFilters({ filters, onFiltersChange }: VacationFiltersPro
 
   const handleReset = () => {
     onFiltersChange({
-      empresa: "",
-      setor: "",
+      empresa: "all",
+      setor: "all",
       periodo: { start: null, end: null },
-      status: "",
+      status: "all",
       search: "",
     });
   };
@@ -86,7 +86,7 @@ export function VacationFilters({ filters, onFiltersChange }: VacationFiltersPro
               <SelectValue placeholder="Todas" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">Todas</SelectItem>
+              <SelectItem value="all">Todas</SelectItem>
               {empresas.map((empresa) => (
                 <SelectItem key={empresa.id} value={empresa.id}>
                   {empresa.nome}
@@ -108,7 +108,7 @@ export function VacationFilters({ filters, onFiltersChange }: VacationFiltersPro
               <SelectValue placeholder="Todos" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">Todos</SelectItem>
+              <SelectItem value="all">Todos</SelectItem>
               {setores.map((setor) => (
                 <SelectItem key={setor.id} value={setor.nome}>
                   {setor.nome}
@@ -130,7 +130,7 @@ export function VacationFilters({ filters, onFiltersChange }: VacationFiltersPro
               <SelectValue placeholder="Todos" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">Todos</SelectItem>
+              <SelectItem value="all">Todos</SelectItem>
               <SelectItem value="planejado">Planejado</SelectItem>
               <SelectItem value="aprovado">Aprovado</SelectItem>
               <SelectItem value="em_andamento">Em Andamento</SelectItem>

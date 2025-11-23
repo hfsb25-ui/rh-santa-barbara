@@ -54,11 +54,11 @@ export function VacationCalendar({ filters, onRefresh }: VacationCalendarProps) 
       .gte("periodo_gozo_fim", monthStart.toISOString())
       .lte("periodo_gozo_inicio", monthEnd.toISOString());
 
-    if (filters.empresa) {
+    if (filters.empresa && filters.empresa !== "all") {
       query = query.eq("employees.empresa_id", filters.empresa);
     }
 
-    if (filters.setor) {
+    if (filters.setor && filters.setor !== "all") {
       query = query.eq("employees.setor", filters.setor);
     }
 

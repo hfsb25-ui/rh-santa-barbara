@@ -22,10 +22,10 @@ export interface VacationFiltersType {
 export default function VacationSchedule() {
   const navigate = useNavigate();
   const [filters, setFilters] = useState<VacationFiltersType>({
-    empresa: "",
-    setor: "",
+    empresa: "all",
+    setor: "all",
     periodo: { start: null, end: null },
-    status: "",
+    status: "all",
     search: "",
   });
   const [refreshKey, setRefreshKey] = useState(0);
