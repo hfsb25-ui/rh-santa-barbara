@@ -17,6 +17,17 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
 import { ApproveVacationDialog } from "./ApproveVacationDialog";
+import EditVacationDialog from "@/components/forms/EditVacationDialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface VacationListProps {
   filters: VacationFiltersType;
@@ -41,6 +52,9 @@ export function VacationList({ filters, onRefresh }: VacationListProps) {
   const [loading, setLoading] = useState(true);
   const [showApproveDialog, setShowApproveDialog] = useState(false);
   const [selectedVacation, setSelectedVacation] = useState<any>(null);
+  const [showEditDialog, setShowEditDialog] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [vacationToDelete, setVacationToDelete] = useState<VacationItem | null>(null);
 
   useEffect(() => {
     fetchVacations();
@@ -169,6 +183,40 @@ export function VacationList({ filters, onRefresh }: VacationListProps) {
     setShowApproveDialog(true);
   };
 
+  const handleEdit = (vacation: VacationItem) => {
+    setSelectedVacation(vacation);
+    setShowEditDialog(true);
+  };
+
+  const handleDeleteClick = (vacation: VacationItem) => {
+    setVacationToDelete(vacation);
+    setShowDeleteDialog(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!vacationToDelete) return;
+
+    try {
+      const tableName = vacationToDelete.status === "planejado" ? "ferias_planejadas" : "ferias";
+      
+      const { error } = await supabase
+        .from(tableName)
+        .delete()
+        .eq("id", vacationToDelete.id);
+
+      if (error) throw error;
+
+      toast.success("Férias excluídas com sucesso");
+      setShowDeleteDialog(false);
+      setVacationToDelete(null);
+      fetchVacations();
+      onRefresh();
+    } catch (error) {
+      console.error("Erro ao excluir férias:", error);
+      toast.error("Erro ao excluir férias");
+    }
+  };
+
   const getStatusBadge = (status: string) => {
     const variants: Record<string, { variant: any; label: string }> = {
       planejado: { variant: "secondary", label: "Planejado" },
@@ -238,10 +286,20 @@ export function VacationList({ filters, onRefresh }: VacationListProps) {
                           <CheckCircle className="h-4 w-4 text-green-600" />
                         </Button>
                       )}
-                      <Button variant="ghost" size="icon">
+                      <Button 
+                        variant="ghost" 
+                        size="icon"
+                        onClick={() => handleEdit(vacation)}
+                        title="Editar férias"
+                      >
                         <Edit className="h-4 w-4" />
                       </Button>
-                      <Button variant="ghost" size="icon">
+                      <Button 
+                        variant="ghost" 
+                        size="icon"
+                        onClick={() => handleDeleteClick(vacation)}
+                        title="Excluir férias"
+                      >
                         <Trash2 className="h-4 w-4 text-destructive" />
                       </Button>
                     </div>
@@ -263,6 +321,33 @@ export function VacationList({ filters, onRefresh }: VacationListProps) {
         onRefresh();
       }}
     />
+
+    <EditVacationDialog
+      open={showEditDialog}
+      onOpenChange={setShowEditDialog}
+      vacation={selectedVacation}
+      onUpdated={() => {
+        fetchVacations();
+        onRefresh();
+      }}
+    />
+
+    <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
+          <AlertDialogDescription>
+            Tem certeza que deseja excluir estas férias? Esta ação não pode ser desfeita.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+          <AlertDialogAction onClick={handleDeleteConfirm}>
+            Excluir
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
     </>
   );
 }
