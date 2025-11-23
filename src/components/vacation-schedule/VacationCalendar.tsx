@@ -38,49 +38,70 @@ export function VacationCalendar({ filters, onRefresh }: VacationCalendarProps) 
     const monthStart = startOfMonth(currentDate);
     const monthEnd = endOfMonth(currentDate);
 
-    let query = supabase
-      .from("ferias_planejadas")
-      .select(`
-        employee_id,
-        periodo_inicio,
-        periodo_fim,
-        status,
-        employees!inner(
-          nome_completo,
-          setor,
-          empresa_id,
-          empresas(nome)
-        )
-      `)
-      .gte("periodo_fim", monthStart.toISOString())
-      .lte("periodo_inicio", monthEnd.toISOString());
+    // 1) Buscar funcionários conforme os filtros
+    let employeesQuery = supabase
+      .from("employees")
+      .select("id, nome_completo, setor, empresa_id, empresas(nome)");
 
     if (filters.empresa && filters.empresa !== "all") {
-      query = query.eq("employees.empresa_id", filters.empresa);
+      employeesQuery = employeesQuery.eq("empresa_id", filters.empresa);
     }
 
     if (filters.setor && filters.setor !== "all") {
-      query = query.eq("employees.setor", filters.setor);
+      employeesQuery = employeesQuery.eq("setor", filters.setor);
     }
 
     if (filters.search) {
-      query = query.ilike("employees.nome_completo", `%${filters.search}%`);
+      employeesQuery = employeesQuery.ilike("nome_completo", `%${filters.search}%`);
     }
 
-    const { data, error } = await query;
+    const { data: employees, error: employeesError } = await employeesQuery;
 
-    if (!error && data) {
-      const formatted = data.map((item: any) => ({
+    if (employeesError || !employees || employees.length === 0) {
+      setVacations([]);
+      return;
+    }
+
+    const employeesById: Record<string, any> = {};
+    for (const emp of employees) {
+      employeesById[emp.id] = emp;
+    }
+
+    const employeeIds = employees.map((e: any) => e.id);
+
+    // 2) Buscar férias planejadas que caem no mês atual desses funcionários
+    let vacationsQuery = supabase
+      .from("ferias_planejadas")
+      .select("*")
+      .in("employee_id", employeeIds)
+      .gte("periodo_fim", monthStart.toISOString())
+      .lte("periodo_inicio", monthEnd.toISOString());
+
+    if (filters.status && filters.status !== "all") {
+      vacationsQuery = vacationsQuery.eq("status", filters.status);
+    }
+
+    const { data: vacationsData, error: vacationsError } = await vacationsQuery;
+
+    if (vacationsError) {
+      setVacations([]);
+      return;
+    }
+
+    const formatted: VacationEvent[] = (vacationsData || []).map((item: any) => {
+      const emp = employeesById[item.employee_id];
+      return {
         employee_id: item.employee_id,
-        employee_name: item.employees.nome_completo,
-        setor: item.employees.setor || "",
-        empresa_nome: item.employees.empresas?.nome || "",
+        employee_name: emp?.nome_completo || "Funcionário não encontrado",
+        setor: emp?.setor || "",
+        empresa_nome: emp?.empresas?.nome || "",
         periodo_inicio: item.periodo_inicio,
         periodo_fim: item.periodo_fim,
         status: item.status || "planejado",
-      }));
-      setVacations(formatted);
-    }
+      };
+    });
+
+    setVacations(formatted);
   };
 
   const getDaysInMonth = () => {

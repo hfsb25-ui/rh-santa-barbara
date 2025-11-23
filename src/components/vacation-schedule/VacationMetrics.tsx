@@ -21,28 +21,50 @@ export function VacationMetrics({ filters }: VacationMetricsProps) {
   }, [filters]);
 
   const fetchMetrics = async () => {
-    const now = new Date();
-    
-    let query = supabase.from("ferias_planejadas").select("*, employees!inner(empresa_id, setor)", { count: "exact" });
+    // Buscar funcionários conforme filtros para aplicar nas contagens
+    let employeesQuery = supabase.from("employees").select("id, nome_completo, setor, empresa_id");
 
     if (filters.empresa && filters.empresa !== "all") {
-      query = query.eq("employees.empresa_id", filters.empresa);
+      employeesQuery = employeesQuery.eq("empresa_id", filters.empresa);
     }
 
     if (filters.setor && filters.setor !== "all") {
-      query = query.eq("employees.setor", filters.setor);
+      employeesQuery = employeesQuery.eq("setor", filters.setor);
     }
 
-    const { count: total, data: allVacations } = await query;
+    if (filters.search) {
+      employeesQuery = employeesQuery.ilike("nome_completo", `%${filters.search}%`);
+    }
+
+    const { data: employees, error: employeesError } = await employeesQuery;
+
+    if (employeesError || !employees || employees.length === 0) {
+      setMetrics({
+        totalVacations: 0,
+        activeVacations: 0,
+        plannedVacations: 0,
+        conflicts: 0,
+      });
+      return;
+    }
+
+    const employeeIds = employees.map((e: any) => e.id);
+
+    const { count: total } = await supabase
+      .from("ferias_planejadas")
+      .select("*", { count: "exact", head: true })
+      .in("employee_id", employeeIds);
 
     const { count: planned } = await supabase
       .from("ferias_planejadas")
-      .select("*", { count: "exact" })
+      .select("*", { count: "exact", head: true })
+      .in("employee_id", employeeIds)
       .eq("status", "planejado");
 
     const { count: active } = await supabase
       .from("ferias_planejadas")
-      .select("*", { count: "exact" })
+      .select("*", { count: "exact", head: true })
+      .in("employee_id", employeeIds)
       .eq("status", "em_andamento");
 
     setMetrics({
