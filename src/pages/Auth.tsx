@@ -17,8 +17,23 @@ const Auth = () => {
   const [password, setPassword] = useState("");
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
+  const [companyLogo, setCompanyLogo] = useState<string | null>(null);
 
   useEffect(() => {
+    const fetchCompanyLogo = async () => {
+      const { data } = await supabase
+        .from("empresas")
+        .select("logo_url")
+        .limit(1)
+        .maybeSingle();
+      
+      if (data?.logo_url) {
+        setCompanyLogo(data.logo_url);
+      }
+    };
+
+    fetchCompanyLogo();
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       setSession(session);
       setUser(session?.user ?? null);
@@ -96,9 +111,15 @@ const Auth = () => {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 via-background to-secondary/5 p-4">
       <Card className="w-full max-w-md shadow-xl">
         <CardHeader className="text-center space-y-2">
-          <div className="mx-auto w-12 h-12 bg-primary rounded-full flex items-center justify-center mb-2">
-            <Briefcase className="w-6 h-6 text-primary-foreground" />
-          </div>
+          {companyLogo ? (
+            <div className="mx-auto mb-2">
+              <img src={companyLogo} alt="Logo da Empresa" className="w-16 h-16 object-contain" />
+            </div>
+          ) : (
+            <div className="mx-auto w-12 h-12 bg-primary rounded-full flex items-center justify-center mb-2">
+              <Briefcase className="w-6 h-6 text-primary-foreground" />
+            </div>
+          )}
           <CardTitle className="text-2xl">Sistema de RH</CardTitle>
           <CardDescription>
             Gerencie funcionários, EPIs, férias e muito mais
