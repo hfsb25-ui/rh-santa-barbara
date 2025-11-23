@@ -10,15 +10,8 @@ import { VacationList } from "@/components/vacation-schedule/VacationList";
 import { VacationMetrics } from "@/components/vacation-schedule/VacationMetrics";
 import { VacationFilters } from "@/components/vacation-schedule/VacationFilters";
 import { VacationSettings } from "@/components/vacation-schedule/VacationSettings";
-
-export interface VacationFiltersType {
-  empresa: string;
-  setor: string;
-  periodo: { start: Date | null; end: Date | null };
-  status: string;
-  search: string;
-}
-
+import type { VacationFiltersType } from "@/components/vacation-schedule/types";
+ 
 export default function VacationSchedule() {
   const navigate = useNavigate();
   const [filters, setFilters] = useState<VacationFiltersType>({

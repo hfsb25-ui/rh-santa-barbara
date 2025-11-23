@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Edit, Trash2, AlertCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { VacationFiltersType } from "@/pages/VacationSchedule";
+import type { VacationFiltersType } from "@/components/vacation-schedule/types";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
