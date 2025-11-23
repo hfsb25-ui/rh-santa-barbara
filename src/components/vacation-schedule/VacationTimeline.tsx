@@ -30,6 +30,8 @@ export function VacationTimeline({ filters }: VacationTimelineProps) {
   }, [filters]);
 
   const fetchVacations = async () => {
+    const now = new Date();
+
     // 1) Buscar funcionários conforme os filtros
     let employeesQuery = supabase
       .from("employees")
@@ -61,27 +63,28 @@ export function VacationTimeline({ filters }: VacationTimelineProps) {
 
     const employeeIds = employees.map((e: any) => e.id);
 
-    // 2) Buscar férias planejadas desses funcionários
-    let vacationsQuery = supabase
+    // 2) Férias planejadas
+    const { data: plannedData, error: plannedError } = await supabase
       .from("ferias_planejadas")
       .select("*")
-      .in("employee_id", employeeIds)
-      .order("periodo_inicio", { ascending: true });
+      .in("employee_id", employeeIds);
 
-    if (filters.status && filters.status !== "all") {
-      vacationsQuery = vacationsQuery.eq("status", filters.status);
-    }
+    // 3) Férias confirmadas (tabela ferias)
+    const { data: confirmedData, error: confirmedError } = await supabase
+      .from("ferias")
+      .select("*")
+      .in("employee_id", employeeIds);
 
-    const { data: vacationsData, error: vacationsError } = await vacationsQuery;
-
-    if (vacationsError) {
+    if (plannedError || confirmedError) {
       setVacations([]);
       return;
     }
 
-    const formatted: TimelineVacation[] = (vacationsData || []).map((item: any) => {
+    const allVacations: TimelineVacation[] = [];
+
+    (plannedData || []).forEach((item: any) => {
       const emp = employeesById[item.employee_id];
-      return {
+      allVacations.push({
         id: item.id,
         employee_name: emp?.nome_completo || "Funcionário não encontrado",
         setor: emp?.setor || "Sem Setor",
@@ -90,12 +93,43 @@ export function VacationTimeline({ filters }: VacationTimelineProps) {
         periodo_fim: item.periodo_fim,
         dias_totais: item.dias_totais,
         status: item.status || "planejado",
-      };
+      });
     });
 
-    setVacations(formatted);
-  };
+    (confirmedData || []).forEach((item: any) => {
+      const emp = employeesById[item.employee_id];
+      const start = new Date(item.periodo_gozo_inicio);
+      const end = new Date(item.periodo_gozo_fim);
+      let status: string;
+      if (now < start) status = "aprovado";
+      else if (now > end) status = "concluido";
+      else status = "em_andamento";
 
+      allVacations.push({
+        id: item.id,
+        employee_name: emp?.nome_completo || "Funcionário não encontrado",
+        setor: emp?.setor || "Sem Setor",
+        empresa_nome: emp?.empresas?.nome || "Sem Empresa",
+        periodo_inicio: item.periodo_gozo_inicio,
+        periodo_fim: item.periodo_gozo_fim,
+        dias_totais: item.dias_totais,
+        status,
+      });
+    });
+
+    // Filtro por status (aplicado após combinar planejadas + confirmadas)
+    const filteredVacations =
+      filters.status && filters.status !== "all"
+        ? allVacations.filter((v) => v.status === filters.status)
+        : allVacations;
+
+    // Ordenar por início asc
+    filteredVacations.sort(
+      (a, b) => new Date(a.periodo_inicio).getTime() - new Date(b.periodo_inicio).getTime()
+    );
+
+    setVacations(filteredVacations);
+  };
   const groupedVacations = vacations.reduce((acc, vacation) => {
     const key = groupBy === "setor" ? vacation.setor : vacation.empresa_nome;
     if (!acc[key]) acc[key] = [];

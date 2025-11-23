@@ -37,6 +37,7 @@ export function VacationCalendar({ filters, onRefresh }: VacationCalendarProps) 
   const fetchVacations = async () => {
     const monthStart = startOfMonth(currentDate);
     const monthEnd = endOfMonth(currentDate);
+    const now = new Date();
 
     // 1) Buscar funcionários conforme os filtros
     let employeesQuery = supabase
@@ -69,28 +70,32 @@ export function VacationCalendar({ filters, onRefresh }: VacationCalendarProps) 
 
     const employeeIds = employees.map((e: any) => e.id);
 
-    // 2) Buscar férias planejadas que caem no mês atual desses funcionários
-    let vacationsQuery = supabase
+    // 2) Férias planejadas no mês
+    const { data: plannedData, error: plannedError } = await supabase
       .from("ferias_planejadas")
       .select("*")
       .in("employee_id", employeeIds)
       .gte("periodo_fim", monthStart.toISOString())
       .lte("periodo_inicio", monthEnd.toISOString());
 
-    if (filters.status && filters.status !== "all") {
-      vacationsQuery = vacationsQuery.eq("status", filters.status);
-    }
+    // 3) Férias confirmadas (tabela ferias) no mês
+    const { data: confirmedData, error: confirmedError } = await supabase
+      .from("ferias")
+      .select("*")
+      .in("employee_id", employeeIds)
+      .gte("periodo_gozo_fim", monthStart.toISOString())
+      .lte("periodo_gozo_inicio", monthEnd.toISOString());
 
-    const { data: vacationsData, error: vacationsError } = await vacationsQuery;
-
-    if (vacationsError) {
+    if (plannedError || confirmedError) {
       setVacations([]);
       return;
     }
 
-    const formatted: VacationEvent[] = (vacationsData || []).map((item: any) => {
+    const allEvents: VacationEvent[] = [];
+
+    (plannedData || []).forEach((item: any) => {
       const emp = employeesById[item.employee_id];
-      return {
+      allEvents.push({
         employee_id: item.employee_id,
         employee_name: emp?.nome_completo || "Funcionário não encontrado",
         setor: emp?.setor || "",
@@ -98,10 +103,36 @@ export function VacationCalendar({ filters, onRefresh }: VacationCalendarProps) 
         periodo_inicio: item.periodo_inicio,
         periodo_fim: item.periodo_fim,
         status: item.status || "planejado",
-      };
+      });
     });
 
-    setVacations(formatted);
+    (confirmedData || []).forEach((item: any) => {
+      const emp = employeesById[item.employee_id];
+      const start = new Date(item.periodo_gozo_inicio);
+      const end = new Date(item.periodo_gozo_fim);
+      let status: string;
+      if (now < start) status = "aprovado";
+      else if (now > end) status = "concluido";
+      else status = "em_andamento";
+
+      allEvents.push({
+        employee_id: item.employee_id,
+        employee_name: emp?.nome_completo || "Funcionário não encontrado",
+        setor: emp?.setor || "",
+        empresa_nome: emp?.empresas?.nome || "",
+        periodo_inicio: item.periodo_gozo_inicio,
+        periodo_fim: item.periodo_gozo_fim,
+        status,
+      });
+    });
+
+    // Filtro por status (aplicado após combinar planejadas + confirmadas)
+    const filteredEvents =
+      filters.status && filters.status !== "all"
+        ? allEvents.filter((e) => e.status === filters.status)
+        : allEvents;
+
+    setVacations(filteredEvents);
   };
 
   const getDaysInMonth = () => {
