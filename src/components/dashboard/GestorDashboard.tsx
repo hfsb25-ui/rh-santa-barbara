@@ -62,7 +62,8 @@ const GestorDashboard = ({ user }: GestorDashboardProps) => {
   const [showManageAvisosDialog, setShowManageAvisosDialog] = useState(false);
   const [showLoginHistoryDialog, setShowLoginHistoryDialog] = useState(false);
   const [selectedEmpresa, setSelectedEmpresa] = useState<string>("all");
-  const [empresas, setEmpresas] = useState<Array<{ id: string; nome: string }>>([]);
+  const [empresas, setEmpresas] = useState<Array<{ id: string; nome: string; logo_url?: string }>>([]);
+  const [companyLogo, setCompanyLogo] = useState<string | null>(null);
   const [stats, setStats] = useState({
     totalEmployees: 0,
     activeEmployees: 0,
@@ -87,10 +88,20 @@ const GestorDashboard = ({ user }: GestorDashboardProps) => {
   const fetchEmpresas = async () => {
     const { data } = await supabase
       .from("empresas")
-      .select("id, nome")
+      .select("id, nome, logo_url")
       .order("nome");
     
-    if (data) setEmpresas(data);
+    if (data) {
+      setEmpresas(data);
+      
+      // Set logo from selected company or first company
+      if (selectedEmpresa !== "all") {
+        const selectedCompany = data.find(e => e.id === selectedEmpresa);
+        setCompanyLogo(selectedCompany?.logo_url || null);
+      } else if (data.length > 0) {
+        setCompanyLogo(data[0].logo_url || null);
+      }
+    }
   };
 
   const fetchStats = async () => {
@@ -489,9 +500,15 @@ const GestorDashboard = ({ user }: GestorDashboardProps) => {
       <header className="border-b bg-card">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-primary rounded-full flex items-center justify-center">
-              <Shield className="w-5 h-5 text-primary-foreground" />
-            </div>
+            {companyLogo ? (
+              <div className="w-10 h-10 flex items-center justify-center">
+                <img src={companyLogo} alt="Logo" className="w-10 h-10 object-contain" />
+              </div>
+            ) : (
+              <div className="w-10 h-10 bg-primary rounded-full flex items-center justify-center">
+                <Shield className="w-5 h-5 text-primary-foreground" />
+              </div>
+            )}
             <div>
               <h1 className="text-xl font-bold">Sistema de RH</h1>
               <p className="text-sm text-muted-foreground">Painel do Gestor</p>

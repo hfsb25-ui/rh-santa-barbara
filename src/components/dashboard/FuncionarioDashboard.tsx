@@ -28,6 +28,7 @@ const FuncionarioDashboard = ({ user }: FuncionarioDashboardProps) => {
   const [uniformes, setUniformes] = useState<any[]>([]);
   const [avisos, setAvisos] = useState<any[]>([]);
   const [activeVacation, setActiveVacation] = useState<any>(null);
+  const [companyLogo, setCompanyLogo] = useState<string | null>(null);
 
   useEffect(() => {
     fetchEmployeeData();
@@ -44,7 +45,7 @@ const FuncionarioDashboard = ({ user }: FuncionarioDashboardProps) => {
       if (empData) {
         setEmployee(empData);
 
-        const [episRes, uniformesRes, avisosRes, feriasRes] = await Promise.all([
+        const [episRes, uniformesRes, avisosRes, feriasRes, companyRes] = await Promise.all([
           supabase.from("epis").select("*").eq("employee_id", empData.id),
           supabase.from("uniformes").select("*").eq("employee_id", empData.id),
           supabase
@@ -62,12 +63,16 @@ const FuncionarioDashboard = ({ user }: FuncionarioDashboardProps) => {
             .order("periodo_gozo_inicio", { ascending: false })
             .limit(1)
             .maybeSingle(),
+          empData.empresa_id 
+            ? supabase.from("empresas").select("logo_url").eq("id", empData.empresa_id).maybeSingle()
+            : Promise.resolve({ data: null })
         ]);
 
         setEpis(episRes.data || []);
         setUniformes(uniformesRes.data || []);
         setAvisos(avisosRes.data || []);
         setActiveVacation(feriasRes.data || null);
+        setCompanyLogo(companyRes.data?.logo_url || null);
       }
     } catch (error) {
       console.error("Error fetching employee data:", error);
@@ -124,9 +129,15 @@ const FuncionarioDashboard = ({ user }: FuncionarioDashboardProps) => {
       <header className="border-b bg-card">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-primary rounded-full flex items-center justify-center">
-              <UserCircle className="w-5 h-5 text-primary-foreground" />
-            </div>
+            {companyLogo ? (
+              <div className="w-10 h-10 flex items-center justify-center">
+                <img src={companyLogo} alt="Logo" className="w-10 h-10 object-contain" />
+              </div>
+            ) : (
+              <div className="w-10 h-10 bg-primary rounded-full flex items-center justify-center">
+                <UserCircle className="w-5 h-5 text-primary-foreground" />
+              </div>
+            )}
             <div>
               <h1 className="text-xl font-bold">Meu Painel</h1>
               <p className="text-sm text-muted-foreground">{employee.nome_completo}</p>
