@@ -39,11 +39,12 @@ export function VacationCalendar({ filters, onRefresh }: VacationCalendarProps) 
     const monthEnd = endOfMonth(currentDate);
 
     let query = supabase
-      .from("ferias")
+      .from("ferias_planejadas")
       .select(`
         employee_id,
-        periodo_gozo_inicio,
-        periodo_gozo_fim,
+        periodo_inicio,
+        periodo_fim,
+        status,
         employees!inner(
           nome_completo,
           setor,
@@ -51,8 +52,8 @@ export function VacationCalendar({ filters, onRefresh }: VacationCalendarProps) 
           empresas(nome)
         )
       `)
-      .gte("periodo_gozo_fim", monthStart.toISOString())
-      .lte("periodo_gozo_inicio", monthEnd.toISOString());
+      .gte("periodo_fim", monthStart.toISOString())
+      .lte("periodo_inicio", monthEnd.toISOString());
 
     if (filters.empresa && filters.empresa !== "all") {
       query = query.eq("employees.empresa_id", filters.empresa);
@@ -74,9 +75,9 @@ export function VacationCalendar({ filters, onRefresh }: VacationCalendarProps) 
         employee_name: item.employees.nome_completo,
         setor: item.employees.setor || "",
         empresa_nome: item.employees.empresas?.nome || "",
-        periodo_inicio: item.periodo_gozo_inicio,
-        periodo_fim: item.periodo_gozo_fim,
-        status: "em_andamento",
+        periodo_inicio: item.periodo_inicio,
+        periodo_fim: item.periodo_fim,
+        status: item.status || "planejado",
       }));
       setVacations(formatted);
     }

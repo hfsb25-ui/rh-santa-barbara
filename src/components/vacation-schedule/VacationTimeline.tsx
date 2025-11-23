@@ -31,13 +31,14 @@ export function VacationTimeline({ filters }: VacationTimelineProps) {
 
   const fetchVacations = async () => {
     let query = supabase
-      .from("ferias")
+      .from("ferias_planejadas")
       .select(`
         id,
         employee_id,
-        periodo_gozo_inicio,
-        periodo_gozo_fim,
+        periodo_inicio,
+        periodo_fim,
         dias_totais,
+        status,
         employees!inner(
           nome_completo,
           setor,
@@ -45,7 +46,7 @@ export function VacationTimeline({ filters }: VacationTimelineProps) {
           empresas(nome)
         )
       `)
-      .order("periodo_gozo_inicio", { ascending: true });
+      .order("periodo_inicio", { ascending: true });
 
     if (filters.empresa && filters.empresa !== "all") {
       query = query.eq("employees.empresa_id", filters.empresa);
@@ -67,10 +68,10 @@ export function VacationTimeline({ filters }: VacationTimelineProps) {
         employee_name: item.employees.nome_completo,
         setor: item.employees.setor || "Sem Setor",
         empresa_nome: item.employees.empresas?.nome || "Sem Empresa",
-        periodo_inicio: item.periodo_gozo_inicio,
-        periodo_fim: item.periodo_gozo_fim,
+        periodo_inicio: item.periodo_inicio,
+        periodo_fim: item.periodo_fim,
         dias_totais: item.dias_totais,
-        status: "em_andamento",
+        status: item.status || "planejado",
       }));
       setVacations(formatted);
     }

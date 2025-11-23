@@ -45,13 +45,14 @@ export function VacationList({ filters, onRefresh }: VacationListProps) {
   const fetchVacations = async () => {
     setLoading(true);
     let query = supabase
-      .from("ferias")
+      .from("ferias_planejadas")
       .select(`
         id,
         employee_id,
-        periodo_gozo_inicio,
-        periodo_gozo_fim,
+        periodo_inicio,
+        periodo_fim,
         dias_totais,
+        status,
         employees!inner(
           nome_completo,
           setor,
@@ -59,7 +60,7 @@ export function VacationList({ filters, onRefresh }: VacationListProps) {
           empresas(nome)
         )
       `)
-      .order("periodo_gozo_inicio", { ascending: false });
+      .order("periodo_inicio", { ascending: false });
 
     if (filters.empresa && filters.empresa !== "all") {
       query = query.eq("employees.empresa_id", filters.empresa);
@@ -81,13 +82,15 @@ export function VacationList({ filters, onRefresh }: VacationListProps) {
         employee_name: item.employees.nome_completo,
         setor: item.employees.setor || "Sem Setor",
         empresa_nome: item.employees.empresas?.nome || "Sem Empresa",
-        periodo_inicio: item.periodo_gozo_inicio,
-        periodo_fim: item.periodo_gozo_fim,
+        periodo_inicio: item.periodo_inicio,
+        periodo_fim: item.periodo_fim,
         dias_totais: item.dias_totais,
-        status: new Date(item.periodo_gozo_fim) < new Date() ? "concluido" : "em_andamento",
+        status: item.status || "planejado",
         has_conflict: false,
       }));
       setVacations(formatted);
+    } else if (error) {
+      toast.error("Erro ao carregar férias planejadas");
     }
     setLoading(false);
   };
