@@ -25,7 +25,7 @@ export function VacationMetrics({ filters }: VacationMetricsProps) {
     
     let query = supabase.from("ferias").select("*", { count: "exact" });
 
-    if (filters.empresa) {
+    if (filters.empresa && filters.empresa !== "all") {
       const { data: employees } = await supabase
         .from("employees")
         .select("id")

@@ -47,11 +47,11 @@ export function VacationTimeline({ filters }: VacationTimelineProps) {
       `)
       .order("periodo_gozo_inicio", { ascending: true });
 
-    if (filters.empresa) {
+    if (filters.empresa && filters.empresa !== "all") {
       query = query.eq("employees.empresa_id", filters.empresa);
     }
 
-    if (filters.setor) {
+    if (filters.setor && filters.setor !== "all") {
       query = query.eq("employees.setor", filters.setor);
     }
 
