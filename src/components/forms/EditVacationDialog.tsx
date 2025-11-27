@@ -27,16 +27,20 @@ const EditVacationDialog = ({
 }: EditVacationDialogProps) => {
   const [loading, setLoading] = useState(false);
   const [periodoAquisitivoInicio, setPeriodoAquisitivoInicio] = useState(
-    vacation.periodo_aquisitivo_inicio
+    vacation?.periodo_aquisitivo_inicio ?? ""
   );
   const [periodoAquisitivoFim, setPeriodoAquisitivoFim] = useState(
-    vacation.periodo_aquisitivo_fim
+    vacation?.periodo_aquisitivo_fim ?? ""
   );
   const [periodoGozoInicio, setPeriodoGozoInicio] = useState(
-    vacation.periodo_gozo_inicio
+    vacation?.periodo_gozo_inicio ?? ""
   );
-  const [periodoGozoFim, setPeriodoGozoFim] = useState(vacation.periodo_gozo_fim);
-  const [diasCalculados, setDiasCalculados] = useState(vacation.dias_totais);
+  const [periodoGozoFim, setPeriodoGozoFim] = useState(
+    vacation?.periodo_gozo_fim ?? ""
+  );
+  const [diasCalculados, setDiasCalculados] = useState(
+    vacation?.dias_totais ?? 0
+  );
 
   const handlePeriodoAquisitivoInicioChange = (dateString: string) => {
     setPeriodoAquisitivoInicio(dateString);
