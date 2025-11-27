@@ -386,7 +386,6 @@ const EmployeeForm = ({ employeeId, initialData, onSaved, onCancel }: EmployeeFo
                 name="cpf" 
                 defaultValue={initialData?.cpf} 
                 required={!employeeId}
-                disabled={!!employeeId}
               />
             </div>
             <div>
