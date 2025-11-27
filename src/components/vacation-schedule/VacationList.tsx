@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Edit, Trash2, AlertCircle, CheckCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import type { VacationFiltersType } from "@/components/vacation-schedule/types";
-import { format } from "date-fns";
+import { format, isValid } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
 import { ApproveVacationDialog } from "./ApproveVacationDialog";
@@ -46,6 +46,21 @@ interface VacationItem {
   status: string;
   has_conflict: boolean;
 }
+
+const formatDateSafe = (dateString: string) => {
+  if (!dateString) return "-";
+  const date = new Date(dateString);
+  if (!isValid(date)) {
+    console.error("VacationList - data inválida:", dateString);
+    return "-";
+  }
+  try {
+    return format(date, "dd/MM/yyyy", { locale: ptBR });
+  } catch (error) {
+    console.error("VacationList - erro ao formatar data:", dateString, error);
+    return "-";
+  }
+};
 
 export function VacationList({ filters, onRefresh }: VacationListProps) {
   const [vacations, setVacations] = useState<VacationItem[]>([]);
@@ -285,8 +300,8 @@ export function VacationList({ filters, onRefresh }: VacationListProps) {
                   <TableCell>{vacation.setor}</TableCell>
                   <TableCell>{vacation.empresa_nome}</TableCell>
                   <TableCell>
-                    {format(new Date(vacation.periodo_inicio), "dd/MM/yyyy", { locale: ptBR })} -{" "}
-                    {format(new Date(vacation.periodo_fim), "dd/MM/yyyy", { locale: ptBR })}
+                    {formatDateSafe(vacation.periodo_inicio)} -{" "}
+                    {formatDateSafe(vacation.periodo_fim)}
                   </TableCell>
                   <TableCell className="text-center">{vacation.dias_totais}</TableCell>
                   <TableCell>{getStatusBadge(vacation.status)}</TableCell>
