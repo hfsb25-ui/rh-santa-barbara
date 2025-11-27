@@ -97,10 +97,13 @@ export function SectorWorkforceConfig() {
     for (const sector of sectors) {
       const { error } = await supabase
         .from("configuracao_setor")
-        .upsert({
-          setor_id: sector.setor_id,
-          quantidade_media: sector.quantidade_media,
-        });
+        .upsert(
+          {
+            setor_id: sector.setor_id,
+            quantidade_media: sector.quantidade_media,
+          },
+          { onConflict: 'setor_id' }
+        );
 
       if (error) {
         toast.error(`Erro ao salvar configuração: ${error.message}`);
