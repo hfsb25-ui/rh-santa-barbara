@@ -19,6 +19,7 @@ interface EmployeeTimeOff {
   nome_completo: string;
   cargo: string;
   setor: string | null;
+  tipo_contrato: string | null;
   quantidade_folgas: number;
   ultima_alteracao_folgas: string | null;
 }
@@ -33,6 +34,7 @@ const TimeOffListDialog = ({ open, onOpenChange }: TimeOffListDialogProps) => {
   const [filteredEmployees, setFilteredEmployees] = useState<EmployeeTimeOff[]>([]);
   const [setores, setSetores] = useState<Setor[]>([]);
   const [selectedSetor, setSelectedSetor] = useState<string>("todos");
+  const [selectedTipoContrato, setSelectedTipoContrato] = useState<string>("todos");
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -43,19 +45,25 @@ const TimeOffListDialog = ({ open, onOpenChange }: TimeOffListDialogProps) => {
   }, [open]);
 
   useEffect(() => {
-    if (selectedSetor === "todos") {
-      setFilteredEmployees(employees);
-    } else {
-      setFilteredEmployees(employees.filter(emp => emp.setor === selectedSetor));
+    let filtered = employees;
+    
+    if (selectedSetor !== "todos") {
+      filtered = filtered.filter(emp => emp.setor === selectedSetor);
     }
-  }, [selectedSetor, employees]);
+    
+    if (selectedTipoContrato !== "todos") {
+      filtered = filtered.filter(emp => emp.tipo_contrato === selectedTipoContrato);
+    }
+    
+    setFilteredEmployees(filtered);
+  }, [selectedSetor, selectedTipoContrato, employees]);
 
   const fetchEmployeeTimeOff = async () => {
     setLoading(true);
     try {
       const { data: employeesData, error: employeesError } = await supabase
         .from("employees")
-        .select("id, nome_completo, cargo, setor, quantidade_folgas, ultima_alteracao_folgas")
+        .select("id, nome_completo, cargo, setor, tipo_contrato, quantidade_folgas, ultima_alteracao_folgas")
         .order("nome_completo");
 
       if (employeesError) throw employeesError;
@@ -102,6 +110,15 @@ const TimeOffListDialog = ({ open, onOpenChange }: TimeOffListDialogProps) => {
     yPosition += 5;
     const setorName = selectedSetor === "todos" ? "Todos os Setores" : setores.find(s => s.nome === selectedSetor)?.nome || selectedSetor;
     doc.text(`Setor: ${setorName}`, pageWidth / 2, yPosition, { align: "center" });
+    
+    yPosition += 5;
+    const tipoContratoLabels: Record<string, string> = {
+      fixo: "Fixo",
+      intermitente: "Intermitente",
+      prestador_servico: "Prestador de Serviço"
+    };
+    const tipoContratoName = selectedTipoContrato === "todos" ? "Todos os Contratos" : tipoContratoLabels[selectedTipoContrato] || selectedTipoContrato;
+    doc.text(`Tipo de Contrato: ${tipoContratoName}`, pageWidth / 2, yPosition, { align: "center" });
     
     yPosition += 15;
 
@@ -154,26 +171,41 @@ const TimeOffListDialog = ({ open, onOpenChange }: TimeOffListDialogProps) => {
       <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Folgas na Casa - Relatório de Funcionários</DialogTitle>
-          <div className="mt-4 flex items-center gap-4">
-            <div className="flex-1">
-              <Select value={selectedSetor} onValueChange={setSelectedSetor}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione um setor" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="todos">Todos os Setores</SelectItem>
-                  {setores.map((setor) => (
-                    <SelectItem key={setor.id} value={setor.nome}>
-                      {setor.nome}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+          <div className="mt-4 space-y-4">
+            <div className="flex items-center gap-4">
+              <div className="flex-1">
+                <Select value={selectedSetor} onValueChange={setSelectedSetor}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione um setor" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="todos">Todos os Setores</SelectItem>
+                    {setores.map((setor) => (
+                      <SelectItem key={setor.id} value={setor.nome}>
+                        {setor.nome}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex-1">
+                <Select value={selectedTipoContrato} onValueChange={setSelectedTipoContrato}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Tipo de contrato" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="todos">Todos os Contratos</SelectItem>
+                    <SelectItem value="fixo">Fixo</SelectItem>
+                    <SelectItem value="intermitente">Intermitente</SelectItem>
+                    <SelectItem value="prestador_servico">Prestador de Serviço</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <Button variant="outline" size="sm" onClick={handleExportPDF}>
+                <FileText className="w-4 h-4 mr-2" />
+                Exportar PDF
+              </Button>
             </div>
-            <Button variant="outline" size="sm" onClick={handleExportPDF}>
-              <FileText className="w-4 h-4 mr-2" />
-              Exportar PDF
-            </Button>
           </div>
         </DialogHeader>
 
