@@ -1,1 +1,4 @@
 project_id = "uyrdlevpowoviwvyehro"
+
+[functions.fix-user-email]
+verify_jwt = false
