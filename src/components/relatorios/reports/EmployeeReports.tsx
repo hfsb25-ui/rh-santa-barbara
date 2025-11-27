@@ -210,7 +210,7 @@ const EmployeeReports = () => {
                 <SelectContent>
                   <SelectItem value="all">Todos</SelectItem>
                   {sectors?.map((sector) => (
-                    <SelectItem key={sector.id} value={sector.id}>
+                    <SelectItem key={sector.id} value={sector.nome}>
                       {sector.nome}
                     </SelectItem>
                   ))}
