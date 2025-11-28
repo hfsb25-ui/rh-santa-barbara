@@ -178,7 +178,7 @@ export default function AvaliacaoCard({ avaliacao, onEdit, onDelete, onRefresh }
                 Ver Detalhes
               </Button>
 
-              {avaliacao.status !== "concluida" && (
+              {avaliacao.status !== "concluida" ? (
                 <>
                   <Button
                     size="sm"
@@ -204,6 +204,15 @@ export default function AvaliacaoCard({ avaliacao, onEdit, onDelete, onRefresh }
                     Excluir
                   </Button>
                 </>
+              ) : (
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  onClick={() => setShowDeleteDialog(true)}
+                >
+                  <Trash2 className="w-4 h-4 mr-1" />
+                  Excluir
+                </Button>
               )}
             </div>
           </div>
