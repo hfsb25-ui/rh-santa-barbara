@@ -243,6 +243,79 @@ export type Database = {
           },
         ]
       }
+      ciclos_avaliacao: {
+        Row: {
+          ativo: boolean | null
+          created_at: string | null
+          created_by: string | null
+          criar_metas: boolean | null
+          data_inicio: string
+          data_proxima_execucao: string
+          dias_para_conclusao: number | null
+          empresa_id: string | null
+          funcao_id: string | null
+          id: string
+          nome: string
+          setor_id: string | null
+          tipo: string
+          updated_at: string | null
+        }
+        Insert: {
+          ativo?: boolean | null
+          created_at?: string | null
+          created_by?: string | null
+          criar_metas?: boolean | null
+          data_inicio: string
+          data_proxima_execucao: string
+          dias_para_conclusao?: number | null
+          empresa_id?: string | null
+          funcao_id?: string | null
+          id?: string
+          nome: string
+          setor_id?: string | null
+          tipo: string
+          updated_at?: string | null
+        }
+        Update: {
+          ativo?: boolean | null
+          created_at?: string | null
+          created_by?: string | null
+          criar_metas?: boolean | null
+          data_inicio?: string
+          data_proxima_execucao?: string
+          dias_para_conclusao?: number | null
+          empresa_id?: string | null
+          funcao_id?: string | null
+          id?: string
+          nome?: string
+          setor_id?: string | null
+          tipo?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ciclos_avaliacao_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ciclos_avaliacao_funcao_id_fkey"
+            columns: ["funcao_id"]
+            isOneToOne: false
+            referencedRelation: "funcoes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ciclos_avaliacao_setor_id_fkey"
+            columns: ["setor_id"]
+            isOneToOne: false
+            referencedRelation: "setores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       configuracao_setor: {
         Row: {
           created_at: string | null
@@ -764,6 +837,44 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: []
+      }
+      execucoes_ciclo: {
+        Row: {
+          avaliacoes_criadas: number | null
+          ciclo_id: string | null
+          created_at: string | null
+          data_execucao: string | null
+          detalhes: Json | null
+          id: string
+          status: string | null
+        }
+        Insert: {
+          avaliacoes_criadas?: number | null
+          ciclo_id?: string | null
+          created_at?: string | null
+          data_execucao?: string | null
+          detalhes?: Json | null
+          id?: string
+          status?: string | null
+        }
+        Update: {
+          avaliacoes_criadas?: number | null
+          ciclo_id?: string | null
+          created_at?: string | null
+          data_execucao?: string | null
+          detalhes?: Json | null
+          id?: string
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "execucoes_ciclo_ciclo_id_fkey"
+            columns: ["ciclo_id"]
+            isOneToOne: false
+            referencedRelation: "ciclos_avaliacao"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       faltas: {
         Row: {
