@@ -47,6 +47,8 @@ import StockAlerts from "@/components/dashboard/StockAlerts";
 import AttendanceMetrics from "@/components/dashboard/AttendanceMetrics";
 import DashboardFilters from "@/components/dashboard/DashboardFilters";
 import { WorkforceAlerts } from "@/components/dashboard/WorkforceAlerts";
+import { BirthdayCard } from "@/components/dashboard/BirthdayCard";
+import { BirthdayListDialog } from "@/components/dashboard/BirthdayListDialog";
 import { toast } from "sonner";
 
 interface GestorDashboardProps {
@@ -62,6 +64,7 @@ const GestorDashboard = ({ user }: GestorDashboardProps) => {
   const [showAvisoDialog, setShowAvisoDialog] = useState(false);
   const [showManageAvisosDialog, setShowManageAvisosDialog] = useState(false);
   const [showLoginHistoryDialog, setShowLoginHistoryDialog] = useState(false);
+  const [showBirthdayDialog, setShowBirthdayDialog] = useState(false);
   const [selectedEmpresa, setSelectedEmpresa] = useState<string>("all");
   const [empresas, setEmpresas] = useState<Array<{ id: string; nome: string; logo_url?: string }>>([]);
   const [companyLogo, setCompanyLogo] = useState<string | null>(null);
@@ -625,6 +628,12 @@ const GestorDashboard = ({ user }: GestorDashboardProps) => {
               </Card>
             </div>
 
+            {/* Birthday Card */}
+            <BirthdayCard 
+              empresaId={selectedEmpresa !== "all" ? selectedEmpresa : undefined}
+              onViewAll={() => setShowBirthdayDialog(true)}
+            />
+
             {/* Workforce Alerts */}
             <WorkforceAlerts />
 
@@ -992,6 +1001,12 @@ const GestorDashboard = ({ user }: GestorDashboardProps) => {
         <LoginHistoryDialog 
           open={showLoginHistoryDialog} 
           onOpenChange={setShowLoginHistoryDialog} 
+        />
+
+        <BirthdayListDialog
+          open={showBirthdayDialog}
+          onOpenChange={setShowBirthdayDialog}
+          empresaId={selectedEmpresa !== "all" ? selectedEmpresa : undefined}
         />
       </div>
     </div>
