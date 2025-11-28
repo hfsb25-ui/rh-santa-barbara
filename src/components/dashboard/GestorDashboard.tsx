@@ -29,6 +29,7 @@ import {
   BarChart3,
   Activity,
   Settings,
+  Award,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -807,6 +808,10 @@ const GestorDashboard = ({ user }: GestorDashboardProps) => {
                 <Button variant="outline" onClick={() => navigate("/vacation-schedule")} className="w-full">
                   <Calendar className="w-4 h-4 mr-2" />
                   Escala de Férias
+                </Button>
+                <Button variant="outline" onClick={() => navigate("/avaliacoes")} className="w-full">
+                  <Award className="w-4 h-4 mr-2" />
+                  Avaliações
                 </Button>
                 <Button variant="outline" onClick={() => navigate("/settings")} className="w-full">
                   <Settings className="w-4 h-4 mr-2" />
