@@ -4,17 +4,20 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus, Settings, TrendingUp, Users, Award, Download } from "lucide-react";
+import { Plus, Settings, TrendingUp, Users, Award, Download, Calendar } from "lucide-react";
 import { toast } from "sonner";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
 import jsPDF from "jspdf";
 import AvaliacaoForm from "@/components/avaliacoes/AvaliacaoForm";
 import AvaliacaoCard from "@/components/avaliacoes/AvaliacaoCard";
 import CriteriosConfig from "@/components/avaliacoes/CriteriosConfig";
+import { CiclosConfig } from "@/components/avaliacoes/CiclosConfig";
+import { ProximasAvaliacoes } from "@/components/avaliacoes/ProximasAvaliacoes";
 
 export default function Avaliacoes() {
   const [showAvaliacaoForm, setShowAvaliacaoForm] = useState(false);
   const [showCriteriosConfig, setShowCriteriosConfig] = useState(false);
+  const [showCiclosConfig, setShowCiclosConfig] = useState(false);
   const [selectedAvaliacao, setSelectedAvaliacao] = useState<any>(null);
 
   const { data: avaliacoes, refetch: refetchAvaliacoes } = useQuery({
@@ -120,6 +123,13 @@ export default function Avaliacoes() {
         <div className="flex gap-2">
           <Button
             variant="outline"
+            onClick={() => setShowCiclosConfig(true)}
+          >
+            <Calendar className="w-4 h-4 mr-2" />
+            Ciclos Automáticos
+          </Button>
+          <Button
+            variant="outline"
             onClick={() => setShowCriteriosConfig(true)}
           >
             <Settings className="w-4 h-4 mr-2" />
@@ -189,6 +199,9 @@ export default function Avaliacoes() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Preview de Próximas Avaliações */}
+      <ProximasAvaliacoes />
 
       {/* Gráficos e Análises */}
       <div className="grid gap-4 lg:grid-cols-2">
@@ -362,6 +375,19 @@ export default function Avaliacoes() {
 
       {showCriteriosConfig && (
         <CriteriosConfig onClose={() => setShowCriteriosConfig(false)} />
+      )}
+
+      {showCiclosConfig && (
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 overflow-y-auto">
+          <div className="container mx-auto p-6">
+            <div className="flex justify-end mb-4">
+              <Button variant="outline" onClick={() => setShowCiclosConfig(false)}>
+                Fechar
+              </Button>
+            </div>
+            <CiclosConfig />
+          </div>
+        </div>
       )}
     </div>
   );
