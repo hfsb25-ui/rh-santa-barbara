@@ -65,6 +65,62 @@ export type Database = {
           },
         ]
       }
+      avaliacoes_desempenho: {
+        Row: {
+          auto_avaliacao_concluida: boolean | null
+          avaliacao_gestor_concluida: boolean | null
+          avaliador_id: string | null
+          created_at: string | null
+          employee_id: string
+          id: string
+          nota_final: number | null
+          observacoes: string | null
+          periodo_fim: string
+          periodo_inicio: string
+          status: string
+          tipo: string
+          updated_at: string | null
+        }
+        Insert: {
+          auto_avaliacao_concluida?: boolean | null
+          avaliacao_gestor_concluida?: boolean | null
+          avaliador_id?: string | null
+          created_at?: string | null
+          employee_id: string
+          id?: string
+          nota_final?: number | null
+          observacoes?: string | null
+          periodo_fim: string
+          periodo_inicio: string
+          status?: string
+          tipo: string
+          updated_at?: string | null
+        }
+        Update: {
+          auto_avaliacao_concluida?: boolean | null
+          avaliacao_gestor_concluida?: boolean | null
+          avaliador_id?: string | null
+          created_at?: string | null
+          employee_id?: string
+          id?: string
+          nota_final?: number | null
+          observacoes?: string | null
+          periodo_fim?: string
+          periodo_inicio?: string
+          status?: string
+          tipo?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "avaliacoes_desempenho_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       avisos: {
         Row: {
           created_at: string | null
@@ -251,6 +307,57 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: []
+      }
+      criterios_avaliacao: {
+        Row: {
+          ativo: boolean | null
+          created_at: string | null
+          descricao: string | null
+          funcao_id: string | null
+          id: string
+          nome: string
+          peso: number | null
+          setor_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          ativo?: boolean | null
+          created_at?: string | null
+          descricao?: string | null
+          funcao_id?: string | null
+          id?: string
+          nome: string
+          peso?: number | null
+          setor_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          ativo?: boolean | null
+          created_at?: string | null
+          descricao?: string | null
+          funcao_id?: string | null
+          id?: string
+          nome?: string
+          peso?: number | null
+          setor_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "criterios_avaliacao_funcao_id_fkey"
+            columns: ["funcao_id"]
+            isOneToOne: false
+            referencedRelation: "funcoes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "criterios_avaliacao_setor_id_fkey"
+            columns: ["setor_id"]
+            isOneToOne: false
+            referencedRelation: "setores"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       employee_files: {
         Row: {
@@ -1255,6 +1362,63 @@ export type Database = {
           },
         ]
       }
+      metas_funcionario: {
+        Row: {
+          avaliacao_id: string | null
+          created_at: string | null
+          created_by: string | null
+          descricao: string | null
+          employee_id: string
+          id: string
+          percentual_conclusao: number | null
+          prazo: string | null
+          status: string
+          titulo: string
+          updated_at: string | null
+        }
+        Insert: {
+          avaliacao_id?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          descricao?: string | null
+          employee_id: string
+          id?: string
+          percentual_conclusao?: number | null
+          prazo?: string | null
+          status?: string
+          titulo: string
+          updated_at?: string | null
+        }
+        Update: {
+          avaliacao_id?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          descricao?: string | null
+          employee_id?: string
+          id?: string
+          percentual_conclusao?: number | null
+          prazo?: string | null
+          status?: string
+          titulo?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "metas_funcionario_avaliacao_id_fkey"
+            columns: ["avaliacao_id"]
+            isOneToOne: false
+            referencedRelation: "avaliacoes_desempenho"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "metas_funcionario_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       modelos_contrato: {
         Row: {
           conteudo_template: string
@@ -1286,6 +1450,57 @@ export type Database = {
             columns: ["funcao_id"]
             isOneToOne: false
             referencedRelation: "funcoes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notas_avaliacao: {
+        Row: {
+          avaliacao_id: string
+          comentario_funcionario: string | null
+          comentario_gestor: string | null
+          created_at: string | null
+          criterio_id: string
+          id: string
+          nota_funcionario: number | null
+          nota_gestor: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          avaliacao_id: string
+          comentario_funcionario?: string | null
+          comentario_gestor?: string | null
+          created_at?: string | null
+          criterio_id: string
+          id?: string
+          nota_funcionario?: number | null
+          nota_gestor?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          avaliacao_id?: string
+          comentario_funcionario?: string | null
+          comentario_gestor?: string | null
+          created_at?: string | null
+          criterio_id?: string
+          id?: string
+          nota_funcionario?: number | null
+          nota_gestor?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notas_avaliacao_avaliacao_id_fkey"
+            columns: ["avaliacao_id"]
+            isOneToOne: false
+            referencedRelation: "avaliacoes_desempenho"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notas_avaliacao_criterio_id_fkey"
+            columns: ["criterio_id"]
+            isOneToOne: false
+            referencedRelation: "criterios_avaliacao"
             referencedColumns: ["id"]
           },
         ]

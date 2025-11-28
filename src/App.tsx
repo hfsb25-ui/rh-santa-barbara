@@ -27,6 +27,7 @@ import Relatorios from "./pages/Relatorios";
 import SaudeOcupacional from "./pages/SaudeOcupacional";
 import VacationSchedule from "./pages/VacationSchedule";
 import Settings from "./pages/Settings";
+import Avaliacoes from "./pages/Avaliacoes";
 
 const queryClient = new QueryClient();
 
@@ -79,6 +80,7 @@ const App = () => {
           <Route path="/relatorios" element={<Relatorios />} />
           <Route path="/saude-ocupacional" element={<SaudeOcupacional />} />
           <Route path="/vacation-schedule" element={<VacationSchedule />} />
+          <Route path="/avaliacoes" element={<Avaliacoes />} />
           <Route path="/settings" element={<Settings />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
