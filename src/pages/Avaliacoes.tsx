@@ -4,8 +4,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus, Settings } from "lucide-react";
+import { Plus, Settings, TrendingUp, Users, Award, Download } from "lucide-react";
 import { toast } from "sonner";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
+import jsPDF from "jspdf";
 import AvaliacaoForm from "@/components/avaliacoes/AvaliacaoForm";
 import AvaliacaoCard from "@/components/avaliacoes/AvaliacaoCard";
 import CriteriosConfig from "@/components/avaliacoes/CriteriosConfig";
@@ -34,6 +36,56 @@ export default function Avaliacoes() {
   const pendentes = avaliacoes?.filter(a => a.status === "pendente") || [];
   const emAndamento = avaliacoes?.filter(a => a.status === "em_andamento") || [];
   const concluidas = avaliacoes?.filter(a => a.status === "concluida") || [];
+
+  // Estatísticas
+  const mediaGeral = concluidas.length > 0
+    ? (concluidas.reduce((sum, av) => sum + Number(av.nota_final || 0), 0) / concluidas.length).toFixed(2)
+    : "0";
+
+  const totalFuncionariosAvaliados = new Set(avaliacoes?.map(a => a.employee_id)).size;
+
+  // Dados para gráfico de distribuição por tipo
+  const avaliacoesPorTipo = avaliacoes?.reduce((acc: any, av) => {
+    const tipo = av.tipo;
+    const existing = acc.find((item: any) => item.tipo === tipo);
+    if (existing) {
+      existing.quantidade += 1;
+    } else {
+      acc.push({ tipo, quantidade: 1 });
+    }
+    return acc;
+  }, []) || [];
+
+  const COLORS = ['hsl(var(--primary))', 'hsl(var(--secondary))', 'hsl(var(--accent))', 'hsl(var(--muted))'];
+
+  const exportRelatorio = () => {
+    try {
+      const doc = new jsPDF();
+      
+      doc.setFontSize(18);
+      doc.text("Relatório de Avaliações de Desempenho", 20, 20);
+      
+      doc.setFontSize(12);
+      doc.text(`Data: ${new Date().toLocaleDateString()}`, 20, 35);
+      
+      doc.setFontSize(14);
+      doc.text("Resumo Geral", 20, 50);
+      
+      doc.setFontSize(11);
+      doc.text(`Total de Avaliações: ${avaliacoes?.length || 0}`, 25, 60);
+      doc.text(`Pendentes: ${pendentes.length}`, 25, 67);
+      doc.text(`Em Andamento: ${emAndamento.length}`, 25, 74);
+      doc.text(`Concluídas: ${concluidas.length}`, 25, 81);
+      doc.text(`Funcionários Avaliados: ${totalFuncionariosAvaliados}`, 25, 88);
+      doc.text(`Média Geral: ${mediaGeral}`, 25, 95);
+      
+      doc.save(`relatorio-avaliacoes-${new Date().toISOString().split("T")[0]}.pdf`);
+      toast.success("Relatório exportado com sucesso!");
+    } catch (error) {
+      console.error("Erro ao gerar relatório:", error);
+      toast.error("Erro ao gerar relatório");
+    }
+  };
 
   const handleEdit = (avaliacao: any) => {
     setSelectedAvaliacao(avaliacao);
@@ -83,28 +135,141 @@ export default function Avaliacoes() {
         </div>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Resumo</CardTitle>
-          <CardDescription>Visão geral das avaliações</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-4 md:grid-cols-3">
-            <div className="p-4 border rounded-lg">
-              <div className="text-2xl font-bold text-yellow-600">{pendentes.length}</div>
-              <div className="text-sm text-muted-foreground">Pendentes</div>
+      {/* Métricas e Analytics */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <TrendingUp className="w-4 h-4" />
+              Pendentes
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-yellow-600">{pendentes.length}</div>
+            <p className="text-xs text-muted-foreground mt-1">Aguardando início</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <TrendingUp className="w-4 h-4" />
+              Em Andamento
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-blue-600">{emAndamento.length}</div>
+            <p className="text-xs text-muted-foreground mt-1">Em processo</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <Award className="w-4 h-4" />
+              Concluídas
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-green-600">{concluidas.length}</div>
+            <p className="text-xs text-muted-foreground mt-1">Finalizadas</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <Users className="w-4 h-4" />
+              Funcionários
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{totalFuncionariosAvaliados}</div>
+            <p className="text-xs text-muted-foreground mt-1">Avaliados</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Gráficos e Análises */}
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <div className="flex justify-between items-center">
+              <CardTitle>Distribuição por Tipo</CardTitle>
+              <Button variant="ghost" size="sm" onClick={exportRelatorio}>
+                <Download className="w-4 h-4 mr-2" />
+                Exportar
+              </Button>
             </div>
-            <div className="p-4 border rounded-lg">
-              <div className="text-2xl font-bold text-blue-600">{emAndamento.length}</div>
-              <div className="text-sm text-muted-foreground">Em Andamento</div>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={250}>
+              <PieChart>
+                <Pie
+                  data={avaliacoesPorTipo}
+                  dataKey="quantidade"
+                  nameKey="tipo"
+                  cx="50%"
+                  cy="50%"
+                  outerRadius={80}
+                  label
+                >
+                  {avaliacoesPorTipo.map((entry: any, index: number) => (
+                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip />
+                <Legend />
+              </PieChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Status das Avaliações</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={250}>
+              <BarChart data={[
+                { status: "Pendentes", quantidade: pendentes.length },
+                { status: "Em Andamento", quantidade: emAndamento.length },
+                { status: "Concluídas", quantidade: concluidas.length },
+              ]}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="status" />
+                <YAxis />
+                <Tooltip />
+                <Bar dataKey="quantidade" fill="hsl(var(--primary))" />
+              </BarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Card de Média Geral */}
+      {concluidas.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Desempenho Geral</CardTitle>
+            <CardDescription>Média de todas as avaliações concluídas</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center gap-4">
+              <div className="text-5xl font-bold">{mediaGeral}</div>
+              <div className="flex-1">
+                <div className="text-sm text-muted-foreground">de 5.0</div>
+                <div className="w-full bg-muted rounded-full h-2 mt-2">
+                  <div 
+                    className="bg-primary h-2 rounded-full transition-all" 
+                    style={{ width: `${(Number(mediaGeral) / 5) * 100}%` }}
+                  />
+                </div>
+              </div>
             </div>
-            <div className="p-4 border rounded-lg">
-              <div className="text-2xl font-bold text-green-600">{concluidas.length}</div>
-              <div className="text-sm text-muted-foreground">Concluídas</div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      )}
 
       <Tabs defaultValue="pendentes" className="space-y-4">
         <TabsList>
