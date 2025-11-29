@@ -7,7 +7,8 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Download, FileText } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Loader2, Download, FileText, Users } from "lucide-react";
 import { format, startOfMonth, endOfMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { generatePontoPDF } from "@/lib/pdfGeneratorPonto";
@@ -26,6 +27,7 @@ export function RelatoriosPonto() {
   const [selectedEmployee, setSelectedEmployee] = useState("");
   const [selectedMonth, setSelectedMonth] = useState(format(new Date(), "yyyy-MM"));
   const [exporting, setExporting] = useState(false);
+  const [saldoMonth, setSaldoMonth] = useState(format(new Date(), "yyyy-MM"));
 
   const { data: employees, isLoading: loadingEmployees } = useQuery({
     queryKey: ["employees-for-relatorio"],
@@ -102,6 +104,61 @@ export function RelatoriosPonto() {
       };
     },
     enabled: !!selectedEmployee && !!selectedMonth,
+  });
+
+  const { data: allSaldos, isLoading: loadingSaldos } = useQuery({
+    queryKey: ["saldos-todos", saldoMonth],
+    queryFn: async () => {
+      if (!saldoMonth) return [];
+      
+      const [year, month] = saldoMonth.split("-");
+      const startDate = format(startOfMonth(new Date(parseInt(year), parseInt(month) - 1)), "yyyy-MM-dd");
+      const endDate = format(endOfMonth(new Date(parseInt(year), parseInt(month) - 1)), "yyyy-MM-dd");
+      
+      const { data: employees, error: empError } = await supabase
+        .from("employees")
+        .select("id, nome_completo, cargo, setor")
+        .eq("status", "ativo")
+        .order("nome_completo");
+      
+      if (empError) throw empError;
+
+      const saldos = await Promise.all(
+        employees.map(async (emp) => {
+          const { data: registros } = await supabase
+            .from("registros_ponto")
+            .select("*")
+            .eq("employee_id", emp.id)
+            .gte("data", startDate)
+            .lte("data", endDate);
+
+          const { data: config } = await supabase
+            .from("configuracao_horas_trabalho")
+            .select("*")
+            .eq("employee_id", emp.id)
+            .maybeSingle();
+
+          const horasDiarias = config?.horas_diarias_esperadas || 8.00;
+          const diasUteis = registros?.filter(r => r.tipo_dia === "normal").length || 0;
+          const horasEsperadas = diasUteis * horasDiarias;
+          const horasTrabalhadas = registros?.reduce((sum, r) => sum + (r.horas_trabalhadas || 0), 0) || 0;
+          const saldo = horasTrabalhadas - horasEsperadas;
+
+          return {
+            id: emp.id,
+            nome: emp.nome_completo,
+            cargo: emp.cargo,
+            setor: emp.setor || "-",
+            horasEsperadas,
+            horasTrabalhadas,
+            saldo,
+          };
+        })
+      );
+
+      return saldos;
+    },
+    enabled: !!saldoMonth,
   });
 
   const getSaldoBadge = (saldo: number) => {
@@ -230,136 +287,193 @@ export function RelatoriosPonto() {
         </p>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2">
-        <div className="space-y-2">
-          <Label htmlFor="employee-relatorio">Funcionário *</Label>
-          <Select value={selectedEmployee} onValueChange={setSelectedEmployee}>
-            <SelectTrigger>
-              <SelectValue placeholder="Selecione o funcionário" />
-            </SelectTrigger>
-            <SelectContent>
-              {loadingEmployees ? (
-                <SelectItem value="loading" disabled>Carregando...</SelectItem>
-              ) : (
-                employees?.map((emp) => (
-                  <SelectItem key={emp.id} value={emp.id}>
-                    {emp.nome_completo} - {emp.cargo}
-                  </SelectItem>
-                ))
-              )}
-            </SelectContent>
-          </Select>
-        </div>
+      <Tabs defaultValue="individual" className="w-full">
+        <TabsList>
+          <TabsTrigger value="individual">Relatório Individual</TabsTrigger>
+          <TabsTrigger value="todos">Saldo de Todos</TabsTrigger>
+        </TabsList>
 
-        <div className="space-y-2">
-          <Label htmlFor="month-relatorio">Mês *</Label>
-          <Input
-            id="month-relatorio"
-            type="month"
-            value={selectedMonth}
-            onChange={(e) => setSelectedMonth(e.target.value)}
-          />
-        </div>
-      </div>
+        <TabsContent value="individual" className="space-y-6">
+          <div className="grid gap-6 md:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="employee-relatorio">Funcionário *</Label>
+              <Select value={selectedEmployee} onValueChange={setSelectedEmployee}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione o funcionário" />
+                </SelectTrigger>
+                <SelectContent>
+                  {loadingEmployees ? (
+                    <SelectItem value="loading" disabled>Carregando...</SelectItem>
+                  ) : (
+                    employees?.map((emp) => (
+                      <SelectItem key={emp.id} value={emp.id}>
+                        {emp.nome_completo} - {emp.cargo}
+                      </SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
 
-      {loadingReport && (
-        <div className="flex justify-center py-8">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-        </div>
-      )}
-
-      {report && (
-        <>
-          <div className="grid gap-4 md:grid-cols-4">
-            <div className="p-4 border rounded-lg bg-card">
-              <div className="text-sm text-muted-foreground">Horas Esperadas</div>
-              <div className="text-2xl font-bold">{report.horasEsperadas.toFixed(2)}h</div>
-            </div>
-            <div className="p-4 border rounded-lg bg-card">
-              <div className="text-sm text-muted-foreground">Horas Trabalhadas</div>
-              <div className="text-2xl font-bold">{report.horasTrabalhadas.toFixed(2)}h</div>
-            </div>
-            <div className="p-4 border rounded-lg bg-card">
-              <div className="text-sm text-muted-foreground">Saldo de Horas</div>
-              <div className="text-2xl font-bold">{getSaldoBadge(report.saldo)}</div>
-            </div>
-            <div className="p-4 border rounded-lg bg-card">
-              <div className="text-sm text-muted-foreground">Horas/Dia Esperadas</div>
-              <div className="text-2xl font-bold">{report.horasDiarias.toFixed(2)}h</div>
+            <div className="space-y-2">
+              <Label htmlFor="month-relatorio">Mês *</Label>
+              <Input
+                id="month-relatorio"
+                type="month"
+                value={selectedMonth}
+                onChange={(e) => setSelectedMonth(e.target.value)}
+              />
             </div>
           </div>
 
-          <div className="border rounded-lg overflow-auto max-h-[500px]">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Data</TableHead>
-                  <TableHead>Tipo</TableHead>
-                  <TableHead>Entrada</TableHead>
-                  <TableHead>Saída</TableHead>
-                  <TableHead>Intervalo</TableHead>
-                  <TableHead>Horas</TableHead>
-                  <TableHead>Observações</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {report.registros.map((reg) => (
-                  <TableRow key={reg.id}>
-                    <TableCell className="font-medium">
-                      {format(new Date(reg.data + "T00:00:00"), "dd/MM/yyyy (EEE)", { locale: ptBR })}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={reg.tipo_dia === "falta" ? "destructive" : "secondary"}>
-                        {TIPO_DIA_LABELS[reg.tipo_dia]}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>{reg.hora_entrada || "-"}</TableCell>
-                    <TableCell>{reg.hora_saida || "-"}</TableCell>
-                    <TableCell>
-                      {reg.hora_inicio_intervalo && reg.hora_fim_intervalo
-                        ? `${reg.hora_inicio_intervalo} - ${reg.hora_fim_intervalo}`
-                        : "-"}
-                    </TableCell>
-                    <TableCell className="font-semibold">
-                      {reg.horas_trabalhadas?.toFixed(2) || "0.00"}h
-                    </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      {reg.observacoes || "-"}
-                    </TableCell>
+          {loadingReport && (
+            <div className="flex justify-center py-8">
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            </div>
+          )}
+
+          {report && (
+            <>
+              <div className="grid gap-4 md:grid-cols-4">
+                <div className="p-4 border rounded-lg bg-card">
+                  <div className="text-sm text-muted-foreground">Horas Esperadas</div>
+                  <div className="text-2xl font-bold">{report.horasEsperadas.toFixed(2)}h</div>
+                </div>
+                <div className="p-4 border rounded-lg bg-card">
+                  <div className="text-sm text-muted-foreground">Horas Trabalhadas</div>
+                  <div className="text-2xl font-bold">{report.horasTrabalhadas.toFixed(2)}h</div>
+                </div>
+                <div className="p-4 border rounded-lg bg-card">
+                  <div className="text-sm text-muted-foreground">Saldo de Horas</div>
+                  <div className="text-2xl font-bold">{getSaldoBadge(report.saldo)}</div>
+                </div>
+                <div className="p-4 border rounded-lg bg-card">
+                  <div className="text-sm text-muted-foreground">Horas/Dia Esperadas</div>
+                  <div className="text-2xl font-bold">{report.horasDiarias.toFixed(2)}h</div>
+                </div>
+              </div>
+
+              <div className="border rounded-lg overflow-auto max-h-[500px]">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Data</TableHead>
+                      <TableHead>Tipo</TableHead>
+                      <TableHead>Entrada</TableHead>
+                      <TableHead>Saída</TableHead>
+                      <TableHead>Intervalo</TableHead>
+                      <TableHead>Horas</TableHead>
+                      <TableHead>Observações</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {report.registros.map((reg) => (
+                      <TableRow key={reg.id}>
+                        <TableCell className="font-medium">
+                          {format(new Date(reg.data + "T00:00:00"), "dd/MM/yyyy (EEE)", { locale: ptBR })}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={reg.tipo_dia === "falta" ? "destructive" : "secondary"}>
+                            {TIPO_DIA_LABELS[reg.tipo_dia]}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>{reg.hora_entrada || "-"}</TableCell>
+                        <TableCell>{reg.hora_saida || "-"}</TableCell>
+                        <TableCell>
+                          {reg.hora_inicio_intervalo && reg.hora_fim_intervalo
+                            ? `${reg.hora_inicio_intervalo} - ${reg.hora_fim_intervalo}`
+                            : "-"}
+                        </TableCell>
+                        <TableCell className="font-semibold">
+                          {reg.horas_trabalhadas?.toFixed(2) || "0.00"}h
+                        </TableCell>
+                        <TableCell className="text-sm text-muted-foreground">
+                          {reg.observacoes || "-"}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+
+              <div className="flex justify-end gap-2">
+                <Button
+                  variant="outline"
+                  onClick={handleExportExcel}
+                  disabled={exporting}
+                >
+                  {exporting ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <FileText className="mr-2 h-4 w-4" />
+                  )}
+                  Exportar Excel
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={handleExportPDF}
+                  disabled={exporting}
+                >
+                  {exporting ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Download className="mr-2 h-4 w-4" />
+                  )}
+                  Exportar PDF
+                </Button>
+              </div>
+            </>
+          )}
+        </TabsContent>
+
+        <TabsContent value="todos" className="space-y-6">
+          <div className="space-y-2">
+            <Label htmlFor="saldo-month">Selecione o Mês</Label>
+            <Input
+              id="saldo-month"
+              type="month"
+              value={saldoMonth}
+              onChange={(e) => setSaldoMonth(e.target.value)}
+              className="max-w-xs"
+            />
+          </div>
+
+          {loadingSaldos && (
+            <div className="flex justify-center py-8">
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            </div>
+          )}
+
+          {allSaldos && allSaldos.length > 0 && (
+            <div className="border rounded-lg overflow-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Funcionário</TableHead>
+                    <TableHead>Cargo</TableHead>
+                    <TableHead>Setor</TableHead>
+                    <TableHead>Horas Esperadas</TableHead>
+                    <TableHead>Horas Trabalhadas</TableHead>
+                    <TableHead>Saldo</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-
-          <div className="flex justify-end gap-2">
-            <Button
-              variant="outline"
-              onClick={handleExportExcel}
-              disabled={exporting}
-            >
-              {exporting ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <FileText className="mr-2 h-4 w-4" />
-              )}
-              Exportar Excel
-            </Button>
-            <Button
-              variant="outline"
-              onClick={handleExportPDF}
-              disabled={exporting}
-            >
-              {exporting ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <Download className="mr-2 h-4 w-4" />
-              )}
-              Exportar PDF
-            </Button>
-          </div>
-        </>
-      )}
+                </TableHeader>
+                <TableBody>
+                  {allSaldos.map((item) => (
+                    <TableRow key={item.id}>
+                      <TableCell className="font-medium">{item.nome}</TableCell>
+                      <TableCell>{item.cargo}</TableCell>
+                      <TableCell>{item.setor}</TableCell>
+                      <TableCell>{item.horasEsperadas.toFixed(2)}h</TableCell>
+                      <TableCell>{item.horasTrabalhadas.toFixed(2)}h</TableCell>
+                      <TableCell>{getSaldoBadge(item.saldo)}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
