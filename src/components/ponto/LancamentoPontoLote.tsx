@@ -96,23 +96,15 @@ export function LancamentoPontoLote() {
         };
       }
       
-      const tipoDia = isWeekend(day) ? "dsr" : "normal";
-      const newRecord: DayRecord = {
+      return {
         data: dateStr,
-        horaEntrada: isWeekend(day) ? "" : "08:00",
-        horaSaida: isWeekend(day) ? "" : "18:00",
-        horaInicioIntervalo: isWeekend(day) ? "" : "12:00",
-        horaFimIntervalo: isWeekend(day) ? "" : "13:00",
-        tipoDia,
+        horaEntrada: "",
+        horaSaida: "",
+        horaInicioIntervalo: "",
+        horaFimIntervalo: "",
+        tipoDia: isWeekend(day) ? "dsr" : "normal",
         horasTrabalhadas: 0,
       };
-      
-      // Calcular horas automaticamente para dias normais
-      if (tipoDia === "normal") {
-        newRecord.horasTrabalhadas = calculateHours(newRecord);
-      }
-      
-      return newRecord;
     });
     
     setRecords(newRecords);
