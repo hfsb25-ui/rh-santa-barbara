@@ -156,6 +156,38 @@ export type Database = {
           },
         ]
       }
+      banco_horas: {
+        Row: {
+          created_at: string | null
+          employee_id: string
+          id: string
+          saldo_horas: number
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          employee_id: string
+          id?: string
+          saldo_horas?: number
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          employee_id?: string
+          id?: string
+          saldo_horas?: number
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "banco_horas_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: true
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       candidaturas: {
         Row: {
           avaliacao_gestor: string | null
@@ -1197,6 +1229,60 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: []
+      }
+      historico_banco_horas: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          employee_id: string
+          horas: number
+          id: string
+          mes_referencia: string | null
+          observacao: string | null
+          saldo_anterior: number
+          saldo_novo: number
+          tipo_movimentacao: string
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          employee_id: string
+          horas: number
+          id?: string
+          mes_referencia?: string | null
+          observacao?: string | null
+          saldo_anterior: number
+          saldo_novo: number
+          tipo_movimentacao: string
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          employee_id?: string
+          horas?: number
+          id?: string
+          mes_referencia?: string | null
+          observacao?: string | null
+          saldo_anterior?: number
+          saldo_novo?: number
+          tipo_movimentacao?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "historico_banco_horas_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "historico_banco_horas_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       historico_estoque_epis: {
         Row: {
