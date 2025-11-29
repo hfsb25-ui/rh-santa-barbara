@@ -7,8 +7,9 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, Download, FileText, Users } from "lucide-react";
+import { Loader2, Download, FileText, Users, TrendingUp, TrendingDown, Minus } from "lucide-react";
 import { format, startOfMonth, endOfMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { generatePontoPDF } from "@/lib/pdfGeneratorPonto";
@@ -598,6 +599,59 @@ export function RelatoriosPonto() {
 
           {allSaldos && allSaldos.length > 0 && (
             <>
+              <div className="grid gap-4 md:grid-cols-3 mb-6">
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">
+                      Saldo Positivo
+                    </CardTitle>
+                    <TrendingUp className="h-4 w-4 text-green-600" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold text-green-600">
+                      {allSaldos.filter(item => item.saldo > 0).length}
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      funcionários com horas extras
+                    </p>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">
+                      Saldo Negativo
+                    </CardTitle>
+                    <TrendingDown className="h-4 w-4 text-red-600" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold text-red-600">
+                      {allSaldos.filter(item => item.saldo < 0).length}
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      funcionários devendo horas
+                    </p>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">
+                      Saldo Zerado
+                    </CardTitle>
+                    <Minus className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">
+                      {allSaldos.filter(item => item.saldo === 0).length}
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      funcionários em dia
+                    </p>
+                  </CardContent>
+                </Card>
+              </div>
+
               <div className="border rounded-lg overflow-auto">
                 <Table>
                   <TableHeader>
