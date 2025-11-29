@@ -49,8 +49,8 @@ export async function generatePontoPDF(data: ReportData) {
   // Logo da empresa (se disponível)
   if (data.empresa?.logo_url) {
     try {
-      doc.addImage(data.empresa.logo_url, "PNG", pageWidth / 2 - 25, yPosition, 50, 50);
-      yPosition += 55;
+      doc.addImage(data.empresa.logo_url, "PNG", pageWidth / 2 - 10, yPosition, 20, 20);
+      yPosition += 25;
     } catch (error) {
       console.error("Erro ao carregar logo:", error);
     }
