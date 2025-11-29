@@ -12,6 +12,8 @@ import { Loader2, Download, FileText, Users } from "lucide-react";
 import { format, startOfMonth, endOfMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { generatePontoPDF } from "@/lib/pdfGeneratorPonto";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 import * as XLSX from "xlsx";
 import { toast } from "sonner";
 
@@ -223,9 +225,6 @@ export function RelatoriosPonto() {
     
     setExporting(true);
     try {
-      const jsPDF = (await import("jspdf")).default;
-      await import("jspdf-autotable");
-
       const doc = new jsPDF();
       const [year, month] = saldoMonth.split("-");
       const mesFormatado = format(new Date(parseInt(year), parseInt(month) - 1), "MMMM 'de' yyyy", { locale: ptBR });
@@ -249,7 +248,7 @@ export function RelatoriosPonto() {
         `${item.saldo >= 0 ? "+" : ""}${item.saldo.toFixed(2)}h`,
       ]);
 
-      (doc as any).autoTable({
+      autoTable(doc, {
         startY: filterSetor && filterSetor !== "all" ? 33 : 27,
         head: [["Funcionário", "Cargo", "Setor", "Horas Esperadas", "Horas Trabalhadas", "Saldo"]],
         body: tableData,
