@@ -28,16 +28,53 @@ export function LancamentoPonto() {
   const [horaFimIntervalo, setHoraFimIntervalo] = useState("");
   const [tipoDia, setTipoDia] = useState("normal");
   const [observacoes, setObservacoes] = useState("");
+  const [filterEmpresa, setFilterEmpresa] = useState("");
+  const [filterSetor, setFilterSetor] = useState("");
   const queryClient = useQueryClient();
 
-  const { data: employees, isLoading: loadingEmployees } = useQuery({
-    queryKey: ["employees-for-ponto"],
+  const { data: empresas } = useQuery({
+    queryKey: ["empresas-filter"],
     queryFn: async () => {
       const { data, error } = await supabase
+        .from("empresas")
+        .select("id, nome")
+        .order("nome");
+      
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const { data: setores } = useQuery({
+    queryKey: ["setores-filter"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("setores")
+        .select("id, nome")
+        .order("nome");
+      
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const { data: employees, isLoading: loadingEmployees } = useQuery({
+    queryKey: ["employees-for-ponto", filterEmpresa, filterSetor],
+    queryFn: async () => {
+      let query = supabase
         .from("employees")
-        .select("id, nome_completo, cargo")
-        .eq("status", "ativo")
-        .order("nome_completo");
+        .select("id, nome_completo, cargo, empresa_id, setor")
+        .eq("status", "ativo");
+      
+      if (filterEmpresa) {
+        query = query.eq("empresa_id", filterEmpresa);
+      }
+      
+      if (filterSetor) {
+        query = query.eq("setor", filterSetor);
+      }
+      
+      const { data, error } = await query.order("nome_completo");
       
       if (error) throw error;
       return data;
@@ -116,25 +153,59 @@ export function LancamentoPonto() {
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">
-        <div className="space-y-2">
-          <Label htmlFor="employee">Funcionário *</Label>
-          <Select value={selectedEmployee} onValueChange={setSelectedEmployee}>
-            <SelectTrigger>
-              <SelectValue placeholder="Selecione o funcionário" />
-            </SelectTrigger>
-            <SelectContent>
-              {loadingEmployees ? (
-                <SelectItem value="loading" disabled>Carregando...</SelectItem>
-              ) : (
-                employees?.map((emp) => (
-                  <SelectItem key={emp.id} value={emp.id}>
-                    {emp.nome_completo} - {emp.cargo}
-                  </SelectItem>
-                ))
-              )}
-            </SelectContent>
-          </Select>
-        </div>
+      <div className="space-y-2">
+        <Label htmlFor="filter-empresa">Filtrar por Empresa</Label>
+        <Select value={filterEmpresa} onValueChange={setFilterEmpresa}>
+          <SelectTrigger>
+            <SelectValue placeholder="Todas as empresas" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="">Todas as empresas</SelectItem>
+            {empresas?.map((emp) => (
+              <SelectItem key={emp.id} value={emp.id}>
+                {emp.nome}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="filter-setor">Filtrar por Setor</Label>
+        <Select value={filterSetor} onValueChange={setFilterSetor}>
+          <SelectTrigger>
+            <SelectValue placeholder="Todos os setores" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="">Todos os setores</SelectItem>
+            {setores?.map((setor) => (
+              <SelectItem key={setor.id} value={setor.nome}>
+                {setor.nome}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="employee">Funcionário *</Label>
+        <Select value={selectedEmployee} onValueChange={setSelectedEmployee}>
+          <SelectTrigger>
+            <SelectValue placeholder="Selecione o funcionário" />
+          </SelectTrigger>
+          <SelectContent>
+            {loadingEmployees ? (
+              <SelectItem value="loading" disabled>Carregando...</SelectItem>
+            ) : (
+              employees?.map((emp) => (
+                <SelectItem key={emp.id} value={emp.id}>
+                  {emp.nome_completo} - {emp.cargo}
+                </SelectItem>
+              ))
+            )}
+          </SelectContent>
+        </Select>
+      </div>
 
         <div className="space-y-2">
           <Label htmlFor="data">Data *</Label>
