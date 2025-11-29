@@ -11,11 +11,15 @@ import {
   Shirt,
   Bell,
   Calendar,
+  Clock,
+  Wallet,
 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { toast } from "sonner";
 import { VacationProgress } from "@/components/ui/vacation-progress";
 import PendingSignaturesAlert from "./PendingSignaturesAlert";
+import { format, subMonths, startOfMonth, endOfMonth } from "date-fns";
+import { ptBR } from "date-fns/locale";
 
 interface FuncionarioDashboardProps {
   user: User;
@@ -29,6 +33,8 @@ const FuncionarioDashboard = ({ user }: FuncionarioDashboardProps) => {
   const [avisos, setAvisos] = useState<any[]>([]);
   const [activeVacation, setActiveVacation] = useState<any>(null);
   const [companyLogo, setCompanyLogo] = useState<string | null>(null);
+  const [horasMesAnterior, setHorasMesAnterior] = useState<number | null>(null);
+  const [bancoHoras, setBancoHoras] = useState<number>(0);
 
   useEffect(() => {
     fetchEmployeeData();
@@ -73,6 +79,42 @@ const FuncionarioDashboard = ({ user }: FuncionarioDashboardProps) => {
         setAvisos(avisosRes.data || []);
         setActiveVacation(feriasRes.data || null);
         setCompanyLogo(companyRes.data?.logo_url || null);
+
+        // Buscar horas do mês anterior
+        const mesAnterior = subMonths(new Date(), 1);
+        const startDate = format(startOfMonth(mesAnterior), "yyyy-MM-dd");
+        const endDate = format(endOfMonth(mesAnterior), "yyyy-MM-dd");
+
+        const { data: registrosMesAnterior } = await supabase
+          .from("registros_ponto")
+          .select("*")
+          .eq("employee_id", empData.id)
+          .gte("data", startDate)
+          .lte("data", endDate);
+
+        const { data: config } = await supabase
+          .from("configuracao_horas_trabalho")
+          .select("*")
+          .eq("employee_id", empData.id)
+          .maybeSingle();
+
+        if (registrosMesAnterior) {
+          const horasDiarias = config?.horas_diarias_esperadas || 8.00;
+          const diasUteis = registrosMesAnterior.filter(r => r.tipo_dia === "normal").length;
+          const horasEsperadas = diasUteis * horasDiarias;
+          const horasTrabalhadas = registrosMesAnterior.reduce((sum, r) => sum + (r.horas_trabalhadas || 0), 0);
+          const saldo = horasTrabalhadas - horasEsperadas;
+          setHorasMesAnterior(saldo);
+        }
+
+        // Buscar banco de horas
+        const { data: bancoData } = await supabase
+          .from("banco_horas")
+          .select("*")
+          .eq("employee_id", empData.id)
+          .maybeSingle();
+
+        setBancoHoras(bancoData?.saldo_horas || 0);
       }
     } catch (error) {
       console.error("Error fetching employee data:", error);
@@ -225,6 +267,65 @@ const FuncionarioDashboard = ({ user }: FuncionarioDashboardProps) => {
               ))}
             </div>
           )}
+
+          {/* Cards de Horas */}
+          <div className="grid gap-4 md:grid-cols-2">
+            {/* Horas do Mês Anterior */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Clock className="w-5 h-5" />
+                  Saldo de Horas - Mês Anterior
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {horasMesAnterior !== null ? (
+                  <div className="space-y-2">
+                    <div className={`text-3xl font-bold ${
+                      horasMesAnterior > 0 
+                        ? 'text-green-600 dark:text-green-400' 
+                        : horasMesAnterior < 0 
+                        ? 'text-red-600 dark:text-red-400'
+                        : 'text-muted-foreground'
+                    }`}>
+                      {horasMesAnterior > 0 ? '+' : ''}{horasMesAnterior.toFixed(2)}h
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      {format(subMonths(new Date(), 1), "MMMM 'de' yyyy", { locale: ptBR })}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="text-muted-foreground">
+                    Sem registros
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Banco de Horas */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Wallet className="w-5 h-5" />
+                  Banco de Horas
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  <div className={`text-3xl font-bold ${
+                    bancoHoras > 0 
+                      ? 'text-primary' 
+                      : 'text-muted-foreground'
+                  }`}>
+                    {bancoHoras.toFixed(2)}h
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Horas acumuladas
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
 
           {/* Card de Folgas */}
           <Card>

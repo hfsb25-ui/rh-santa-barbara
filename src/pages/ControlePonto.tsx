@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Calendar, Clock, Users } from "lucide-react";
+import { Calendar, Clock, Users, Wallet } from "lucide-react";
 import { LancamentoPonto } from "@/components/ponto/LancamentoPonto";
 import { LancamentoPontoLote } from "@/components/ponto/LancamentoPontoLote";
 import { ConfiguracaoHoras } from "@/components/ponto/ConfiguracaoHoras";
 import { RelatoriosPonto } from "@/components/ponto/RelatoriosPonto";
+import { BancoHoras } from "@/components/ponto/BancoHoras";
 
 export default function ControlePonto() {
   return (
@@ -24,7 +25,7 @@ export default function ControlePonto() {
         </div>
 
         <Tabs defaultValue="individual" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="individual" className="flex items-center gap-2">
               <Calendar className="h-4 w-4" />
               Lançamento Individual
@@ -40,6 +41,10 @@ export default function ControlePonto() {
             <TabsTrigger value="relatorios" className="flex items-center gap-2">
               <Calendar className="h-4 w-4" />
               Relatórios
+            </TabsTrigger>
+            <TabsTrigger value="banco" className="flex items-center gap-2">
+              <Wallet className="h-4 w-4" />
+              Banco de Horas
             </TabsTrigger>
           </TabsList>
 
@@ -64,6 +69,12 @@ export default function ControlePonto() {
           <TabsContent value="relatorios">
             <Card className="p-6">
               <RelatoriosPonto />
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="banco">
+            <Card className="p-6">
+              <BancoHoras />
             </Card>
           </TabsContent>
         </Tabs>
