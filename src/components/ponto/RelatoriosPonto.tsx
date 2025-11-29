@@ -28,6 +28,20 @@ export function RelatoriosPonto() {
   const [selectedMonth, setSelectedMonth] = useState(format(new Date(), "yyyy-MM"));
   const [exporting, setExporting] = useState(false);
   const [saldoMonth, setSaldoMonth] = useState(format(new Date(), "yyyy-MM"));
+  const [filterSetor, setFilterSetor] = useState("all");
+
+  const { data: setores } = useQuery({
+    queryKey: ["setores-filter"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("setores")
+        .select("id, nome")
+        .order("nome");
+      
+      if (error) throw error;
+      return data;
+    },
+  });
 
   const { data: employees, isLoading: loadingEmployees } = useQuery({
     queryKey: ["employees-for-relatorio"],
@@ -107,7 +121,7 @@ export function RelatoriosPonto() {
   });
 
   const { data: allSaldos, isLoading: loadingSaldos } = useQuery({
-    queryKey: ["saldos-todos", saldoMonth],
+    queryKey: ["saldos-todos", saldoMonth, filterSetor],
     queryFn: async () => {
       if (!saldoMonth) return [];
       
@@ -115,11 +129,16 @@ export function RelatoriosPonto() {
       const startDate = format(startOfMonth(new Date(parseInt(year), parseInt(month) - 1)), "yyyy-MM-dd");
       const endDate = format(endOfMonth(new Date(parseInt(year), parseInt(month) - 1)), "yyyy-MM-dd");
       
-      const { data: employees, error: empError } = await supabase
+      let query = supabase
         .from("employees")
         .select("id, nome_completo, cargo, setor")
-        .eq("status", "ativo")
-        .order("nome_completo");
+        .eq("status", "ativo");
+
+      if (filterSetor && filterSetor !== "all") {
+        query = query.eq("setor", filterSetor);
+      }
+      
+      const { data: employees, error: empError } = await query.order("nome_completo");
       
       if (empError) throw empError;
 
@@ -194,6 +213,121 @@ export function RelatoriosPonto() {
     } catch (error) {
       console.error("Erro ao gerar PDF:", error);
       toast.error("Erro ao gerar PDF");
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const handleExportSaldoGeralPDF = async () => {
+    if (!allSaldos || allSaldos.length === 0) return;
+    
+    setExporting(true);
+    try {
+      const jsPDF = (await import("jspdf")).default;
+      await import("jspdf-autotable");
+
+      const doc = new jsPDF();
+      const [year, month] = saldoMonth.split("-");
+      const mesFormatado = format(new Date(parseInt(year), parseInt(month) - 1), "MMMM 'de' yyyy", { locale: ptBR });
+
+      doc.setFontSize(16);
+      doc.text("RELATÓRIO GERAL DE SALDO DE HORAS", 105, 15, { align: "center" });
+      
+      doc.setFontSize(11);
+      doc.text(`Período: ${mesFormatado}`, 105, 22, { align: "center" });
+      if (filterSetor && filterSetor !== "all") {
+        const setorNome = setores?.find(s => s.nome === filterSetor)?.nome || filterSetor;
+        doc.text(`Setor: ${setorNome}`, 105, 28, { align: "center" });
+      }
+
+      const tableData = allSaldos.map((item) => [
+        item.nome,
+        item.cargo,
+        item.setor,
+        `${item.horasEsperadas.toFixed(2)}h`,
+        `${item.horasTrabalhadas.toFixed(2)}h`,
+        `${item.saldo >= 0 ? "+" : ""}${item.saldo.toFixed(2)}h`,
+      ]);
+
+      (doc as any).autoTable({
+        startY: filterSetor && filterSetor !== "all" ? 33 : 27,
+        head: [["Funcionário", "Cargo", "Setor", "Horas Esperadas", "Horas Trabalhadas", "Saldo"]],
+        body: tableData,
+        theme: "grid",
+        styles: { fontSize: 9 },
+        headStyles: { fillColor: [66, 66, 66] },
+      });
+
+      // Cálculo de totais
+      const totalEsperadas = allSaldos.reduce((sum, item) => sum + item.horasEsperadas, 0);
+      const totalTrabalhadas = allSaldos.reduce((sum, item) => sum + item.horasTrabalhadas, 0);
+      const totalSaldo = allSaldos.reduce((sum, item) => sum + item.saldo, 0);
+
+      const finalY = (doc as any).lastAutoTable.finalY + 10;
+      doc.setFontSize(10);
+      doc.text(`Total de Horas Esperadas: ${totalEsperadas.toFixed(2)}h`, 14, finalY);
+      doc.text(`Total de Horas Trabalhadas: ${totalTrabalhadas.toFixed(2)}h`, 14, finalY + 6);
+      doc.text(`Saldo Total: ${totalSaldo >= 0 ? "+" : ""}${totalSaldo.toFixed(2)}h`, 14, finalY + 12);
+
+      doc.save(`Saldo_Geral_${mesFormatado.replace(/ /g, "_")}.pdf`);
+      toast.success("PDF gerado com sucesso!");
+    } catch (error) {
+      console.error("Erro ao gerar PDF:", error);
+      toast.error("Erro ao gerar PDF");
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const handleExportSaldoGeralExcel = async () => {
+    if (!allSaldos || allSaldos.length === 0) return;
+    
+    setExporting(true);
+    try {
+      const [year, month] = saldoMonth.split("-");
+      const mesFormatado = format(new Date(parseInt(year), parseInt(month) - 1), "MMMM 'de' yyyy", { locale: ptBR });
+      
+      const header = [
+        ["RELATÓRIO GERAL DE SALDO DE HORAS"],
+        [`Período: ${mesFormatado}`],
+        filterSetor && filterSetor !== "all" ? [`Setor: ${setores?.find(s => s.nome === filterSetor)?.nome || filterSetor}`] : [],
+        [],
+      ].filter(row => row.length > 0);
+
+      const tableHeader = [["Funcionário", "Cargo", "Setor", "Horas Esperadas", "Horas Trabalhadas", "Saldo"]];
+      
+      const tableData = allSaldos.map((item) => [
+        item.nome,
+        item.cargo,
+        item.setor,
+        `${item.horasEsperadas.toFixed(2)}h`,
+        `${item.horasTrabalhadas.toFixed(2)}h`,
+        `${item.saldo >= 0 ? "+" : ""}${item.saldo.toFixed(2)}h`,
+      ]);
+
+      const totalEsperadas = allSaldos.reduce((sum, item) => sum + item.horasEsperadas, 0);
+      const totalTrabalhadas = allSaldos.reduce((sum, item) => sum + item.horasTrabalhadas, 0);
+      const totalSaldo = allSaldos.reduce((sum, item) => sum + item.saldo, 0);
+
+      const resumo = [
+        [],
+        ["TOTAIS"],
+        [`Total de Horas Esperadas: ${totalEsperadas.toFixed(2)}h`],
+        [`Total de Horas Trabalhadas: ${totalTrabalhadas.toFixed(2)}h`],
+        [`Saldo Total: ${totalSaldo >= 0 ? "+" : ""}${totalSaldo.toFixed(2)}h`],
+      ];
+
+      const wsData = [...header, ...tableHeader, ...tableData, ...resumo];
+      
+      const ws = XLSX.utils.aoa_to_sheet(wsData);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Saldo Geral");
+      
+      XLSX.writeFile(wb, `Saldo_Geral_${mesFormatado.replace(/ /g, "_")}.xlsx`);
+      toast.success("Excel gerado com sucesso!");
+    } catch (error) {
+      console.error("Erro ao gerar Excel:", error);
+      toast.error("Erro ao gerar Excel");
     } finally {
       setExporting(false);
     }
@@ -427,15 +561,34 @@ export function RelatoriosPonto() {
         </TabsContent>
 
         <TabsContent value="todos" className="space-y-6">
-          <div className="space-y-2">
-            <Label htmlFor="saldo-month">Selecione o Mês</Label>
-            <Input
-              id="saldo-month"
-              type="month"
-              value={saldoMonth}
-              onChange={(e) => setSaldoMonth(e.target.value)}
-              className="max-w-xs"
-            />
+          <div className="grid gap-6 md:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="saldo-month">Selecione o Mês</Label>
+              <Input
+                id="saldo-month"
+                type="month"
+                value={saldoMonth}
+                onChange={(e) => setSaldoMonth(e.target.value)}
+                className="max-w-xs"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="filter-setor-saldo">Filtrar por Setor</Label>
+              <Select value={filterSetor} onValueChange={setFilterSetor}>
+                <SelectTrigger className="max-w-xs">
+                  <SelectValue placeholder="Todos os setores" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos os setores</SelectItem>
+                  {setores?.map((setor) => (
+                    <SelectItem key={setor.id} value={setor.nome}>
+                      {setor.nome}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
           {loadingSaldos && (
@@ -445,32 +598,61 @@ export function RelatoriosPonto() {
           )}
 
           {allSaldos && allSaldos.length > 0 && (
-            <div className="border rounded-lg overflow-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Funcionário</TableHead>
-                    <TableHead>Cargo</TableHead>
-                    <TableHead>Setor</TableHead>
-                    <TableHead>Horas Esperadas</TableHead>
-                    <TableHead>Horas Trabalhadas</TableHead>
-                    <TableHead>Saldo</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {allSaldos.map((item) => (
-                    <TableRow key={item.id}>
-                      <TableCell className="font-medium">{item.nome}</TableCell>
-                      <TableCell>{item.cargo}</TableCell>
-                      <TableCell>{item.setor}</TableCell>
-                      <TableCell>{item.horasEsperadas.toFixed(2)}h</TableCell>
-                      <TableCell>{item.horasTrabalhadas.toFixed(2)}h</TableCell>
-                      <TableCell>{getSaldoBadge(item.saldo)}</TableCell>
+            <>
+              <div className="border rounded-lg overflow-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Funcionário</TableHead>
+                      <TableHead>Cargo</TableHead>
+                      <TableHead>Setor</TableHead>
+                      <TableHead>Horas Esperadas</TableHead>
+                      <TableHead>Horas Trabalhadas</TableHead>
+                      <TableHead>Saldo</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
+                  </TableHeader>
+                  <TableBody>
+                    {allSaldos.map((item) => (
+                      <TableRow key={item.id}>
+                        <TableCell className="font-medium">{item.nome}</TableCell>
+                        <TableCell>{item.cargo}</TableCell>
+                        <TableCell>{item.setor}</TableCell>
+                        <TableCell>{item.horasEsperadas.toFixed(2)}h</TableCell>
+                        <TableCell>{item.horasTrabalhadas.toFixed(2)}h</TableCell>
+                        <TableCell>{getSaldoBadge(item.saldo)}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+
+              <div className="flex justify-end gap-2">
+                <Button
+                  variant="outline"
+                  onClick={handleExportSaldoGeralExcel}
+                  disabled={exporting}
+                >
+                  {exporting ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <FileText className="mr-2 h-4 w-4" />
+                  )}
+                  Exportar Excel
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={handleExportSaldoGeralPDF}
+                  disabled={exporting}
+                >
+                  {exporting ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Download className="mr-2 h-4 w-4" />
+                  )}
+                  Exportar PDF
+                </Button>
+              </div>
+            </>
           )}
         </TabsContent>
       </Tabs>
