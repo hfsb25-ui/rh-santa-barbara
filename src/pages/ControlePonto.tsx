@@ -1,7 +1,9 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Calendar, Clock, Users, Wallet } from "lucide-react";
+import { Calendar, Clock, Users, Wallet, ArrowLeft } from "lucide-react";
 import { LancamentoPonto } from "@/components/ponto/LancamentoPonto";
 import { LancamentoPontoLote } from "@/components/ponto/LancamentoPontoLote";
 import { ConfiguracaoHoras } from "@/components/ponto/ConfiguracaoHoras";
@@ -9,18 +11,30 @@ import { RelatoriosPonto } from "@/components/ponto/RelatoriosPonto";
 import { BancoHoras } from "@/components/ponto/BancoHoras";
 
 export default function ControlePonto() {
+  const navigate = useNavigate();
+
   return (
     <div className="min-h-screen bg-background p-6">
       <div className="max-w-7xl mx-auto space-y-6">
         <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-foreground flex items-center gap-2">
-              <Clock className="h-8 w-8 text-primary" />
-              Controle de Ponto
-            </h1>
-            <p className="text-muted-foreground mt-1">
-              Gerencie o registro de horas de trabalho dos funcionários
-            </p>
+          <div className="flex items-center gap-4">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => navigate(-1)}
+              className="shrink-0"
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            <div>
+              <h1 className="text-3xl font-bold text-foreground flex items-center gap-2">
+                <Clock className="h-8 w-8 text-primary" />
+                Controle de Ponto
+              </h1>
+              <p className="text-muted-foreground mt-1">
+                Gerencie o registro de horas de trabalho dos funcionários
+              </p>
+            </div>
           </div>
         </div>
 
