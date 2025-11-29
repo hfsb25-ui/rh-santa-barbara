@@ -16,6 +16,7 @@ const TIPO_DIA_OPTIONS = [
   { value: "falta", label: "Falta" },
   { value: "ferias", label: "Férias" },
   { value: "atestado", label: "Atestado" },
+  { value: "dsr", label: "DSR" },
 ];
 
 export function LancamentoPonto() {
