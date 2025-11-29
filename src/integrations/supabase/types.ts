@@ -316,6 +316,38 @@ export type Database = {
           },
         ]
       }
+      configuracao_horas_trabalho: {
+        Row: {
+          created_at: string | null
+          employee_id: string
+          horas_diarias_esperadas: number
+          id: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          employee_id: string
+          horas_diarias_esperadas?: number
+          id?: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          employee_id?: string
+          horas_diarias_esperadas?: number
+          id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "configuracao_horas_trabalho_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: true
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       configuracao_setor: {
         Row: {
           created_at: string | null
@@ -1639,6 +1671,69 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: []
+      }
+      registros_ponto: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          data: string
+          employee_id: string
+          hora_entrada: string | null
+          hora_fim_intervalo: string | null
+          hora_inicio_intervalo: string | null
+          hora_saida: string | null
+          horas_trabalhadas: number | null
+          id: string
+          observacoes: string | null
+          tipo_dia: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          data: string
+          employee_id: string
+          hora_entrada?: string | null
+          hora_fim_intervalo?: string | null
+          hora_inicio_intervalo?: string | null
+          hora_saida?: string | null
+          horas_trabalhadas?: number | null
+          id?: string
+          observacoes?: string | null
+          tipo_dia?: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          data?: string
+          employee_id?: string
+          hora_entrada?: string | null
+          hora_fim_intervalo?: string | null
+          hora_inicio_intervalo?: string | null
+          hora_saida?: string | null
+          horas_trabalhadas?: number | null
+          id?: string
+          observacoes?: string | null
+          tipo_dia?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "registros_ponto_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "registros_ponto_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       setores: {
         Row: {

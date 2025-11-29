@@ -809,6 +809,10 @@ const GestorDashboard = ({ user }: GestorDashboardProps) => {
                   <Calendar className="w-4 h-4 mr-2" />
                   Escala de Férias
                 </Button>
+                <Button variant="outline" onClick={() => navigate("/controle-ponto")} className="w-full">
+                  <Clock className="w-4 h-4 mr-2" />
+                  Controle de Ponto
+                </Button>
                 <Button variant="outline" onClick={() => navigate("/avaliacoes")} className="w-full">
                   <Award className="w-4 h-4 mr-2" />
                   Avaliações
