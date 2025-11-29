@@ -34,8 +34,8 @@ export function LancamentoPontoLote() {
   const [selectedEmployee, setSelectedEmployee] = useState("");
   const [selectedMonth, setSelectedMonth] = useState(format(new Date(), "yyyy-MM"));
   const [records, setRecords] = useState<DayRecord[]>([]);
-  const [filterEmpresa, setFilterEmpresa] = useState("");
-  const [filterSetor, setFilterSetor] = useState("");
+  const [filterEmpresa, setFilterEmpresa] = useState("all");
+  const [filterSetor, setFilterSetor] = useState("all");
   const queryClient = useQueryClient();
 
   const { data: empresas } = useQuery({
@@ -72,11 +72,11 @@ export function LancamentoPontoLote() {
         .select("id, nome_completo, cargo, empresa_id, setor")
         .eq("status", "ativo");
       
-      if (filterEmpresa) {
+      if (filterEmpresa && filterEmpresa !== "all") {
         query = query.eq("empresa_id", filterEmpresa);
       }
       
-      if (filterSetor) {
+      if (filterSetor && filterSetor !== "all") {
         query = query.eq("setor", filterSetor);
       }
       
@@ -228,7 +228,7 @@ export function LancamentoPontoLote() {
               <SelectValue placeholder="Todas as empresas" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">Todas as empresas</SelectItem>
+              <SelectItem value="all">Todas as empresas</SelectItem>
               {empresas?.map((emp) => (
                 <SelectItem key={emp.id} value={emp.id}>
                   {emp.nome}
@@ -245,7 +245,7 @@ export function LancamentoPontoLote() {
               <SelectValue placeholder="Todos os setores" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">Todos os setores</SelectItem>
+              <SelectItem value="all">Todos os setores</SelectItem>
               {setores?.map((setor) => (
                 <SelectItem key={setor.id} value={setor.nome}>
                   {setor.nome}
