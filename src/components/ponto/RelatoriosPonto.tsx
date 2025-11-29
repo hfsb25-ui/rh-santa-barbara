@@ -618,7 +618,17 @@ export function RelatoriosPonto() {
                         <TableCell>{item.setor}</TableCell>
                         <TableCell>{item.horasEsperadas.toFixed(2)}h</TableCell>
                         <TableCell>{item.horasTrabalhadas.toFixed(2)}h</TableCell>
-                        <TableCell>{getSaldoBadge(item.saldo)}</TableCell>
+                        <TableCell 
+                          className={`font-semibold ${
+                            item.saldo > 0 
+                              ? 'text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-950/20' 
+                              : item.saldo < 0 
+                              ? 'text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/20'
+                              : 'text-muted-foreground'
+                          }`}
+                        >
+                          {item.saldo > 0 ? '+' : ''}{item.saldo.toFixed(2)}h
+                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
