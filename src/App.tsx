@@ -18,6 +18,7 @@ import Funcoes from "./pages/Funcoes";
 import Contracts from "./pages/Contracts";
 import Managers from "./pages/Managers";
 import SalaryAdjustment from "./pages/SalaryAdjustment";
+import ControlePonto from "./pages/ControlePonto";
 import NotFound from "./pages/NotFound";
 import Vagas from "./pages/Vagas";
 import VagaDetalhes from "./pages/VagaDetalhes";
@@ -81,6 +82,7 @@ const App = () => {
           <Route path="/saude-ocupacional" element={<SaudeOcupacional />} />
           <Route path="/vacation-schedule" element={<VacationSchedule />} />
           <Route path="/avaliacoes" element={<Avaliacoes />} />
+          <Route path="/controle-ponto" element={<ControlePonto />} />
           <Route path="/settings" element={<Settings />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
