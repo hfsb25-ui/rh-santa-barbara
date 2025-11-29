@@ -17,6 +17,7 @@ const TIPO_DIA_OPTIONS = [
   { value: "falta", label: "Falta" },
   { value: "ferias", label: "Férias" },
   { value: "atestado", label: "Atestado" },
+  { value: "dsr", label: "DSR" },
 ];
 
 interface DayRecord {
@@ -95,15 +96,23 @@ export function LancamentoPontoLote() {
         };
       }
       
-      return {
+      const tipoDia = isWeekend(day) ? "dsr" : "normal";
+      const newRecord: DayRecord = {
         data: dateStr,
         horaEntrada: isWeekend(day) ? "" : "08:00",
         horaSaida: isWeekend(day) ? "" : "18:00",
         horaInicioIntervalo: isWeekend(day) ? "" : "12:00",
         horaFimIntervalo: isWeekend(day) ? "" : "13:00",
-        tipoDia: isWeekend(day) ? "abonado" : "normal",
+        tipoDia,
         horasTrabalhadas: 0,
       };
+      
+      // Calcular horas automaticamente para dias normais
+      if (tipoDia === "normal") {
+        newRecord.horasTrabalhadas = calculateHours(newRecord);
+      }
+      
+      return newRecord;
     });
     
     setRecords(newRecords);
