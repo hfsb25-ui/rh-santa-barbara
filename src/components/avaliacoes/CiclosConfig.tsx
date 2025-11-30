@@ -166,7 +166,7 @@ export const CiclosConfig = () => {
           </Button>
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
-              <Button onClick={() => setIsDialogOpen(true)}>
+              <Button>
                 <Plus className="w-4 h-4 mr-2" />
                 Novo Ciclo
               </Button>
