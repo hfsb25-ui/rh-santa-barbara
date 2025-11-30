@@ -132,7 +132,7 @@ export function RelatoriosTreinamento() {
       // Adicionar logo se existir
       if (empresa?.logo_url) {
         try {
-          doc.addImage(empresa.logo_url, "PNG", pageWidth / 2 - 15, 20, 30, 30);
+          doc.addImage(empresa.logo_url, "PNG", pageWidth / 2 - 15, 15, 30, 30);
         } catch (error) {
           console.error("Erro ao adicionar logo:", error);
         }
@@ -147,30 +147,30 @@ export function RelatoriosTreinamento() {
       doc.setFontSize(32);
       doc.setFont("helvetica", "bold");
       doc.setTextColor(59, 130, 246);
-      doc.text("CERTIFICADO", pageWidth / 2, 70, { align: "center" });
+      doc.text("CERTIFICADO", pageWidth / 2, 60, { align: "center" });
 
       // Subtítulo
       doc.setFontSize(16);
       doc.setFont("helvetica", "normal");
       doc.setTextColor(0, 0, 0);
-      doc.text("DE CONCLUSÃO DE CURSO", pageWidth / 2, 85, { align: "center" });
+      doc.text("DE CONCLUSÃO DE CURSO", pageWidth / 2, 72, { align: "center" });
 
       // Texto principal
       doc.setFontSize(12);
       doc.setFont("helvetica", "normal");
-      doc.text("Certificamos que", pageWidth / 2, 110, { align: "center" });
+      doc.text("Certificamos que", pageWidth / 2, 90, { align: "center" });
 
       // Nome do funcionário
       doc.setFontSize(24);
       doc.setFont("helvetica", "bold");
       doc.setTextColor(59, 130, 246);
-      doc.text(funcionario.nome, pageWidth / 2, 100, { align: "center" });
+      doc.text(funcionario.nome, pageWidth / 2, 105, { align: "center" });
 
       // CPF do funcionário
       doc.setFontSize(12);
       doc.setFont("helvetica", "normal");
       doc.setTextColor(100, 100, 100);
-      doc.text(`CPF: ${funcionario.cpf || "Não informado"}`, pageWidth / 2, 110, {
+      doc.text(`CPF: ${funcionario.cpf || "Não informado"}`, pageWidth / 2, 115, {
         align: "center",
       });
 
@@ -178,7 +178,7 @@ export function RelatoriosTreinamento() {
       doc.setFontSize(14);
       doc.setFont("helvetica", "normal");
       doc.setTextColor(0, 0, 0);
-      doc.text("concluiu com êxito o curso", pageWidth / 2, 125, {
+      doc.text("concluiu com êxito o curso", pageWidth / 2, 130, {
         align: "center",
       });
 
@@ -187,7 +187,7 @@ export function RelatoriosTreinamento() {
       doc.setFont("helvetica", "bold");
       doc.setTextColor(59, 130, 246);
       const cursoTitulo = doc.splitTextToSize(curso.titulo, pageWidth - 100);
-      doc.text(cursoTitulo, pageWidth / 2, 140, { align: "center" });
+      doc.text(cursoTitulo, pageWidth / 2, 145, { align: "center" });
 
       // Data de conclusão
       doc.setFontSize(12);
@@ -197,7 +197,7 @@ export function RelatoriosTreinamento() {
         "pt-BR",
         { day: "2-digit", month: "long", year: "numeric" }
       );
-      doc.text(`Concluído em ${dataFormatada}`, pageWidth / 2, 165, {
+      doc.text(`Concluído em ${dataFormatada}`, pageWidth / 2, 170, {
         align: "center",
       });
 
@@ -205,7 +205,7 @@ export function RelatoriosTreinamento() {
       if (empresa?.nome) {
         doc.setFontSize(14);
         doc.setFont("helvetica", "bold");
-        doc.text(empresa.nome, pageWidth / 2, pageHeight - 40, {
+        doc.text(empresa.nome, pageWidth / 2, pageHeight - 35, {
           align: "center",
         });
       }
@@ -213,9 +213,9 @@ export function RelatoriosTreinamento() {
       // Linha de assinatura
       doc.setLineWidth(0.5);
       doc.setDrawColor(0, 0, 0);
-      doc.line(pageWidth / 2 - 40, pageHeight - 25, pageWidth / 2 + 40, pageHeight - 25);
+      doc.line(pageWidth / 2 - 40, pageHeight - 22, pageWidth / 2 + 40, pageHeight - 22);
       doc.setFontSize(10);
-      doc.text("Assinatura Autorizada", pageWidth / 2, pageHeight - 20, {
+      doc.text("Assinatura Autorizada", pageWidth / 2, pageHeight - 17, {
         align: "center",
       });
 
