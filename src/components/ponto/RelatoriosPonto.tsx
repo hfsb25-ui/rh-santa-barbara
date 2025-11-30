@@ -244,14 +244,12 @@ export function RelatoriosPonto() {
         item.nome,
         item.cargo,
         item.setor,
-        `${item.horasEsperadas.toFixed(2)}h`,
-        `${item.horasTrabalhadas.toFixed(2)}h`,
         `${item.saldo >= 0 ? "+" : ""}${item.saldo.toFixed(2)}h`,
       ]);
 
       autoTable(doc, {
         startY: filterSetor && filterSetor !== "all" ? 33 : 27,
-        head: [["Funcionário", "Cargo", "Setor", "Horas Esperadas", "Horas Trabalhadas", "Saldo"]],
+        head: [["Funcionário", "Cargo", "Setor", "Saldo"]],
         body: tableData,
         theme: "grid",
         styles: { fontSize: 9 },
@@ -259,15 +257,11 @@ export function RelatoriosPonto() {
       });
 
       // Cálculo de totais
-      const totalEsperadas = allSaldos.reduce((sum, item) => sum + item.horasEsperadas, 0);
-      const totalTrabalhadas = allSaldos.reduce((sum, item) => sum + item.horasTrabalhadas, 0);
       const totalSaldo = allSaldos.reduce((sum, item) => sum + item.saldo, 0);
 
       const finalY = (doc as any).lastAutoTable.finalY + 10;
       doc.setFontSize(10);
-      doc.text(`Total de Horas Esperadas: ${totalEsperadas.toFixed(2)}h`, 14, finalY);
-      doc.text(`Total de Horas Trabalhadas: ${totalTrabalhadas.toFixed(2)}h`, 14, finalY + 6);
-      doc.text(`Saldo Total: ${totalSaldo >= 0 ? "+" : ""}${totalSaldo.toFixed(2)}h`, 14, finalY + 12);
+      doc.text(`Saldo Total: ${totalSaldo >= 0 ? "+" : ""}${totalSaldo.toFixed(2)}h`, 14, finalY);
 
       doc.save(`Saldo_Geral_${mesFormatado.replace(/ /g, "_")}.pdf`);
       toast.success("PDF gerado com sucesso!");
@@ -294,26 +288,20 @@ export function RelatoriosPonto() {
         [],
       ].filter(row => row.length > 0);
 
-      const tableHeader = [["Funcionário", "Cargo", "Setor", "Horas Esperadas", "Horas Trabalhadas", "Saldo"]];
+      const tableHeader = [["Funcionário", "Cargo", "Setor", "Saldo"]];
       
       const tableData = allSaldos.map((item) => [
         item.nome,
         item.cargo,
         item.setor,
-        `${item.horasEsperadas.toFixed(2)}h`,
-        `${item.horasTrabalhadas.toFixed(2)}h`,
         `${item.saldo >= 0 ? "+" : ""}${item.saldo.toFixed(2)}h`,
       ]);
 
-      const totalEsperadas = allSaldos.reduce((sum, item) => sum + item.horasEsperadas, 0);
-      const totalTrabalhadas = allSaldos.reduce((sum, item) => sum + item.horasTrabalhadas, 0);
       const totalSaldo = allSaldos.reduce((sum, item) => sum + item.saldo, 0);
 
       const resumo = [
         [],
         ["TOTAIS"],
-        [`Total de Horas Esperadas: ${totalEsperadas.toFixed(2)}h`],
-        [`Total de Horas Trabalhadas: ${totalTrabalhadas.toFixed(2)}h`],
         [`Saldo Total: ${totalSaldo >= 0 ? "+" : ""}${totalSaldo.toFixed(2)}h`],
       ];
 
@@ -659,8 +647,6 @@ export function RelatoriosPonto() {
                       <TableHead>Funcionário</TableHead>
                       <TableHead>Cargo</TableHead>
                       <TableHead>Setor</TableHead>
-                      <TableHead>Horas Esperadas</TableHead>
-                      <TableHead>Horas Trabalhadas</TableHead>
                       <TableHead>Saldo</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -670,8 +656,6 @@ export function RelatoriosPonto() {
                         <TableCell className="font-medium">{item.nome}</TableCell>
                         <TableCell>{item.cargo}</TableCell>
                         <TableCell>{item.setor}</TableCell>
-                        <TableCell>{item.horasEsperadas.toFixed(2)}h</TableCell>
-                        <TableCell>{item.horasTrabalhadas.toFixed(2)}h</TableCell>
                         <TableCell 
                           className={`font-semibold ${
                             item.saldo > 0 
