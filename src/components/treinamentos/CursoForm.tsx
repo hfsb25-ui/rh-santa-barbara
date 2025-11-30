@@ -34,9 +34,9 @@ export function CursoForm({ open, onClose, curso }: CursoFormProps) {
     defaultValues: {
       titulo: "",
       descricao: "",
-      empresa_id: "",
-      setor_id: "",
-      funcao_id: "",
+      empresa_id: "all",
+      setor_id: "all",
+      funcao_id: "all",
       obrigatorio: false,
       ativo: true,
     },
@@ -80,9 +80,9 @@ export function CursoForm({ open, onClose, curso }: CursoFormProps) {
       reset({
         titulo: curso.titulo,
         descricao: curso.descricao || "",
-        empresa_id: curso.empresa_id || "",
-        setor_id: curso.setor_id || "",
-        funcao_id: curso.funcao_id || "",
+        empresa_id: curso.empresa_id || "all",
+        setor_id: curso.setor_id || "all",
+        funcao_id: curso.funcao_id || "all",
         obrigatorio: curso.obrigatorio,
         ativo: curso.ativo,
       });
@@ -90,9 +90,9 @@ export function CursoForm({ open, onClose, curso }: CursoFormProps) {
       reset({
         titulo: "",
         descricao: "",
-        empresa_id: "",
-        setor_id: "",
-        funcao_id: "",
+        empresa_id: "all",
+        setor_id: "all",
+        funcao_id: "all",
         obrigatorio: false,
         ativo: true,
       });
@@ -103,9 +103,9 @@ export function CursoForm({ open, onClose, curso }: CursoFormProps) {
     mutationFn: async (data: any) => {
       const payload = {
         ...data,
-        empresa_id: data.empresa_id || null,
-        setor_id: data.setor_id || null,
-        funcao_id: data.funcao_id || null,
+        empresa_id: data.empresa_id === "all" ? null : data.empresa_id,
+        setor_id: data.setor_id === "all" ? null : data.setor_id,
+        funcao_id: data.funcao_id === "all" ? null : data.funcao_id,
       };
 
       if (curso) {
@@ -165,7 +165,7 @@ export function CursoForm({ open, onClose, curso }: CursoFormProps) {
                   <SelectValue placeholder="Todas" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Todas</SelectItem>
+                  <SelectItem value="all">Todas</SelectItem>
                   {empresas?.map((emp) => (
                     <SelectItem key={emp.id} value={emp.id}>
                       {emp.nome}
@@ -185,7 +185,7 @@ export function CursoForm({ open, onClose, curso }: CursoFormProps) {
                   <SelectValue placeholder="Todos" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Todos</SelectItem>
+                  <SelectItem value="all">Todos</SelectItem>
                   {setores?.map((setor) => (
                     <SelectItem key={setor.id} value={setor.id}>
                       {setor.nome}
@@ -205,7 +205,7 @@ export function CursoForm({ open, onClose, curso }: CursoFormProps) {
                   <SelectValue placeholder="Todas" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Todas</SelectItem>
+                  <SelectItem value="all">Todas</SelectItem>
                   {funcoes?.map((funcao) => (
                     <SelectItem key={funcao.id} value={funcao.id}>
                       {funcao.nome}
