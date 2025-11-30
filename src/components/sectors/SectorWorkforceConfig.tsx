@@ -14,12 +14,14 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Save, AlertCircle } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 
 interface SectorConfig {
   setor_id: string;
   setor_nome: string;
   quantidade_media: number;
   quantidade_atual: number;
+  alertas_ativos: boolean;
 }
 
 export function SectorWorkforceConfig() {
@@ -48,7 +50,7 @@ export function SectorWorkforceConfig() {
     // Fetch configurations
     const { data: configData } = await supabase
       .from("configuracao_setor")
-      .select("setor_id, quantidade_media");
+      .select("setor_id, quantidade_media, alertas_ativos");
 
     // Fetch current employee count per sector
     const { data: employeesData } = await supabase
@@ -65,17 +67,21 @@ export function SectorWorkforceConfig() {
     });
 
     // Build configuration map
-    const configMap: Record<string, number> = {};
+    const configMap: Record<string, { quantidade_media: number; alertas_ativos: boolean }> = {};
     configData?.forEach((config) => {
-      configMap[config.setor_id] = config.quantidade_media;
+      configMap[config.setor_id] = {
+        quantidade_media: config.quantidade_media,
+        alertas_ativos: config.alertas_ativos ?? true,
+      };
     });
 
     // Merge data
     const sectorsConfig: SectorConfig[] = setoresData.map((setor) => ({
       setor_id: setor.id,
       setor_nome: setor.nome,
-      quantidade_media: configMap[setor.id] || 0,
+      quantidade_media: configMap[setor.id]?.quantidade_media || 0,
       quantidade_atual: employeeCount[setor.nome] || 0,
+      alertas_ativos: configMap[setor.id]?.alertas_ativos ?? true,
     }));
 
     setSectors(sectorsConfig);
@@ -91,6 +97,14 @@ export function SectorWorkforceConfig() {
     );
   };
 
+  const handleAlertToggle = (setorId: string, enabled: boolean) => {
+    setSectors((prev) =>
+      prev.map((s) =>
+        s.setor_id === setorId ? { ...s, alertas_ativos: enabled } : s
+      )
+    );
+  };
+
   const handleSave = async () => {
     setSaving(true);
 
@@ -101,6 +115,7 @@ export function SectorWorkforceConfig() {
           {
             setor_id: sector.setor_id,
             quantidade_media: sector.quantidade_media,
+            alertas_ativos: sector.alertas_ativos,
           },
           { onConflict: 'setor_id' }
         );
@@ -147,6 +162,7 @@ export function SectorWorkforceConfig() {
                   <TableHead className="text-center">Qtd. Atual</TableHead>
                   <TableHead className="text-center">Qtd. Média Esperada</TableHead>
                   <TableHead className="text-center">Status</TableHead>
+                  <TableHead className="text-center">Alertas Ativos</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -178,6 +194,14 @@ export function SectorWorkforceConfig() {
                         <span className={`font-medium ${status.color}`}>
                           {status.text}
                         </span>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <Switch
+                          checked={sector.alertas_ativos}
+                          onCheckedChange={(checked) =>
+                            handleAlertToggle(sector.setor_id, checked)
+                          }
+                        />
                       </TableCell>
                     </TableRow>
                   );

@@ -22,14 +22,16 @@ export function WorkforceAlerts() {
   const fetchAlerts = async () => {
     setLoading(true);
 
-    // Fetch all configurations
+    // Fetch all configurations (only where alerts are active)
     const { data: configData } = await supabase
       .from("configuracao_setor")
       .select(`
         setor_id,
         quantidade_media,
+        alertas_ativos,
         setores(nome)
-      `);
+      `)
+      .eq("alertas_ativos", true);
 
     if (!configData || configData.length === 0) {
       setLoading(false);

@@ -382,6 +382,7 @@ export type Database = {
       }
       configuracao_setor: {
         Row: {
+          alertas_ativos: boolean
           created_at: string | null
           id: string
           quantidade_media: number
@@ -389,6 +390,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          alertas_ativos?: boolean
           created_at?: string | null
           id?: string
           quantidade_media?: number
@@ -396,6 +398,7 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          alertas_ativos?: boolean
           created_at?: string | null
           id?: string
           quantidade_media?: number
