@@ -35,7 +35,7 @@ export function RelatoriosTreinamento() {
         .from("progresso_treinamento")
         .select(`
           *,
-          employee:employees(nome_completo, setor, cargo, empresa_id),
+          employee:employees(nome_completo, cpf, empresa_id),
           aula:aulas(
             id,
             modulo:modulos(curso_id)
@@ -94,8 +94,7 @@ export function RelatoriosTreinamento() {
           return {
             id: employeeId,
             nome: progressoFuncionario?.employee?.nome_completo,
-            cargo: progressoFuncionario?.employee?.cargo,
-            setor: progressoFuncionario?.employee?.setor,
+            cpf: progressoFuncionario?.employee?.cpf,
             empresa_id: progressoFuncionario?.employee?.empresa_id,
             dataConclusao: dataConclusao,
           };
@@ -126,7 +125,7 @@ export function RelatoriosTreinamento() {
         .eq("id", funcionario.empresa_id)
         .single();
 
-      const doc = new jsPDF();
+      const doc = new jsPDF({ orientation: "landscape" });
       const pageWidth = doc.internal.pageSize.getWidth();
       const pageHeight = doc.internal.pageSize.getHeight();
 
@@ -162,36 +161,33 @@ export function RelatoriosTreinamento() {
       doc.text("Certificamos que", pageWidth / 2, 110, { align: "center" });
 
       // Nome do funcionário
-      doc.setFontSize(20);
+      doc.setFontSize(24);
       doc.setFont("helvetica", "bold");
       doc.setTextColor(59, 130, 246);
-      doc.text(funcionario.nome, pageWidth / 2, 125, { align: "center" });
+      doc.text(funcionario.nome, pageWidth / 2, 100, { align: "center" });
 
-      // Cargo e setor
-      doc.setFontSize(12);
-      doc.setFont("helvetica", "italic");
-      doc.setTextColor(100, 100, 100);
-      doc.text(
-        `${funcionario.cargo}${funcionario.setor ? ` - ${funcionario.setor}` : ""}`,
-        pageWidth / 2,
-        135,
-        { align: "center" }
-      );
-
-      // Texto do curso
+      // CPF do funcionário
       doc.setFontSize(12);
       doc.setFont("helvetica", "normal");
+      doc.setTextColor(100, 100, 100);
+      doc.text(`CPF: ${funcionario.cpf || "Não informado"}`, pageWidth / 2, 110, {
+        align: "center",
+      });
+
+      // Texto do curso
+      doc.setFontSize(14);
+      doc.setFont("helvetica", "normal");
       doc.setTextColor(0, 0, 0);
-      doc.text("concluiu com êxito o curso", pageWidth / 2, 155, {
+      doc.text("concluiu com êxito o curso", pageWidth / 2, 125, {
         align: "center",
       });
 
       // Nome do curso
-      doc.setFontSize(18);
+      doc.setFontSize(20);
       doc.setFont("helvetica", "bold");
       doc.setTextColor(59, 130, 246);
-      const cursoTitulo = doc.splitTextToSize(curso.titulo, pageWidth - 60);
-      doc.text(cursoTitulo, pageWidth / 2, 170, { align: "center" });
+      const cursoTitulo = doc.splitTextToSize(curso.titulo, pageWidth - 100);
+      doc.text(cursoTitulo, pageWidth / 2, 140, { align: "center" });
 
       // Data de conclusão
       doc.setFontSize(12);
@@ -201,7 +197,7 @@ export function RelatoriosTreinamento() {
         "pt-BR",
         { day: "2-digit", month: "long", year: "numeric" }
       );
-      doc.text(`Concluído em ${dataFormatada}`, pageWidth / 2, 200, {
+      doc.text(`Concluído em ${dataFormatada}`, pageWidth / 2, 165, {
         align: "center",
       });
 
@@ -287,8 +283,7 @@ export function RelatoriosTreinamento() {
                             <div className="flex-1">
                               <p className="text-sm font-medium">{func.nome}</p>
                               <p className="text-xs text-muted-foreground">
-                                {func.cargo}
-                                {func.setor && ` • ${func.setor}`}
+                                CPF: {func.cpf || "Não informado"}
                               </p>
                               <p className="text-xs text-muted-foreground">
                                 Concluído em:{" "}
