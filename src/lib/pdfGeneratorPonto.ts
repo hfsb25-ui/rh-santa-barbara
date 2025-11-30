@@ -44,13 +44,13 @@ interface ReportData {
 export async function generatePontoPDF(data: ReportData) {
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
-  let yPosition = 20;
+  let yPosition = 12;
 
   // Logo da empresa (se disponível)
   if (data.empresa?.logo_url) {
     try {
-      doc.addImage(data.empresa.logo_url, "PNG", pageWidth / 2 - 10, yPosition, 20, 20);
-      yPosition += 25;
+      doc.addImage(data.empresa.logo_url, "PNG", pageWidth / 2 - 8, yPosition, 16, 16);
+      yPosition += 18;
     } catch (error) {
       console.error("Erro ao carregar logo:", error);
     }
@@ -58,42 +58,42 @@ export async function generatePontoPDF(data: ReportData) {
 
   // Nome da empresa
   if (data.empresa?.nome) {
-    doc.setFontSize(16);
+    doc.setFontSize(12);
     doc.setFont("helvetica", "bold");
     doc.text(data.empresa.nome, pageWidth / 2, yPosition, { align: "center" });
-    yPosition += 10;
+    yPosition += 6;
   }
 
   // Título
-  doc.setFontSize(14);
-  doc.setFont("helvetica", "bold");
-  doc.text("RELATÓRIO DE PONTO", pageWidth / 2, yPosition, { align: "center" });
-  yPosition += 10;
-
-  // Período
-  doc.setFontSize(10);
-  doc.setFont("helvetica", "normal");
-  doc.text(`Período: ${data.mes}`, pageWidth / 2, yPosition, { align: "center" });
-  yPosition += 15;
-
-  // Dados do funcionário
   doc.setFontSize(11);
   doc.setFont("helvetica", "bold");
-  doc.text("DADOS DO FUNCIONÁRIO", 14, yPosition);
-  yPosition += 7;
+  doc.text("RELATÓRIO DE PONTO", pageWidth / 2, yPosition, { align: "center" });
+  yPosition += 5;
 
-  doc.setFontSize(10);
+  // Período
+  doc.setFontSize(9);
+  doc.setFont("helvetica", "normal");
+  doc.text(`Período: ${data.mes}`, pageWidth / 2, yPosition, { align: "center" });
+  yPosition += 8;
+
+  // Dados do funcionário
+  doc.setFontSize(9);
+  doc.setFont("helvetica", "bold");
+  doc.text("DADOS DO FUNCIONÁRIO", 14, yPosition);
+  yPosition += 5;
+
+  doc.setFontSize(8);
   doc.setFont("helvetica", "normal");
   doc.text(`Nome: ${data.employee.nome_completo}`, 14, yPosition);
-  yPosition += 6;
+  yPosition += 4;
   doc.text(`Cargo: ${data.employee.cargo}`, 14, yPosition);
-  yPosition += 6;
+  yPosition += 4;
   if (data.employee.setor) {
     doc.text(`Setor: ${data.employee.setor}`, 14, yPosition);
-    yPosition += 6;
+    yPosition += 4;
   }
   doc.text(`Horas Diárias Esperadas: ${data.horasDiarias.toFixed(2)}h`, 14, yPosition);
-  yPosition += 10;
+  yPosition += 7;
 
   // Tabela de registros
   const tableData = data.registros.map((reg) => {
@@ -120,39 +120,40 @@ export async function generatePontoPDF(data: ReportData) {
     body: tableData,
     theme: "grid",
     styles: {
-      fontSize: 8,
-      cellPadding: 3,
+      fontSize: 6,
+      cellPadding: 1.5,
     },
     headStyles: {
       fillColor: [66, 66, 66],
       textColor: [255, 255, 255],
       fontStyle: "bold",
+      fontSize: 7,
     },
     columnStyles: {
-      0: { cellWidth: 30 },
-      1: { cellWidth: 20 },
-      2: { cellWidth: 20 },
-      3: { cellWidth: 20 },
-      4: { cellWidth: 28 },
-      5: { cellWidth: 18 },
+      0: { cellWidth: 26 },
+      1: { cellWidth: 18 },
+      2: { cellWidth: 16 },
+      3: { cellWidth: 16 },
+      4: { cellWidth: 24 },
+      5: { cellWidth: 14 },
       6: { cellWidth: "auto" },
     },
   });
 
   // Resumo
-  const finalY = (doc as any).lastAutoTable.finalY + 10;
+  const finalY = (doc as any).lastAutoTable.finalY + 5;
   
   doc.setFillColor(240, 240, 240);
-  doc.rect(14, finalY, pageWidth - 28, 35, "F");
+  doc.rect(14, finalY, pageWidth - 28, 22, "F");
 
-  doc.setFontSize(11);
+  doc.setFontSize(9);
   doc.setFont("helvetica", "bold");
-  doc.text("RESUMO DO PERÍODO", 18, finalY + 7);
+  doc.text("RESUMO DO PERÍODO", 18, finalY + 5);
 
-  doc.setFontSize(10);
+  doc.setFontSize(8);
   doc.setFont("helvetica", "normal");
-  doc.text(`Horas Esperadas: ${data.horasEsperadas.toFixed(2)}h`, 18, finalY + 14);
-  doc.text(`Horas Trabalhadas: ${data.horasTrabalhadas.toFixed(2)}h`, 18, finalY + 21);
+  doc.text(`Horas Esperadas: ${data.horasEsperadas.toFixed(2)}h`, 18, finalY + 10);
+  doc.text(`Horas Trabalhadas: ${data.horasTrabalhadas.toFixed(2)}h`, 18, finalY + 14);
 
   // Saldo com cor
   const saldoText = `Saldo: ${data.saldo >= 0 ? "+" : ""}${data.saldo.toFixed(2)}h`;
@@ -164,7 +165,7 @@ export async function generatePontoPDF(data: ReportData) {
   } else {
     doc.setTextColor(100, 100, 100); // Cinza
   }
-  doc.text(saldoText, 18, finalY + 28);
+  doc.text(saldoText, 18, finalY + 18);
   doc.setTextColor(0, 0, 0); // Resetar cor
 
   // Rodapé
