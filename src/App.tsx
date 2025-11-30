@@ -29,6 +29,7 @@ import SaudeOcupacional from "./pages/SaudeOcupacional";
 import VacationSchedule from "./pages/VacationSchedule";
 import Settings from "./pages/Settings";
 import Avaliacoes from "./pages/Avaliacoes";
+import Treinamentos from "./pages/Treinamentos";
 
 const queryClient = new QueryClient();
 
@@ -83,6 +84,7 @@ const App = () => {
           <Route path="/vacation-schedule" element={<VacationSchedule />} />
           <Route path="/avaliacoes" element={<Avaliacoes />} />
           <Route path="/controle-ponto" element={<ControlePonto />} />
+          <Route path="/treinamentos" element={<Treinamentos />} />
           <Route path="/settings" element={<Settings />} />
         <Route path="*" element={<NotFound />} />
       </Routes>

@@ -18,6 +18,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { toast } from "sonner";
 import { VacationProgress } from "@/components/ui/vacation-progress";
 import PendingSignaturesAlert from "./PendingSignaturesAlert";
+import { TreinamentosCard } from "./TreinamentosCard";
 import { format, subMonths, startOfMonth, endOfMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -338,6 +339,9 @@ const FuncionarioDashboard = ({ user }: FuncionarioDashboardProps) => {
               </div>
             </CardContent>
           </Card>
+
+          {/* Treinamentos */}
+          <TreinamentosCard employeeId={employee.id} />
 
           {/* EPIs */}
           <Card>

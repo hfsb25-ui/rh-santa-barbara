@@ -65,6 +65,50 @@ export type Database = {
           },
         ]
       }
+      aulas: {
+        Row: {
+          created_at: string | null
+          descricao: string | null
+          duracao_minutos: number | null
+          id: string
+          modulo_id: string
+          ordem: number
+          titulo: string
+          youtube_url: string
+          youtube_video_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          descricao?: string | null
+          duracao_minutos?: number | null
+          id?: string
+          modulo_id: string
+          ordem?: number
+          titulo: string
+          youtube_url: string
+          youtube_video_id: string
+        }
+        Update: {
+          created_at?: string | null
+          descricao?: string | null
+          duracao_minutos?: number | null
+          id?: string
+          modulo_id?: string
+          ordem?: number
+          titulo?: string
+          youtube_url?: string
+          youtube_video_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "aulas_modulo_id_fkey"
+            columns: ["modulo_id"]
+            isOneToOne: false
+            referencedRelation: "modulos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       avaliacoes_desempenho: {
         Row: {
           auto_avaliacao_concluida: boolean | null
@@ -492,6 +536,67 @@ export type Database = {
           },
           {
             foreignKeyName: "criterios_avaliacao_setor_id_fkey"
+            columns: ["setor_id"]
+            isOneToOne: false
+            referencedRelation: "setores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cursos: {
+        Row: {
+          ativo: boolean | null
+          created_at: string | null
+          descricao: string | null
+          empresa_id: string | null
+          funcao_id: string | null
+          id: string
+          obrigatorio: boolean | null
+          setor_id: string | null
+          titulo: string
+          updated_at: string | null
+        }
+        Insert: {
+          ativo?: boolean | null
+          created_at?: string | null
+          descricao?: string | null
+          empresa_id?: string | null
+          funcao_id?: string | null
+          id?: string
+          obrigatorio?: boolean | null
+          setor_id?: string | null
+          titulo: string
+          updated_at?: string | null
+        }
+        Update: {
+          ativo?: boolean | null
+          created_at?: string | null
+          descricao?: string | null
+          empresa_id?: string | null
+          funcao_id?: string | null
+          id?: string
+          obrigatorio?: boolean | null
+          setor_id?: string | null
+          titulo?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cursos_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cursos_funcao_id_fkey"
+            columns: ["funcao_id"]
+            isOneToOne: false
+            referencedRelation: "funcoes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cursos_setor_id_fkey"
             columns: ["setor_id"]
             isOneToOne: false
             referencedRelation: "setores"
@@ -1686,6 +1791,41 @@ export type Database = {
           },
         ]
       }
+      modulos: {
+        Row: {
+          created_at: string | null
+          curso_id: string
+          descricao: string | null
+          id: string
+          ordem: number
+          titulo: string
+        }
+        Insert: {
+          created_at?: string | null
+          curso_id: string
+          descricao?: string | null
+          id?: string
+          ordem?: number
+          titulo: string
+        }
+        Update: {
+          created_at?: string | null
+          curso_id?: string
+          descricao?: string | null
+          id?: string
+          ordem?: number
+          titulo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "modulos_curso_id_fkey"
+            columns: ["curso_id"]
+            isOneToOne: false
+            referencedRelation: "cursos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notas_avaliacao: {
         Row: {
           avaliacao_id: string
@@ -1760,6 +1900,48 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: []
+      }
+      progresso_treinamento: {
+        Row: {
+          aula_id: string
+          concluida: boolean | null
+          created_at: string | null
+          data_conclusao: string | null
+          employee_id: string
+          id: string
+        }
+        Insert: {
+          aula_id: string
+          concluida?: boolean | null
+          created_at?: string | null
+          data_conclusao?: string | null
+          employee_id: string
+          id?: string
+        }
+        Update: {
+          aula_id?: string
+          concluida?: boolean | null
+          created_at?: string | null
+          data_conclusao?: string | null
+          employee_id?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "progresso_treinamento_aula_id_fkey"
+            columns: ["aula_id"]
+            isOneToOne: false
+            referencedRelation: "aulas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "progresso_treinamento_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       registros_ponto: {
         Row: {
