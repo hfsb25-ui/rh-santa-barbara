@@ -34,6 +34,7 @@ export function CursoForm({ open, onClose, curso }: CursoFormProps) {
     defaultValues: {
       titulo: "",
       descricao: "",
+      carga_horaria: 0,
       empresa_id: "all",
       setor_id: "all",
       funcao_id: "all",
@@ -80,6 +81,7 @@ export function CursoForm({ open, onClose, curso }: CursoFormProps) {
       reset({
         titulo: curso.titulo,
         descricao: curso.descricao || "",
+        carga_horaria: curso.carga_horaria || 0,
         empresa_id: curso.empresa_id || "all",
         setor_id: curso.setor_id || "all",
         funcao_id: curso.funcao_id || "all",
@@ -90,6 +92,7 @@ export function CursoForm({ open, onClose, curso }: CursoFormProps) {
       reset({
         titulo: "",
         descricao: "",
+        carga_horaria: 0,
         empresa_id: "all",
         setor_id: "all",
         funcao_id: "all",
@@ -152,6 +155,17 @@ export function CursoForm({ open, onClose, curso }: CursoFormProps) {
           <div>
             <Label htmlFor="descricao">Descrição</Label>
             <Textarea id="descricao" {...register("descricao")} rows={3} />
+          </div>
+
+          <div>
+            <Label htmlFor="carga_horaria">Carga Horária (horas)</Label>
+            <Input
+              id="carga_horaria"
+              type="number"
+              min="0"
+              {...register("carga_horaria", { valueAsNumber: true })}
+              placeholder="Ex: 40"
+            />
           </div>
 
           <div className="grid grid-cols-3 gap-4">
