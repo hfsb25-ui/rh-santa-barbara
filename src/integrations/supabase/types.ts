@@ -546,6 +546,7 @@ export type Database = {
       cursos: {
         Row: {
           ativo: boolean | null
+          carga_horaria: number | null
           created_at: string | null
           descricao: string | null
           empresa_id: string | null
@@ -558,6 +559,7 @@ export type Database = {
         }
         Insert: {
           ativo?: boolean | null
+          carga_horaria?: number | null
           created_at?: string | null
           descricao?: string | null
           empresa_id?: string | null
@@ -570,6 +572,7 @@ export type Database = {
         }
         Update: {
           ativo?: boolean | null
+          carga_horaria?: number | null
           created_at?: string | null
           descricao?: string | null
           empresa_id?: string | null

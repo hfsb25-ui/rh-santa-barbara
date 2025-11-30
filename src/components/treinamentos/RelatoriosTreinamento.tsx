@@ -189,6 +189,16 @@ export function RelatoriosTreinamento() {
       const cursoTitulo = doc.splitTextToSize(curso.titulo, pageWidth - 100);
       doc.text(cursoTitulo, pageWidth / 2, 145, { align: "center" });
 
+      // Carga horária
+      if (curso.carga_horaria) {
+        doc.setFontSize(12);
+        doc.setFont("helvetica", "normal");
+        doc.setTextColor(100, 100, 100);
+        doc.text(`Carga Horária: ${curso.carga_horaria} horas`, pageWidth / 2, 160, {
+          align: "center",
+        });
+      }
+
       // Data de conclusão
       doc.setFontSize(12);
       doc.setFont("helvetica", "normal");
@@ -197,7 +207,8 @@ export function RelatoriosTreinamento() {
         "pt-BR",
         { day: "2-digit", month: "long", year: "numeric" }
       );
-      doc.text(`Concluído em ${dataFormatada}`, pageWidth / 2, 170, {
+      const dataPosY = curso.carga_horaria ? 175 : 170;
+      doc.text(`Concluído em ${dataFormatada}`, pageWidth / 2, dataPosY, {
         align: "center",
       });
 
