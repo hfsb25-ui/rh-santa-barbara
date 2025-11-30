@@ -23,9 +23,9 @@ export const CiclosConfig = () => {
     nome: "",
     tipo: "mensal",
     data_inicio: "",
-    empresa_id: "",
-    setor_id: "",
-    funcao_id: "",
+    empresa_id: "all",
+    setor_id: "all",
+    funcao_id: "all",
     dias_para_conclusao: 30,
     criar_metas: false,
   });
@@ -75,9 +75,9 @@ export const CiclosConfig = () => {
       const { error } = await supabase.from("ciclos_avaliacao").insert({
         ...data,
         data_proxima_execucao: data.data_inicio,
-        empresa_id: data.empresa_id || null,
-        setor_id: data.setor_id || null,
-        funcao_id: data.funcao_id || null,
+        empresa_id: data.empresa_id === "all" ? null : data.empresa_id,
+        setor_id: data.setor_id === "all" ? null : data.setor_id,
+        funcao_id: data.funcao_id === "all" ? null : data.funcao_id,
       });
       if (error) throw error;
     },
@@ -89,9 +89,9 @@ export const CiclosConfig = () => {
         nome: "",
         tipo: "mensal",
         data_inicio: "",
-        empresa_id: "",
-        setor_id: "",
-        funcao_id: "",
+        empresa_id: "all",
+        setor_id: "all",
+        funcao_id: "all",
         dias_para_conclusao: 30,
         criar_metas: false,
       });
@@ -218,7 +218,7 @@ export const CiclosConfig = () => {
                       <SelectValue placeholder="Todas as empresas" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Todas</SelectItem>
+                      <SelectItem value="all">Todas</SelectItem>
                       {empresas?.map((emp) => (
                         <SelectItem key={emp.id} value={emp.id}>
                           {emp.nome}
@@ -236,7 +236,7 @@ export const CiclosConfig = () => {
                         <SelectValue placeholder="Todos os setores" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">Todos</SelectItem>
+                        <SelectItem value="all">Todos</SelectItem>
                         {setores?.map((setor) => (
                           <SelectItem key={setor.id} value={setor.id}>
                             {setor.nome}
@@ -253,7 +253,7 @@ export const CiclosConfig = () => {
                         <SelectValue placeholder="Todas as funções" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">Todas</SelectItem>
+                        <SelectItem value="all">Todas</SelectItem>
                         {funcoes?.map((funcao) => (
                           <SelectItem key={funcao.id} value={funcao.id}>
                             {funcao.nome}
