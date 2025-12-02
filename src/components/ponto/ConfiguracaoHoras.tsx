@@ -13,6 +13,9 @@ export function ConfiguracaoHoras() {
   const [editingHours, setEditingHours] = useState<Record<string, string>>({});
   const [editingEntrada, setEditingEntrada] = useState<Record<string, string>>({});
   const [editingSaida, setEditingSaida] = useState<Record<string, string>>({});
+  const [bulkEntrada, setBulkEntrada] = useState("08:00");
+  const [bulkSaida, setBulkSaida] = useState("17:00");
+  const [applyingBulk, setApplyingBulk] = useState(false);
   const queryClient = useQueryClient();
 
   const { data: employees, isLoading } = useQuery({
@@ -92,6 +95,36 @@ export function ConfiguracaoHoras() {
     );
   };
 
+  const handleBulkUpdate = async () => {
+    if (!filteredEmployees || filteredEmployees.length === 0) {
+      toast.error("Nenhum funcionário encontrado");
+      return;
+    }
+
+    setApplyingBulk(true);
+    try {
+      const updates = filteredEmployees.map(emp => ({
+        employee_id: emp.id,
+        horas_diarias_esperadas: emp.horasDiarias,
+        hora_entrada_prevista: bulkEntrada,
+        hora_saida_prevista: bulkSaida,
+      }));
+
+      const { error } = await supabase
+        .from("configuracao_horas_trabalho")
+        .upsert(updates, { onConflict: "employee_id" });
+
+      if (error) throw error;
+
+      toast.success(`Horários atualizados para ${filteredEmployees.length} funcionários`);
+      queryClient.invalidateQueries({ queryKey: ["employees-with-hours-config"] });
+    } catch (error: any) {
+      toast.error("Erro ao atualizar: " + error.message);
+    } finally {
+      setApplyingBulk(false);
+    }
+  };
+
   const filteredEmployees = employees?.filter(emp =>
     emp.nome_completo.toLowerCase().includes(searchTerm.toLowerCase()) ||
     emp.cargo.toLowerCase().includes(searchTerm.toLowerCase())
@@ -103,6 +136,39 @@ export function ConfiguracaoHoras() {
         <h2 className="text-2xl font-semibold mb-4">Configuração de Horas Esperadas</h2>
         <p className="text-muted-foreground">
           Defina a quantidade de horas diárias esperadas para cada funcionário
+        </p>
+      </div>
+
+      <div className="border rounded-lg p-4 bg-muted/30">
+        <h3 className="font-medium mb-3">Alterar Horários de Todos</h3>
+        <div className="flex flex-wrap items-end gap-4">
+          <div className="space-y-1">
+            <Label>Entrada Prevista</Label>
+            <Input
+              type="time"
+              value={bulkEntrada}
+              onChange={(e) => setBulkEntrada(e.target.value)}
+              className="w-32"
+            />
+          </div>
+          <div className="space-y-1">
+            <Label>Saída Prevista</Label>
+            <Input
+              type="time"
+              value={bulkSaida}
+              onChange={(e) => setBulkSaida(e.target.value)}
+              className="w-32"
+            />
+          </div>
+          <Button onClick={handleBulkUpdate} disabled={applyingBulk}>
+            {applyingBulk ? (
+              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+            ) : null}
+            Aplicar para {filteredEmployees?.length || 0} funcionários
+          </Button>
+        </div>
+        <p className="text-xs text-muted-foreground mt-2">
+          Aplica os horários para todos os funcionários {searchTerm ? "filtrados" : ""}
         </p>
       </div>
 
