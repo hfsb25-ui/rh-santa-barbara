@@ -84,6 +84,7 @@ const Adiantamentos = () => {
   const [editingValor, setEditingValor] = useState<string>("");
   const [editingFormaPagamento, setEditingFormaPagamento] = useState<"em_conta" | "em_maos">("em_conta");
   const [savingEdit, setSavingEdit] = useState(false);
+  const [deletingAll, setDeletingAll] = useState(false);
   
   const setores = Array.from(new Set(employees.map(e => e.setor).filter(Boolean))) as string[];
   const tiposContrato = ["fixo", "intermitente", "Prestador de Serviço"];
@@ -355,6 +356,31 @@ const Adiantamentos = () => {
     } catch (error: any) {
       console.error("Erro ao excluir adiantamento:", error);
       toast.error("Erro ao excluir adiantamento");
+    }
+  };
+
+  const handleDeleteAllAdiantamentos = async () => {
+    if (historico.length === 0) return;
+    
+    try {
+      setDeletingAll(true);
+      
+      const ids = historico.map(a => a.id);
+      
+      const { error } = await supabase
+        .from("adiantamentos")
+        .delete()
+        .in("id", ids);
+
+      if (error) throw error;
+
+      toast.success(`${ids.length} adiantamento(s) excluído(s) com sucesso!`);
+      fetchHistorico();
+    } catch (error: any) {
+      console.error("Erro ao excluir adiantamentos:", error);
+      toast.error("Erro ao excluir adiantamentos");
+    } finally {
+      setDeletingAll(false);
     }
   };
 
@@ -654,10 +680,42 @@ const Adiantamentos = () => {
               <h3 className="text-lg font-semibold">
                 Histórico de Adiantamentos ({historico.length} registros)
               </h3>
-              <Button onClick={handleExportHistoricoPDF} variant="outline" disabled={historico.length === 0}>
-                <FileDown className="w-4 h-4 mr-2" />
-                Exportar PDF
-              </Button>
+              <div className="flex gap-2">
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button 
+                      variant="destructive" 
+                      disabled={historico.length === 0 || deletingAll}
+                    >
+                      {deletingAll ? (
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      ) : (
+                        <Trash2 className="w-4 h-4 mr-2" />
+                      )}
+                      Excluir Todos do Mês
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Confirmar exclusão em massa</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Tem certeza que deseja excluir todos os {historico.length} adiantamentos do mês {filtroHistoricoMes.toString().padStart(2, '0')}/{filtroHistoricoAno}?
+                        Esta ação não pode ser desfeita.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                      <AlertDialogAction onClick={handleDeleteAllAdiantamentos}>
+                        Excluir Todos
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+                <Button onClick={handleExportHistoricoPDF} variant="outline" disabled={historico.length === 0}>
+                  <FileDown className="w-4 h-4 mr-2" />
+                  Exportar PDF
+                </Button>
+              </div>
             </div>
 
             {loadingHistorico ? (
