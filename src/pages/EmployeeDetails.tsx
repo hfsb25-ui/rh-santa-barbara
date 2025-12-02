@@ -21,6 +21,7 @@ import FilesTab from "@/components/employees/tabs/FilesTab";
 import { SalaryHistoryTab } from "@/components/employees/tabs/SalaryHistoryTab";
 import ExamesMedicosTab from "@/components/employees/tabs/ExamesMedicosTab";
 import AvaliacoesTab from "@/components/employees/tabs/AvaliacoesTab";
+import { ChecklistTab } from "@/components/employees/tabs/ChecklistTab";
 
 const EmployeeDetails = () => {
   const { id } = useParams();
@@ -109,7 +110,7 @@ const EmployeeDetails = () => {
         <EmployeeInfo employee={employee} onUpdate={fetchEmployee} />
 
         <Tabs defaultValue="epis" className="mt-6">
-          <TabsList className={isMobile ? "inline-flex w-full overflow-x-auto justify-start" : "grid w-full grid-cols-10"}>
+          <TabsList className={isMobile ? "inline-flex w-full overflow-x-auto justify-start" : "grid w-full grid-cols-11"}>
             <TabsTrigger value="epis" className={isMobile ? "flex-shrink-0" : ""}>EPIs</TabsTrigger>
             <TabsTrigger value="uniformes" className={isMobile ? "flex-shrink-0" : ""}>Uniformes</TabsTrigger>
             <TabsTrigger value="ferias" className={isMobile ? "flex-shrink-0" : ""}>Férias</TabsTrigger>
@@ -120,6 +121,7 @@ const EmployeeDetails = () => {
             <TabsTrigger value="reajustes" className={isMobile ? "flex-shrink-0" : ""}>Histórico Salarial</TabsTrigger>
             <TabsTrigger value="exames" className={isMobile ? "flex-shrink-0" : ""}>Exames Médicos</TabsTrigger>
             <TabsTrigger value="avaliacoes" className={isMobile ? "flex-shrink-0" : ""}>Avaliações</TabsTrigger>
+            <TabsTrigger value="checklist" className={isMobile ? "flex-shrink-0" : ""}>Checklist</TabsTrigger>
           </TabsList>
 
           <TabsContent value="epis">
@@ -160,6 +162,10 @@ const EmployeeDetails = () => {
 
           <TabsContent value="avaliacoes">
             <AvaliacoesTab employeeId={id!} />
+          </TabsContent>
+
+          <TabsContent value="checklist">
+            <ChecklistTab employeeId={id!} isManager={true} />
           </TabsContent>
         </Tabs>
       </div>

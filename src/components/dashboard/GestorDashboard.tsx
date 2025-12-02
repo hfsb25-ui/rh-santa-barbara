@@ -31,6 +31,7 @@ import {
   Settings,
   Award,
   GraduationCap,
+  ClipboardList,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -51,6 +52,7 @@ import DashboardFilters from "@/components/dashboard/DashboardFilters";
 import { WorkforceAlerts } from "@/components/dashboard/WorkforceAlerts";
 import { BirthdayCard } from "@/components/dashboard/BirthdayCard";
 import { BirthdayListDialog } from "@/components/dashboard/BirthdayListDialog";
+import { PendingChecklistsAlert } from "@/components/dashboard/PendingChecklistsAlert";
 import { toast } from "sonner";
 
 interface GestorDashboardProps {
@@ -636,6 +638,9 @@ const GestorDashboard = ({ user }: GestorDashboardProps) => {
               onViewAll={() => setShowBirthdayDialog(true)}
             />
 
+            {/* Pending Checklists Alert */}
+            <PendingChecklistsAlert />
+
             {/* Workforce Alerts */}
             <WorkforceAlerts />
 
@@ -825,6 +830,10 @@ const GestorDashboard = ({ user }: GestorDashboardProps) => {
                 <Button variant="outline" onClick={() => navigate("/adiantamentos")} className="w-full">
                   <DollarSign className="w-4 h-4 mr-2" />
                   Adiantamentos
+                </Button>
+                <Button variant="outline" onClick={() => navigate("/plano-admissao-desligamento")} className="w-full">
+                  <ClipboardList className="w-4 h-4 mr-2" />
+                  Admissão/Desligamento
                 </Button>
                 <Button variant="outline" onClick={() => navigate("/settings")} className="w-full">
                   <Settings className="w-4 h-4 mr-2" />
