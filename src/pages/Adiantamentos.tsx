@@ -6,9 +6,11 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Loader2, FileDown, Receipt, BarChart } from "lucide-react";
+import { Loader2, FileDown, Receipt, BarChart, Pencil, Trash2 } from "lucide-react";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
@@ -76,6 +78,12 @@ const Adiantamentos = () => {
   const [filtroHistoricoEmpresa, setFiltroHistoricoEmpresa] = useState<string>("all");
   const [filtroHistoricoSetor, setFiltroHistoricoSetor] = useState<string>("all");
   const [filtroHistoricoFormaPagamento, setFiltroHistoricoFormaPagamento] = useState<string>("all");
+
+  // Edição
+  const [editingAdiantamento, setEditingAdiantamento] = useState<AdiantamentoHistorico | null>(null);
+  const [editingValor, setEditingValor] = useState<string>("");
+  const [editingFormaPagamento, setEditingFormaPagamento] = useState<"em_conta" | "em_maos">("em_conta");
+  const [savingEdit, setSavingEdit] = useState(false);
   
   const setores = Array.from(new Set(employees.map(e => e.setor).filter(Boolean))) as string[];
   const tiposContrato = ["fixo", "intermitente", "Prestador de Serviço"];
@@ -297,6 +305,56 @@ const Adiantamentos = () => {
     } catch (error) {
       console.error("Erro ao gerar PDF:", error);
       toast.error("Erro ao gerar PDF");
+    }
+  };
+
+  const handleOpenEdit = (adiantamento: AdiantamentoHistorico) => {
+    setEditingAdiantamento(adiantamento);
+    setEditingValor(adiantamento.valor.toString());
+    setEditingFormaPagamento(adiantamento.forma_pagamento as "em_conta" | "em_maos");
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingAdiantamento) return;
+    
+    try {
+      setSavingEdit(true);
+      
+      const { error } = await supabase
+        .from("adiantamentos")
+        .update({
+          valor: parseFloat(editingValor),
+          forma_pagamento: editingFormaPagamento
+        })
+        .eq("id", editingAdiantamento.id);
+
+      if (error) throw error;
+
+      toast.success("Adiantamento atualizado com sucesso!");
+      setEditingAdiantamento(null);
+      fetchHistorico();
+    } catch (error: any) {
+      console.error("Erro ao atualizar adiantamento:", error);
+      toast.error("Erro ao atualizar adiantamento");
+    } finally {
+      setSavingEdit(false);
+    }
+  };
+
+  const handleDeleteAdiantamento = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from("adiantamentos")
+        .delete()
+        .eq("id", id);
+
+      if (error) throw error;
+
+      toast.success("Adiantamento excluído com sucesso!");
+      fetchHistorico();
+    } catch (error: any) {
+      console.error("Erro ao excluir adiantamento:", error);
+      toast.error("Erro ao excluir adiantamento");
     }
   };
 
@@ -619,12 +677,13 @@ const Adiantamentos = () => {
                         <TableHead>Valor (R$)</TableHead>
                         <TableHead>Forma Pagamento</TableHead>
                         <TableHead>Data Lançamento</TableHead>
+                        <TableHead className="text-right">Ações</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {historico.length === 0 ? (
                         <TableRow>
-                          <TableCell colSpan={7} className="text-center text-muted-foreground">
+                          <TableCell colSpan={8} className="text-center text-muted-foreground">
                             Nenhum adiantamento encontrado para este período
                           </TableCell>
                         </TableRow>
@@ -641,6 +700,39 @@ const Adiantamentos = () => {
                             </TableCell>
                             <TableCell>
                               {new Date(adiant.created_at).toLocaleDateString("pt-BR")}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex justify-end gap-2">
+                                <Button
+                                  variant="outline"
+                                  size="icon"
+                                  onClick={() => handleOpenEdit(adiant)}
+                                >
+                                  <Pencil className="h-4 w-4" />
+                                </Button>
+                                <AlertDialog>
+                                  <AlertDialogTrigger asChild>
+                                    <Button variant="outline" size="icon" className="text-destructive hover:text-destructive">
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </AlertDialogTrigger>
+                                  <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                      <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
+                                      <AlertDialogDescription>
+                                        Tem certeza que deseja excluir este adiantamento de {adiant.employees.nome_completo}?
+                                        Esta ação não pode ser desfeita.
+                                      </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                      <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                      <AlertDialogAction onClick={() => handleDeleteAdiantamento(adiant.id)}>
+                                        Excluir
+                                      </AlertDialogAction>
+                                    </AlertDialogFooter>
+                                  </AlertDialogContent>
+                                </AlertDialog>
+                              </div>
                             </TableCell>
                           </TableRow>
                         ))
@@ -678,6 +770,54 @@ const Adiantamentos = () => {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Dialog de Edição */}
+      <Dialog open={!!editingAdiantamento} onOpenChange={(open) => !open && setEditingAdiantamento(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Editar Adiantamento</DialogTitle>
+          </DialogHeader>
+          {editingAdiantamento && (
+            <div className="space-y-4 py-4">
+              <div>
+                <Label className="text-muted-foreground">Funcionário</Label>
+                <p className="font-medium">{editingAdiantamento.employees.nome_completo}</p>
+              </div>
+              <div>
+                <Label>Valor (R$)</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={editingValor}
+                  onChange={(e) => setEditingValor(e.target.value)}
+                />
+              </div>
+              <div>
+                <Label>Forma de Pagamento</Label>
+                <Select value={editingFormaPagamento} onValueChange={(v) => setEditingFormaPagamento(v as "em_conta" | "em_maos")}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="em_conta">Em conta</SelectItem>
+                    <SelectItem value="em_maos">Em mãos</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditingAdiantamento(null)}>
+              Cancelar
+            </Button>
+            <Button onClick={handleSaveEdit} disabled={savingEdit}>
+              {savingEdit && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              Salvar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
