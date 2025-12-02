@@ -26,6 +26,15 @@ const TIPO_DIA_LABELS: Record<string, string> = {
   atestado: "Atestado",
 };
 
+function formatDecimalToHoursMinutes(decimal: number): string {
+  const isNegative = decimal < 0;
+  const absDecimal = Math.abs(decimal);
+  const hours = Math.floor(absDecimal);
+  const minutes = Math.round((absDecimal - hours) * 60);
+  const sign = isNegative ? "-" : "";
+  return `${sign}${hours}h${minutes.toString().padStart(2, '0')}min`;
+}
+
 export function RelatoriosPonto() {
   const [selectedEmployee, setSelectedEmployee] = useState("");
   const [selectedMonth, setSelectedMonth] = useState(format(new Date(), "yyyy-MM"));
@@ -207,11 +216,11 @@ export function RelatoriosPonto() {
 
   const getSaldoBadge = (saldo: number) => {
     if (saldo > 0) {
-      return <Badge variant="default" className="bg-green-500">+{saldo.toFixed(2)}h</Badge>;
+      return <Badge variant="default" className="bg-green-500">+{formatDecimalToHoursMinutes(saldo)}</Badge>;
     } else if (saldo < 0) {
-      return <Badge variant="destructive">{saldo.toFixed(2)}h</Badge>;
+      return <Badge variant="destructive">{formatDecimalToHoursMinutes(saldo)}</Badge>;
     } else {
-      return <Badge variant="secondary">0.00h</Badge>;
+      return <Badge variant="secondary">0h00min</Badge>;
     }
   };
 
@@ -268,7 +277,7 @@ export function RelatoriosPonto() {
         item.nome,
         item.cargo,
         item.setor,
-        `${item.saldo >= 0 ? "+" : ""}${item.saldo.toFixed(2)}h`,
+        `${item.saldo >= 0 ? "+" : ""}${formatDecimalToHoursMinutes(item.saldo)}`,
       ]);
 
       autoTable(doc, {
@@ -285,7 +294,7 @@ export function RelatoriosPonto() {
 
       const finalY = (doc as any).lastAutoTable.finalY + 10;
       doc.setFontSize(10);
-      doc.text(`Saldo Total: ${totalSaldo >= 0 ? "+" : ""}${totalSaldo.toFixed(2)}h`, 14, finalY);
+      doc.text(`Saldo Total: ${totalSaldo >= 0 ? "+" : ""}${formatDecimalToHoursMinutes(totalSaldo)}`, 14, finalY);
 
       doc.save(`Saldo_Geral_${mesFormatado.replace(/ /g, "_")}.pdf`);
       toast.success("PDF gerado com sucesso!");
@@ -318,7 +327,7 @@ export function RelatoriosPonto() {
         item.nome,
         item.cargo,
         item.setor,
-        `${item.saldo >= 0 ? "+" : ""}${item.saldo.toFixed(2)}h`,
+        `${item.saldo >= 0 ? "+" : ""}${formatDecimalToHoursMinutes(item.saldo)}`,
       ]);
 
       const totalSaldo = allSaldos.reduce((sum, item) => sum + item.saldo, 0);
@@ -326,7 +335,7 @@ export function RelatoriosPonto() {
       const resumo = [
         [],
         ["TOTAIS"],
-        [`Saldo Total: ${totalSaldo >= 0 ? "+" : ""}${totalSaldo.toFixed(2)}h`],
+        [`Saldo Total: ${totalSaldo >= 0 ? "+" : ""}${formatDecimalToHoursMinutes(totalSaldo)}`],
       ];
 
       const wsData = [...header, ...tableHeader, ...tableData, ...resumo];
@@ -362,7 +371,7 @@ export function RelatoriosPonto() {
         [`Nome: ${report.employee.nome_completo}`],
         [`Cargo: ${report.employee.cargo}`],
         [`Setor: ${report.employee.setor || "-"}`],
-        [`Horas Diárias Esperadas: ${report.horasDiarias.toFixed(2)}h`],
+        [`Horas Diárias Esperadas: ${formatDecimalToHoursMinutes(report.horasDiarias)}`],
         [],
       ];
 
@@ -378,7 +387,7 @@ export function RelatoriosPonto() {
           reg.hora_saida || "-",
           reg.hora_inicio_intervalo || "-",
           reg.hora_fim_intervalo || "-",
-          reg.horas_trabalhadas ? `${reg.horas_trabalhadas.toFixed(2)}h` : "0.00h",
+          reg.horas_trabalhadas ? formatDecimalToHoursMinutes(reg.horas_trabalhadas) : "0h00min",
           reg.observacoes || "-",
         ];
       });
@@ -387,9 +396,9 @@ export function RelatoriosPonto() {
       const resumo = [
         [],
         ["RESUMO DO PERÍODO"],
-        [`Horas Esperadas: ${report.horasEsperadas.toFixed(2)}h`],
-        [`Horas Trabalhadas: ${report.horasTrabalhadas.toFixed(2)}h`],
-        [`Saldo: ${report.saldo >= 0 ? "+" : ""}${report.saldo.toFixed(2)}h`],
+        [`Horas Esperadas: ${formatDecimalToHoursMinutes(report.horasEsperadas)}`],
+        [`Horas Trabalhadas: ${formatDecimalToHoursMinutes(report.horasTrabalhadas)}`],
+        [`Saldo: ${report.saldo >= 0 ? "+" : ""}${formatDecimalToHoursMinutes(report.saldo)}`],
       ];
 
       // Combinar tudo
@@ -586,11 +595,11 @@ export function RelatoriosPonto() {
               <div className="grid gap-4 md:grid-cols-4">
                 <div className="p-4 border rounded-lg bg-card">
                   <div className="text-sm text-muted-foreground">Horas Esperadas</div>
-                  <div className="text-2xl font-bold">{report.horasEsperadas.toFixed(2)}h</div>
+                  <div className="text-2xl font-bold">{formatDecimalToHoursMinutes(report.horasEsperadas)}</div>
                 </div>
                 <div className="p-4 border rounded-lg bg-card">
                   <div className="text-sm text-muted-foreground">Horas Trabalhadas</div>
-                  <div className="text-2xl font-bold">{report.horasTrabalhadas.toFixed(2)}h</div>
+                  <div className="text-2xl font-bold">{formatDecimalToHoursMinutes(report.horasTrabalhadas)}</div>
                 </div>
                 <div className="p-4 border rounded-lg bg-card">
                   <div className="text-sm text-muted-foreground">Saldo de Horas</div>
@@ -598,7 +607,7 @@ export function RelatoriosPonto() {
                 </div>
                 <div className="p-4 border rounded-lg bg-card">
                   <div className="text-sm text-muted-foreground">Horas/Dia Esperadas</div>
-                  <div className="text-2xl font-bold">{report.horasDiarias.toFixed(2)}h</div>
+                  <div className="text-2xl font-bold">{formatDecimalToHoursMinutes(report.horasDiarias)}</div>
                 </div>
               </div>
 
@@ -634,7 +643,7 @@ export function RelatoriosPonto() {
                             : "-"}
                         </TableCell>
                         <TableCell className="font-semibold">
-                          {reg.horas_trabalhadas?.toFixed(2) || "0.00"}h
+                          {reg.horas_trabalhadas ? formatDecimalToHoursMinutes(reg.horas_trabalhadas) : "0h00min"}
                         </TableCell>
                         <TableCell className="text-sm text-muted-foreground">
                           {reg.observacoes || "-"}
@@ -882,7 +891,7 @@ export function RelatoriosPonto() {
                               : 'text-muted-foreground'
                           }`}
                         >
-                          {item.saldo > 0 ? '+' : ''}{item.saldo.toFixed(2)}h
+                          {item.saldo > 0 ? '+' : ''}{formatDecimalToHoursMinutes(item.saldo)}
                         </TableCell>
                       </TableRow>
                     ))}

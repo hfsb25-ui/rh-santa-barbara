@@ -3,6 +3,15 @@ import autoTable from "jspdf-autotable";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
+function formatDecimalToHoursMinutes(decimal: number): string {
+  const isNegative = decimal < 0;
+  const absDecimal = Math.abs(decimal);
+  const hours = Math.floor(absDecimal);
+  const minutes = Math.round((absDecimal - hours) * 60);
+  const sign = isNegative ? "-" : "";
+  return `${sign}${hours}h${minutes.toString().padStart(2, '0')}min`;
+}
+
 const TIPO_DIA_LABELS: Record<string, string> = {
   normal: "Normal",
   abonado: "Abonado",
@@ -119,7 +128,7 @@ function addEmployeeReportToDoc(doc: jsPDF, data: ReportData, isFirstPage: boole
       reg.hora_entrada || "-",
       reg.hora_saida || "-",
       intervalo,
-      reg.horas_trabalhadas ? `${reg.horas_trabalhadas.toFixed(2)}h` : "0.00h",
+      reg.horas_trabalhadas ? formatDecimalToHoursMinutes(reg.horas_trabalhadas) : "0h00min",
       reg.observacoes || "-",
     ];
   });
@@ -167,7 +176,8 @@ function addEmployeeReportToDoc(doc: jsPDF, data: ReportData, isFirstPage: boole
   doc.text(`Horário Previsto: ${entradaResumo} às ${saidaResumo}`, 18, finalY + 10);
 
   // Saldo com cor
-  const saldoText = `Saldo do Período: ${data.saldo >= 0 ? "+" : ""}${data.saldo.toFixed(2)}h`;
+  const saldoFormatted = formatDecimalToHoursMinutes(data.saldo);
+  const saldoText = `Saldo do Período: ${data.saldo >= 0 ? "+" : ""}${saldoFormatted}`;
   doc.setFont("helvetica", "bold");
   if (data.saldo > 0) {
     doc.setTextColor(34, 139, 34); // Verde
