@@ -43,9 +43,13 @@ interface ReportData {
   };
 }
 
-export async function generatePontoPDF(data: ReportData) {
-  const doc = new jsPDF();
+function addEmployeeReportToDoc(doc: jsPDF, data: ReportData, isFirstPage: boolean) {
   const pageWidth = doc.internal.pageSize.getWidth();
+  
+  if (!isFirstPage) {
+    doc.addPage();
+  }
+  
   let yPosition = 12;
 
   // Logo da empresa (se disponível)
@@ -174,8 +178,15 @@ export async function generatePontoPDF(data: ReportData) {
   }
   doc.text(saldoText, 18, finalY + 14);
   doc.setTextColor(0, 0, 0); // Resetar cor
+}
+
+export async function generatePontoPDF(data: ReportData) {
+  const doc = new jsPDF();
+  
+  addEmployeeReportToDoc(doc, data, true);
 
   // Rodapé
+  const pageWidth = doc.internal.pageSize.getWidth();
   const pageCount = doc.getNumberOfPages();
   for (let i = 1; i <= pageCount; i++) {
     doc.setPage(i);
@@ -195,6 +206,38 @@ export async function generatePontoPDF(data: ReportData) {
     );
   }
 
-  const fileName = `relatorio_ponto_${data.employee.nome_completo.replace(/\s+/g, "_")}_${data.mes.replace("/", "-")}.pdf`;
+  const fileName = `relatorio_ponto_${data.employee.nome_completo.replace(/\s+/g, "_")}_${data.mes.replace(/\s+/g, "_")}.pdf`;
+  doc.save(fileName);
+}
+
+export async function generatePontoPDFBatch(reports: ReportData[], mes: string) {
+  const doc = new jsPDF();
+  
+  reports.forEach((data, index) => {
+    addEmployeeReportToDoc(doc, data, index === 0);
+  });
+
+  // Rodapé em todas as páginas
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageCount = doc.getNumberOfPages();
+  for (let i = 1; i <= pageCount; i++) {
+    doc.setPage(i);
+    doc.setFontSize(8);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(128, 128, 128);
+    doc.text(
+      `Gerado em ${format(new Date(), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}`,
+      14,
+      doc.internal.pageSize.getHeight() - 10
+    );
+    doc.text(
+      `Página ${i} de ${pageCount}`,
+      pageWidth - 14,
+      doc.internal.pageSize.getHeight() - 10,
+      { align: "right" }
+    );
+  }
+
+  const fileName = `relatorios_ponto_${mes.replace(/\s+/g, "_")}.pdf`;
   doc.save(fileName);
 }

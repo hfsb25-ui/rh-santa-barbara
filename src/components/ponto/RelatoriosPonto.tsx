@@ -12,7 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Loader2, Download, FileText, Users, TrendingUp, TrendingDown, Minus } from "lucide-react";
 import { format, startOfMonth, endOfMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { generatePontoPDF } from "@/lib/pdfGeneratorPonto";
+import { generatePontoPDF, generatePontoPDFBatch } from "@/lib/pdfGeneratorPonto";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import * as XLSX from "xlsx";
@@ -457,7 +457,9 @@ export function RelatoriosPonto() {
         return;
       }
 
-      toast.info(`Gerando ${filteredEmployees.length} relatórios...`);
+      toast.info(`Coletando dados de ${filteredEmployees.length} funcionários...`);
+
+      const reportsData = [];
 
       for (const emp of filteredEmployees) {
         // Buscar registros do funcionário
@@ -493,8 +495,7 @@ export function RelatoriosPonto() {
         const horasTrabalhadas = registros?.reduce((sum, r) => sum + (r.horas_trabalhadas || 0), 0) || 0;
         const saldo = horasTrabalhadas - horasEsperadas;
 
-        // Gerar PDF individual
-        await generatePontoPDF({
+        reportsData.push({
           employee: {
             nome_completo: emp.nome_completo,
             cargo: emp.cargo,
@@ -510,15 +511,15 @@ export function RelatoriosPonto() {
           horaSaidaPrevista: config?.hora_saida_prevista || "17:00:00",
           empresa: empresa || undefined,
         });
-
-        // Pequena pausa para evitar travamentos
-        await new Promise(resolve => setTimeout(resolve, 100));
       }
+
+      // Gerar PDF único com todos os relatórios
+      await generatePontoPDFBatch(reportsData, mesFormatado);
       
-      toast.success(`${filteredEmployees.length} relatórios gerados com sucesso!`);
+      toast.success(`Relatório com ${filteredEmployees.length} funcionários gerado com sucesso!`);
     } catch (error) {
-      console.error("Erro ao gerar PDFs:", error);
-      toast.error("Erro ao gerar PDFs");
+      console.error("Erro ao gerar PDF:", error);
+      toast.error("Erro ao gerar PDF");
     } finally {
       setExportingBatch(false);
     }
