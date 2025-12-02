@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { Loader2, Save, Search } from "lucide-react";
 
@@ -16,14 +17,35 @@ export function ConfiguracaoHoras() {
   const [bulkEntrada, setBulkEntrada] = useState("08:00");
   const [bulkSaida, setBulkSaida] = useState("17:00");
   const [applyingBulk, setApplyingBulk] = useState(false);
+  const [filterEmpresa, setFilterEmpresa] = useState("all");
+  const [filterSetor, setFilterSetor] = useState("all");
+  const [filterTipoContrato, setFilterTipoContrato] = useState("all");
   const queryClient = useQueryClient();
+
+  const { data: empresas } = useQuery({
+    queryKey: ["empresas"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("empresas").select("id, nome").order("nome");
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const { data: setores } = useQuery({
+    queryKey: ["setores"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("setores").select("id, nome").order("nome");
+      if (error) throw error;
+      return data;
+    },
+  });
 
   const { data: employees, isLoading } = useQuery({
     queryKey: ["employees-with-hours-config"],
     queryFn: async () => {
       const { data: empData, error: empError } = await supabase
         .from("employees")
-        .select("id, nome_completo, cargo, setor")
+        .select("id, nome_completo, cargo, setor, empresa_id, tipo_contrato")
         .eq("status", "ativo")
         .order("nome_completo");
       
@@ -47,6 +69,15 @@ export function ConfiguracaoHoras() {
         };
       });
     },
+  });
+
+  const filteredEmployees = employees?.filter(emp => {
+    const matchesSearch = emp.nome_completo.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      emp.cargo.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesEmpresa = filterEmpresa === "all" || emp.empresa_id === filterEmpresa;
+    const matchesSetor = filterSetor === "all" || emp.setor === filterSetor;
+    const matchesTipoContrato = filterTipoContrato === "all" || emp.tipo_contrato === filterTipoContrato;
+    return matchesSearch && matchesEmpresa && matchesSetor && matchesTipoContrato;
   });
 
   const updateMutation = useMutation({
@@ -125,10 +156,6 @@ export function ConfiguracaoHoras() {
     }
   };
 
-  const filteredEmployees = employees?.filter(emp =>
-    emp.nome_completo.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    emp.cargo.toLowerCase().includes(searchTerm.toLowerCase())
-  );
 
   return (
     <div className="space-y-6">
@@ -141,6 +168,50 @@ export function ConfiguracaoHoras() {
 
       <div className="border rounded-lg p-4 bg-muted/30">
         <h3 className="font-medium mb-3">Alterar Horários de Todos</h3>
+        <div className="flex flex-wrap items-end gap-3 mb-4">
+          <div className="space-y-1">
+            <Label>Empresa</Label>
+            <Select value={filterEmpresa} onValueChange={setFilterEmpresa}>
+              <SelectTrigger className="w-40">
+                <SelectValue placeholder="Todas" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas</SelectItem>
+                {empresas?.map(emp => (
+                  <SelectItem key={emp.id} value={emp.id}>{emp.nome}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <Label>Setor</Label>
+            <Select value={filterSetor} onValueChange={setFilterSetor}>
+              <SelectTrigger className="w-40">
+                <SelectValue placeholder="Todos" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos</SelectItem>
+                {setores?.map(s => (
+                  <SelectItem key={s.id} value={s.nome}>{s.nome}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <Label>Tipo Contrato</Label>
+            <Select value={filterTipoContrato} onValueChange={setFilterTipoContrato}>
+              <SelectTrigger className="w-40">
+                <SelectValue placeholder="Todos" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos</SelectItem>
+                <SelectItem value="fixo">Fixo</SelectItem>
+                <SelectItem value="intermitente">Intermitente</SelectItem>
+                <SelectItem value="prestador">Prestador de Serviço</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
         <div className="flex flex-wrap items-end gap-4">
           <div className="space-y-1">
             <Label>Entrada Prevista</Label>
@@ -167,9 +238,6 @@ export function ConfiguracaoHoras() {
             Aplicar para {filteredEmployees?.length || 0} funcionários
           </Button>
         </div>
-        <p className="text-xs text-muted-foreground mt-2">
-          Aplica os horários para todos os funcionários {searchTerm ? "filtrados" : ""}
-        </p>
       </div>
 
       <div className="flex items-center gap-2">
