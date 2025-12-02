@@ -526,6 +526,45 @@ export type Database = {
           },
         ]
       }
+      configuracoes_dashboard_funcionario: {
+        Row: {
+          avisos_visivel: boolean
+          banco_horas_visivel: boolean
+          created_at: string | null
+          epis_visivel: boolean
+          folgas_visivel: boolean
+          id: string
+          saldo_horas_visivel: boolean
+          treinamentos_visivel: boolean
+          uniformes_visivel: boolean
+          updated_at: string | null
+        }
+        Insert: {
+          avisos_visivel?: boolean
+          banco_horas_visivel?: boolean
+          created_at?: string | null
+          epis_visivel?: boolean
+          folgas_visivel?: boolean
+          id?: string
+          saldo_horas_visivel?: boolean
+          treinamentos_visivel?: boolean
+          uniformes_visivel?: boolean
+          updated_at?: string | null
+        }
+        Update: {
+          avisos_visivel?: boolean
+          banco_horas_visivel?: boolean
+          created_at?: string | null
+          epis_visivel?: boolean
+          folgas_visivel?: boolean
+          id?: string
+          saldo_horas_visivel?: boolean
+          treinamentos_visivel?: boolean
+          uniformes_visivel?: boolean
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       configuracoes_ferias: {
         Row: {
           cobertura_minima: number | null

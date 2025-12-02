@@ -4,6 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import { SiteSettings } from "@/components/settings/SiteSettings";
+import { DashboardVisibilitySettings } from "@/components/settings/DashboardVisibilitySettings";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const Settings = () => {
   const navigate = useNavigate();
@@ -43,8 +45,22 @@ const Settings = () => {
             <ArrowLeft className="w-4 h-4 mr-2" />
             Voltar ao Dashboard
           </Button>
+          
+          <Tabs defaultValue="site" className="space-y-6">
+            <TabsList>
+              <TabsTrigger value="site">Site</TabsTrigger>
+              <TabsTrigger value="dashboard">Dashboard Funcionário</TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="site">
+              <SiteSettings />
+            </TabsContent>
+            
+            <TabsContent value="dashboard">
+              <DashboardVisibilitySettings />
+            </TabsContent>
+          </Tabs>
         </div>
-        <SiteSettings />
       </div>
     </div>
   );
