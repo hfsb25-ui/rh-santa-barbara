@@ -11,6 +11,7 @@ import { toast } from "sonner";
 export function SiteSettings() {
   const { theme, setTheme } = useTheme();
   const [siteTitle, setSiteTitle] = useState("");
+  const [siteDescription, setSiteDescription] = useState("");
   const [faviconFile, setFaviconFile] = useState<File | null>(null);
   const [faviconPreview, setFaviconPreview] = useState<string | null>(null);
 
@@ -18,6 +19,12 @@ export function SiteSettings() {
     // Get current title
     const currentTitle = document.title;
     setSiteTitle(currentTitle);
+
+    // Get current description
+    const metaDesc = document.querySelector('meta[name="description"]') as HTMLMetaElement;
+    if (metaDesc) {
+      setSiteDescription(metaDesc.content);
+    }
 
     // Get current favicon
     const link = document.querySelector("link[rel~='icon']") as HTMLLinkElement;
@@ -35,6 +42,23 @@ export function SiteSettings() {
     document.title = siteTitle;
     localStorage.setItem("siteTitle", siteTitle);
     toast.success("Título atualizado com sucesso!");
+  };
+
+  const handleDescriptionChange = () => {
+    if (!siteDescription.trim()) {
+      toast.error("A descrição não pode estar vazia");
+      return;
+    }
+    
+    // Update meta tags
+    const metaDesc = document.querySelector('meta[name="description"]') as HTMLMetaElement;
+    const ogDesc = document.querySelector('meta[property="og:description"]') as HTMLMetaElement;
+    
+    if (metaDesc) metaDesc.content = siteDescription;
+    if (ogDesc) ogDesc.content = siteDescription;
+    
+    localStorage.setItem("siteDescription", siteDescription);
+    toast.success("Descrição atualizada com sucesso!");
   };
 
   const handleFaviconChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -108,6 +132,34 @@ export function SiteSettings() {
           </div>
           <Button onClick={handleTitleChange}>
             Salvar Título
+          </Button>
+        </CardContent>
+      </Card>
+
+      {/* Site Description */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Descrição do Site</CardTitle>
+          <CardDescription>
+            Altere a descrição que aparece nos resultados de busca e redes sociais
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="site-description">Descrição</Label>
+            <Input
+              id="site-description"
+              value={siteDescription}
+              onChange={(e) => setSiteDescription(e.target.value)}
+              placeholder="Digite a descrição do site"
+              maxLength={160}
+            />
+            <p className="text-xs text-muted-foreground">
+              {siteDescription.length}/160 caracteres (recomendado para SEO)
+            </p>
+          </div>
+          <Button onClick={handleDescriptionChange}>
+            Salvar Descrição
           </Button>
         </CardContent>
       </Card>

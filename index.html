@@ -17,7 +17,7 @@
     <meta name="twitter:image" content="https://lovable.dev/opengraph-image-p98pqg.png" />
     
     <script>
-      // Load saved site title and favicon from localStorage
+      // Load saved site title, favicon and description from localStorage
       (function() {
         const savedTitle = localStorage.getItem('siteTitle');
         if (savedTitle) {
@@ -33,6 +33,14 @@
             document.head.appendChild(link);
           }
           link.href = savedFavicon;
+        }
+        
+        const savedDescription = localStorage.getItem('siteDescription');
+        if (savedDescription) {
+          const metaDesc = document.querySelector('meta[name="description"]');
+          const ogDesc = document.querySelector('meta[property="og:description"]');
+          if (metaDesc) metaDesc.content = savedDescription;
+          if (ogDesc) ogDesc.content = savedDescription;
         }
       })();
     </script>
