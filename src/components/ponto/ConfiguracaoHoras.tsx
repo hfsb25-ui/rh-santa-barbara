@@ -11,6 +11,8 @@ import { Loader2, Save, Search } from "lucide-react";
 export function ConfiguracaoHoras() {
   const [searchTerm, setSearchTerm] = useState("");
   const [editingHours, setEditingHours] = useState<Record<string, string>>({});
+  const [editingEntrada, setEditingEntrada] = useState<Record<string, string>>({});
+  const [editingSaida, setEditingSaida] = useState<Record<string, string>>({});
   const queryClient = useQueryClient();
 
   const { data: employees, isLoading } = useQuery({
@@ -32,20 +34,27 @@ export function ConfiguracaoHoras() {
 
       const configMap = new Map(configData.map(c => [c.employee_id, c]));
 
-      return empData.map(emp => ({
-        ...emp,
-        horasDiarias: configMap.get(emp.id)?.horas_diarias_esperadas || 8.00,
-      }));
+      return empData.map(emp => {
+        const config = configMap.get(emp.id);
+        return {
+          ...emp,
+          horasDiarias: config?.horas_diarias_esperadas || 8.00,
+          horaEntradaPrevista: config?.hora_entrada_prevista || "08:00:00",
+          horaSaidaPrevista: config?.hora_saida_prevista || "17:00:00",
+        };
+      });
     },
   });
 
   const updateMutation = useMutation({
-    mutationFn: async ({ employeeId, hours }: { employeeId: string; hours: number }) => {
+    mutationFn: async ({ employeeId, hours, horaEntrada, horaSaida }: { employeeId: string; hours: number; horaEntrada: string; horaSaida: string }) => {
       const { error } = await supabase
         .from("configuracao_horas_trabalho")
         .upsert({
           employee_id: employeeId,
           horas_diarias_esperadas: hours,
+          hora_entrada_prevista: horaEntrada,
+          hora_saida_prevista: horaSaida,
         }, {
           onConflict: "employee_id"
         });
@@ -56,19 +65,31 @@ export function ConfiguracaoHoras() {
       toast.success("Configuração salva com sucesso!");
       queryClient.invalidateQueries({ queryKey: ["employees-with-hours-config"] });
       setEditingHours({});
+      setEditingEntrada({});
+      setEditingSaida({});
     },
     onError: (error: any) => {
       toast.error("Erro ao salvar: " + error.message);
     },
   });
 
-  const handleSave = (employeeId: string) => {
-    const hours = parseFloat(editingHours[employeeId]);
+  const handleSave = (employeeId: string, emp: any) => {
+    const hours = parseFloat(editingHours[employeeId] ?? emp.horasDiarias);
     if (isNaN(hours) || hours <= 0) {
       toast.error("Digite um valor válido de horas");
       return;
     }
-    updateMutation.mutate({ employeeId, hours });
+    const horaEntrada = editingEntrada[employeeId] ?? emp.horaEntradaPrevista?.slice(0, 5) ?? "08:00";
+    const horaSaida = editingSaida[employeeId] ?? emp.horaSaidaPrevista?.slice(0, 5) ?? "17:00";
+    updateMutation.mutate({ employeeId, hours, horaEntrada, horaSaida });
+  };
+
+  const hasChanges = (empId: string, emp: any) => {
+    return (
+      (editingHours[empId] !== undefined && parseFloat(editingHours[empId]) !== emp.horasDiarias) ||
+      (editingEntrada[empId] !== undefined && editingEntrada[empId] !== emp.horaEntradaPrevista?.slice(0, 5)) ||
+      (editingSaida[empId] !== undefined && editingSaida[empId] !== emp.horaSaidaPrevista?.slice(0, 5))
+    );
   };
 
   const filteredEmployees = employees?.filter(emp =>
@@ -110,6 +131,8 @@ export function ConfiguracaoHoras() {
                 <TableHead>Cargo</TableHead>
                 <TableHead>Setor</TableHead>
                 <TableHead>Horas Diárias</TableHead>
+                <TableHead>Entrada Prevista</TableHead>
+                <TableHead>Saída Prevista</TableHead>
                 <TableHead className="w-[100px]"></TableHead>
               </TableRow>
             </TableHeader>
@@ -129,18 +152,36 @@ export function ConfiguracaoHoras() {
                         ...editingHours,
                         [emp.id]: e.target.value
                       })}
+                      className="w-20"
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <Input
+                      type="time"
+                      value={editingEntrada[emp.id] ?? emp.horaEntradaPrevista?.slice(0, 5) ?? "08:00"}
+                      onChange={(e) => setEditingEntrada({
+                        ...editingEntrada,
+                        [emp.id]: e.target.value
+                      })}
+                      className="w-24"
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <Input
+                      type="time"
+                      value={editingSaida[emp.id] ?? emp.horaSaidaPrevista?.slice(0, 5) ?? "17:00"}
+                      onChange={(e) => setEditingSaida({
+                        ...editingSaida,
+                        [emp.id]: e.target.value
+                      })}
                       className="w-24"
                     />
                   </TableCell>
                   <TableCell>
                     <Button
                       size="sm"
-                      onClick={() => handleSave(emp.id)}
-                      disabled={
-                        updateMutation.isPending ||
-                        !editingHours[emp.id] ||
-                        parseFloat(editingHours[emp.id]) === emp.horasDiarias
-                      }
+                      onClick={() => handleSave(emp.id, emp)}
+                      disabled={updateMutation.isPending || !hasChanges(emp.id, emp)}
                     >
                       {updateMutation.isPending ? (
                         <Loader2 className="h-4 w-4 animate-spin" />
