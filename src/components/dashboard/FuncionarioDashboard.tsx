@@ -22,6 +22,14 @@ import { TreinamentosCard } from "./TreinamentosCard";
 import { format, subMonths, startOfMonth, endOfMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
+const formatDecimalToHoursMinutes = (decimal: number): string => {
+  const sign = decimal < 0 ? "-" : "";
+  const absDecimal = Math.abs(decimal);
+  const hours = Math.floor(absDecimal);
+  const minutes = Math.round((absDecimal - hours) * 60);
+  return `${sign}${hours}h${minutes.toString().padStart(2, "0")}min`;
+};
+
 interface FuncionarioDashboardProps {
   user: User;
 }
@@ -289,7 +297,7 @@ const FuncionarioDashboard = ({ user }: FuncionarioDashboardProps) => {
                         ? 'text-red-600 dark:text-red-400'
                         : 'text-muted-foreground'
                     }`}>
-                      {horasMesAnterior > 0 ? '+' : ''}{horasMesAnterior.toFixed(2)}h
+                      {horasMesAnterior > 0 ? '+' : ''}{formatDecimalToHoursMinutes(horasMesAnterior)}
                     </div>
                     <p className="text-sm text-muted-foreground">
                       {format(subMonths(new Date(), 1), "MMMM 'de' yyyy", { locale: ptBR })}
@@ -318,7 +326,7 @@ const FuncionarioDashboard = ({ user }: FuncionarioDashboardProps) => {
                       ? 'text-primary' 
                       : 'text-muted-foreground'
                   }`}>
-                    {bancoHoras.toFixed(2)}h
+                    {formatDecimalToHoursMinutes(bancoHoras)}
                   </div>
                   <p className="text-sm text-muted-foreground">
                     Horas acumuladas
