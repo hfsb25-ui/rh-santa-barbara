@@ -14,6 +14,67 @@ export type Database = {
   }
   public: {
     Tables: {
+      adiantamentos: {
+        Row: {
+          ano: number
+          created_at: string
+          created_by: string | null
+          employee_id: string
+          empresa_id: string
+          forma_pagamento: string
+          id: string
+          mes: number
+          updated_at: string
+          valor: number
+        }
+        Insert: {
+          ano: number
+          created_at?: string
+          created_by?: string | null
+          employee_id: string
+          empresa_id: string
+          forma_pagamento: string
+          id?: string
+          mes: number
+          updated_at?: string
+          valor?: number
+        }
+        Update: {
+          ano?: number
+          created_at?: string
+          created_by?: string | null
+          employee_id?: string
+          empresa_id?: string
+          forma_pagamento?: string
+          id?: string
+          mes?: number
+          updated_at?: string
+          valor?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "adiantamentos_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "adiantamentos_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "adiantamentos_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       afastamentos: {
         Row: {
           cid: string | null
