@@ -1986,6 +1986,239 @@ export type Database = {
           },
         ]
       }
+      plano_checklist_funcionario: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          data_conclusao: string | null
+          data_inicio: string
+          employee_id: string
+          id: string
+          status: Database["public"]["Enums"]["status_checklist"]
+          template_id: string | null
+          tipo: Database["public"]["Enums"]["tipo_checklist"]
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          data_conclusao?: string | null
+          data_inicio?: string
+          employee_id: string
+          id?: string
+          status?: Database["public"]["Enums"]["status_checklist"]
+          template_id?: string | null
+          tipo: Database["public"]["Enums"]["tipo_checklist"]
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          data_conclusao?: string | null
+          data_inicio?: string
+          employee_id?: string
+          id?: string
+          status?: Database["public"]["Enums"]["status_checklist"]
+          template_id?: string | null
+          tipo?: Database["public"]["Enums"]["tipo_checklist"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "plano_checklist_funcionario_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "plano_checklist_funcionario_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "plano_checklist_funcionario_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "plano_checklist_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      plano_checklist_funcionario_itens: {
+        Row: {
+          anexo_url: string | null
+          checklist_funcionario_id: string
+          concluido: boolean
+          concluido_por: string | null
+          created_at: string
+          data_conclusao: string | null
+          descricao: string | null
+          id: string
+          item_id: string | null
+          obrigatorio: boolean
+          observacoes: string | null
+          ordem: number
+          prazo_dias: number | null
+          titulo: string
+        }
+        Insert: {
+          anexo_url?: string | null
+          checklist_funcionario_id: string
+          concluido?: boolean
+          concluido_por?: string | null
+          created_at?: string
+          data_conclusao?: string | null
+          descricao?: string | null
+          id?: string
+          item_id?: string | null
+          obrigatorio?: boolean
+          observacoes?: string | null
+          ordem?: number
+          prazo_dias?: number | null
+          titulo: string
+        }
+        Update: {
+          anexo_url?: string | null
+          checklist_funcionario_id?: string
+          concluido?: boolean
+          concluido_por?: string | null
+          created_at?: string
+          data_conclusao?: string | null
+          descricao?: string | null
+          id?: string
+          item_id?: string | null
+          obrigatorio?: boolean
+          observacoes?: string | null
+          ordem?: number
+          prazo_dias?: number | null
+          titulo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "plano_checklist_funcionario_itens_checklist_funcionario_id_fkey"
+            columns: ["checklist_funcionario_id"]
+            isOneToOne: false
+            referencedRelation: "plano_checklist_funcionario"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "plano_checklist_funcionario_itens_concluido_por_fkey"
+            columns: ["concluido_por"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "plano_checklist_funcionario_itens_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "plano_checklist_itens"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      plano_checklist_itens: {
+        Row: {
+          created_at: string
+          descricao: string | null
+          id: string
+          obrigatorio: boolean
+          ordem: number
+          prazo_dias: number | null
+          template_id: string
+          titulo: string
+        }
+        Insert: {
+          created_at?: string
+          descricao?: string | null
+          id?: string
+          obrigatorio?: boolean
+          ordem?: number
+          prazo_dias?: number | null
+          template_id: string
+          titulo: string
+        }
+        Update: {
+          created_at?: string
+          descricao?: string | null
+          id?: string
+          obrigatorio?: boolean
+          ordem?: number
+          prazo_dias?: number | null
+          template_id?: string
+          titulo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "plano_checklist_itens_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "plano_checklist_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      plano_checklist_templates: {
+        Row: {
+          ativo: boolean
+          created_at: string
+          empresa_id: string | null
+          funcao_id: string | null
+          id: string
+          nome: string
+          setor_id: string | null
+          tipo: Database["public"]["Enums"]["tipo_checklist"]
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean
+          created_at?: string
+          empresa_id?: string | null
+          funcao_id?: string | null
+          id?: string
+          nome: string
+          setor_id?: string | null
+          tipo: Database["public"]["Enums"]["tipo_checklist"]
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean
+          created_at?: string
+          empresa_id?: string | null
+          funcao_id?: string | null
+          id?: string
+          nome?: string
+          setor_id?: string | null
+          tipo?: Database["public"]["Enums"]["tipo_checklist"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "plano_checklist_templates_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "plano_checklist_templates_funcao_id_fkey"
+            columns: ["funcao_id"]
+            isOneToOne: false
+            referencedRelation: "funcoes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "plano_checklist_templates_setor_id_fkey"
+            columns: ["setor_id"]
+            isOneToOne: false
+            referencedRelation: "setores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string | null
@@ -2364,7 +2597,9 @@ export type Database = {
         | "reprovada"
         | "contratada"
       employee_status: "ativo" | "ferias" | "afastado" | "demitido"
+      status_checklist: "em_andamento" | "concluido" | "cancelado"
       status_encaminhamento: "pendente" | "agendado" | "realizado" | "cancelado"
+      tipo_checklist: "admissao" | "desligamento"
       tipo_contrato: "fixo" | "intermitente" | "prestador_servico"
       tipo_exame_medico:
         | "admissional"
@@ -2511,7 +2746,9 @@ export const Constants = {
         "contratada",
       ],
       employee_status: ["ativo", "ferias", "afastado", "demitido"],
+      status_checklist: ["em_andamento", "concluido", "cancelado"],
       status_encaminhamento: ["pendente", "agendado", "realizado", "cancelado"],
+      tipo_checklist: ["admissao", "desligamento"],
       tipo_contrato: ["fixo", "intermitente", "prestador_servico"],
       tipo_exame_medico: [
         "admissional",
