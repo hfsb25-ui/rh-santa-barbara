@@ -30,6 +30,7 @@ import VacationSchedule from "./pages/VacationSchedule";
 import Settings from "./pages/Settings";
 import Avaliacoes from "./pages/Avaliacoes";
 import Treinamentos from "./pages/Treinamentos";
+import Adiantamentos from "./pages/Adiantamentos";
 
 const queryClient = new QueryClient();
 
@@ -85,6 +86,7 @@ const App = () => {
           <Route path="/avaliacoes" element={<Avaliacoes />} />
           <Route path="/controle-ponto" element={<ControlePonto />} />
           <Route path="/treinamentos" element={<Treinamentos />} />
+          <Route path="/adiantamentos" element={<Adiantamentos />} />
           <Route path="/settings" element={<Settings />} />
         <Route path="*" element={<NotFound />} />
       </Routes>

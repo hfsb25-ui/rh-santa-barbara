@@ -822,6 +822,10 @@ const GestorDashboard = ({ user }: GestorDashboardProps) => {
                   <GraduationCap className="w-4 h-4 mr-2" />
                   Treinamentos
                 </Button>
+                <Button variant="outline" onClick={() => navigate("/adiantamentos")} className="w-full">
+                  <DollarSign className="w-4 h-4 mr-2" />
+                  Adiantamentos
+                </Button>
                 <Button variant="outline" onClick={() => navigate("/settings")} className="w-full">
                   <Settings className="w-4 h-4 mr-2" />
                   Configurações
