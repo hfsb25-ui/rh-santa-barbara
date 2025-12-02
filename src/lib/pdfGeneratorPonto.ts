@@ -35,6 +35,8 @@ interface ReportData {
   horasTrabalhadas: number;
   saldo: number;
   horasDiarias: number;
+  horaEntradaPrevista?: string;
+  horaSaidaPrevista?: string;
   empresa?: {
     nome: string;
     logo_url: string | null;
@@ -92,7 +94,11 @@ export async function generatePontoPDF(data: ReportData) {
     doc.text(`Setor: ${data.employee.setor}`, 14, yPosition);
     yPosition += 4;
   }
-  doc.text(`Horas Diárias Esperadas: ${data.horasDiarias.toFixed(2)}h`, 14, yPosition);
+  
+  // Horários previstos
+  const entradaPrevista = data.horaEntradaPrevista?.slice(0, 5) || "08:00";
+  const saidaPrevista = data.horaSaidaPrevista?.slice(0, 5) || "17:00";
+  doc.text(`Jornada Prevista: ${entradaPrevista} às ${saidaPrevista}`, 14, yPosition);
   yPosition += 7;
 
   // Tabela de registros
@@ -144,7 +150,7 @@ export async function generatePontoPDF(data: ReportData) {
   const finalY = (doc as any).lastAutoTable.finalY + 5;
   
   doc.setFillColor(240, 240, 240);
-  doc.rect(14, finalY, pageWidth - 28, 22, "F");
+  doc.rect(14, finalY, pageWidth - 28, 18, "F");
 
   doc.setFontSize(9);
   doc.setFont("helvetica", "bold");
@@ -152,11 +158,12 @@ export async function generatePontoPDF(data: ReportData) {
 
   doc.setFontSize(8);
   doc.setFont("helvetica", "normal");
-  doc.text(`Horas Esperadas: ${data.horasEsperadas.toFixed(2)}h`, 18, finalY + 10);
-  doc.text(`Horas Trabalhadas: ${data.horasTrabalhadas.toFixed(2)}h`, 18, finalY + 14);
+  const entradaResumo = data.horaEntradaPrevista?.slice(0, 5) || "08:00";
+  const saidaResumo = data.horaSaidaPrevista?.slice(0, 5) || "17:00";
+  doc.text(`Horário Previsto: ${entradaResumo} às ${saidaResumo}`, 18, finalY + 10);
 
   // Saldo com cor
-  const saldoText = `Saldo: ${data.saldo >= 0 ? "+" : ""}${data.saldo.toFixed(2)}h`;
+  const saldoText = `Saldo do Período: ${data.saldo >= 0 ? "+" : ""}${data.saldo.toFixed(2)}h`;
   doc.setFont("helvetica", "bold");
   if (data.saldo > 0) {
     doc.setTextColor(34, 139, 34); // Verde
@@ -165,7 +172,7 @@ export async function generatePontoPDF(data: ReportData) {
   } else {
     doc.setTextColor(100, 100, 100); // Cinza
   }
-  doc.text(saldoText, 18, finalY + 18);
+  doc.text(saldoText, 18, finalY + 14);
   doc.setTextColor(0, 0, 0); // Resetar cor
 
   // Rodapé

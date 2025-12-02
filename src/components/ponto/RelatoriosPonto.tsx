@@ -108,7 +108,7 @@ export function RelatoriosPonto() {
 
       const { data: config, error: configError } = await supabase
         .from("configuracao_horas_trabalho")
-        .select("*")
+        .select("horas_diarias_esperadas, hora_entrada_prevista, hora_saida_prevista")
         .eq("employee_id", selectedEmployee)
         .maybeSingle();
       
@@ -136,6 +136,8 @@ export function RelatoriosPonto() {
         horasTrabalhadas,
         saldo,
         horasDiarias,
+        horaEntradaPrevista: config?.hora_entrada_prevista || "08:00:00",
+        horaSaidaPrevista: config?.hora_saida_prevista || "17:00:00",
         employee: employeeData,
         empresa,
       };
@@ -229,6 +231,8 @@ export function RelatoriosPonto() {
         horasTrabalhadas: report.horasTrabalhadas,
         saldo: report.saldo,
         horasDiarias: report.horasDiarias,
+        horaEntradaPrevista: report.horaEntradaPrevista,
+        horaSaidaPrevista: report.horaSaidaPrevista,
         empresa: report.empresa || undefined,
       });
       
@@ -468,7 +472,7 @@ export function RelatoriosPonto() {
         // Buscar configuração de horas
         const { data: config } = await supabase
           .from("configuracao_horas_trabalho")
-          .select("*")
+          .select("horas_diarias_esperadas, hora_entrada_prevista, hora_saida_prevista")
           .eq("employee_id", emp.id)
           .maybeSingle();
 
@@ -502,6 +506,8 @@ export function RelatoriosPonto() {
           horasTrabalhadas,
           saldo,
           horasDiarias,
+          horaEntradaPrevista: config?.hora_entrada_prevista || "08:00:00",
+          horaSaidaPrevista: config?.hora_saida_prevista || "17:00:00",
           empresa: empresa || undefined,
         });
 
