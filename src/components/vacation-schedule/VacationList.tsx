@@ -10,7 +10,8 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Edit, Trash2, AlertCircle, CheckCircle } from "lucide-react";
+import { Edit, Trash2, AlertCircle, CheckCircle, FileDown } from "lucide-react";
+import { ExportVacationDialog } from "./ExportVacationDialog";
 import { supabase } from "@/integrations/supabase/client";
 import type { VacationFiltersType } from "@/components/vacation-schedule/types";
 import { format, isValid } from "date-fns";
@@ -70,6 +71,7 @@ export function VacationList({ filters, onRefresh }: VacationListProps) {
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [vacationToDelete, setVacationToDelete] = useState<VacationItem | null>(null);
+  const [showExportDialog, setShowExportDialog] = useState(false);
 
   useEffect(() => {
     fetchVacations();
@@ -263,8 +265,12 @@ export function VacationList({ filters, onRefresh }: VacationListProps) {
   return (
     <>
     <Card>
-      <CardHeader>
+      <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle>Lista de Férias</CardTitle>
+        <Button variant="outline" onClick={() => setShowExportDialog(true)}>
+          <FileDown className="w-4 h-4 mr-2" />
+          Exportar
+        </Button>
       </CardHeader>
       <CardContent>
         {loading ? (
@@ -379,6 +385,11 @@ export function VacationList({ filters, onRefresh }: VacationListProps) {
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
+
+    <ExportVacationDialog
+      open={showExportDialog}
+      onOpenChange={setShowExportDialog}
+    />
     </>
   );
 }
