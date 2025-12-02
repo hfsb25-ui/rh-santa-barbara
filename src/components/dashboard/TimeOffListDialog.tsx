@@ -125,7 +125,6 @@ const TimeOffListDialog = ({ open, onOpenChange }: TimeOffListDialogProps) => {
     // Table header
     doc.setFont("helvetica", "bold");
     doc.text("Nome Completo", 20, yPosition);
-    doc.text("Cargo", 100, yPosition);
     doc.text("Folgas", 170, yPosition);
     
     yPosition += 8;
@@ -139,14 +138,12 @@ const TimeOffListDialog = ({ open, onOpenChange }: TimeOffListDialogProps) => {
         yPosition = 20;
       }
 
-      const nameText = doc.splitTextToSize(emp.nome_completo, 75);
-      const cargoText = doc.splitTextToSize(emp.cargo, 65);
+      const nameText = doc.splitTextToSize(emp.nome_completo, 140);
       
       doc.text(nameText, 20, yPosition);
-      doc.text(cargoText, 100, yPosition);
       doc.text(emp.quantidade_folgas.toString(), 170, yPosition);
       
-      yPosition += Math.max(nameText.length, cargoText.length) * 5 + 3;
+      yPosition += nameText.length * 5 + 3;
     });
 
     // Footer
