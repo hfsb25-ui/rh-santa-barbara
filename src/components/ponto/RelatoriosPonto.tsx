@@ -32,6 +32,13 @@ export function RelatoriosPonto() {
   const [exporting, setExporting] = useState(false);
   const [saldoMonth, setSaldoMonth] = useState(format(new Date(), "yyyy-MM"));
   const [filterSetor, setFilterSetor] = useState("all");
+  
+  // Filtros para exportação em lote
+  const [batchMonth, setBatchMonth] = useState(format(new Date(), "yyyy-MM"));
+  const [batchSetor, setBatchSetor] = useState("all");
+  const [batchEmpresa, setBatchEmpresa] = useState("all");
+  const [batchTipoContrato, setBatchTipoContrato] = useState("all");
+  const [exportingBatch, setExportingBatch] = useState(false);
 
   const { data: setores } = useQuery({
     queryKey: ["setores-filter"],
@@ -46,12 +53,25 @@ export function RelatoriosPonto() {
     },
   });
 
+  const { data: empresas } = useQuery({
+    queryKey: ["empresas-filter"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("empresas")
+        .select("id, nome, logo_url")
+        .order("nome");
+      
+      if (error) throw error;
+      return data;
+    },
+  });
+
   const { data: employees, isLoading: loadingEmployees } = useQuery({
     queryKey: ["employees-for-relatorio"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("employees")
-        .select("id, nome_completo, cargo")
+        .select("id, nome_completo, cargo, setor, empresa_id, tipo_contrato")
         .order("nome_completo");
       
       if (error) throw error;
@@ -400,6 +420,106 @@ export function RelatoriosPonto() {
     }
   };
 
+  const handleExportAllIndividualPDFs = async () => {
+    if (!employees || employees.length === 0) return;
+    
+    setExportingBatch(true);
+    try {
+      const [year, month] = batchMonth.split("-");
+      const startDate = format(startOfMonth(new Date(parseInt(year), parseInt(month) - 1)), "yyyy-MM-dd");
+      const endDate = format(endOfMonth(new Date(parseInt(year), parseInt(month) - 1)), "yyyy-MM-dd");
+      const mesFormatado = format(new Date(parseInt(year), parseInt(month) - 1), "MMMM 'de' yyyy", { locale: ptBR });
+      
+      // Filtrar funcionários
+      let filteredEmployees = employees.filter(emp => emp.tipo_contrato); // apenas com tipo_contrato
+      
+      if (batchSetor !== "all") {
+        filteredEmployees = filteredEmployees.filter(emp => emp.setor === batchSetor);
+      }
+      if (batchEmpresa !== "all") {
+        filteredEmployees = filteredEmployees.filter(emp => emp.empresa_id === batchEmpresa);
+      }
+      if (batchTipoContrato !== "all") {
+        filteredEmployees = filteredEmployees.filter(emp => emp.tipo_contrato === batchTipoContrato);
+      }
+
+      // Incluir todos os funcionários ativos se não houver filtro de tipo_contrato
+      if (batchSetor === "all" && batchEmpresa === "all" && batchTipoContrato === "all") {
+        filteredEmployees = employees;
+      }
+
+      if (filteredEmployees.length === 0) {
+        toast.error("Nenhum funcionário encontrado com os filtros selecionados");
+        return;
+      }
+
+      toast.info(`Gerando ${filteredEmployees.length} relatórios...`);
+
+      for (const emp of filteredEmployees) {
+        // Buscar registros do funcionário
+        const { data: registros } = await supabase
+          .from("registros_ponto")
+          .select("*")
+          .eq("employee_id", emp.id)
+          .gte("data", startDate)
+          .lte("data", endDate)
+          .order("data");
+
+        // Buscar configuração de horas
+        const { data: config } = await supabase
+          .from("configuracao_horas_trabalho")
+          .select("*")
+          .eq("employee_id", emp.id)
+          .maybeSingle();
+
+        // Buscar empresa
+        let empresa = null;
+        if (emp.empresa_id) {
+          const { data: empresaData } = await supabase
+            .from("empresas")
+            .select("nome, logo_url")
+            .eq("id", emp.empresa_id)
+            .single();
+          empresa = empresaData;
+        }
+
+        const horasDiarias = config?.horas_diarias_esperadas || 8.00;
+        const diasUteis = registros?.filter(r => r.tipo_dia === "normal").length || 0;
+        const horasEsperadas = diasUteis * horasDiarias;
+        const horasTrabalhadas = registros?.reduce((sum, r) => sum + (r.horas_trabalhadas || 0), 0) || 0;
+        const saldo = horasTrabalhadas - horasEsperadas;
+
+        // Gerar PDF individual
+        await generatePontoPDF({
+          employee: {
+            nome_completo: emp.nome_completo,
+            cargo: emp.cargo,
+            setor: emp.setor,
+          },
+          mes: mesFormatado,
+          registros: registros || [],
+          horasEsperadas,
+          horasTrabalhadas,
+          saldo,
+          horasDiarias,
+          empresa: empresa || undefined,
+        });
+
+        // Pequena pausa para evitar travamentos
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+      
+      toast.success(`${filteredEmployees.length} relatórios gerados com sucesso!`);
+    } catch (error) {
+      console.error("Erro ao gerar PDFs:", error);
+      toast.error("Erro ao gerar PDFs");
+    } finally {
+      setExportingBatch(false);
+    }
+  };
+
+  const tiposContrato = ["fixo", "intermitente", "prestador_servico"];
+
   return (
     <div className="space-y-6">
       <div>
@@ -546,6 +666,96 @@ export function RelatoriosPonto() {
               </div>
             </>
           )}
+
+          {/* Exportação em Lote */}
+          <Card className="mt-6">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Users className="h-5 w-5" />
+                Exportar Relatórios de Todos
+              </CardTitle>
+              <CardDescription>
+                Gere relatórios individuais de ponto para múltiplos funcionários de uma só vez
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid gap-4 md:grid-cols-4">
+                <div className="space-y-2">
+                  <Label>Mês</Label>
+                  <Input
+                    type="month"
+                    value={batchMonth}
+                    onChange={(e) => setBatchMonth(e.target.value)}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Empresa</Label>
+                  <Select value={batchEmpresa} onValueChange={setBatchEmpresa}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Todas" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todas</SelectItem>
+                      {empresas?.map((emp) => (
+                        <SelectItem key={emp.id} value={emp.id}>
+                          {emp.nome}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Setor</Label>
+                  <Select value={batchSetor} onValueChange={setBatchSetor}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Todos" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todos</SelectItem>
+                      {setores?.map((setor) => (
+                        <SelectItem key={setor.id} value={setor.nome}>
+                          {setor.nome}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Tipo de Contrato</Label>
+                  <Select value={batchTipoContrato} onValueChange={setBatchTipoContrato}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Todos" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todos</SelectItem>
+                      {tiposContrato.map((tipo) => (
+                        <SelectItem key={tipo} value={tipo}>
+                          {tipo === "fixo" ? "Fixo" : tipo === "intermitente" ? "Intermitente" : "Prestador de Serviço"}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="flex justify-end">
+                <Button
+                  onClick={handleExportAllIndividualPDFs}
+                  disabled={exportingBatch}
+                >
+                  {exportingBatch ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Download className="mr-2 h-4 w-4" />
+                  )}
+                  Exportar Todos os PDFs
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="todos" className="space-y-6">
