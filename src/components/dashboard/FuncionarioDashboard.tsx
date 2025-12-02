@@ -30,6 +30,16 @@ const formatDecimalToHoursMinutes = (decimal: number): string => {
   return `${sign}${hours}h${minutes.toString().padStart(2, "0")}min`;
 };
 
+interface VisibilitySettings {
+  avisos_visivel: boolean;
+  saldo_horas_visivel: boolean;
+  banco_horas_visivel: boolean;
+  folgas_visivel: boolean;
+  treinamentos_visivel: boolean;
+  epis_visivel: boolean;
+  uniformes_visivel: boolean;
+}
+
 interface FuncionarioDashboardProps {
   user: User;
 }
@@ -44,10 +54,44 @@ const FuncionarioDashboard = ({ user }: FuncionarioDashboardProps) => {
   const [companyLogo, setCompanyLogo] = useState<string | null>(null);
   const [horasMesAnterior, setHorasMesAnterior] = useState<number | null>(null);
   const [bancoHoras, setBancoHoras] = useState<number>(0);
+  const [visibility, setVisibility] = useState<VisibilitySettings>({
+    avisos_visivel: true,
+    saldo_horas_visivel: true,
+    banco_horas_visivel: true,
+    folgas_visivel: true,
+    treinamentos_visivel: true,
+    epis_visivel: true,
+    uniformes_visivel: true,
+  });
 
   useEffect(() => {
     fetchEmployeeData();
+    fetchVisibilitySettings();
   }, [user]);
+
+  const fetchVisibilitySettings = async () => {
+    try {
+      const { data } = await supabase
+        .from("configuracoes_dashboard_funcionario")
+        .select("*")
+        .limit(1)
+        .single();
+
+      if (data) {
+        setVisibility({
+          avisos_visivel: data.avisos_visivel,
+          saldo_horas_visivel: data.saldo_horas_visivel,
+          banco_horas_visivel: data.banco_horas_visivel,
+          folgas_visivel: data.folgas_visivel,
+          treinamentos_visivel: data.treinamentos_visivel,
+          epis_visivel: data.epis_visivel,
+          uniformes_visivel: data.uniformes_visivel,
+        });
+      }
+    } catch (error) {
+      console.error("Error fetching visibility settings:", error);
+    }
+  };
 
   const fetchEmployeeData = async () => {
     try {
@@ -260,7 +304,7 @@ const FuncionarioDashboard = ({ user }: FuncionarioDashboardProps) => {
           })()}
 
           {/* Avisos */}
-          {avisos.length > 0 && (
+          {visibility.avisos_visivel && avisos.length > 0 && (
             <div className="space-y-3">
               {avisos.map((aviso) => (
                 <Alert key={aviso.id} className="border-primary bg-primary/10">
@@ -278,143 +322,155 @@ const FuncionarioDashboard = ({ user }: FuncionarioDashboardProps) => {
           )}
 
           {/* Cards de Horas */}
-          <div className="grid gap-4 md:grid-cols-2">
-            {/* Horas do Mês Anterior */}
+          {(visibility.saldo_horas_visivel || visibility.banco_horas_visivel) && (
+            <div className="grid gap-4 md:grid-cols-2">
+              {/* Horas do Mês Anterior */}
+              {visibility.saldo_horas_visivel && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Clock className="w-5 h-5" />
+                      Saldo de Horas - Mês Anterior
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {horasMesAnterior !== null ? (
+                      <div className="space-y-2">
+                        <div className={`text-3xl font-bold ${
+                          horasMesAnterior > 0 
+                            ? 'text-green-600 dark:text-green-400' 
+                            : horasMesAnterior < 0 
+                            ? 'text-red-600 dark:text-red-400'
+                            : 'text-muted-foreground'
+                        }`}>
+                          {horasMesAnterior > 0 ? '+' : ''}{formatDecimalToHoursMinutes(horasMesAnterior)}
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          {format(subMonths(new Date(), 1), "MMMM 'de' yyyy", { locale: ptBR })}
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="text-muted-foreground">
+                        Sem registros
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Banco de Horas */}
+              {visibility.banco_horas_visivel && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Wallet className="w-5 h-5" />
+                      Banco de Horas
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2">
+                      <div className={`text-3xl font-bold ${
+                        bancoHoras > 0 
+                          ? 'text-primary' 
+                          : 'text-muted-foreground'
+                      }`}>
+                        {formatDecimalToHoursMinutes(bancoHoras)}
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        Horas acumuladas
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          )}
+
+          {/* Card de Folgas */}
+          {visibility.folgas_visivel && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Folgas Disponíveis</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-bold text-primary">
+                  {employee.quantidade_folgas || 0} folgas
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Treinamentos */}
+          {visibility.treinamentos_visivel && <TreinamentosCard employeeId={employee.id} />}
+
+          {/* EPIs */}
+          {visibility.epis_visivel && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Clock className="w-5 h-5" />
-                  Saldo de Horas - Mês Anterior
+                  <Shield className="w-5 h-5" />
+                  EPIs Recebidos
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                {horasMesAnterior !== null ? (
-                  <div className="space-y-2">
-                    <div className={`text-3xl font-bold ${
-                      horasMesAnterior > 0 
-                        ? 'text-green-600 dark:text-green-400' 
-                        : horasMesAnterior < 0 
-                        ? 'text-red-600 dark:text-red-400'
-                        : 'text-muted-foreground'
-                    }`}>
-                      {horasMesAnterior > 0 ? '+' : ''}{formatDecimalToHoursMinutes(horasMesAnterior)}
-                    </div>
-                    <p className="text-sm text-muted-foreground">
-                      {format(subMonths(new Date(), 1), "MMMM 'de' yyyy", { locale: ptBR })}
-                    </p>
-                  </div>
+                {epis.length === 0 ? (
+                  <p className="text-muted-foreground">Nenhum EPI registrado.</p>
                 ) : (
-                  <div className="text-muted-foreground">
-                    Sem registros
+                  <div className="space-y-3">
+                    {epis.map((epi) => (
+                      <div key={epi.id} className="border-b pb-3 last:border-0">
+                        <p className="font-medium">{epi.tipo_epi}</p>
+                        <div className="flex gap-4 text-sm text-muted-foreground mt-1">
+                          <span>Qtd: {epi.quantidade}</span>
+                          <span>
+                            Data: {new Date(epi.data_entrega).toLocaleDateString("pt-BR")}
+                          </span>
+                        </div>
+                        {epi.observacoes && (
+                          <p className="text-sm mt-1">{epi.observacoes}</p>
+                        )}
+                      </div>
+                    ))}
                   </div>
                 )}
               </CardContent>
             </Card>
+          )}
 
-            {/* Banco de Horas */}
+          {/* Uniformes */}
+          {visibility.uniformes_visivel && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Wallet className="w-5 h-5" />
-                  Banco de Horas
+                  <Shirt className="w-5 h-5" />
+                  Uniformes Recebidos
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-2">
-                  <div className={`text-3xl font-bold ${
-                    bancoHoras > 0 
-                      ? 'text-primary' 
-                      : 'text-muted-foreground'
-                  }`}>
-                    {formatDecimalToHoursMinutes(bancoHoras)}
+                {uniformes.length === 0 ? (
+                  <p className="text-muted-foreground">Nenhum uniforme registrado.</p>
+                ) : (
+                  <div className="space-y-3">
+                    {uniformes.map((uniforme) => (
+                      <div key={uniforme.id} className="border-b pb-3 last:border-0">
+                        <p className="font-medium">{uniforme.tipo_uniforme}</p>
+                        <div className="flex gap-4 text-sm text-muted-foreground mt-1">
+                          <span>Tamanho: {uniforme.tamanho}</span>
+                          <span>Qtd: {uniforme.quantidade}</span>
+                          <span>
+                            Data: {new Date(uniforme.data_entrega).toLocaleDateString("pt-BR")}
+                          </span>
+                        </div>
+                        {uniforme.observacoes && (
+                          <p className="text-sm mt-1">{uniforme.observacoes}</p>
+                        )}
+                      </div>
+                    ))}
                   </div>
-                  <p className="text-sm text-muted-foreground">
-                    Horas acumuladas
-                  </p>
-                </div>
+                )}
               </CardContent>
             </Card>
-          </div>
-
-          {/* Card de Folgas */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Folgas Disponíveis</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold text-primary">
-                {employee.quantidade_folgas || 0} folgas
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Treinamentos */}
-          <TreinamentosCard employeeId={employee.id} />
-
-          {/* EPIs */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Shield className="w-5 h-5" />
-                EPIs Recebidos
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {epis.length === 0 ? (
-                <p className="text-muted-foreground">Nenhum EPI registrado.</p>
-              ) : (
-                <div className="space-y-3">
-                  {epis.map((epi) => (
-                    <div key={epi.id} className="border-b pb-3 last:border-0">
-                      <p className="font-medium">{epi.tipo_epi}</p>
-                      <div className="flex gap-4 text-sm text-muted-foreground mt-1">
-                        <span>Qtd: {epi.quantidade}</span>
-                        <span>
-                          Data: {new Date(epi.data_entrega).toLocaleDateString("pt-BR")}
-                        </span>
-                      </div>
-                      {epi.observacoes && (
-                        <p className="text-sm mt-1">{epi.observacoes}</p>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Uniformes */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Shirt className="w-5 h-5" />
-                Uniformes Recebidos
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {uniformes.length === 0 ? (
-                <p className="text-muted-foreground">Nenhum uniforme registrado.</p>
-              ) : (
-                <div className="space-y-3">
-                  {uniformes.map((uniforme) => (
-                    <div key={uniforme.id} className="border-b pb-3 last:border-0">
-                      <p className="font-medium">{uniforme.tipo_uniforme}</p>
-                      <div className="flex gap-4 text-sm text-muted-foreground mt-1">
-                        <span>Tamanho: {uniforme.tamanho}</span>
-                        <span>Qtd: {uniforme.quantidade}</span>
-                        <span>
-                          Data: {new Date(uniforme.data_entrega).toLocaleDateString("pt-BR")}
-                        </span>
-                      </div>
-                      {uniforme.observacoes && (
-                        <p className="text-sm mt-1">{uniforme.observacoes}</p>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
+          )}
         </div>
       </main>
     </div>
