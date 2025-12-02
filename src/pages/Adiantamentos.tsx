@@ -75,6 +75,7 @@ const Adiantamentos = () => {
   const [filtroHistoricoAno, setFiltroHistoricoAno] = useState<number>(new Date().getFullYear());
   const [filtroHistoricoEmpresa, setFiltroHistoricoEmpresa] = useState<string>("all");
   const [filtroHistoricoSetor, setFiltroHistoricoSetor] = useState<string>("all");
+  const [filtroHistoricoFormaPagamento, setFiltroHistoricoFormaPagamento] = useState<string>("all");
   
   const setores = Array.from(new Set(employees.map(e => e.setor).filter(Boolean))) as string[];
   const tiposContrato = ["fixo", "intermitente", "Prestador de Serviço"];
@@ -85,7 +86,7 @@ const Adiantamentos = () => {
 
   useEffect(() => {
     fetchHistorico();
-  }, [filtroHistoricoMes, filtroHistoricoAno, filtroHistoricoEmpresa, filtroHistoricoSetor]);
+  }, [filtroHistoricoMes, filtroHistoricoAno, filtroHistoricoEmpresa, filtroHistoricoSetor, filtroHistoricoFormaPagamento]);
 
   useEffect(() => {
     // Atualizar lista de adiantamentos quando filtros mudarem
@@ -156,10 +157,13 @@ const Adiantamentos = () => {
 
       if (error) throw error;
 
-      // Filtrar por setor se selecionado
+      // Filtrar por setor e forma de pagamento se selecionado
       let filtered = data || [];
       if (filtroHistoricoSetor !== "all") {
         filtered = filtered.filter(a => a.employees.setor === filtroHistoricoSetor);
+      }
+      if (filtroHistoricoFormaPagamento !== "all") {
+        filtered = filtered.filter(a => a.forma_pagamento === filtroHistoricoFormaPagamento);
       }
 
       setHistorico(filtered);
@@ -517,7 +521,7 @@ const Adiantamentos = () => {
 
         <TabsContent value="relatorios" className="space-y-6">
           <Card className="p-6">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
               <div>
                 <Label>Mês</Label>
                 <Select value={filtroHistoricoMes.toString()} onValueChange={(v) => setFiltroHistoricoMes(parseInt(v))}>
@@ -569,6 +573,20 @@ const Adiantamentos = () => {
                     {setores.map(s => (
                       <SelectItem key={s} value={s}>{s}</SelectItem>
                     ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label>Forma de Pagamento</Label>
+                <Select value={filtroHistoricoFormaPagamento} onValueChange={setFiltroHistoricoFormaPagamento}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos</SelectItem>
+                    <SelectItem value="em_conta">Em conta</SelectItem>
+                    <SelectItem value="em_maos">Em mãos</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
