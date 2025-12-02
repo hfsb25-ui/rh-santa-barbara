@@ -275,14 +275,13 @@ export function RelatoriosPonto() {
 
       const tableData = allSaldos.map((item) => [
         item.nome,
-        item.cargo,
         item.setor,
         `${item.saldo >= 0 ? "+" : ""}${formatDecimalToHoursMinutes(item.saldo)}`,
       ]);
 
       autoTable(doc, {
         startY: filterSetor && filterSetor !== "all" ? 33 : 27,
-        head: [["Funcionário", "Cargo", "Setor", "Saldo"]],
+        head: [["Funcionário", "Setor", "Saldo"]],
         body: tableData,
         theme: "grid",
         styles: { fontSize: 9 },
@@ -321,11 +320,10 @@ export function RelatoriosPonto() {
         [],
       ].filter(row => row.length > 0);
 
-      const tableHeader = [["Funcionário", "Cargo", "Setor", "Saldo"]];
+      const tableHeader = [["Funcionário", "Setor", "Saldo"]];
       
       const tableData = allSaldos.map((item) => [
         item.nome,
-        item.cargo,
         item.setor,
         `${item.saldo >= 0 ? "+" : ""}${formatDecimalToHoursMinutes(item.saldo)}`,
       ]);
@@ -871,7 +869,6 @@ export function RelatoriosPonto() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Funcionário</TableHead>
-                      <TableHead>Cargo</TableHead>
                       <TableHead>Setor</TableHead>
                       <TableHead>Saldo</TableHead>
                     </TableRow>
@@ -880,7 +877,6 @@ export function RelatoriosPonto() {
                     {allSaldos.map((item) => (
                       <TableRow key={item.id}>
                         <TableCell className="font-medium">{item.nome}</TableCell>
-                        <TableCell>{item.cargo}</TableCell>
                         <TableCell>{item.setor}</TableCell>
                         <TableCell 
                           className={`font-semibold ${
