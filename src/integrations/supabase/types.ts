@@ -1988,39 +1988,54 @@ export type Database = {
       }
       plano_checklist_funcionario: {
         Row: {
+          aviso_tipo: string | null
           created_at: string
           created_by: string | null
           data_conclusao: string | null
           data_inicio: string
+          dias_aviso: number | null
           employee_id: string
           id: string
+          motivo_desligamento: string | null
+          observacoes_desligamento: string | null
           status: Database["public"]["Enums"]["status_checklist"]
           template_id: string | null
           tipo: Database["public"]["Enums"]["tipo_checklist"]
+          tipo_desligamento: string | null
           updated_at: string
         }
         Insert: {
+          aviso_tipo?: string | null
           created_at?: string
           created_by?: string | null
           data_conclusao?: string | null
           data_inicio?: string
+          dias_aviso?: number | null
           employee_id: string
           id?: string
+          motivo_desligamento?: string | null
+          observacoes_desligamento?: string | null
           status?: Database["public"]["Enums"]["status_checklist"]
           template_id?: string | null
           tipo: Database["public"]["Enums"]["tipo_checklist"]
+          tipo_desligamento?: string | null
           updated_at?: string
         }
         Update: {
+          aviso_tipo?: string | null
           created_at?: string
           created_by?: string | null
           data_conclusao?: string | null
           data_inicio?: string
+          dias_aviso?: number | null
           employee_id?: string
           id?: string
+          motivo_desligamento?: string | null
+          observacoes_desligamento?: string | null
           status?: Database["public"]["Enums"]["status_checklist"]
           template_id?: string | null
           tipo?: Database["public"]["Enums"]["tipo_checklist"]
+          tipo_desligamento?: string | null
           updated_at?: string
         }
         Relationships: [

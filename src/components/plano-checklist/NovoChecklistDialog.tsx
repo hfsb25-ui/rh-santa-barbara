@@ -4,13 +4,19 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
+import { differenceInYears, addDays, format } from "date-fns";
+import { ptBR } from "date-fns/locale";
+import { FileDown, Calculator } from "lucide-react";
+import { gerarCartaDemissao, gerarPedidoDemissao } from "@/lib/pdfGeneratorDesligamento";
 
 interface NovoChecklistDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   tipo: "admissao" | "desligamento";
   onCreated: () => void;
+  preSelectedEmployeeId?: string;
 }
 
 export function NovoChecklistDialog({
@@ -18,13 +24,24 @@ export function NovoChecklistDialog({
   onOpenChange,
   tipo,
   onCreated,
+  preSelectedEmployeeId,
 }: NovoChecklistDialogProps) {
   const [employees, setEmployees] = useState<any[]>([]);
   const [templates, setTemplates] = useState<any[]>([]);
-  const [selectedEmployee, setSelectedEmployee] = useState("");
+  const [selectedEmployee, setSelectedEmployee] = useState(preSelectedEmployeeId || "");
   const [selectedTemplate, setSelectedTemplate] = useState("");
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
+
+  // Campos específicos de desligamento
+  const [tipoDesligamento, setTipoDesligamento] = useState<"pedido_demissao" | "dispensa_empresa">("dispensa_empresa");
+  const [motivoDesligamento, setMotivoDesligamento] = useState("");
+  const [avisoTipo, setAvisoTipo] = useState<"trabalhado" | "indenizado">("trabalhado");
+  const [observacoes, setObservacoes] = useState("");
+  const [diasAviso, setDiasAviso] = useState(30);
+  const [dataFimAviso, setDataFimAviso] = useState<Date | null>(null);
+  const [selectedEmployeeData, setSelectedEmployeeData] = useState<any>(null);
+  const [empresa, setEmpresa] = useState<any>(null);
 
   useEffect(() => {
     if (open) {
@@ -32,19 +49,51 @@ export function NovoChecklistDialog({
     }
   }, [open, tipo]);
 
+  useEffect(() => {
+    if (selectedEmployee && tipo === "desligamento") {
+      const emp = employees.find(e => e.id === selectedEmployee);
+      setSelectedEmployeeData(emp);
+      if (emp?.data_admissao) {
+        const dias = calcularDiasAviso(emp.data_admissao);
+        setDiasAviso(dias);
+        setDataFimAviso(addDays(new Date(), dias));
+      }
+      if (emp?.empresa_id) {
+        fetchEmpresa(emp.empresa_id);
+      }
+    }
+  }, [selectedEmployee, employees]);
+
+  const fetchEmpresa = async (empresaId: string) => {
+    const { data } = await supabase
+      .from("empresas")
+      .select("*")
+      .eq("id", empresaId)
+      .single();
+    setEmpresa(data);
+  };
+
+  const calcularDiasAviso = (dataAdmissao: string): number => {
+    const admissao = new Date(dataAdmissao);
+    const hoje = new Date();
+    const anosTrabalho = differenceInYears(hoje, admissao);
+    
+    // Lei 12.506/2011: 30 dias + 3 dias por ano trabalhado (máximo 90 dias)
+    const diasAdicionais = Math.min(anosTrabalho * 3, 60);
+    return 30 + diasAdicionais;
+  };
+
   const fetchData = async () => {
     try {
-      // Fetch employees based on tipo
       const statusFilter = tipo === "admissao" ? "ativo" : "ativo";
       const { data: empData, error: empError } = await supabase
         .from("employees")
-        .select("id, nome_completo, cargo, setor")
+        .select("id, nome_completo, cargo, setor, data_admissao, cpf, empresa_id")
         .eq("status", statusFilter)
         .order("nome_completo");
 
       if (empError) throw empError;
 
-      // Filter out employees that already have an active checklist of this type
       const { data: activeChecklists, error: checklistError } = await supabase
         .from("plano_checklist_funcionario")
         .select("employee_id")
@@ -57,7 +106,6 @@ export function NovoChecklistDialog({
       const availableEmployees = empData?.filter((e) => !activeEmployeeIds.has(e.id)) || [];
       setEmployees(availableEmployees);
 
-      // Fetch templates
       const { data: tempData, error: tempError } = await supabase
         .from("plano_checklist_templates")
         .select("id, nome")
@@ -67,7 +115,6 @@ export function NovoChecklistDialog({
       if (tempError) throw tempError;
       setTemplates(tempData || []);
 
-      // Auto-select first template if available
       if (tempData && tempData.length > 0) {
         setSelectedTemplate(tempData[0].id);
       }
@@ -90,10 +137,18 @@ export function NovoChecklistDialog({
       return;
     }
 
+    if (tipo === "desligamento" && !motivoDesligamento) {
+      toast({
+        title: "Motivo obrigatório",
+        description: "Selecione o motivo do desligamento.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
       setLoading(true);
 
-      // Get template items
       const { data: templateItems, error: itemsError } = await supabase
         .from("plano_checklist_itens")
         .select("*")
@@ -102,24 +157,32 @@ export function NovoChecklistDialog({
 
       if (itemsError) throw itemsError;
 
-      // Get current user
       const { data: { user } } = await supabase.auth.getUser();
 
-      // Create checklist
+      const checklistData: any = {
+        employee_id: selectedEmployee,
+        template_id: selectedTemplate,
+        tipo,
+        created_by: user?.id,
+      };
+
+      // Adicionar dados específicos de desligamento
+      if (tipo === "desligamento") {
+        checklistData.tipo_desligamento = tipoDesligamento;
+        checklistData.motivo_desligamento = motivoDesligamento;
+        checklistData.aviso_tipo = avisoTipo;
+        checklistData.dias_aviso = diasAviso;
+        checklistData.observacoes_desligamento = observacoes;
+      }
+
       const { data: checklist, error: checklistError } = await supabase
         .from("plano_checklist_funcionario")
-        .insert({
-          employee_id: selectedEmployee,
-          template_id: selectedTemplate,
-          tipo,
-          created_by: user?.id,
-        })
+        .insert(checklistData)
         .select()
         .single();
 
       if (checklistError) throw checklistError;
 
-      // Create checklist items
       const checklistItems = templateItems?.map((item) => ({
         checklist_funcionario_id: checklist.id,
         item_id: item.id,
@@ -144,6 +207,10 @@ export function NovoChecklistDialog({
       });
 
       setSelectedEmployee("");
+      setTipoDesligamento("dispensa_empresa");
+      setMotivoDesligamento("");
+      setAvisoTipo("trabalhado");
+      setObservacoes("");
       onCreated();
     } catch (error: any) {
       toast({
@@ -156,9 +223,48 @@ export function NovoChecklistDialog({
     }
   };
 
+  const handleDownloadPDF = () => {
+    if (!selectedEmployeeData || !empresa) {
+      toast({
+        title: "Dados incompletos",
+        description: "Selecione um funcionário para gerar o documento.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const dados = {
+      funcionario: selectedEmployeeData,
+      empresa,
+      tipoDesligamento,
+      motivoDesligamento,
+      avisoTipo,
+      diasAviso,
+      dataDesligamento: new Date(),
+      dataFimAviso: dataFimAviso || addDays(new Date(), diasAviso),
+      observacoes,
+    };
+
+    if (tipoDesligamento === "pedido_demissao") {
+      gerarPedidoDemissao(dados);
+    } else {
+      gerarCartaDemissao(dados);
+    }
+  };
+
+  const motivosDesligamento = [
+    { value: "sem_justa_causa", label: "Sem justa causa" },
+    { value: "com_justa_causa", label: "Com justa causa" },
+    { value: "acordo_mutuo", label: "Acordo mútuo (Art. 484-A CLT)" },
+    { value: "termino_contrato", label: "Término de contrato" },
+    { value: "aposentadoria", label: "Aposentadoria" },
+    { value: "falecimento", label: "Falecimento" },
+    { value: "pedido_demissao", label: "Pedido de demissão" },
+  ];
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className={tipo === "desligamento" ? "max-w-2xl" : ""}>
         <DialogHeader>
           <DialogTitle>
             Novo {tipo === "admissao" ? "Processo de Admissão" : "Processo de Desligamento"}
@@ -186,6 +292,101 @@ export function NovoChecklistDialog({
               </p>
             )}
           </div>
+
+          {tipo === "desligamento" && selectedEmployee && (
+            <>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Tipo de Desligamento</Label>
+                  <Select value={tipoDesligamento} onValueChange={(v: any) => setTipoDesligamento(v)}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="pedido_demissao">Pedido de Demissão</SelectItem>
+                      <SelectItem value="dispensa_empresa">Dispensa pela Empresa</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Motivo do Desligamento</Label>
+                  <Select value={motivoDesligamento} onValueChange={setMotivoDesligamento}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione o motivo" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {motivosDesligamento.map((motivo) => (
+                        <SelectItem key={motivo.value} value={motivo.value}>
+                          {motivo.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Aviso Prévio</Label>
+                  <Select value={avisoTipo} onValueChange={(v: any) => setAvisoTipo(v)}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="trabalhado">Trabalhado</SelectItem>
+                      <SelectItem value="indenizado">Indenizado</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2">
+                    <Calculator className="h-4 w-4" />
+                    Dias de Aviso (calculado)
+                  </Label>
+                  <div className="p-3 bg-muted rounded-md">
+                    <span className="text-lg font-bold">{diasAviso} dias</span>
+                    {selectedEmployeeData?.data_admissao && (
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Admissão: {format(new Date(selectedEmployeeData.data_admissao), "dd/MM/yyyy", { locale: ptBR })}
+                        <br />
+                        {avisoTipo === "trabalhado" && dataFimAviso && (
+                          <>Fim do aviso: {format(dataFimAviso, "dd/MM/yyyy", { locale: ptBR })}</>
+                        )}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Observações</Label>
+                <Textarea
+                  value={observacoes}
+                  onChange={(e) => setObservacoes(e.target.value)}
+                  placeholder="Observações adicionais sobre o desligamento..."
+                  className="min-h-[80px]"
+                />
+              </div>
+
+              {selectedEmployeeData && empresa && (
+                <div className="pt-2 border-t">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleDownloadPDF}
+                    className="w-full"
+                  >
+                    <FileDown className="h-4 w-4 mr-2" />
+                    {tipoDesligamento === "pedido_demissao" 
+                      ? "Baixar Pedido de Demissão (PDF)" 
+                      : "Baixar Carta de Dispensa (PDF)"}
+                  </Button>
+                </div>
+              )}
+            </>
+          )}
 
           <div className="space-y-2">
             <Label>Template</Label>
