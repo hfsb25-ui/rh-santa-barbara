@@ -84,12 +84,14 @@ export default function CompanyForm({ companyId, initialData, onSaved, onCancel 
     const nome = formData.get("nome") as string;
     const cnpj = formData.get("cnpj") as string;
     const endereco = formData.get("endereco") as string;
+    const numeroConvenioBancario = formData.get("numero_convenio_bancario") as string;
 
     const companyData = {
       nome,
       cnpj: cnpj || null,
       endereco: endereco || null,
       logo_url: logoUrl,
+      numero_convenio_bancario: numeroConvenioBancario || null,
     };
 
     let error;
@@ -130,6 +132,16 @@ export default function CompanyForm({ companyId, initialData, onSaved, onCancel 
       <div>
         <Label htmlFor="endereco">Endereço</Label>
         <Input id="endereco" name="endereco" defaultValue={initialData?.endereco} />
+      </div>
+
+      <div>
+        <Label htmlFor="numero_convenio_bancario">Número do Convênio Bancário</Label>
+        <Input 
+          id="numero_convenio_bancario" 
+          name="numero_convenio_bancario" 
+          defaultValue={initialData?.numero_convenio_bancario} 
+          placeholder="Ex: 12345"
+        />
       </div>
 
       <div>

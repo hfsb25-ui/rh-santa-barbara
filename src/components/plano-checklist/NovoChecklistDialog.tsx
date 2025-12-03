@@ -8,8 +8,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { differenceInYears, addDays, format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { FileDown, Calculator } from "lucide-react";
+import { FileDown, Calculator, Landmark } from "lucide-react";
 import { gerarCartaDemissao, gerarPedidoDemissao } from "@/lib/pdfGeneratorDesligamento";
+import { gerarSolicitacaoContaSalario } from "@/lib/pdfGeneratorContaSalario";
 
 interface NovoChecklistDialogProps {
   open: boolean;
@@ -50,19 +51,21 @@ export function NovoChecklistDialog({
   }, [open, tipo]);
 
   useEffect(() => {
-    if (selectedEmployee && tipo === "desligamento") {
+    if (selectedEmployee) {
       const emp = employees.find(e => e.id === selectedEmployee);
       setSelectedEmployeeData(emp);
-      if (emp?.data_admissao) {
+      
+      if (tipo === "desligamento" && emp?.data_admissao) {
         const dias = calcularDiasAviso(emp.data_admissao);
         setDiasAviso(dias);
         setDataFimAviso(addDays(new Date(), dias));
       }
+      
       if (emp?.empresa_id) {
         fetchEmpresa(emp.empresa_id);
       }
     }
-  }, [selectedEmployee, employees]);
+  }, [selectedEmployee, employees, tipo]);
 
   const fetchEmpresa = async (empresaId: string) => {
     const { data } = await supabase
@@ -292,6 +295,31 @@ export function NovoChecklistDialog({
               </p>
             )}
           </div>
+
+          {tipo === "admissao" && selectedEmployee && selectedEmployeeData && empresa && (
+            <div className="pt-2 border-t">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  gerarSolicitacaoContaSalario({
+                    funcionario: selectedEmployeeData,
+                    empresa,
+                  });
+                }}
+                className="w-full"
+                disabled={!empresa?.numero_convenio_bancario}
+              >
+                <Landmark className="h-4 w-4 mr-2" />
+                Gerar Solicitação de Abertura de Conta Salário
+              </Button>
+              {!empresa?.numero_convenio_bancario && (
+                <p className="text-xs text-muted-foreground mt-1 text-center">
+                  Configure o número do convênio bancário da empresa para habilitar esta opção.
+                </p>
+              )}
+            </div>
+          )}
 
           {tipo === "desligamento" && selectedEmployee && (
             <>
