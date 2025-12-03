@@ -6,6 +6,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Loader2, Bell, Clock, Wallet, Calendar, GraduationCap, Shield, Shirt } from "lucide-react";
 
+import { Plane } from "lucide-react";
+
 interface VisibilitySettings {
   id: string;
   avisos_visivel: boolean;
@@ -15,6 +17,7 @@ interface VisibilitySettings {
   treinamentos_visivel: boolean;
   epis_visivel: boolean;
   uniformes_visivel: boolean;
+  ferias_visivel: boolean;
 }
 
 const settingsConfig = [
@@ -22,6 +25,7 @@ const settingsConfig = [
   { key: "saldo_horas_visivel", label: "Saldo de Horas", description: "Exibir saldo de horas do mês anterior", icon: Clock },
   { key: "banco_horas_visivel", label: "Banco de Horas", description: "Exibir banco de horas acumulado", icon: Wallet },
   { key: "folgas_visivel", label: "Folgas Disponíveis", description: "Exibir quantidade de folgas na casa", icon: Calendar },
+  { key: "ferias_visivel", label: "Progresso de Férias", description: "Exibir barra de progresso das férias", icon: Plane },
   { key: "treinamentos_visivel", label: "Treinamentos", description: "Exibir cursos e progresso de treinamento", icon: GraduationCap },
   { key: "epis_visivel", label: "EPIs Recebidos", description: "Exibir lista de EPIs entregues", icon: Shield },
   { key: "uniformes_visivel", label: "Uniformes Recebidos", description: "Exibir lista de uniformes entregues", icon: Shirt },
