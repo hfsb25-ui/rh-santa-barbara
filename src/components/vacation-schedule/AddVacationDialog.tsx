@@ -131,7 +131,15 @@ export function AddVacationDialog({
                 id="startDate"
                 type="date"
                 value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
+                onChange={(e) => {
+                  const newStartDate = e.target.value;
+                  setStartDate(newStartDate);
+                  if (newStartDate) {
+                    const start = new Date(newStartDate);
+                    start.setDate(start.getDate() + 29); // 30 dias incluindo o primeiro
+                    setEndDate(format(start, "yyyy-MM-dd"));
+                  }
+                }}
                 required
               />
             </div>
