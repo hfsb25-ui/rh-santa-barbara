@@ -39,6 +39,7 @@ interface VisibilitySettings {
   epis_visivel: boolean;
   uniformes_visivel: boolean;
   ferias_visivel: boolean;
+  tipos_contrato_permitidos: string[];
 }
 
 interface FuncionarioDashboardProps {
@@ -55,6 +56,7 @@ const FuncionarioDashboard = ({ user }: FuncionarioDashboardProps) => {
   const [companyLogo, setCompanyLogo] = useState<string | null>(null);
   const [horasMesAnterior, setHorasMesAnterior] = useState<number | null>(null);
   const [bancoHoras, setBancoHoras] = useState<number>(0);
+  const [hasAccess, setHasAccess] = useState<boolean | null>(null);
   const [visibility, setVisibility] = useState<VisibilitySettings>({
     avisos_visivel: true,
     saldo_horas_visivel: true,
@@ -64,6 +66,7 @@ const FuncionarioDashboard = ({ user }: FuncionarioDashboardProps) => {
     epis_visivel: true,
     uniformes_visivel: true,
     ferias_visivel: true,
+    tipos_contrato_permitidos: ['fixo', 'intermitente', 'prestador_servico'],
   });
 
   useEffect(() => {
@@ -89,6 +92,7 @@ const FuncionarioDashboard = ({ user }: FuncionarioDashboardProps) => {
           epis_visivel: data.epis_visivel,
           uniformes_visivel: data.uniformes_visivel,
           ferias_visivel: data.ferias_visivel ?? true,
+          tipos_contrato_permitidos: data.tipos_contrato_permitidos || ['fixo', 'intermitente', 'prestador_servico'],
         });
       }
     } catch (error) {
@@ -106,6 +110,23 @@ const FuncionarioDashboard = ({ user }: FuncionarioDashboardProps) => {
 
       if (empData) {
         setEmployee(empData);
+        
+        // Check access based on contract type
+        const { data: configData } = await supabase
+          .from("configuracoes_dashboard_funcionario")
+          .select("tipos_contrato_permitidos")
+          .limit(1)
+          .single();
+        
+        const allowedTypes = configData?.tipos_contrato_permitidos || ['fixo', 'intermitente', 'prestador_servico'];
+        const employeeContractType = empData.tipo_contrato || 'fixo';
+        
+        if (!allowedTypes.includes(employeeContractType)) {
+          setHasAccess(false);
+          return;
+        }
+        
+        setHasAccess(true);
 
         const [episRes, uniformesRes, avisosRes, feriasRes, companyRes] = await Promise.all([
           supabase.from("epis").select("*").eq("employee_id", empData.id),
@@ -212,10 +233,56 @@ const FuncionarioDashboard = ({ user }: FuncionarioDashboardProps) => {
   };
 
 
-  if (!employee) {
+  if (hasAccess === null || !employee) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <p className="text-muted-foreground">Carregando...</p>
+      </div>
+    );
+  }
+
+  if (hasAccess === false) {
+    return (
+      <div className="min-h-screen bg-background">
+        <header className="border-b bg-card">
+          <div className="container mx-auto px-4 py-4 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              {companyLogo ? (
+                <div className="w-10 h-10 flex items-center justify-center">
+                  <img src={companyLogo} alt="Logo" className="w-10 h-10 object-contain" />
+                </div>
+              ) : (
+                <div className="w-10 h-10 bg-primary rounded-full flex items-center justify-center">
+                  <UserCircle className="w-5 h-5 text-primary-foreground" />
+                </div>
+              )}
+              <div>
+                <h1 className="text-xl font-bold">Meu Painel</h1>
+                <p className="text-sm text-muted-foreground">{employee?.nome_completo}</p>
+              </div>
+            </div>
+            <Button variant="outline" onClick={handleLogout}>
+              <LogOut className="w-4 h-4 mr-2" />
+              Sair
+            </Button>
+          </div>
+        </header>
+        <main className="container mx-auto px-4 py-8">
+          <Card className="border-destructive">
+            <CardContent className="py-12 text-center">
+              <div className="w-16 h-16 bg-destructive/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Shield className="w-8 h-8 text-destructive" />
+              </div>
+              <h2 className="text-xl font-semibold mb-2">Acesso Restrito</h2>
+              <p className="text-muted-foreground">
+                Seu tipo de contrato não possui acesso ao painel do funcionário.
+              </p>
+              <p className="text-sm text-muted-foreground mt-2">
+                Entre em contato com o RH para mais informações.
+              </p>
+            </CardContent>
+          </Card>
+        </main>
       </div>
     );
   }
