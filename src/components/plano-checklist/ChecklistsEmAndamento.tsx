@@ -8,9 +8,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { useToast } from "@/hooks/use-toast";
 import { format, differenceInDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Plus, Eye, CheckCircle2, Clock, AlertTriangle } from "lucide-react";
+import { Plus, Eye, CheckCircle2, Clock, AlertTriangle, Trash2 } from "lucide-react";
 import { ChecklistExecucao } from "./ChecklistExecucao";
 import { NovoChecklistDialog } from "./NovoChecklistDialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 
 interface ChecklistsEmAndamentoProps {
   tipo: "admissao" | "desligamento";
@@ -21,7 +22,42 @@ export function ChecklistsEmAndamento({ tipo }: ChecklistsEmAndamentoProps) {
   const [loading, setLoading] = useState(true);
   const [selectedChecklist, setSelectedChecklist] = useState<any>(null);
   const [showNovoDialog, setShowNovoDialog] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const { toast } = useToast();
+
+  const handleDelete = async (checklistId: string) => {
+    try {
+      // First delete all items
+      const { error: itemsError } = await supabase
+        .from("plano_checklist_funcionario_itens")
+        .delete()
+        .eq("checklist_funcionario_id", checklistId);
+
+      if (itemsError) throw itemsError;
+
+      // Then delete the checklist
+      const { error } = await supabase
+        .from("plano_checklist_funcionario")
+        .delete()
+        .eq("id", checklistId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Processo excluído",
+        description: "O processo foi removido com sucesso.",
+      });
+      fetchChecklists();
+    } catch (error: any) {
+      toast({
+        title: "Erro ao excluir processo",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
   const fetchChecklists = async () => {
     try {
@@ -162,14 +198,37 @@ export function ChecklistsEmAndamento({ tipo }: ChecklistsEmAndamentoProps) {
                     Início: {format(new Date(checklist.data_inicio), "dd/MM/yyyy", { locale: ptBR })}
                   </div>
 
-                  <Button
-                    variant="outline"
-                    className="w-full"
-                    onClick={() => setSelectedChecklist(checklist)}
-                  >
-                    <Eye className="h-4 w-4 mr-2" />
-                    Ver Checklist
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      className="flex-1"
+                      onClick={() => setSelectedChecklist(checklist)}
+                    >
+                      <Eye className="h-4 w-4 mr-2" />
+                      Ver Checklist
+                    </Button>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="outline" size="icon">
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Excluir processo?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Esta ação não pode ser desfeita. O processo de {tipo === "admissao" ? "admissão" : "desligamento"} de {checklist.employee?.nome_completo} será removido permanentemente.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                          <AlertDialogAction onClick={() => handleDelete(checklist.id)}>
+                            Excluir
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </div>
                 </CardContent>
               </Card>
             );
