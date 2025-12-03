@@ -536,6 +536,7 @@ export type Database = {
           folgas_visivel: boolean
           id: string
           saldo_horas_visivel: boolean
+          tipos_contrato_permitidos: string[]
           treinamentos_visivel: boolean
           uniformes_visivel: boolean
           updated_at: string | null
@@ -549,6 +550,7 @@ export type Database = {
           folgas_visivel?: boolean
           id?: string
           saldo_horas_visivel?: boolean
+          tipos_contrato_permitidos?: string[]
           treinamentos_visivel?: boolean
           uniformes_visivel?: boolean
           updated_at?: string | null
@@ -562,6 +564,7 @@ export type Database = {
           folgas_visivel?: boolean
           id?: string
           saldo_horas_visivel?: boolean
+          tipos_contrato_permitidos?: string[]
           treinamentos_visivel?: boolean
           uniformes_visivel?: boolean
           updated_at?: string | null
