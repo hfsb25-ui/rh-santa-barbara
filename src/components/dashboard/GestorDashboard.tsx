@@ -32,6 +32,7 @@ import {
   Award,
   GraduationCap,
   ClipboardList,
+  CheckCircle2,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -157,13 +158,13 @@ const GestorDashboard = ({ user }: GestorDashboardProps) => {
     try {
       const todayStr = new Date().toISOString().split("T")[0];
 
-      // Buscar férias ativas (gozo) no período atual
+      // Buscar férias ativas (gozo) que ainda não tiveram retorno confirmado
+      // Inclui férias em andamento E férias que já terminaram mas não foram confirmadas
       const { data: activeVacations, error: vacationsError } = await supabase
         .from("ferias")
         .select("*")
         .eq("data_retorno_confirmada", false)
-        .lte("periodo_gozo_inicio", todayStr)
-        .gte("periodo_gozo_fim", todayStr);
+        .lte("periodo_gozo_inicio", todayStr);
 
       if (vacationsError || !activeVacations || activeVacations.length === 0) {
         setEmployeesOnVacation([]);
@@ -649,7 +650,7 @@ const GestorDashboard = ({ user }: GestorDashboardProps) => {
               <div>
                 <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
                   <Calendar className="w-5 h-5" />
-                  Funcionários em Férias ({employeesOnVacation.length})
+                  Funcionários em Férias / Aguardando Confirmação de Retorno ({employeesOnVacation.length})
                 </h2>
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                   {employeesOnVacation.map((employee) => {
@@ -660,10 +661,19 @@ const GestorDashboard = ({ user }: GestorDashboardProps) => {
                     );
 
                     return (
-                      <Card key={employee.id} className="border-primary/50">
+                      <Card key={employee.id} className={`${daysRemaining === 0 ? 'border-warning' : 'border-primary/50'}`}>
                         <CardHeader className="pb-3">
-                          <CardTitle className="text-base">{employee.nome_completo}</CardTitle>
-                          <p className="text-sm text-muted-foreground">{employee.cargo}</p>
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <CardTitle className="text-base">{employee.nome_completo}</CardTitle>
+                              <p className="text-sm text-muted-foreground">{employee.cargo}</p>
+                            </div>
+                            {daysRemaining === 0 && (
+                              <span className="text-xs bg-warning/20 text-warning-foreground px-2 py-1 rounded">
+                                Aguardando retorno
+                              </span>
+                            )}
+                          </div>
                         </CardHeader>
                         <CardContent className="space-y-3">
                           <div className="flex justify-between text-sm">
@@ -702,14 +712,54 @@ const GestorDashboard = ({ user }: GestorDashboardProps) => {
                               {Math.round(progress)}% concluído
                             </p>
                           </div>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="w-full mt-2"
-                            onClick={() => navigate(`/employee/${employee.id}`)}
-                          >
-                            Ver Detalhes
-                          </Button>
+                          <div className="flex gap-2 mt-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="flex-1"
+                              onClick={() => navigate(`/employee/${employee.id}`)}
+                            >
+                              Ver Detalhes
+                            </Button>
+                            {daysRemaining === 0 && (
+                              <Button
+                                variant="default"
+                                size="sm"
+                                className="flex-1"
+                                onClick={async () => {
+                                  try {
+                                    const { error: feriasError } = await supabase
+                                      .from("ferias")
+                                      .update({ 
+                                        data_retorno_confirmada: true,
+                                        data_confirmacao: new Date().toISOString(),
+                                        confirmado_por: user.id
+                                      })
+                                      .eq("id", employee.vacation.id);
+
+                                    if (feriasError) throw feriasError;
+
+                                    const { error: empError } = await supabase
+                                      .from("employees")
+                                      .update({ status: "ativo" })
+                                      .eq("id", employee.id);
+
+                                    if (empError) throw empError;
+
+                                    toast.success("Retorno confirmado com sucesso!");
+                                    fetchEmployeesOnVacation();
+                                    fetchStats();
+                                  } catch (error) {
+                                    console.error("Error confirming return:", error);
+                                    toast.error("Erro ao confirmar retorno");
+                                  }
+                                }}
+                              >
+                                <CheckCircle2 className="w-4 h-4 mr-1" />
+                                Confirmar Retorno
+                              </Button>
+                            )}
+                          </div>
                         </CardContent>
                       </Card>
                     );

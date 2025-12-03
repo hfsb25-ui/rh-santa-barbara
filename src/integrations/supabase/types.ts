@@ -532,6 +532,7 @@ export type Database = {
           banco_horas_visivel: boolean
           created_at: string | null
           epis_visivel: boolean
+          ferias_visivel: boolean
           folgas_visivel: boolean
           id: string
           saldo_horas_visivel: boolean
@@ -544,6 +545,7 @@ export type Database = {
           banco_horas_visivel?: boolean
           created_at?: string | null
           epis_visivel?: boolean
+          ferias_visivel?: boolean
           folgas_visivel?: boolean
           id?: string
           saldo_horas_visivel?: boolean
@@ -556,6 +558,7 @@ export type Database = {
           banco_horas_visivel?: boolean
           created_at?: string | null
           epis_visivel?: boolean
+          ferias_visivel?: boolean
           folgas_visivel?: boolean
           id?: string
           saldo_horas_visivel?: boolean

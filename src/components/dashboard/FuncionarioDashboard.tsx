@@ -38,6 +38,7 @@ interface VisibilitySettings {
   treinamentos_visivel: boolean;
   epis_visivel: boolean;
   uniformes_visivel: boolean;
+  ferias_visivel: boolean;
 }
 
 interface FuncionarioDashboardProps {
@@ -62,6 +63,7 @@ const FuncionarioDashboard = ({ user }: FuncionarioDashboardProps) => {
     treinamentos_visivel: true,
     epis_visivel: true,
     uniformes_visivel: true,
+    ferias_visivel: true,
   });
 
   useEffect(() => {
@@ -86,6 +88,7 @@ const FuncionarioDashboard = ({ user }: FuncionarioDashboardProps) => {
           treinamentos_visivel: data.treinamentos_visivel,
           epis_visivel: data.epis_visivel,
           uniformes_visivel: data.uniformes_visivel,
+          ferias_visivel: data.ferias_visivel ?? true,
         });
       }
     } catch (error) {
@@ -248,7 +251,7 @@ const FuncionarioDashboard = ({ user }: FuncionarioDashboardProps) => {
       <main className="container mx-auto px-4 py-8">
         <div className="grid gap-6">
           {/* Vacation Progress */}
-          {activeVacation && (() => {
+          {visibility.ferias_visivel && activeVacation && (() => {
             const vacationProgress = calculateVacationProgress();
             if (vacationProgress && vacationProgress.daysRemaining > 0) {
               return (
