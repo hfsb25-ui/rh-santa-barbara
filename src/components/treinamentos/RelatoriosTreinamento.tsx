@@ -144,67 +144,67 @@ export function RelatoriosTreinamento() {
       doc.rect(10, 10, pageWidth - 20, pageHeight - 20);
 
       // Título
-      doc.setFontSize(32);
+      doc.setFontSize(28);
       doc.setFont("helvetica", "bold");
       doc.setTextColor(59, 130, 246);
-      doc.text("CERTIFICADO", pageWidth / 2, 60, { align: "center" });
+      doc.text("CERTIFICADO", pageWidth / 2, 55, { align: "center" });
 
       // Subtítulo
-      doc.setFontSize(16);
+      doc.setFontSize(14);
       doc.setFont("helvetica", "normal");
       doc.setTextColor(0, 0, 0);
-      doc.text("DE CONCLUSÃO DE CURSO", pageWidth / 2, 72, { align: "center" });
+      doc.text("DE CONCLUSÃO DE CURSO", pageWidth / 2, 65, { align: "center" });
 
       // Texto principal
-      doc.setFontSize(12);
+      doc.setFontSize(11);
       doc.setFont("helvetica", "normal");
-      doc.text("Certificamos que", pageWidth / 2, 90, { align: "center" });
+      doc.text("Certificamos que", pageWidth / 2, 80, { align: "center" });
 
       // Nome do funcionário
-      doc.setFontSize(24);
+      doc.setFontSize(20);
       doc.setFont("helvetica", "bold");
       doc.setTextColor(59, 130, 246);
-      doc.text(funcionario.nome, pageWidth / 2, 105, { align: "center" });
+      doc.text(funcionario.nome, pageWidth / 2, 92, { align: "center" });
 
       // CPF do funcionário
-      doc.setFontSize(12);
+      doc.setFontSize(10);
       doc.setFont("helvetica", "normal");
       doc.setTextColor(100, 100, 100);
-      doc.text(`CPF: ${funcionario.cpf || "Não informado"}`, pageWidth / 2, 115, {
+      doc.text(`CPF: ${funcionario.cpf || "Não informado"}`, pageWidth / 2, 100, {
         align: "center",
       });
 
       // Texto do curso
-      doc.setFontSize(14);
+      doc.setFontSize(11);
       doc.setFont("helvetica", "normal");
       doc.setTextColor(0, 0, 0);
-      doc.text("concluiu com êxito o curso", pageWidth / 2, 130, {
+      doc.text("concluiu com êxito o curso", pageWidth / 2, 112, {
         align: "center",
       });
 
       // Nome do curso
-      doc.setFontSize(20);
+      doc.setFontSize(16);
       doc.setFont("helvetica", "bold");
       doc.setTextColor(59, 130, 246);
       const cursoTitulo = doc.splitTextToSize(curso.titulo, pageWidth - 100);
-      doc.text(cursoTitulo, pageWidth / 2, 145, { align: "center" });
+      doc.text(cursoTitulo, pageWidth / 2, 124, { align: "center" });
 
       // Carga horária
       if (curso.carga_horaria) {
-        doc.setFontSize(12);
+        doc.setFontSize(10);
         doc.setFont("helvetica", "normal");
         doc.setTextColor(100, 100, 100);
-        doc.text(`Carga Horária: ${curso.carga_horaria} horas`, pageWidth / 2, 160, {
+        doc.text(`Carga Horária: ${curso.carga_horaria} horas`, pageWidth / 2, 136, {
           align: "center",
         });
       }
 
       // Nome da empresa - posicionado na parte inferior
       if (empresa?.nome) {
-        doc.setFontSize(14);
+        doc.setFontSize(11);
         doc.setFont("helvetica", "bold");
         doc.setTextColor(0, 0, 0);
-        doc.text(empresa.nome, pageWidth / 2, pageHeight - 50, {
+        doc.text(empresa.nome, pageWidth / 2, pageHeight - 45, {
           align: "center",
         });
       }
@@ -214,10 +214,10 @@ export function RelatoriosTreinamento() {
         "pt-BR",
         { day: "2-digit", month: "long", year: "numeric" }
       );
-      doc.setFontSize(11);
+      doc.setFontSize(10);
       doc.setFont("helvetica", "normal");
       doc.setTextColor(100, 100, 100);
-      doc.text(`Concluído em ${dataFormatada}`, pageWidth / 2, pageHeight - 38, {
+      doc.text(`Concluído em ${dataFormatada}`, pageWidth / 2, pageHeight - 36, {
         align: "center",
       });
 
