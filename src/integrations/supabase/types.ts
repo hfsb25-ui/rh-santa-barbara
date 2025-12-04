@@ -2275,6 +2275,7 @@ export type Database = {
           data_conclusao: string | null
           employee_id: string
           id: string
+          ultimo_acesso: string | null
         }
         Insert: {
           aula_id: string
@@ -2283,6 +2284,7 @@ export type Database = {
           data_conclusao?: string | null
           employee_id: string
           id?: string
+          ultimo_acesso?: string | null
         }
         Update: {
           aula_id?: string
@@ -2291,6 +2293,7 @@ export type Database = {
           data_conclusao?: string | null
           employee_id?: string
           id?: string
+          ultimo_acesso?: string | null
         }
         Relationships: [
           {
