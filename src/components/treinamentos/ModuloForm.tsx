@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { useForm } from "react-hook-form";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import {
   Dialog,
@@ -12,55 +12,34 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { toast } from "sonner";
 
 interface ModuloFormProps {
   open: boolean;
   onClose: () => void;
   modulo?: any;
+  cursoId: string;
 }
 
-export function ModuloForm({ open, onClose, modulo }: ModuloFormProps) {
+export function ModuloForm({ open, onClose, modulo, cursoId }: ModuloFormProps) {
   const queryClient = useQueryClient();
-  const { register, handleSubmit, reset, setValue, watch } = useForm({
+  const { register, handleSubmit, reset } = useForm({
     defaultValues: {
-      curso_id: "",
       titulo: "",
       descricao: "",
       ordem: 0,
     },
   });
 
-  const { data: cursos } = useQuery({
-    queryKey: ["cursos"],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from("cursos")
-        .select("*")
-        .eq("ativo", true)
-        .order("titulo");
-      return data || [];
-    },
-  });
-
   useEffect(() => {
     if (modulo) {
       reset({
-        curso_id: modulo.curso_id,
         titulo: modulo.titulo,
         descricao: modulo.descricao || "",
         ordem: modulo.ordem,
       });
     } else {
       reset({
-        curso_id: "",
         titulo: "",
         descricao: "",
         ordem: 0,
@@ -70,19 +49,24 @@ export function ModuloForm({ open, onClose, modulo }: ModuloFormProps) {
 
   const mutation = useMutation({
     mutationFn: async (data: any) => {
+      const payload = {
+        ...data,
+        curso_id: cursoId,
+      };
+
       if (modulo) {
         const { error } = await supabase
           .from("modulos")
-          .update(data)
+          .update(payload)
           .eq("id", modulo.id);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from("modulos").insert(data);
+        const { error } = await supabase.from("modulos").insert(payload);
         if (error) throw error;
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["modulos"] });
+      queryClient.invalidateQueries({ queryKey: ["modulos", cursoId] });
       toast.success(
         modulo
           ? "Módulo atualizado com sucesso!"
@@ -108,25 +92,6 @@ export function ModuloForm({ open, onClose, modulo }: ModuloFormProps) {
           onSubmit={handleSubmit((data) => mutation.mutate(data))}
           className="space-y-4"
         >
-          <div>
-            <Label htmlFor="curso_id">Curso *</Label>
-            <Select
-              value={watch("curso_id")}
-              onValueChange={(value) => setValue("curso_id", value)}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Selecione um curso" />
-              </SelectTrigger>
-              <SelectContent>
-                {cursos?.map((curso) => (
-                  <SelectItem key={curso.id} value={curso.id}>
-                    {curso.titulo}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
           <div>
             <Label htmlFor="titulo">Título *</Label>
             <Input id="titulo" {...register("titulo", { required: true })} />
