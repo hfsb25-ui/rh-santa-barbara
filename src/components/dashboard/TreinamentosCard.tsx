@@ -160,11 +160,20 @@ export function TreinamentosCard({ employeeId }: TreinamentosCardProps) {
     },
   });
 
-  const handleOpenAula = (aula: any) => {
+  const handleOpenAula = async (aula: any) => {
     if (aula.concluida) {
       toast.info("Esta aula já foi concluída");
     }
     setSelectedAula(aula);
+    
+    // Registrar último acesso
+    await supabase.from("progresso_treinamento").upsert({
+      employee_id: employeeId,
+      aula_id: aula.id,
+      ultimo_acesso: new Date().toISOString(),
+    }, {
+      onConflict: 'employee_id,aula_id',
+    });
   };
 
   return (
