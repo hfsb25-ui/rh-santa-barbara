@@ -2,8 +2,9 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Plus, Pencil, Trash2 } from "lucide-react";
+import { Plus, Pencil, Trash2, Eye } from "lucide-react";
 import { CursoForm } from "./CursoForm";
+import { CursoDetalhes } from "./CursoDetalhes";
 import {
   Card,
   CardContent,
@@ -28,6 +29,7 @@ export function CursosList() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingCurso, setEditingCurso] = useState<any>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [selectedCurso, setSelectedCurso] = useState<any>(null);
   const queryClient = useQueryClient();
 
   const { data: cursos, isLoading } = useQuery({
@@ -89,7 +91,7 @@ export function CursosList() {
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {cursos?.map((curso) => (
-          <Card key={curso.id}>
+          <Card key={curso.id} className="hover:shadow-md transition-shadow">
             <CardHeader>
               <div className="flex justify-between items-start">
                 <div className="flex-1">
@@ -98,26 +100,10 @@ export function CursosList() {
                     {curso.descricao}
                   </CardDescription>
                 </div>
-                <div className="flex gap-2">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => handleEdit(curso)}
-                  >
-                    <Pencil className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => setDeleteId(curso.id)}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
               </div>
             </CardHeader>
             <CardContent>
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-2 mb-4">
                 {curso.obrigatorio && (
                   <Badge variant="destructive">Obrigatório</Badge>
                 )}
@@ -125,6 +111,9 @@ export function CursosList() {
                   <Badge variant="default">Ativo</Badge>
                 ) : (
                   <Badge variant="secondary">Inativo</Badge>
+                )}
+                {curso.carga_horaria && (
+                  <Badge variant="outline">{curso.carga_horaria}h</Badge>
                 )}
                 {curso.empresa && (
                   <Badge variant="outline">{curso.empresa.nome}</Badge>
@@ -136,6 +125,31 @@ export function CursosList() {
                   <Badge variant="outline">{curso.funcao.nome}</Badge>
                 )}
               </div>
+              <div className="flex gap-2">
+                <Button
+                  variant="default"
+                  size="sm"
+                  className="flex-1"
+                  onClick={() => setSelectedCurso(curso)}
+                >
+                  <Eye className="h-4 w-4 mr-2" />
+                  Gerenciar
+                </Button>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => handleEdit(curso)}
+                >
+                  <Pencil className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => setDeleteId(curso.id)}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
             </CardContent>
           </Card>
         ))}
@@ -145,6 +159,12 @@ export function CursosList() {
         open={isFormOpen}
         onClose={handleCloseForm}
         curso={editingCurso}
+      />
+
+      <CursoDetalhes
+        curso={selectedCurso}
+        open={!!selectedCurso}
+        onClose={() => setSelectedCurso(null)}
       />
 
       <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>

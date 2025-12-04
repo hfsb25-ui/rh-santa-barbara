@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { useForm } from "react-hook-form";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import {
   Dialog,
@@ -12,19 +12,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { toast } from "sonner";
 
 interface AulaFormProps {
   open: boolean;
   onClose: () => void;
   aula?: any;
+  moduloId: string;
 }
 
 function extractYouTubeVideoId(url: string): string | null {
@@ -42,11 +36,10 @@ function extractYouTubeVideoId(url: string): string | null {
   return null;
 }
 
-export function AulaForm({ open, onClose, aula }: AulaFormProps) {
+export function AulaForm({ open, onClose, aula, moduloId }: AulaFormProps) {
   const queryClient = useQueryClient();
-  const { register, handleSubmit, reset, setValue, watch } = useForm({
+  const { register, handleSubmit, reset } = useForm({
     defaultValues: {
-      modulo_id: "",
       titulo: "",
       descricao: "",
       youtube_url: "",
@@ -55,21 +48,9 @@ export function AulaForm({ open, onClose, aula }: AulaFormProps) {
     },
   });
 
-  const { data: modulos } = useQuery({
-    queryKey: ["modulos"],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from("modulos")
-        .select("*, curso:cursos(titulo)")
-        .order("ordem");
-      return data || [];
-    },
-  });
-
   useEffect(() => {
     if (aula) {
       reset({
-        modulo_id: aula.modulo_id,
         titulo: aula.titulo,
         descricao: aula.descricao || "",
         youtube_url: aula.youtube_url,
@@ -78,7 +59,6 @@ export function AulaForm({ open, onClose, aula }: AulaFormProps) {
       });
     } else {
       reset({
-        modulo_id: "",
         titulo: "",
         descricao: "",
         youtube_url: "",
@@ -97,6 +77,7 @@ export function AulaForm({ open, onClose, aula }: AulaFormProps) {
 
       const payload = {
         ...data,
+        modulo_id: moduloId,
         youtube_video_id: videoId,
       };
 
@@ -112,7 +93,7 @@ export function AulaForm({ open, onClose, aula }: AulaFormProps) {
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["aulas"] });
+      queryClient.invalidateQueries({ queryKey: ["aulas", moduloId] });
       toast.success(
         aula ? "Aula atualizada com sucesso!" : "Aula criada com sucesso!"
       );
@@ -134,25 +115,6 @@ export function AulaForm({ open, onClose, aula }: AulaFormProps) {
           onSubmit={handleSubmit((data) => mutation.mutate(data))}
           className="space-y-4"
         >
-          <div>
-            <Label htmlFor="modulo_id">Módulo *</Label>
-            <Select
-              value={watch("modulo_id")}
-              onValueChange={(value) => setValue("modulo_id", value)}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Selecione um módulo" />
-              </SelectTrigger>
-              <SelectContent>
-                {modulos?.map((modulo) => (
-                  <SelectItem key={modulo.id} value={modulo.id}>
-                    {modulo.curso?.titulo} - {modulo.titulo}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
           <div>
             <Label htmlFor="titulo">Título *</Label>
             <Input id="titulo" {...register("titulo", { required: true })} />
