@@ -199,27 +199,27 @@ export function RelatoriosTreinamento() {
         });
       }
 
-      // Data de conclusão - posicionada mais acima para não sobrepor
+      // Nome da empresa - posicionado na parte inferior
+      if (empresa?.nome) {
+        doc.setFontSize(14);
+        doc.setFont("helvetica", "bold");
+        doc.setTextColor(0, 0, 0);
+        doc.text(empresa.nome, pageWidth / 2, pageHeight - 50, {
+          align: "center",
+        });
+      }
+
+      // Data de conclusão - logo abaixo do nome da empresa
       const dataFormatada = new Date(funcionario.dataConclusao).toLocaleDateString(
         "pt-BR",
         { day: "2-digit", month: "long", year: "numeric" }
       );
-      doc.setFontSize(12);
+      doc.setFontSize(11);
       doc.setFont("helvetica", "normal");
-      doc.setTextColor(0, 0, 0);
-      const dataPosY = curso.carga_horaria ? 172 : 165;
-      doc.text(`Concluído em ${dataFormatada}`, pageWidth / 2, dataPosY, {
+      doc.setTextColor(100, 100, 100);
+      doc.text(`Concluído em ${dataFormatada}`, pageWidth / 2, pageHeight - 38, {
         align: "center",
       });
-
-      // Nome da empresa - posicionado mais abaixo para evitar sobreposição
-      if (empresa?.nome) {
-        doc.setFontSize(12);
-        doc.setFont("helvetica", "bold");
-        doc.text(empresa.nome, pageWidth / 2, pageHeight - 40, {
-          align: "center",
-        });
-      }
 
       // Linha de assinatura
       doc.setLineWidth(0.5);
