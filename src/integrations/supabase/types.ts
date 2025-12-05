@@ -1370,6 +1370,7 @@ export type Database = {
           ano: number
           created_at: string | null
           created_by: string | null
+          desconto: number | null
           descontos: number | null
           employee_id: string
           empresa_id: string
@@ -1384,6 +1385,7 @@ export type Database = {
           ano: number
           created_at?: string | null
           created_by?: string | null
+          desconto?: number | null
           descontos?: number | null
           employee_id: string
           empresa_id: string
@@ -1398,6 +1400,7 @@ export type Database = {
           ano?: number
           created_at?: string | null
           created_by?: string | null
+          desconto?: number | null
           descontos?: number | null
           employee_id?: string
           empresa_id?: string

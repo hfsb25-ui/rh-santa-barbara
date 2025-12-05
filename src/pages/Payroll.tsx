@@ -30,6 +30,7 @@ interface Pagamento {
   id: string;
   employee_id: string;
   valor_bruto: number;
+  desconto: number;
   descontos: number;
   valor_liquido: number;
   observacoes: string | null;
@@ -52,7 +53,7 @@ const Payroll = () => {
   const [loading, setLoading] = useState(false);
   const [editingPagamento, setEditingPagamento] = useState<Pagamento | null>(null);
   const [showLancamentoForm, setShowLancamentoForm] = useState(false);
-  const [lancamentoValues, setLancamentoValues] = useState<Record<string, { valor_bruto: number; descontos: number }>>({});
+  const [lancamentoValues, setLancamentoValues] = useState<Record<string, { valor_bruto: number; desconto: number; descontos: number }>>({});
 
   useEffect(() => {
     fetchEmpresas();
@@ -105,6 +106,7 @@ const Payroll = () => {
         id,
         employee_id,
         valor_bruto,
+        desconto,
         descontos,
         valor_liquido,
         observacoes,
@@ -144,10 +146,11 @@ const Payroll = () => {
       return;
     }
     
-    const initialValues: Record<string, { valor_bruto: number; descontos: number }> = {};
+    const initialValues: Record<string, { valor_bruto: number; desconto: number; descontos: number }> = {};
     employees.forEach((emp) => {
       initialValues[emp.id] = {
         valor_bruto: emp.salario || 0,
+        desconto: 0,
         descontos: 0,
       };
     });
@@ -155,7 +158,7 @@ const Payroll = () => {
     setShowLancamentoForm(true);
   };
 
-  const handleLancamentoValueChange = (empId: string, field: 'valor_bruto' | 'descontos', value: number) => {
+  const handleLancamentoValueChange = (empId: string, field: 'valor_bruto' | 'desconto' | 'descontos', value: number) => {
     setLancamentoValues(prev => ({
       ...prev,
       [empId]: {
@@ -174,8 +177,9 @@ const Payroll = () => {
         mes,
         ano,
         valor_bruto: values.valor_bruto,
+        desconto: values.desconto,
         descontos: values.descontos,
-        valor_liquido: values.valor_bruto - values.descontos,
+        valor_liquido: values.valor_bruto - values.desconto,
       }));
 
       const { error } = await supabase
@@ -201,14 +205,16 @@ const Payroll = () => {
 
     const formData = new FormData(e.currentTarget);
     const valor_bruto = parseFloat(formData.get("valor_bruto") as string);
+    const desconto = parseFloat(formData.get("desconto") as string) || 0;
     const descontos = parseFloat(formData.get("descontos") as string) || 0;
-    const valor_liquido = valor_bruto - descontos;
+    const valor_liquido = valor_bruto - desconto;
 
     try {
       const { error } = await supabase
         .from("folha_pagamento")
         .update({
           valor_bruto,
+          desconto,
           descontos,
           valor_liquido,
           observacoes: formData.get("observacoes") as string,
@@ -440,7 +446,7 @@ const Payroll = () => {
                     <div key={emp.id} className="p-4 border rounded-lg">
                       <p className="font-semibold mb-2">{emp.nome_completo}</p>
                       <p className="text-sm text-muted-foreground mb-3">{emp.cargo} - {emp.setor}</p>
-                      <div className="grid grid-cols-3 gap-4">
+                      <div className="grid grid-cols-4 gap-4">
                         <div>
                           <Label>Valor Bruto</Label>
                           <Input
@@ -448,6 +454,15 @@ const Payroll = () => {
                             step="0.01"
                             value={lancamentoValues[emp.id]?.valor_bruto || 0}
                             onChange={(e) => handleLancamentoValueChange(emp.id, 'valor_bruto', parseFloat(e.target.value) || 0)}
+                          />
+                        </div>
+                        <div>
+                          <Label>Desconto</Label>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            value={lancamentoValues[emp.id]?.desconto || 0}
+                            onChange={(e) => handleLancamentoValueChange(emp.id, 'desconto', parseFloat(e.target.value) || 0)}
                           />
                         </div>
                         <div>
@@ -464,7 +479,7 @@ const Payroll = () => {
                           <Input
                             type="number"
                             step="0.01"
-                            value={(lancamentoValues[emp.id]?.valor_bruto || 0) - (lancamentoValues[emp.id]?.descontos || 0)}
+                            value={(lancamentoValues[emp.id]?.valor_bruto || 0) - (lancamentoValues[emp.id]?.desconto || 0)}
                             disabled
                           />
                         </div>
@@ -497,7 +512,8 @@ const Payroll = () => {
                         </p>
                         <div className="mt-2 text-sm">
                           <p>Bruto: R$ {pag.valor_bruto.toFixed(2)}</p>
-                          <p>Valor em conta: R$ {pag.descontos.toFixed(2)}</p>
+                          <p>Desconto: R$ {(pag.desconto || 0).toFixed(2)}</p>
+                          <p>Valor em conta: R$ {(pag.descontos || 0).toFixed(2)}</p>
                           <p className="font-semibold">Líquido: R$ {pag.valor_liquido.toFixed(2)}</p>
                           {pag.observacoes && <p className="text-muted-foreground mt-1">{pag.observacoes}</p>}
                         </div>
@@ -525,12 +541,21 @@ const Payroll = () => {
                                 />
                               </div>
                               <div>
+                                <Label>Desconto</Label>
+                                <Input
+                                  name="desconto"
+                                  type="number"
+                                  step="0.01"
+                                  defaultValue={pag.desconto || 0}
+                                />
+                              </div>
+                              <div>
                                 <Label>Valor em conta</Label>
                                 <Input
                                   name="descontos"
                                   type="number"
                                   step="0.01"
-                                  defaultValue={pag.descontos}
+                                  defaultValue={pag.descontos || 0}
                                 />
                               </div>
                               <div>
