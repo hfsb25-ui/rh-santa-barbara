@@ -1435,6 +1435,45 @@ export type Database = {
           },
         ]
       }
+      folha_pagamento_itens: {
+        Row: {
+          created_at: string
+          folha_pagamento_id: string
+          id: string
+          valor: number
+          variavel_id: string
+        }
+        Insert: {
+          created_at?: string
+          folha_pagamento_id: string
+          id?: string
+          valor?: number
+          variavel_id: string
+        }
+        Update: {
+          created_at?: string
+          folha_pagamento_id?: string
+          id?: string
+          valor?: number
+          variavel_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "folha_pagamento_itens_folha_pagamento_id_fkey"
+            columns: ["folha_pagamento_id"]
+            isOneToOne: false
+            referencedRelation: "folha_pagamento"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "folha_pagamento_itens_variavel_id_fkey"
+            columns: ["variavel_id"]
+            isOneToOne: false
+            referencedRelation: "variaveis_folha"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       funcoes: {
         Row: {
           cbo: string | null
@@ -2604,6 +2643,44 @@ export type Database = {
           },
         ]
       }
+      variaveis_folha: {
+        Row: {
+          ativo: boolean
+          created_at: string
+          empresa_id: string | null
+          id: string
+          nome: string
+          tipo: Database["public"]["Enums"]["tipo_variavel_folha"]
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean
+          created_at?: string
+          empresa_id?: string | null
+          id?: string
+          nome: string
+          tipo: Database["public"]["Enums"]["tipo_variavel_folha"]
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean
+          created_at?: string
+          empresa_id?: string | null
+          id?: string
+          nome?: string
+          tipo?: Database["public"]["Enums"]["tipo_variavel_folha"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "variaveis_folha_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -2638,6 +2715,7 @@ export type Database = {
         | "mudanca_riscos"
         | "retorno_trabalho"
       tipo_salario: "mensal" | "diario" | "por_hora"
+      tipo_variavel_folha: "desconto" | "provento"
       vaga_status: "aberta" | "pausada" | "fechada"
     }
     CompositeTypes: {
@@ -2788,6 +2866,7 @@ export const Constants = {
         "retorno_trabalho",
       ],
       tipo_salario: ["mensal", "diario", "por_hora"],
+      tipo_variavel_folha: ["desconto", "provento"],
       vaga_status: ["aberta", "pausada", "fechada"],
     },
   },

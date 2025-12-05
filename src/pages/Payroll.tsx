@@ -13,6 +13,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import VariaveisConfig from "@/components/payroll/VariaveisConfig";
+import LancamentoFolhaForm from "@/components/payroll/LancamentoFolhaForm";
 import jsPDF from "jspdf";
 
 interface Empresa {
@@ -34,6 +36,19 @@ interface Employee {
   tipo_contrato: string;
 }
 
+interface Variavel {
+  id: string;
+  nome: string;
+  tipo: "desconto" | "provento";
+}
+
+interface PagamentoItem {
+  id: string;
+  variavel_id: string;
+  valor: number;
+  variaveis_folha: Variavel;
+}
+
 interface Pagamento {
   id: string;
   employee_id: string;
@@ -50,6 +65,7 @@ interface Pagamento {
     tipo_contrato: string;
     setor: string | null;
   };
+  folha_pagamento_itens?: PagamentoItem[];
 }
 
 interface ResumoMensal {
@@ -60,6 +76,13 @@ interface ResumoMensal {
   totalEmMaos: number;
   totalDescontos: number;
   totalGeral: number;
+}
+
+interface ResumoVariavel {
+  variavel: string;
+  tipo: "desconto" | "provento";
+  funcionarios: number;
+  total: number;
 }
 
 const Payroll = () => {
@@ -77,7 +100,6 @@ const Payroll = () => {
   const [loading, setLoading] = useState(false);
   const [editingPagamento, setEditingPagamento] = useState<Pagamento | null>(null);
   const [showLancamentoForm, setShowLancamentoForm] = useState(false);
-  const [lancamentoValues, setLancamentoValues] = useState<Record<string, { valor_bruto: number; desconto: number; descontos: number }>>({});
   const [expandedMonth, setExpandedMonth] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("lancamentos");
 
@@ -165,6 +187,16 @@ const Payroll = () => {
           cargo,
           tipo_contrato,
           setor
+        ),
+        folha_pagamento_itens (
+          id,
+          variavel_id,
+          valor,
+          variaveis_folha (
+            id,
+            nome,
+            tipo
+          )
         )
       `)
       .eq("empresa_id", selectedEmpresa)
@@ -191,7 +223,7 @@ const Payroll = () => {
       }
     }
     
-    setPagamentos(filteredData);
+    setPagamentos(filteredData as any);
   };
 
   const fetchTodosPagamentos = async () => {
@@ -212,6 +244,16 @@ const Payroll = () => {
           cargo,
           tipo_contrato,
           setor
+        ),
+        folha_pagamento_itens (
+          id,
+          variavel_id,
+          valor,
+          variaveis_folha (
+            id,
+            nome,
+            tipo
+          )
         )
       `)
       .eq("empresa_id", selectedEmpresa)
@@ -238,7 +280,7 @@ const Payroll = () => {
       }
     }
     
-    setTodosPagamentos(filteredData);
+    setTodosPagamentos(filteredData as any);
   };
 
   const getResumosMensais = (): ResumoMensal[] => {
@@ -261,13 +303,39 @@ const Payroll = () => {
       resumos[key].totalEmConta += pag.descontos || 0;
       resumos[key].totalEmMaos += pag.valor_liquido;
       resumos[key].totalDescontos += pag.desconto || 0;
-      resumos[key].totalGeral += (pag.descontos || 0) + pag.valor_liquido + (pag.desconto || 0);
+      resumos[key].totalGeral += pag.valor_bruto;
     });
     
     return Object.values(resumos).sort((a, b) => {
       if (a.ano !== b.ano) return b.ano - a.ano;
       return b.mes - a.mes;
     });
+  };
+
+  const getResumoVariaveis = (): ResumoVariavel[] => {
+    const resumos: Record<string, ResumoVariavel> = {};
+    
+    pagamentos.forEach(pag => {
+      if (pag.folha_pagamento_itens) {
+        pag.folha_pagamento_itens.forEach(item => {
+          const varName = item.variaveis_folha?.nome || "Desconhecido";
+          const varTipo = item.variaveis_folha?.tipo || "desconto";
+          
+          if (!resumos[varName]) {
+            resumos[varName] = {
+              variavel: varName,
+              tipo: varTipo,
+              funcionarios: 0,
+              total: 0,
+            };
+          }
+          resumos[varName].funcionarios += 1;
+          resumos[varName].total += item.valor;
+        });
+      }
+    });
+    
+    return Object.values(resumos).sort((a, b) => b.total - a.total);
   };
 
   const getPagamentosByMonth = (mes: number, ano: number) => {
@@ -279,59 +347,13 @@ const Payroll = () => {
       toast.error("Selecione uma empresa com funcionários ativos");
       return;
     }
-    
-    const initialValues: Record<string, { valor_bruto: number; desconto: number; descontos: number }> = {};
-    employees.forEach((emp) => {
-      initialValues[emp.id] = {
-        valor_bruto: emp.salario || 0,
-        desconto: 0,
-        descontos: 0,
-      };
-    });
-    setLancamentoValues(initialValues);
     setShowLancamentoForm(true);
   };
 
-  const handleLancamentoValueChange = (empId: string, field: 'valor_bruto' | 'desconto' | 'descontos', value: number) => {
-    setLancamentoValues(prev => ({
-      ...prev,
-      [empId]: {
-        ...prev[empId],
-        [field]: value,
-      }
-    }));
-  };
-
-  const handleConfirmLancamento = async () => {
-    setLoading(true);
-    try {
-      const pagamentosParaInserir = Object.entries(lancamentoValues).map(([empId, values]) => ({
-        employee_id: empId,
-        empresa_id: selectedEmpresa,
-        mes,
-        ano,
-        valor_bruto: values.valor_bruto,
-        desconto: values.desconto,
-        descontos: values.descontos,
-        valor_liquido: values.valor_bruto - values.desconto - values.descontos,
-      }));
-
-      const { error } = await supabase
-        .from("folha_pagamento")
-        .upsert(pagamentosParaInserir, { onConflict: "employee_id,mes,ano" });
-
-      if (error) throw error;
-
-      toast.success("Pagamentos lançados com sucesso!");
-      setShowLancamentoForm(false);
-      fetchPagamentos();
-      fetchTodosPagamentos();
-    } catch (error: any) {
-      console.error("Erro ao lançar pagamentos:", error);
-      toast.error("Erro ao lançar pagamentos");
-    } finally {
-      setLoading(false);
-    }
+  const handleLancamentoSuccess = () => {
+    setShowLancamentoForm(false);
+    fetchPagamentos();
+    fetchTodosPagamentos();
   };
 
   const handleUpdatePagamento = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -403,25 +425,9 @@ const Payroll = () => {
     let yPosition = 50;
     doc.setFontSize(10);
     
-    const totalEmConta = pagamentos.reduce((sum, p) => sum + (p.descontos || 0), 0);
-    const totalEmMaos = pagamentos.reduce((sum, p) => sum + p.valor_liquido, 0);
-    const totalDescontos = pagamentos.reduce((sum, p) => sum + (p.desconto || 0), 0);
-    const totalGeral = totalEmConta + totalEmMaos + totalDescontos;
-    
-    const totaisPorTipo = pagamentos.reduce((acc, pag) => {
-      const tipo = pag.employees.tipo_contrato;
-      if (!acc[tipo]) {
-        acc[tipo] = { emConta: 0, emMaos: 0, descontos: 0, count: 0 };
-      }
-      acc[tipo].emConta += pag.descontos || 0;
-      acc[tipo].emMaos += pag.valor_liquido;
-      acc[tipo].descontos += pag.desconto || 0;
-      acc[tipo].count += 1;
-      return acc;
-    }, {} as Record<string, { emConta: number; emMaos: number; descontos: number; count: number }>);
-    
+    // Para cada funcionário
     pagamentos.forEach((pag) => {
-      if (yPosition > 260) {
+      if (yPosition > 240) {
         doc.addPage();
         yPosition = 20;
       }
@@ -430,152 +436,212 @@ const Payroll = () => {
                                 pag.employees.tipo_contrato === 'intermitente' ? 'Intermitente' : 
                                 'Prestador de Serviço';
       
-      doc.text(`Funcionário: ${pag.employees.nome_completo}`, 20, yPosition);
-      doc.text(`Cargo: ${pag.employees.cargo}`, 20, yPosition + 6);
-      doc.text(`Tipo: ${tipoContratoLabel}`, 20, yPosition + 12);
-      doc.text(`Valor em Conta: R$ ${(pag.descontos || 0).toFixed(2)}`, 20, yPosition + 18);
-      doc.text(`Valor em Mãos: R$ ${pag.valor_liquido.toFixed(2)}`, 20, yPosition + 24);
+      doc.setFontSize(11);
+      doc.text(`FUNCIONÁRIO: ${pag.employees.nome_completo}`, 20, yPosition);
+      doc.setFontSize(9);
+      doc.text(`Cargo: ${pag.employees.cargo} | Tipo: ${tipoContratoLabel}`, 20, yPosition + 5);
+      yPosition += 12;
+      
+      // Salário base
+      doc.text(`  Salário Base: R$ ${pag.valor_bruto.toFixed(2)}`, 20, yPosition);
+      yPosition += 6;
+      
+      // Itens (proventos e descontos)
+      if (pag.folha_pagamento_itens && pag.folha_pagamento_itens.length > 0) {
+        const proventos = pag.folha_pagamento_itens.filter(i => i.variaveis_folha?.tipo === 'provento');
+        const descontos = pag.folha_pagamento_itens.filter(i => i.variaveis_folha?.tipo === 'desconto');
+        
+        if (proventos.length > 0) {
+          doc.text("  PROVENTOS:", 20, yPosition);
+          yPosition += 5;
+          proventos.forEach(item => {
+            doc.text(`    ${item.variaveis_folha?.nome}: R$ ${item.valor.toFixed(2)}`, 25, yPosition);
+            yPosition += 5;
+          });
+        }
+        
+        if (descontos.length > 0) {
+          doc.text("  DESCONTOS:", 20, yPosition);
+          yPosition += 5;
+          descontos.forEach(item => {
+            doc.text(`    ${item.variaveis_folha?.nome}: R$ ${item.valor.toFixed(2)}`, 25, yPosition);
+            yPosition += 5;
+          });
+        }
+      }
+      
+      doc.setFontSize(10);
+      doc.text(`  VALOR EM MÃOS: R$ ${pag.valor_liquido.toFixed(2)}`, 20, yPosition);
+      yPosition += 10;
+      
       if (pag.observacoes) {
-        doc.text(`Obs: ${pag.observacoes}`, 20, yPosition + 30);
-        yPosition += 40;
-      } else {
-        yPosition += 34;
+        doc.setFontSize(8);
+        doc.text(`  Obs: ${pag.observacoes}`, 20, yPosition);
+        yPosition += 8;
       }
     });
     
-    if (yPosition > 180) {
+    // Resumo por variável
+    const resumoVariaveis = getResumoVariaveis();
+    if (resumoVariaveis.length > 0) {
+      if (yPosition > 200) {
+        doc.addPage();
+        yPosition = 20;
+      }
+      
+      yPosition += 10;
+      doc.setFontSize(12);
+      doc.text("RESUMO POR VARIÁVEL", 20, yPosition);
+      yPosition += 8;
+      
+      doc.setFontSize(9);
+      resumoVariaveis.forEach(rv => {
+        const tipoLabel = rv.tipo === 'provento' ? '(+)' : '(-)';
+        doc.text(`${rv.variavel} ${tipoLabel}: ${rv.funcionarios} func. | R$ ${rv.total.toFixed(2)}`, 25, yPosition);
+        yPosition += 5;
+      });
+    }
+    
+    // Totais gerais
+    if (yPosition > 230) {
       doc.addPage();
       yPosition = 20;
     }
     
-    doc.setFontSize(12);
-    yPosition += 10;
-    doc.text("TOTAIS POR TIPO DE CONTRATO", 20, yPosition);
-    yPosition += 10;
+    const totalProventos = pagamentos.reduce((sum, p) => sum + p.valor_bruto, 0);
+    const totalDescontos = pagamentos.reduce((sum, p) => sum + p.desconto, 0);
+    const totalLiquido = pagamentos.reduce((sum, p) => sum + p.valor_liquido, 0);
     
+    yPosition += 10;
+    doc.setFontSize(12);
+    doc.text("TOTAIS GERAIS", 20, yPosition);
+    yPosition += 8;
     doc.setFontSize(10);
-    Object.entries(totaisPorTipo).forEach(([tipo, valores]) => {
-      const tipoLabel = tipo === 'fixo' ? 'Fixo' : 
-                        tipo === 'intermitente' ? 'Intermitente' : 
-                        'Prestador de Serviço';
-      
-      const totalTipo = valores.emConta + valores.emMaos + valores.descontos;
-      doc.text(`${tipoLabel} (${valores.count} funcionário${valores.count > 1 ? 's' : ''}):`, 20, yPosition);
-      doc.text(`  Valor em Conta: R$ ${valores.emConta.toFixed(2)}`, 25, yPosition + 6);
-      doc.text(`  Valor em Mãos: R$ ${valores.emMaos.toFixed(2)}`, 25, yPosition + 12);
-      doc.text(`  Total: R$ ${totalTipo.toFixed(2)}`, 25, yPosition + 18);
-      yPosition += 26;
-    });
-    
-    yPosition += 5;
-    doc.setFontSize(12);
-    doc.text("TOTAL GERAL", 20, yPosition);
-    doc.text(`Valor em Conta: R$ ${totalEmConta.toFixed(2)}`, 20, yPosition + 8);
-    doc.text(`Valor em Mãos: R$ ${totalEmMaos.toFixed(2)}`, 20, yPosition + 16);
-    doc.text(`Total: R$ ${totalGeral.toFixed(2)}`, 20, yPosition + 24);
+    doc.text(`Total Bruto: R$ ${totalProventos.toFixed(2)}`, 25, yPosition);
+    doc.text(`Total Descontos: R$ ${totalDescontos.toFixed(2)}`, 25, yPosition + 6);
+    doc.text(`Total em Mãos: R$ ${totalLiquido.toFixed(2)}`, 25, yPosition + 12);
     
     doc.save(`folha-pagamento-${mesNome}-${ano}.pdf`);
   };
 
   const valorTotal = pagamentos.reduce((sum, p) => sum + p.valor_liquido, 0);
   const resumosMensais = getResumosMensais();
+  const resumoVariaveis = getResumoVariaveis();
 
-  const renderPagamentoCard = (pag: Pagamento, showActions: boolean = true) => (
-    <div key={pag.id} className="flex items-center justify-between p-4 border rounded-lg">
-      <div>
-        <p className="font-semibold">{pag.employees.nome_completo}</p>
-        <p className="text-sm text-muted-foreground">{pag.employees.cargo}</p>
-        <p className="text-xs text-muted-foreground">
-          {pag.employees.tipo_contrato === 'fixo' ? 'Fixo' : 
-           pag.employees.tipo_contrato === 'intermitente' ? 'Intermitente' : 
-           'Prestador de Serviço'}
-        </p>
-        <div className="mt-2 text-sm">
-          <p>Bruto: R$ {pag.valor_bruto.toFixed(2)}</p>
-          <p>Desconto: R$ {(pag.desconto || 0).toFixed(2)}</p>
-          <p>Valor em conta: R$ {(pag.descontos || 0).toFixed(2)}</p>
-          <p className="font-semibold">Valor em Mãos: R$ {pag.valor_liquido.toFixed(2)}</p>
-          {pag.observacoes && <p className="text-muted-foreground mt-1">{pag.observacoes}</p>}
+  const renderPagamentoCard = (pag: Pagamento, showActions: boolean = true) => {
+    const proventos = pag.folha_pagamento_itens?.filter(i => i.variaveis_folha?.tipo === 'provento') || [];
+    const descontos = pag.folha_pagamento_itens?.filter(i => i.variaveis_folha?.tipo === 'desconto') || [];
+    
+    return (
+      <div key={pag.id} className="flex items-start justify-between p-4 border rounded-lg">
+        <div className="flex-1">
+          <p className="font-semibold">{pag.employees.nome_completo}</p>
+          <p className="text-sm text-muted-foreground">{pag.employees.cargo}</p>
+          <p className="text-xs text-muted-foreground">
+            {pag.employees.tipo_contrato === 'fixo' ? 'Fixo' : 
+             pag.employees.tipo_contrato === 'intermitente' ? 'Intermitente' : 
+             'Prestador de Serviço'}
+          </p>
+          <div className="mt-2 grid md:grid-cols-3 gap-4 text-sm">
+            <div>
+              <p className="font-medium text-green-600">Proventos</p>
+              <p>Salário: R$ {pag.valor_bruto.toFixed(2)}</p>
+              {proventos.map(item => (
+                <p key={item.id}>{item.variaveis_folha?.nome}: R$ {item.valor.toFixed(2)}</p>
+              ))}
+            </div>
+            <div>
+              <p className="font-medium text-red-600">Descontos</p>
+              {descontos.length > 0 ? descontos.map(item => (
+                <p key={item.id}>{item.variaveis_folha?.nome}: R$ {item.valor.toFixed(2)}</p>
+              )) : <p className="text-muted-foreground">-</p>}
+            </div>
+            <div>
+              <p className="font-medium">Resumo</p>
+              <p className="text-lg font-bold text-primary">Valor em Mãos: R$ {pag.valor_liquido.toFixed(2)}</p>
+            </div>
+          </div>
+          {pag.observacoes && <p className="text-muted-foreground mt-2 text-sm">{pag.observacoes}</p>}
         </div>
+        {showActions && (
+          <div className="flex gap-2 ml-4">
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button variant="outline" size="sm" onClick={() => setEditingPagamento(pag)}>
+                  <Pencil className="w-4 h-4" />
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Editar Pagamento</DialogTitle>
+                </DialogHeader>
+                <form onSubmit={handleUpdatePagamento} className="space-y-4">
+                  <div>
+                    <Label>Valor Bruto</Label>
+                    <Input
+                      name="valor_bruto"
+                      type="number"
+                      step="0.01"
+                      defaultValue={pag.valor_bruto}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label>Desconto</Label>
+                    <Input
+                      name="desconto"
+                      type="number"
+                      step="0.01"
+                      defaultValue={pag.desconto || 0}
+                    />
+                  </div>
+                  <div>
+                    <Label>Valor em conta</Label>
+                    <Input
+                      name="descontos"
+                      type="number"
+                      step="0.01"
+                      defaultValue={pag.descontos || 0}
+                    />
+                  </div>
+                  <div>
+                    <Label>Observações</Label>
+                    <Textarea
+                      name="observacoes"
+                      defaultValue={pag.observacoes || ""}
+                      rows={3}
+                    />
+                  </div>
+                  <Button type="submit">Salvar</Button>
+                </form>
+              </DialogContent>
+            </Dialog>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="destructive" size="sm">
+                  <Trash2 className="w-4 h-4" />
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Deseja realmente excluir o pagamento de {pag.employees.nome_completo}? Esta ação não pode ser desfeita.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                  <AlertDialogAction onClick={() => handleDeletePagamento(pag.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                    Excluir
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
+        )}
       </div>
-      {showActions && (
-        <div className="flex gap-2">
-          <Dialog>
-            <DialogTrigger asChild>
-              <Button variant="outline" size="sm" onClick={() => setEditingPagamento(pag)}>
-                <Pencil className="w-4 h-4" />
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Editar Pagamento</DialogTitle>
-              </DialogHeader>
-              <form onSubmit={handleUpdatePagamento} className="space-y-4">
-                <div>
-                  <Label>Valor Bruto</Label>
-                  <Input
-                    name="valor_bruto"
-                    type="number"
-                    step="0.01"
-                    defaultValue={pag.valor_bruto}
-                    required
-                  />
-                </div>
-                <div>
-                  <Label>Desconto</Label>
-                  <Input
-                    name="desconto"
-                    type="number"
-                    step="0.01"
-                    defaultValue={pag.desconto || 0}
-                  />
-                </div>
-                <div>
-                  <Label>Valor em conta</Label>
-                  <Input
-                    name="descontos"
-                    type="number"
-                    step="0.01"
-                    defaultValue={pag.descontos || 0}
-                  />
-                </div>
-                <div>
-                  <Label>Observações</Label>
-                  <Textarea
-                    name="observacoes"
-                    defaultValue={pag.observacoes || ""}
-                    rows={3}
-                  />
-                </div>
-                <Button type="submit">Salvar</Button>
-              </form>
-            </DialogContent>
-          </Dialog>
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button variant="destructive" size="sm">
-                <Trash2 className="w-4 h-4" />
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
-                <AlertDialogDescription>
-                  Deseja realmente excluir o pagamento de {pag.employees.nome_completo}? Esta ação não pode ser desfeita.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                <AlertDialogAction onClick={() => handleDeletePagamento(pag.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                  Excluir
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-        </div>
-      )}
-    </div>
-  );
+    );
+  };
 
   return (
     <div className="min-h-screen bg-background p-8">
@@ -685,6 +751,7 @@ const Payroll = () => {
             <TabsList className="mb-4">
               <TabsTrigger value="lancamentos">Lançamentos</TabsTrigger>
               <TabsTrigger value="historico">Histórico</TabsTrigger>
+              <TabsTrigger value="variaveis">Variáveis</TabsTrigger>
             </TabsList>
 
             <TabsContent value="lancamentos">
@@ -699,62 +766,41 @@ const Payroll = () => {
               </div>
 
               <Dialog open={showLancamentoForm} onOpenChange={setShowLancamentoForm}>
-                <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+                <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
                   <DialogHeader>
-                    <DialogTitle>Lançar Pagamentos - {new Date(ano, mes - 1).toLocaleString("pt-BR", { month: "long", year: "numeric" })}</DialogTitle>
+                    <DialogTitle>Lançar Pagamentos</DialogTitle>
                   </DialogHeader>
-                  <div className="space-y-4">
-                    {employees.map((emp) => (
-                      <div key={emp.id} className="p-4 border rounded-lg">
-                        <p className="font-semibold mb-2">{emp.nome_completo}</p>
-                        <p className="text-sm text-muted-foreground mb-3">{emp.cargo} - {emp.setor}</p>
-                        <div className="grid grid-cols-4 gap-4">
-                          <div>
-                            <Label>Valor Bruto</Label>
-                            <Input
-                              type="number"
-                              step="0.01"
-                              value={lancamentoValues[emp.id]?.valor_bruto || 0}
-                              onChange={(e) => handleLancamentoValueChange(emp.id, 'valor_bruto', parseFloat(e.target.value) || 0)}
-                            />
-                          </div>
-                          <div>
-                            <Label>Desconto</Label>
-                            <Input
-                              type="number"
-                              step="0.01"
-                              value={lancamentoValues[emp.id]?.desconto || 0}
-                              onChange={(e) => handleLancamentoValueChange(emp.id, 'desconto', parseFloat(e.target.value) || 0)}
-                            />
-                          </div>
-                          <div>
-                            <Label>Valor em conta</Label>
-                            <Input
-                              type="number"
-                              step="0.01"
-                              value={lancamentoValues[emp.id]?.descontos || 0}
-                              onChange={(e) => handleLancamentoValueChange(emp.id, 'descontos', parseFloat(e.target.value) || 0)}
-                            />
-                          </div>
-                          <div>
-                            <Label>Valor em Mãos</Label>
-                            <Input
-                              type="number"
-                              step="0.01"
-                              value={(lancamentoValues[emp.id]?.valor_bruto || 0) - (lancamentoValues[emp.id]?.desconto || 0) - (lancamentoValues[emp.id]?.descontos || 0)}
-                              disabled
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                    <div className="flex justify-end gap-2 pt-4">
-                      <Button variant="outline" onClick={() => setShowLancamentoForm(false)}>Cancelar</Button>
-                      <Button onClick={handleConfirmLancamento} disabled={loading}>Confirmar Lançamento</Button>
-                    </div>
-                  </div>
+                  <LancamentoFolhaForm
+                    employees={employees}
+                    empresaId={selectedEmpresa}
+                    mes={mes}
+                    ano={ano}
+                    onSuccess={handleLancamentoSuccess}
+                    onCancel={() => setShowLancamentoForm(false)}
+                  />
                 </DialogContent>
               </Dialog>
+
+              {/* Resumo por variável */}
+              {resumoVariaveis.length > 0 && (
+                <Card className="mb-4">
+                  <CardHeader>
+                    <CardTitle className="text-base">Resumo por Variável</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-2">
+                      {resumoVariaveis.map(rv => (
+                        <div key={rv.variavel} className={`flex justify-between p-2 rounded ${rv.tipo === 'provento' ? 'bg-green-50 dark:bg-green-950' : 'bg-red-50 dark:bg-red-950'}`}>
+                          <span className="text-sm">{rv.variavel} ({rv.funcionarios})</span>
+                          <span className={`font-semibold text-sm ${rv.tipo === 'provento' ? 'text-green-600' : 'text-red-600'}`}>
+                            R$ {rv.total.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
 
               <Card>
                 <CardHeader>
@@ -806,16 +852,12 @@ const Payroll = () => {
                                 </div>
                                 <div className="flex items-center gap-6">
                                   <div className="text-right">
-                                    <p className="text-xs text-muted-foreground">Em Conta</p>
-                                    <p className="font-semibold text-sm">R$ {resumo.totalEmConta.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
+                                    <p className="text-xs text-muted-foreground">Total Bruto</p>
+                                    <p className="font-semibold text-sm">R$ {resumo.totalGeral.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
                                   </div>
                                   <div className="text-right">
                                     <p className="text-xs text-muted-foreground">Em Mãos</p>
-                                    <p className="font-semibold text-sm">R$ {resumo.totalEmMaos.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
-                                  </div>
-                                  <div className="text-right">
-                                    <p className="text-xs text-muted-foreground">Total</p>
-                                    <p className="font-bold">R$ {resumo.totalGeral.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
+                                    <p className="font-bold">R$ {resumo.totalEmMaos.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
                                   </div>
                                   {isExpanded ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
                                 </div>
@@ -835,6 +877,10 @@ const Payroll = () => {
                   })
                 )}
               </div>
+            </TabsContent>
+
+            <TabsContent value="variaveis">
+              <VariaveisConfig empresaId={selectedEmpresa} />
             </TabsContent>
           </Tabs>
         )}
