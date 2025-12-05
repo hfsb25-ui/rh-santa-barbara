@@ -179,7 +179,7 @@ const Payroll = () => {
         valor_bruto: values.valor_bruto,
         desconto: values.desconto,
         descontos: values.descontos,
-        valor_liquido: values.valor_bruto - values.desconto,
+        valor_liquido: values.valor_bruto - values.desconto - values.descontos,
       }));
 
       const { error } = await supabase
@@ -207,7 +207,7 @@ const Payroll = () => {
     const valor_bruto = parseFloat(formData.get("valor_bruto") as string);
     const desconto = parseFloat(formData.get("desconto") as string) || 0;
     const descontos = parseFloat(formData.get("descontos") as string) || 0;
-    const valor_liquido = valor_bruto - desconto;
+    const valor_liquido = valor_bruto - desconto - descontos;
 
     try {
       const { error } = await supabase
