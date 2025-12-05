@@ -90,7 +90,7 @@ const Payroll = () => {
       query = query.eq("tipo_contrato", tipoContrato as any);
     }
 
-    const { data, error } = await query;
+    const { data, error } = await query.order("nome_completo");
 
     if (error) {
       toast.error("Erro ao carregar funcionários");
