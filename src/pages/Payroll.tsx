@@ -268,25 +268,26 @@ const Payroll = () => {
     let yPosition = 50;
     doc.setFontSize(10);
     
-    const totalBruto = pagamentos.reduce((sum, p) => sum + p.valor_bruto, 0);
-    const totalDescontos = pagamentos.reduce((sum, p) => sum + p.descontos, 0);
-    const totalLiquido = pagamentos.reduce((sum, p) => sum + p.valor_liquido, 0);
+    const totalEmConta = pagamentos.reduce((sum, p) => sum + (p.descontos || 0), 0);
+    const totalEmMaos = pagamentos.reduce((sum, p) => sum + p.valor_liquido, 0);
+    const totalDescontos = pagamentos.reduce((sum, p) => sum + (p.desconto || 0), 0);
+    const totalGeral = totalEmConta + totalEmMaos + totalDescontos;
     
     // Calcular totais por tipo de contrato
     const totaisPorTipo = pagamentos.reduce((acc, pag) => {
       const tipo = pag.employees.tipo_contrato;
       if (!acc[tipo]) {
-        acc[tipo] = { bruto: 0, descontos: 0, liquido: 0, count: 0 };
+        acc[tipo] = { emConta: 0, emMaos: 0, descontos: 0, count: 0 };
       }
-      acc[tipo].bruto += pag.valor_bruto;
-      acc[tipo].descontos += pag.descontos;
-      acc[tipo].liquido += pag.valor_liquido;
+      acc[tipo].emConta += pag.descontos || 0;
+      acc[tipo].emMaos += pag.valor_liquido;
+      acc[tipo].descontos += pag.desconto || 0;
       acc[tipo].count += 1;
       return acc;
-    }, {} as Record<string, { bruto: number; descontos: number; liquido: number; count: number }>);
+    }, {} as Record<string, { emConta: number; emMaos: number; descontos: number; count: number }>);
     
     pagamentos.forEach((pag) => {
-      if (yPosition > 270) {
+      if (yPosition > 260) {
         doc.addPage();
         yPosition = 20;
       }
@@ -298,15 +299,17 @@ const Payroll = () => {
       doc.text(`Funcionário: ${pag.employees.nome_completo}`, 20, yPosition);
       doc.text(`Cargo: ${pag.employees.cargo}`, 20, yPosition + 6);
       doc.text(`Tipo: ${tipoContratoLabel}`, 20, yPosition + 12);
-      doc.text(`Valor Líquido: R$ ${pag.valor_liquido.toFixed(2)}`, 20, yPosition + 18);
+      doc.text(`Valor em Conta: R$ ${(pag.descontos || 0).toFixed(2)}`, 20, yPosition + 18);
+      doc.text(`Valor em Mãos: R$ ${pag.valor_liquido.toFixed(2)}`, 20, yPosition + 24);
       if (pag.observacoes) {
-        doc.text(`Obs: ${pag.observacoes}`, 20, yPosition + 24);
+        doc.text(`Obs: ${pag.observacoes}`, 20, yPosition + 30);
+        yPosition += 40;
+      } else {
+        yPosition += 34;
       }
-      
-      yPosition += 34;
     });
     
-    if (yPosition > 200) {
+    if (yPosition > 180) {
       doc.addPage();
       yPosition = 20;
     }
@@ -322,15 +325,20 @@ const Payroll = () => {
                         tipo === 'intermitente' ? 'Intermitente' : 
                         'Prestador de Serviço';
       
+      const totalTipo = valores.emConta + valores.emMaos + valores.descontos;
       doc.text(`${tipoLabel} (${valores.count} funcionário${valores.count > 1 ? 's' : ''}):`, 20, yPosition);
-      doc.text(`  Líquido: R$ ${valores.liquido.toFixed(2)}`, 25, yPosition + 6);
-      yPosition += 16;
+      doc.text(`  Valor em Conta: R$ ${valores.emConta.toFixed(2)}`, 25, yPosition + 6);
+      doc.text(`  Valor em Mãos: R$ ${valores.emMaos.toFixed(2)}`, 25, yPosition + 12);
+      doc.text(`  Total: R$ ${totalTipo.toFixed(2)}`, 25, yPosition + 18);
+      yPosition += 26;
     });
     
     yPosition += 5;
     doc.setFontSize(12);
     doc.text("TOTAL GERAL", 20, yPosition);
-    doc.text(`Total Líquido: R$ ${totalLiquido.toFixed(2)}`, 20, yPosition + 8);
+    doc.text(`Valor em Conta: R$ ${totalEmConta.toFixed(2)}`, 20, yPosition + 8);
+    doc.text(`Valor em Mãos: R$ ${totalEmMaos.toFixed(2)}`, 20, yPosition + 16);
+    doc.text(`Total: R$ ${totalGeral.toFixed(2)}`, 20, yPosition + 24);
     
     doc.save(`folha-pagamento-${mesNome}-${ano}.pdf`);
   };
@@ -475,7 +483,7 @@ const Payroll = () => {
                           />
                         </div>
                         <div>
-                          <Label>Valor Líquido</Label>
+                          <Label>Valor em Mãos</Label>
                           <Input
                             type="number"
                             step="0.01"
@@ -514,7 +522,7 @@ const Payroll = () => {
                           <p>Bruto: R$ {pag.valor_bruto.toFixed(2)}</p>
                           <p>Desconto: R$ {(pag.desconto || 0).toFixed(2)}</p>
                           <p>Valor em conta: R$ {(pag.descontos || 0).toFixed(2)}</p>
-                          <p className="font-semibold">Líquido: R$ {pag.valor_liquido.toFixed(2)}</p>
+                          <p className="font-semibold">Valor em Mãos: R$ {pag.valor_liquido.toFixed(2)}</p>
                           {pag.observacoes && <p className="text-muted-foreground mt-1">{pag.observacoes}</p>}
                         </div>
                       </div>
