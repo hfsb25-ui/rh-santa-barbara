@@ -534,6 +534,7 @@ export type Database = {
           epis_visivel: boolean
           ferias_visivel: boolean
           folgas_visivel: boolean
+          holerite_visivel: boolean
           id: string
           saldo_horas_visivel: boolean
           tipos_contrato_permitidos: string[]
@@ -548,6 +549,7 @@ export type Database = {
           epis_visivel?: boolean
           ferias_visivel?: boolean
           folgas_visivel?: boolean
+          holerite_visivel?: boolean
           id?: string
           saldo_horas_visivel?: boolean
           tipos_contrato_permitidos?: string[]
@@ -562,6 +564,7 @@ export type Database = {
           epis_visivel?: boolean
           ferias_visivel?: boolean
           folgas_visivel?: boolean
+          holerite_visivel?: boolean
           id?: string
           saldo_horas_visivel?: boolean
           tipos_contrato_permitidos?: string[]
