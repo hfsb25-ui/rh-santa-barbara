@@ -37,22 +37,28 @@ const VariaveisConfig = ({ empresaId }: VariaveisConfigProps) => {
   }, [empresaId]);
 
   const fetchVariaveis = async () => {
-    let query = supabase
-      .from("variaveis_folha")
-      .select("*")
-      .order("tipo")
-      .order("nome");
+    try {
+      let query = supabase
+        .from("variaveis_folha")
+        .select("*")
+        .order("tipo")
+        .order("nome");
 
-    if (empresaId) {
-      query = query.or(`empresa_id.eq.${empresaId},empresa_id.is.null`);
-    }
+      if (empresaId && empresaId !== "all") {
+        query = query.or(`empresa_id.eq.${empresaId},empresa_id.is.null`);
+      }
 
-    const { data, error } = await query;
-    if (error) {
+      const { data, error } = await query;
+      if (error) {
+        console.error("Erro ao carregar variáveis:", error);
+        toast.error("Erro ao carregar variáveis");
+        return;
+      }
+      setVariaveis(data || []);
+    } catch (err) {
+      console.error("Erro inesperado:", err);
       toast.error("Erro ao carregar variáveis");
-      return;
     }
-    setVariaveis(data || []);
   };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
