@@ -119,6 +119,7 @@ const Payroll = () => {
   const [showRelatorioDialog, setShowRelatorioDialog] = useState(false);
   const [holeriteDialogOpen, setHoleriteDialogOpen] = useState(false);
   const [selectedPagamentoForHolerite, setSelectedPagamentoForHolerite] = useState<Pagamento | null>(null);
+  const [selectedEmployeeForLancamento, setSelectedEmployeeForLancamento] = useState<string>("all");
   const [selectedTipoFolhaLancamento, setSelectedTipoFolhaLancamento] = useState<string>("salario");
 
   useEffect(() => {
@@ -844,11 +845,27 @@ const Payroll = () => {
 
             <TabsContent value="lancamentos">
               <div className="flex justify-between items-center mb-4 flex-wrap gap-4">
-                <div className="flex items-center gap-4">
+                <div className="flex items-center gap-4 flex-wrap">
                   <Button onClick={handleOpenLancamentoForm} disabled={loading}>
                     <Plus className="w-4 h-4 mr-2" />
                     Lançar Pagamentos
                   </Button>
+                  <div className="flex items-center gap-2">
+                    <Label className="text-sm whitespace-nowrap">Funcionário:</Label>
+                    <Select value={selectedEmployeeForLancamento} onValueChange={setSelectedEmployeeForLancamento}>
+                      <SelectTrigger className="w-56">
+                        <SelectValue placeholder="Selecione" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Todos os funcionários</SelectItem>
+                        {employees.map((emp) => (
+                          <SelectItem key={emp.id} value={emp.id}>
+                            {emp.nome_completo}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                   <div className="flex items-center gap-2">
                     <Label className="text-sm whitespace-nowrap">Tipo de Folha:</Label>
                     <Select value={selectedTipoFolhaLancamento} onValueChange={setSelectedTipoFolhaLancamento}>
@@ -873,10 +890,16 @@ const Payroll = () => {
               <Dialog open={showLancamentoForm} onOpenChange={setShowLancamentoForm}>
                 <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
                   <DialogHeader>
-                    <DialogTitle>Lançar Pagamentos - {TIPO_FOLHA_OPTIONS.find(o => o.value === selectedTipoFolhaLancamento)?.label}</DialogTitle>
+                    <DialogTitle>
+                      Lançar Pagamentos - {TIPO_FOLHA_OPTIONS.find(o => o.value === selectedTipoFolhaLancamento)?.label}
+                      {selectedEmployeeForLancamento !== "all" && ` (${employees.find(e => e.id === selectedEmployeeForLancamento)?.nome_completo})`}
+                    </DialogTitle>
                   </DialogHeader>
                   <LancamentoFolhaForm
-                    employees={employees}
+                    employees={selectedEmployeeForLancamento === "all" 
+                      ? employees 
+                      : employees.filter(e => e.id === selectedEmployeeForLancamento)
+                    }
                     empresaId={selectedEmpresa}
                     mes={mes}
                     ano={ano}
