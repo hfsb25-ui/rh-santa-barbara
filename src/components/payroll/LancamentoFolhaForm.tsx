@@ -181,36 +181,68 @@ const LancamentoFolhaForm = ({ employees, empresaId, mes, ano, tipoFolha, onSucc
       for (const [empId, lancamento] of Object.entries(lancamentos)) {
         const totais = calcularTotais(empId);
         
-        // Insert or update folha_pagamento
-        const { data: pagamento, error: pagError } = await supabase
+        // Check if record already exists
+        const { data: existingPag } = await supabase
           .from("folha_pagamento")
-          .upsert({
-            employee_id: empId,
-            empresa_id: empresaId,
-            mes,
-            ano,
-            tipo_folha: tipoFolha,
-            valor_bruto: totais.proventos,
-            desconto: totais.descontos,
-            descontos: 0, // Legacy field
-            valor_liquido: totais.liquido,
-            observacoes: lancamento.observacoes || null,
-          }, { onConflict: "employee_id,mes,ano,tipo_folha" })
-          .select()
-          .single();
+          .select("id")
+          .eq("employee_id", empId)
+          .eq("mes", mes)
+          .eq("ano", ano)
+          .eq("tipo_folha", tipoFolha)
+          .maybeSingle();
 
-        if (pagError) throw pagError;
+        let pagamentoId: string;
+
+        if (existingPag) {
+          // Update existing record
+          const { data: updatedPag, error: updateError } = await supabase
+            .from("folha_pagamento")
+            .update({
+              valor_bruto: totais.proventos,
+              desconto: totais.descontos,
+              descontos: 0,
+              valor_liquido: totais.liquido,
+              observacoes: lancamento.observacoes || null,
+            })
+            .eq("id", existingPag.id)
+            .select()
+            .single();
+
+          if (updateError) throw updateError;
+          pagamentoId = updatedPag.id;
+        } else {
+          // Insert new record
+          const { data: newPag, error: insertError } = await supabase
+            .from("folha_pagamento")
+            .insert({
+              employee_id: empId,
+              empresa_id: empresaId,
+              mes,
+              ano,
+              tipo_folha: tipoFolha,
+              valor_bruto: totais.proventos,
+              desconto: totais.descontos,
+              descontos: 0,
+              valor_liquido: totais.liquido,
+              observacoes: lancamento.observacoes || null,
+            })
+            .select()
+            .single();
+
+          if (insertError) throw insertError;
+          pagamentoId = newPag.id;
+        }
 
         // Delete existing items and insert new ones
         await supabase
           .from("folha_pagamento_itens")
           .delete()
-          .eq("folha_pagamento_id", pagamento.id);
+          .eq("folha_pagamento_id", pagamentoId);
 
         const itensParaInserir = Object.entries(lancamento.itens)
           .filter(([_, valor]) => valor > 0)
           .map(([varId, valor]) => ({
-            folha_pagamento_id: pagamento.id,
+            folha_pagamento_id: pagamentoId,
             variavel_id: varId,
             valor,
           }));
