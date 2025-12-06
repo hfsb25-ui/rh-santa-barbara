@@ -2646,6 +2646,7 @@ export type Database = {
       variaveis_folha: {
         Row: {
           ativo: boolean
+          codigo: string | null
           created_at: string
           empresa_id: string | null
           id: string
@@ -2655,6 +2656,7 @@ export type Database = {
         }
         Insert: {
           ativo?: boolean
+          codigo?: string | null
           created_at?: string
           empresa_id?: string | null
           id?: string
@@ -2664,6 +2666,7 @@ export type Database = {
         }
         Update: {
           ativo?: boolean
+          codigo?: string | null
           created_at?: string
           empresa_id?: string | null
           id?: string

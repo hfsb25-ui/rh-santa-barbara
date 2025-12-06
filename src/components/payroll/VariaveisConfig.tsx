@@ -15,6 +15,7 @@ import { toast } from "sonner";
 interface Variavel {
   id: string;
   nome: string;
+  codigo: string | null;
   tipo: "desconto" | "provento";
   empresa_id: string | null;
   ativo: boolean;
@@ -60,29 +61,34 @@ const VariaveisConfig = ({ empresaId }: VariaveisConfigProps) => {
 
     const formData = new FormData(e.currentTarget);
     const nome = formData.get("nome") as string;
+    const codigo = (formData.get("codigo") as string)?.toUpperCase() || null;
     const tipo = formData.get("tipo") as "desconto" | "provento";
 
     try {
       if (editingVariavel) {
         const { error } = await supabase
           .from("variaveis_folha")
-          .update({ nome, tipo })
+          .update({ nome, codigo, tipo })
           .eq("id", editingVariavel.id);
         if (error) throw error;
         toast.success("Variável atualizada!");
       } else {
         const { error } = await supabase
           .from("variaveis_folha")
-          .insert({ nome, tipo, empresa_id: empresaId || null });
+          .insert({ nome, codigo, tipo, empresa_id: empresaId || null });
         if (error) throw error;
         toast.success("Variável criada!");
       }
       setShowForm(false);
       setEditingVariavel(null);
       fetchVariaveis();
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
-      toast.error("Erro ao salvar variável");
+      if (error.code === "23505") {
+        toast.error("Este código já está em uso");
+      } else {
+        toast.error("Erro ao salvar variável");
+      }
     } finally {
       setLoading(false);
     }
@@ -154,6 +160,19 @@ const VariaveisConfig = ({ empresaId }: VariaveisConfigProps) => {
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
+                <Label>Código</Label>
+                <Input 
+                  name="codigo" 
+                  defaultValue={editingVariavel?.codigo || ""} 
+                  placeholder="Ex: HE, INSS, VT"
+                  className="uppercase"
+                  maxLength={10}
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Código para busca rápida durante o lançamento
+                </p>
+              </div>
+              <div>
                 <Label>Nome</Label>
                 <Input 
                   name="nome" 
@@ -204,6 +223,11 @@ const VariaveisConfig = ({ empresaId }: VariaveisConfigProps) => {
                       checked={v.ativo} 
                       onCheckedChange={() => handleToggleAtivo(v)}
                     />
+                    {v.codigo && (
+                      <Badge variant="outline" className="font-mono text-xs">
+                        {v.codigo}
+                      </Badge>
+                    )}
                     <span className={v.ativo ? "" : "text-muted-foreground line-through"}>
                       {v.nome}
                     </span>
@@ -269,6 +293,11 @@ const VariaveisConfig = ({ empresaId }: VariaveisConfigProps) => {
                       checked={v.ativo} 
                       onCheckedChange={() => handleToggleAtivo(v)}
                     />
+                    {v.codigo && (
+                      <Badge variant="outline" className="font-mono text-xs">
+                        {v.codigo}
+                      </Badge>
+                    )}
                     <span className={v.ativo ? "" : "text-muted-foreground line-through"}>
                       {v.nome}
                     </span>
