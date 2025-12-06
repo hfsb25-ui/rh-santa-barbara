@@ -398,8 +398,13 @@ const Payroll = () => {
     setShowLancamentoForm(true);
   };
 
-  const handleLancamentoSuccess = () => {
+  const handleLancamentoSuccess = (lancamentoMes?: number, lancamentoAno?: number) => {
     setShowLancamentoForm(false);
+    // Se recebeu mês/ano do lançamento, atualiza os filtros para mostrar o mês lançado
+    if (lancamentoMes !== undefined && lancamentoAno !== undefined) {
+      setMes(lancamentoMes);
+      setAno(lancamentoAno);
+    }
     fetchPagamentos();
     fetchTodosPagamentos();
   };
@@ -904,7 +909,7 @@ const Payroll = () => {
                     mes={mes}
                     ano={ano}
                     tipoFolha={selectedTipoFolhaLancamento}
-                    onSuccess={handleLancamentoSuccess}
+                    onSuccess={() => handleLancamentoSuccess(mes, ano)}
                     onCancel={() => setShowLancamentoForm(false)}
                   />
                 </DialogContent>
