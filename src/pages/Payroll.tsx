@@ -90,7 +90,7 @@ const Payroll = () => {
   const navigate = useNavigate();
   const [empresas, setEmpresas] = useState<Empresa[]>([]);
   const [setores, setSetores] = useState<Setor[]>([]);
-  const [selectedEmpresa, setSelectedEmpresa] = useState<string>("");
+  const [selectedEmpresa, setSelectedEmpresa] = useState<string>("all");
   const [selectedSetor, setSelectedSetor] = useState<string>("all");
   const [mes, setMes] = useState<number>(new Date().getMonth() + 1);
   const [ano, setAno] = useState<number>(new Date().getFullYear());
@@ -111,11 +111,9 @@ const Payroll = () => {
   }, []);
 
   useEffect(() => {
-    if (selectedEmpresa) {
-      fetchEmployees();
-      fetchPagamentos();
-      fetchTodosPagamentos();
-    }
+    fetchEmployees();
+    fetchPagamentos();
+    fetchTodosPagamentos();
   }, [selectedEmpresa, mes, ano, tipoContrato, selectedSetor]);
 
   const fetchEmpresas = async () => {
@@ -148,8 +146,11 @@ const Payroll = () => {
     let query = supabase
       .from("employees")
       .select("id, nome_completo, cargo, setor, salario, tipo_contrato")
-      .eq("empresa_id", selectedEmpresa)
       .eq("status", "ativo");
+
+    if (selectedEmpresa && selectedEmpresa !== "all") {
+      query = query.eq("empresa_id", selectedEmpresa);
+    }
 
     if (tipoContrato && tipoContrato !== "all") {
       query = query.eq("tipo_contrato", tipoContrato as any);
@@ -201,9 +202,12 @@ const Payroll = () => {
           )
         )
       `)
-      .eq("empresa_id", selectedEmpresa)
       .eq("mes", mes)
       .eq("ano", ano);
+
+    if (selectedEmpresa && selectedEmpresa !== "all") {
+      query = query.eq("empresa_id", selectedEmpresa);
+    }
 
     const { data, error } = await query;
 
@@ -258,9 +262,12 @@ const Payroll = () => {
           )
         )
       `)
-      .eq("empresa_id", selectedEmpresa)
       .order("ano", { ascending: false })
       .order("mes", { ascending: false });
+
+    if (selectedEmpresa && selectedEmpresa !== "all") {
+      query = query.eq("empresa_id", selectedEmpresa);
+    }
 
     const { data, error } = await query;
 
@@ -345,8 +352,12 @@ const Payroll = () => {
   };
 
   const handleOpenLancamentoForm = () => {
-    if (!selectedEmpresa || employees.length === 0) {
-      toast.error("Selecione uma empresa com funcionários ativos");
+    if (!selectedEmpresa || selectedEmpresa === "all") {
+      toast.error("Selecione uma empresa específica para lançar pagamentos");
+      return;
+    }
+    if (employees.length === 0) {
+      toast.error("Não há funcionários ativos nesta empresa");
       return;
     }
     setShowLancamentoForm(true);
@@ -682,6 +693,7 @@ const Payroll = () => {
                     <SelectValue placeholder="Selecione a empresa" />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="all">Todas as empresas</SelectItem>
                     {empresas.map((empresa) => (
                       <SelectItem key={empresa.id} value={empresa.id}>
                         {empresa.nome}
