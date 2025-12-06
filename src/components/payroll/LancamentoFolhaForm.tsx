@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,7 +6,11 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Copy, TrendingUp, TrendingDown, Plus, X } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { Copy, TrendingUp, TrendingDown, Plus, X, Loader2, Check, ChevronDown, Search, Users } from "lucide-react";
 import { toast } from "sonner";
 
 interface Employee {
@@ -37,7 +41,7 @@ interface LancamentoFolhaFormProps {
   mes: number;
   ano: number;
   tipoFolha: string;
-  onSuccess: () => void;
+  onSuccess: (mes: number, ano: number) => void;
   onCancel: () => void;
 }
 
@@ -45,9 +49,10 @@ const LancamentoFolhaForm = ({ employees, empresaId, mes, ano, tipoFolha, onSucc
   const [variaveis, setVariaveis] = useState<Variavel[]>([]);
   const [lancamentos, setLancamentos] = useState<Record<string, LancamentoData>>({});
   const [loading, setLoading] = useState(false);
-  const [codigoInput, setCodigoInput] = useState<Record<string, string>>({});
-  const [foundVariavel, setFoundVariavel] = useState<Record<string, Variavel | null>>({});
-  const valorInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
+  const [selectedEmployee, setSelectedEmployee] = useState<string>("all");
+  const [openVariavelPopover, setOpenVariavelPopover] = useState<Record<string, boolean>>({});
+  const [tempValores, setTempValores] = useState<Record<string, number>>({});
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
 
   useEffect(() => {
     fetchVariaveis();
@@ -175,115 +180,156 @@ const LancamentoFolhaForm = ({ employees, empresaId, mes, ano, tipoFolha, onSucc
     };
   };
 
+  const getResumoGeral = () => {
+    let totalProventos = 0;
+    let totalDescontos = 0;
+    let totalLiquido = 0;
+    let funcionariosComDados = 0;
+
+    const employeesToProcess = selectedEmployee === "all" 
+      ? employees 
+      : employees.filter(e => e.id === selectedEmployee);
+
+    employeesToProcess.forEach(emp => {
+      const totais = calcularTotais(emp.id);
+      if (totais.proventos > 0 || totais.descontos > 0) {
+        funcionariosComDados++;
+        totalProventos += totais.proventos;
+        totalDescontos += totais.descontos;
+        totalLiquido += totais.liquido;
+      }
+    });
+
+    return { totalProventos, totalDescontos, totalLiquido, funcionariosComDados };
+  };
+
   const handleSubmit = async () => {
     setLoading(true);
+    let sucessos = 0;
+    let erros = 0;
+
     try {
-      for (const [empId, lancamento] of Object.entries(lancamentos)) {
-        const totais = calcularTotais(empId);
+      const employeesToProcess = selectedEmployee === "all" 
+        ? employees 
+        : employees.filter(e => e.id === selectedEmployee);
+
+      for (const emp of employeesToProcess) {
+        const lancamento = lancamentos[emp.id];
+        if (!lancamento) continue;
+
+        const totais = calcularTotais(emp.id);
         
-        // Check if record already exists
-        const { data: existingPag } = await supabase
-          .from("folha_pagamento")
-          .select("id")
-          .eq("employee_id", empId)
-          .eq("mes", mes)
-          .eq("ano", ano)
-          .eq("tipo_folha", tipoFolha)
-          .maybeSingle();
+        // Validação: pular funcionários sem salário base
+        if (totais.proventos === 0 && totais.descontos === 0) continue;
 
-        let pagamentoId: string;
-
-        if (existingPag) {
-          // Update existing record
-          const { data: updatedPag, error: updateError } = await supabase
+        try {
+          // Check if record already exists
+          const { data: existingPag } = await supabase
             .from("folha_pagamento")
-            .update({
-              valor_bruto: totais.proventos,
-              desconto: totais.descontos,
-              descontos: 0,
-              valor_liquido: totais.liquido,
-              observacoes: lancamento.observacoes || null,
-            })
-            .eq("id", existingPag.id)
-            .select()
-            .single();
+            .select("id")
+            .eq("employee_id", emp.id)
+            .eq("mes", mes)
+            .eq("ano", ano)
+            .eq("tipo_folha", tipoFolha)
+            .maybeSingle();
 
-          if (updateError) throw updateError;
-          pagamentoId = updatedPag.id;
-        } else {
-          // Insert new record
-          const { data: newPag, error: insertError } = await supabase
-            .from("folha_pagamento")
-            .insert({
-              employee_id: empId,
-              empresa_id: empresaId,
-              mes,
-              ano,
-              tipo_folha: tipoFolha,
-              valor_bruto: totais.proventos,
-              desconto: totais.descontos,
-              descontos: 0,
-              valor_liquido: totais.liquido,
-              observacoes: lancamento.observacoes || null,
-            })
-            .select()
-            .single();
+          let pagamentoId: string;
 
-          if (insertError) throw insertError;
-          pagamentoId = newPag.id;
-        }
+          if (existingPag) {
+            // Update existing record
+            const { data: updatedPag, error: updateError } = await supabase
+              .from("folha_pagamento")
+              .update({
+                valor_bruto: totais.proventos,
+                desconto: totais.descontos,
+                descontos: 0,
+                valor_liquido: totais.liquido,
+                observacoes: lancamento.observacoes || null,
+              })
+              .eq("id", existingPag.id)
+              .select()
+              .single();
 
-        // Delete existing items and insert new ones
-        await supabase
-          .from("folha_pagamento_itens")
-          .delete()
-          .eq("folha_pagamento_id", pagamentoId);
+            if (updateError) throw updateError;
+            pagamentoId = updatedPag.id;
+          } else {
+            // Insert new record
+            const { data: newPag, error: insertError } = await supabase
+              .from("folha_pagamento")
+              .insert({
+                employee_id: emp.id,
+                empresa_id: empresaId,
+                mes,
+                ano,
+                tipo_folha: tipoFolha,
+                valor_bruto: totais.proventos,
+                desconto: totais.descontos,
+                descontos: 0,
+                valor_liquido: totais.liquido,
+                observacoes: lancamento.observacoes || null,
+              })
+              .select()
+              .single();
 
-        const itensParaInserir = Object.entries(lancamento.itens)
-          .filter(([_, valor]) => valor > 0)
-          .map(([varId, valor]) => ({
-            folha_pagamento_id: pagamentoId,
-            variavel_id: varId,
-            valor,
-          }));
+            if (insertError) throw insertError;
+            pagamentoId = newPag.id;
+          }
 
-        if (itensParaInserir.length > 0) {
-          const { error: itensError } = await supabase
+          // Delete existing items and insert new ones
+          await supabase
             .from("folha_pagamento_itens")
-            .insert(itensParaInserir);
-          if (itensError) throw itensError;
+            .delete()
+            .eq("folha_pagamento_id", pagamentoId);
+
+          const itensParaInserir = Object.entries(lancamento.itens)
+            .filter(([_, valor]) => valor > 0)
+            .map(([varId, valor]) => ({
+              folha_pagamento_id: pagamentoId,
+              variavel_id: varId,
+              valor,
+            }));
+
+          if (itensParaInserir.length > 0) {
+            const { error: itensError } = await supabase
+              .from("folha_pagamento_itens")
+              .insert(itensParaInserir);
+            if (itensError) throw itensError;
+          }
+
+          sucessos++;
+        } catch (err) {
+          console.error(`Erro ao processar ${emp.nome_completo}:`, err);
+          erros++;
         }
       }
 
-      toast.success("Pagamentos lançados com sucesso!");
-      onSuccess();
+      if (sucessos > 0) {
+        toast.success(`${sucessos} pagamento(s) lançado(s) com sucesso!`);
+        onSuccess(mes, ano);
+      }
+      if (erros > 0) {
+        toast.error(`${erros} pagamento(s) com erro`);
+      }
+      if (sucessos === 0 && erros === 0) {
+        toast.warning("Nenhum pagamento para lançar. Verifique os valores.");
+      }
     } catch (error) {
       console.error("Erro ao lançar pagamentos:", error);
       toast.error("Erro ao lançar pagamentos");
     } finally {
       setLoading(false);
+      setShowConfirmDialog(false);
     }
   };
 
-  const handleCodigoSearch = (empId: string, codigo: string) => {
-    const upperCodigo = codigo.toUpperCase();
-    setCodigoInput(prev => ({ ...prev, [empId]: upperCodigo }));
-    
-    if (upperCodigo.length >= 1) {
-      const variavel = variaveis.find(v => v.codigo?.toUpperCase() === upperCodigo);
-      setFoundVariavel(prev => ({ ...prev, [empId]: variavel || null }));
-    } else {
-      setFoundVariavel(prev => ({ ...prev, [empId]: null }));
+  const handleAddVariavel = (empId: string, variavel: Variavel, valor: number) => {
+    if (valor <= 0) {
+      toast.error("Digite um valor maior que zero");
+      return;
     }
-  };
-
-  const handleAddVariavelByCodigo = (empId: string, valor: number) => {
-    const variavel = foundVariavel[empId];
-    if (!variavel || valor <= 0) return;
-    
     handleItemChange(empId, variavel.id, valor);
-    setCodigoInput(prev => ({ ...prev, [empId]: "" }));
-    setFoundVariavel(prev => ({ ...prev, [empId]: null }));
+    setOpenVariavelPopover(prev => ({ ...prev, [empId]: false }));
+    setTempValores(prev => ({ ...prev, [`${empId}-${variavel.id}`]: 0 }));
     toast.success(`${variavel.nome} adicionado`);
   };
 
@@ -313,193 +359,383 @@ const LancamentoFolhaForm = ({ employees, empresaId, mes, ano, tipoFolha, onSucc
       .filter(Boolean) as (Variavel & { valor: number })[];
   };
 
+  const getVariaveisDisponiveis = (empId: string) => {
+    const itensAdicionados = new Set(Object.keys(lancamentos[empId]?.itens || {}));
+    return variaveis.filter(v => !itensAdicionados.has(v.id));
+  };
+
+  const employeesToShow = selectedEmployee === "all" 
+    ? employees 
+    : employees.filter(e => e.id === selectedEmployee);
+
+  const resumoGeral = getResumoGeral();
+
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h3 className="text-lg font-semibold">
-          Lançamentos - {new Date(ano, mes - 1).toLocaleString("pt-BR", { month: "long", year: "numeric" })}
-        </h3>
-        <Button variant="outline" onClick={handleCopiarMesAnterior}>
-          <Copy className="w-4 h-4 mr-2" />
-          Copiar do Mês Anterior
-        </Button>
+    <div className="space-y-4">
+      {/* Header com filtros */}
+      <div className="flex flex-wrap gap-4 items-center justify-between bg-muted/30 p-4 rounded-lg">
+        <div>
+          <h3 className="text-lg font-semibold">
+            Lançamentos - {new Date(ano, mes - 1).toLocaleString("pt-BR", { month: "long", year: "numeric" })}
+          </h3>
+          <p className="text-sm text-muted-foreground">
+            {employeesToShow.length} funcionário(s) selecionado(s)
+          </p>
+        </div>
+
+        <div className="flex gap-2 items-center">
+          {/* Filtro de funcionário */}
+          <Select value={selectedEmployee} onValueChange={setSelectedEmployee}>
+            <SelectTrigger className="w-[220px]">
+              <Users className="w-4 h-4 mr-2" />
+              <SelectValue placeholder="Selecionar funcionário" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos os funcionários</SelectItem>
+              {employees.map(emp => (
+                <SelectItem key={emp.id} value={emp.id}>
+                  {emp.nome_completo}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Button variant="outline" onClick={handleCopiarMesAnterior}>
+            <Copy className="w-4 h-4 mr-2" />
+            Copiar Mês Anterior
+          </Button>
+        </div>
       </div>
 
-      <div className="space-y-6 max-h-[60vh] overflow-y-auto">
-        {employees.map(emp => {
+      {/* Resumo geral */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="bg-muted/50 p-3 rounded-lg">
+          <p className="text-sm text-muted-foreground">Funcionários</p>
+          <p className="text-xl font-bold">{resumoGeral.funcionariosComDados}</p>
+        </div>
+        <div className="bg-green-500/10 p-3 rounded-lg">
+          <p className="text-sm text-green-600">Total Proventos</p>
+          <p className="text-xl font-bold text-green-600">
+            R$ {resumoGeral.totalProventos.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+          </p>
+        </div>
+        <div className="bg-red-500/10 p-3 rounded-lg">
+          <p className="text-sm text-red-600">Total Descontos</p>
+          <p className="text-xl font-bold text-red-600">
+            R$ {resumoGeral.totalDescontos.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+          </p>
+        </div>
+        <div className="bg-primary/10 p-3 rounded-lg">
+          <p className="text-sm text-primary">Total Líquido</p>
+          <p className="text-xl font-bold text-primary">
+            R$ {resumoGeral.totalLiquido.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+          </p>
+        </div>
+      </div>
+
+      {/* Lista de funcionários */}
+      <div className="space-y-4 max-h-[50vh] overflow-y-auto pr-2">
+        {employeesToShow.map(emp => {
           const totais = calcularTotais(emp.id);
           const lancamento = lancamentos[emp.id];
           if (!lancamento) return null;
 
+          const itensAdicionados = getVariaveisComValor(emp.id);
+          const proventosAdicionados = itensAdicionados.filter(v => v.tipo === "provento");
+          const descontosAdicionados = itensAdicionados.filter(v => v.tipo === "desconto");
+          const variaveisDisponiveis = getVariaveisDisponiveis(emp.id);
+          const proventosDisponiveis = variaveisDisponiveis.filter(v => v.tipo === "provento");
+          const descontosDisponiveis = variaveisDisponiveis.filter(v => v.tipo === "desconto");
+
           return (
-            <div key={emp.id} className="p-4 border rounded-lg space-y-4">
+            <div key={emp.id} className="p-4 border rounded-lg space-y-4 bg-card">
+              {/* Cabeçalho do funcionário */}
               <div className="flex justify-between items-start">
                 <div>
                   <p className="font-semibold text-lg">{emp.nome_completo}</p>
-                  <p className="text-sm text-muted-foreground">{emp.cargo} - {emp.setor}</p>
+                  <p className="text-sm text-muted-foreground">{emp.cargo} {emp.setor ? `• ${emp.setor}` : ''}</p>
                 </div>
                 <div className="text-right">
                   <p className="text-sm text-muted-foreground">Valor em Mãos</p>
-                  <p className={`text-xl font-bold ${totais.liquido >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  <p className={`text-xl font-bold ${totais.liquido >= 0 ? 'text-green-600' : 'text-destructive'}`}>
                     R$ {totais.liquido.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                   </p>
                 </div>
               </div>
 
-              {/* Busca por código */}
-              <div className="bg-muted/50 p-3 rounded-lg">
-                <Label className="flex items-center gap-2 mb-2">
-                  <Plus className="w-4 h-4" />
-                  Adicionar variável por código
-                </Label>
-                <div className="flex gap-2 items-center">
-                  <Input
-                    placeholder="Digite o código (ex: HE, INSS)"
-                    value={codigoInput[emp.id] || ""}
-                    onChange={(e) => handleCodigoSearch(emp.id, e.target.value)}
-                    className="w-32 uppercase font-mono"
-                    maxLength={10}
-                  />
-                  {foundVariavel[emp.id] && (
-                    <>
-                      <Badge 
-                        variant={foundVariavel[emp.id]?.tipo === "provento" ? "default" : "destructive"}
-                        className="whitespace-nowrap"
-                      >
-                        {foundVariavel[emp.id]?.nome}
-                      </Badge>
+              {/* Grid de proventos e descontos */}
+              <div className="grid md:grid-cols-2 gap-4">
+                {/* Proventos */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label className="flex items-center gap-2">
+                      <TrendingUp className="w-4 h-4 text-green-600" />
+                      Proventos
+                    </Label>
+                    
+                    {/* Dropdown para adicionar provento */}
+                    <Popover 
+                      open={openVariavelPopover[`${emp.id}-provento`]} 
+                      onOpenChange={(open) => setOpenVariavelPopover(prev => ({ ...prev, [`${emp.id}-provento`]: open }))}
+                    >
+                      <PopoverTrigger asChild>
+                        <Button variant="outline" size="sm" className="h-7">
+                          <Plus className="w-3 h-3 mr-1" />
+                          Adicionar
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-80 p-0" align="end">
+                        <Command>
+                          <CommandInput placeholder="Buscar provento..." />
+                          <CommandList>
+                            <CommandEmpty>Nenhum provento encontrado</CommandEmpty>
+                            <CommandGroup heading="Proventos disponíveis">
+                              {proventosDisponiveis.map(v => (
+                                <CommandItem 
+                                  key={v.id}
+                                  className="flex items-center justify-between"
+                                  onSelect={() => {
+                                    const valor = tempValores[`${emp.id}-${v.id}`] || 0;
+                                    if (valor > 0) {
+                                      handleAddVariavel(emp.id, v, valor);
+                                    }
+                                  }}
+                                >
+                                  <div className="flex items-center gap-2">
+                                    {v.codigo && (
+                                      <Badge variant="outline" className="font-mono text-xs">
+                                        {v.codigo}
+                                      </Badge>
+                                    )}
+                                    <span>{v.nome}</span>
+                                  </div>
+                                  <div className="flex items-center gap-1">
+                                    <Input
+                                      type="number"
+                                      step="0.01"
+                                      placeholder="Valor"
+                                      className="w-24 h-7"
+                                      value={tempValores[`${emp.id}-${v.id}`] || ""}
+                                      onChange={(e) => {
+                                        e.stopPropagation();
+                                        setTempValores(prev => ({ 
+                                          ...prev, 
+                                          [`${emp.id}-${v.id}`]: parseFloat(e.target.value) || 0 
+                                        }));
+                                      }}
+                                      onClick={(e) => e.stopPropagation()}
+                                      onKeyDown={(e) => {
+                                        if (e.key === "Enter") {
+                                          e.preventDefault();
+                                          const valor = tempValores[`${emp.id}-${v.id}`] || 0;
+                                          if (valor > 0) {
+                                            handleAddVariavel(emp.id, v, valor);
+                                          }
+                                        }
+                                      }}
+                                    />
+                                    <Button 
+                                      size="sm" 
+                                      className="h-7 w-7 p-0"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        const valor = tempValores[`${emp.id}-${v.id}`] || 0;
+                                        handleAddVariavel(emp.id, v, valor);
+                                      }}
+                                    >
+                                      <Check className="w-3 h-3" />
+                                    </Button>
+                                  </div>
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+
+                  <div className="space-y-2">
+                    {/* Salário base */}
+                    <div className="flex items-center gap-2">
+                      <Label className="w-28 text-sm">Salário Base</Label>
                       <Input
-                        ref={el => valorInputRefs.current[`${emp.id}-valor`] = el}
                         type="number"
                         step="0.01"
-                        placeholder="Valor"
-                        className="w-32"
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") {
-                            const input = e.target as HTMLInputElement;
-                            handleAddVariavelByCodigo(emp.id, parseFloat(input.value) || 0);
-                            input.value = "";
-                          }
-                        }}
+                        value={lancamento.salario_base}
+                        onChange={(e) => handleValueChange(emp.id, "salario_base", parseFloat(e.target.value) || 0)}
+                        className="flex-1"
                       />
-                      <Button 
-                        size="sm" 
-                        onClick={() => {
-                          const input = valorInputRefs.current[`${emp.id}-valor`];
-                          handleAddVariavelByCodigo(emp.id, parseFloat(input?.value || "0"));
-                          if (input) input.value = "";
-                        }}
-                      >
-                        Adicionar
-                      </Button>
-                    </>
-                  )}
-                  {codigoInput[emp.id] && !foundVariavel[emp.id] && (
-                    <span className="text-sm text-muted-foreground">Código não encontrado</span>
-                  )}
+                    </div>
+
+                    {/* Proventos adicionados */}
+                    {proventosAdicionados.map(v => (
+                      <div key={v.id} className="flex items-center gap-2">
+                        {v.codigo && (
+                          <Badge variant="outline" className="font-mono text-xs">
+                            {v.codigo}
+                          </Badge>
+                        )}
+                        <Label className="flex-1 text-sm truncate" title={v.nome}>{v.nome}</Label>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          value={v.valor}
+                          onChange={(e) => handleItemChange(emp.id, v.id, parseFloat(e.target.value) || 0)}
+                          className="w-28"
+                        />
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                          onClick={() => handleRemoveItem(emp.id, v.id)}
+                        >
+                          <X className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    ))}
+
+                    <div className="flex justify-between pt-2 border-t">
+                      <span className="font-semibold text-green-600">Total:</span>
+                      <span className="font-semibold text-green-600">
+                        R$ {totais.proventos.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                      </span>
+                    </div>
+                  </div>
                 </div>
-              </div>
 
-              {/* Itens adicionados */}
-              {(() => {
-                const itensAdicionados = getVariaveisComValor(emp.id);
-                const proventosAdicionados = itensAdicionados.filter(v => v.tipo === "provento");
-                const descontosAdicionados = itensAdicionados.filter(v => v.tipo === "desconto");
+                {/* Descontos */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label className="flex items-center gap-2">
+                      <TrendingDown className="w-4 h-4 text-red-600" />
+                      Descontos
+                    </Label>
+                    
+                    {/* Dropdown para adicionar desconto */}
+                    <Popover 
+                      open={openVariavelPopover[`${emp.id}-desconto`]} 
+                      onOpenChange={(open) => setOpenVariavelPopover(prev => ({ ...prev, [`${emp.id}-desconto`]: open }))}
+                    >
+                      <PopoverTrigger asChild>
+                        <Button variant="outline" size="sm" className="h-7">
+                          <Plus className="w-3 h-3 mr-1" />
+                          Adicionar
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-80 p-0" align="end">
+                        <Command>
+                          <CommandInput placeholder="Buscar desconto..." />
+                          <CommandList>
+                            <CommandEmpty>Nenhum desconto encontrado</CommandEmpty>
+                            <CommandGroup heading="Descontos disponíveis">
+                              {descontosDisponiveis.map(v => (
+                                <CommandItem 
+                                  key={v.id}
+                                  className="flex items-center justify-between"
+                                  onSelect={() => {
+                                    const valor = tempValores[`${emp.id}-${v.id}`] || 0;
+                                    if (valor > 0) {
+                                      handleAddVariavel(emp.id, v, valor);
+                                    }
+                                  }}
+                                >
+                                  <div className="flex items-center gap-2">
+                                    {v.codigo && (
+                                      <Badge variant="outline" className="font-mono text-xs">
+                                        {v.codigo}
+                                      </Badge>
+                                    )}
+                                    <span>{v.nome}</span>
+                                  </div>
+                                  <div className="flex items-center gap-1">
+                                    <Input
+                                      type="number"
+                                      step="0.01"
+                                      placeholder="Valor"
+                                      className="w-24 h-7"
+                                      value={tempValores[`${emp.id}-${v.id}`] || ""}
+                                      onChange={(e) => {
+                                        e.stopPropagation();
+                                        setTempValores(prev => ({ 
+                                          ...prev, 
+                                          [`${emp.id}-${v.id}`]: parseFloat(e.target.value) || 0 
+                                        }));
+                                      }}
+                                      onClick={(e) => e.stopPropagation()}
+                                      onKeyDown={(e) => {
+                                        if (e.key === "Enter") {
+                                          e.preventDefault();
+                                          const valor = tempValores[`${emp.id}-${v.id}`] || 0;
+                                          if (valor > 0) {
+                                            handleAddVariavel(emp.id, v, valor);
+                                          }
+                                        }
+                                      }}
+                                    />
+                                    <Button 
+                                      size="sm" 
+                                      className="h-7 w-7 p-0"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        const valor = tempValores[`${emp.id}-${v.id}`] || 0;
+                                        handleAddVariavel(emp.id, v, valor);
+                                      }}
+                                    >
+                                      <Check className="w-3 h-3" />
+                                    </Button>
+                                  </div>
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
+                  </div>
 
-                return (
-                  <div className="grid md:grid-cols-2 gap-4">
-                    <div>
-                      <Label className="flex items-center gap-2 mb-2">
-                        <TrendingUp className="w-4 h-4 text-green-600" />
-                        Proventos
-                      </Label>
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-2">
-                          <Label className="w-32 text-sm">Salário Base</Label>
+                  <div className="space-y-2">
+                    {descontosAdicionados.length === 0 ? (
+                      <p className="text-sm text-muted-foreground italic py-2">Nenhum desconto adicionado</p>
+                    ) : (
+                      descontosAdicionados.map(v => (
+                        <div key={v.id} className="flex items-center gap-2">
+                          {v.codigo && (
+                            <Badge variant="outline" className="font-mono text-xs">
+                              {v.codigo}
+                            </Badge>
+                          )}
+                          <Label className="flex-1 text-sm truncate" title={v.nome}>{v.nome}</Label>
                           <Input
                             type="number"
                             step="0.01"
-                            value={lancamento.salario_base}
-                            onChange={(e) => handleValueChange(emp.id, "salario_base", parseFloat(e.target.value) || 0)}
-                            className="flex-1"
+                            value={v.valor}
+                            onChange={(e) => handleItemChange(emp.id, v.id, parseFloat(e.target.value) || 0)}
+                            className="w-28"
                           />
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                            onClick={() => handleRemoveItem(emp.id, v.id)}
+                          >
+                            <X className="w-4 h-4" />
+                          </Button>
                         </div>
-                        {proventosAdicionados.map(v => (
-                          <div key={v.id} className="flex items-center gap-2">
-                            <Badge variant="outline" className="font-mono text-xs">
-                              {v.codigo || "—"}
-                            </Badge>
-                            <Label className="flex-1 text-sm truncate" title={v.nome}>{v.nome}</Label>
-                            <Input
-                              type="number"
-                              step="0.01"
-                              value={v.valor}
-                              onChange={(e) => handleItemChange(emp.id, v.id, parseFloat(e.target.value) || 0)}
-                              className="w-28"
-                            />
-                            <Button 
-                              variant="ghost" 
-                              size="icon" 
-                              className="h-8 w-8"
-                              onClick={() => handleRemoveItem(emp.id, v.id)}
-                            >
-                              <X className="w-4 h-4 text-muted-foreground" />
-                            </Button>
-                          </div>
-                        ))}
-                        <div className="flex justify-between pt-2 border-t">
-                          <span className="font-semibold text-green-600">Total Proventos:</span>
-                          <span className="font-semibold text-green-600">
-                            R$ {totais.proventos.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
+                      ))
+                    )}
 
-                    <div>
-                      <Label className="flex items-center gap-2 mb-2">
-                        <TrendingDown className="w-4 h-4 text-red-600" />
-                        Descontos
-                      </Label>
-                      <div className="space-y-2">
-                        {descontosAdicionados.map(v => (
-                          <div key={v.id} className="flex items-center gap-2">
-                            <Badge variant="outline" className="font-mono text-xs">
-                              {v.codigo || "—"}
-                            </Badge>
-                            <Label className="flex-1 text-sm truncate" title={v.nome}>{v.nome}</Label>
-                            <Input
-                              type="number"
-                              step="0.01"
-                              value={v.valor}
-                              onChange={(e) => handleItemChange(emp.id, v.id, parseFloat(e.target.value) || 0)}
-                              className="w-28"
-                            />
-                            <Button 
-                              variant="ghost" 
-                              size="icon" 
-                              className="h-8 w-8"
-                              onClick={() => handleRemoveItem(emp.id, v.id)}
-                            >
-                              <X className="w-4 h-4 text-muted-foreground" />
-                            </Button>
-                          </div>
-                        ))}
-                        {descontosAdicionados.length === 0 && (
-                          <p className="text-sm text-muted-foreground italic">Nenhum desconto adicionado</p>
-                        )}
-                        <div className="flex justify-between pt-2 border-t">
-                          <span className="font-semibold text-red-600">Total Descontos:</span>
-                          <span className="font-semibold text-red-600">
-                            R$ {totais.descontos.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
-                          </span>
-                        </div>
-                      </div>
+                    <div className="flex justify-between pt-2 border-t">
+                      <span className="font-semibold text-red-600">Total:</span>
+                      <span className="font-semibold text-red-600">
+                        R$ {totais.descontos.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                      </span>
                     </div>
                   </div>
-                );
-              })()}
+                </div>
+              </div>
 
+              {/* Observações */}
               <div>
                 <Label>Observações</Label>
                 <Textarea
@@ -507,6 +743,7 @@ const LancamentoFolhaForm = ({ employees, empresaId, mes, ano, tipoFolha, onSucc
                   onChange={(e) => handleValueChange(emp.id, "observacoes", e.target.value)}
                   rows={2}
                   placeholder="Observações opcionais..."
+                  className="mt-1"
                 />
               </div>
             </div>
@@ -516,13 +753,61 @@ const LancamentoFolhaForm = ({ employees, empresaId, mes, ano, tipoFolha, onSucc
 
       <Separator />
 
-      <div className="flex justify-end gap-2">
-        <Button variant="outline" onClick={onCancel}>
-          Cancelar
-        </Button>
-        <Button onClick={handleSubmit} disabled={loading}>
-          {loading ? "Salvando..." : "Confirmar Lançamentos"}
-        </Button>
+      {/* Botões de ação */}
+      <div className="flex justify-between items-center">
+        <p className="text-sm text-muted-foreground">
+          {resumoGeral.funcionariosComDados} funcionário(s) com dados para lançar
+        </p>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={onCancel} disabled={loading}>
+            Cancelar
+          </Button>
+          
+          <AlertDialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
+            <AlertDialogTrigger asChild>
+              <Button disabled={loading || resumoGeral.funcionariosComDados === 0}>
+                {loading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Salvando...
+                  </>
+                ) : (
+                  "Confirmar Lançamentos"
+                )}
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Confirmar Lançamentos</AlertDialogTitle>
+                <AlertDialogDescription asChild>
+                  <div className="space-y-3">
+                    <p>Você está prestes a lançar pagamentos para:</p>
+                    <div className="bg-muted p-3 rounded-lg space-y-1">
+                      <p><strong>{resumoGeral.funcionariosComDados}</strong> funcionário(s)</p>
+                      <p className="text-green-600">Total Proventos: R$ {resumoGeral.totalProventos.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
+                      <p className="text-red-600">Total Descontos: R$ {resumoGeral.totalDescontos.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
+                      <p className="text-primary font-bold">Total Líquido: R$ {resumoGeral.totalLiquido.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
+                    </div>
+                    <p className="text-sm">Deseja continuar?</p>
+                  </div>
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                <AlertDialogAction onClick={handleSubmit} disabled={loading}>
+                  {loading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Salvando...
+                    </>
+                  ) : (
+                    "Confirmar"
+                  )}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </div>
       </div>
     </div>
   );

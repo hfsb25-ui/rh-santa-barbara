@@ -233,10 +233,6 @@ const Payroll = () => {
       query = query.eq("tipo_folha", tipoFolha);
     }
 
-    if (selectedEmpresa && selectedEmpresa !== "all") {
-      query = query.eq("empresa_id", selectedEmpresa);
-    }
-
     const { data, error } = await query;
 
     if (error) {
@@ -398,28 +394,17 @@ const Payroll = () => {
     setShowLancamentoForm(true);
   };
 
-  const handleLancamentoSuccess = (lancamentoMes?: number, lancamentoAno?: number) => {
+  const handleLancamentoSuccess = async (lancamentoMes?: number, lancamentoAno?: number) => {
     setShowLancamentoForm(false);
-    // Se recebeu mês/ano do lançamento, atualiza os filtros para mostrar o mês lançado
+    
+    // Atualiza os filtros para mostrar o mês lançado
     if (lancamentoMes !== undefined && lancamentoAno !== undefined) {
-      if (lancamentoMes !== mes || lancamentoAno !== ano) {
-        setMes(lancamentoMes);
-        setAno(lancamentoAno);
-        // O useEffect vai automaticamente recarregar os dados quando mes/ano mudar
-      } else {
-        // Se já está no mesmo mês/ano, força o refetch com um pequeno delay
-        // para garantir que qualquer operação de banco tenha sido concluída
-        setTimeout(() => {
-          fetchPagamentos();
-          fetchTodosPagamentos();
-        }, 500);
-      }
-    } else {
-      setTimeout(() => {
-        fetchPagamentos();
-        fetchTodosPagamentos();
-      }, 500);
+      setMes(lancamentoMes);
+      setAno(lancamentoAno);
     }
+    
+    // Recarrega os dados imediatamente
+    await Promise.all([fetchPagamentos(), fetchTodosPagamentos()]);
   };
 
   const handleUpdatePagamento = async (e: React.FormEvent<HTMLFormElement>) => {
