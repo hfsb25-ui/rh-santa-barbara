@@ -253,6 +253,13 @@ const Payroll = () => {
       }
     }
     
+    // Ordenar alfabeticamente pelo nome do funcionário
+    filteredData.sort((a: any, b: any) => {
+      const nomeA = a.employees?.nome_completo?.toLowerCase() || '';
+      const nomeB = b.employees?.nome_completo?.toLowerCase() || '';
+      return nomeA.localeCompare(nomeB, 'pt-BR');
+    });
+    
     setPagamentos(filteredData as any);
   };
 
