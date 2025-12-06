@@ -7,10 +7,8 @@ import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Copy, TrendingUp, TrendingDown, Plus, X, Loader2, Check, ChevronDown, Search, Users } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { Copy, TrendingUp, TrendingDown, Plus, X, Loader2, Users, Search } from "lucide-react";
 import { toast } from "sonner";
 
 interface Employee {
@@ -32,7 +30,7 @@ interface Variavel {
 interface LancamentoData {
   salario_base: number;
   observacoes: string;
-  itens: Record<string, number>; // variavel_id -> valor
+  itens: Record<string, number>;
 }
 
 interface LancamentoFolhaFormProps {
@@ -50,8 +48,8 @@ const LancamentoFolhaForm = ({ employees, empresaId, mes, ano, tipoFolha, onSucc
   const [lancamentos, setLancamentos] = useState<Record<string, LancamentoData>>({});
   const [loading, setLoading] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState<string>("all");
-  const [openVariavelPopover, setOpenVariavelPopover] = useState<Record<string, boolean>>({});
-  const [tempValores, setTempValores] = useState<Record<string, number>>({});
+  const [codigoBusca, setCodigoBusca] = useState<Record<string, string>>({});
+  const [valorBusca, setValorBusca] = useState<Record<string, number>>({});
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
 
   useEffect(() => {
@@ -102,37 +100,36 @@ const LancamentoFolhaForm = ({ employees, empresaId, mes, ano, tipoFolha, onSucc
       if (pagError) throw pagError;
 
       if (!pagamentosAnteriores || pagamentosAnteriores.length === 0) {
-        toast.info("Nenhum pagamento encontrado no mês anterior");
+        toast.info("Nenhum lançamento encontrado no mês anterior");
         return;
       }
 
       const newLancamentos = { ...lancamentos };
-
       pagamentosAnteriores.forEach((pag: any) => {
         if (newLancamentos[pag.employee_id]) {
           newLancamentos[pag.employee_id] = {
-            salario_base: pag.valor_bruto,
+            salario_base: pag.valor_bruto - (pag.folha_pagamento_itens?.filter((i: any) => {
+              const v = variaveis.find(v => v.id === i.variavel_id);
+              return v?.tipo === "provento";
+            }).reduce((sum: number, i: any) => sum + i.valor, 0) || 0),
             observacoes: pag.observacoes || "",
-            itens: {},
+            itens: pag.folha_pagamento_itens?.reduce((acc: Record<string, number>, item: any) => {
+              acc[item.variavel_id] = item.valor;
+              return acc;
+            }, {}) || {},
           };
-
-          if (pag.folha_pagamento_itens) {
-            pag.folha_pagamento_itens.forEach((item: any) => {
-              newLancamentos[pag.employee_id].itens[item.variavel_id] = item.valor;
-            });
-          }
         }
       });
 
       setLancamentos(newLancamentos);
       toast.success("Dados do mês anterior copiados!");
     } catch (error) {
-      console.error(error);
+      console.error("Erro ao copiar mês anterior:", error);
       toast.error("Erro ao copiar dados do mês anterior");
     }
   };
 
-  const handleValueChange = (empId: string, field: string, value: number | string) => {
+  const handleValueChange = (empId: string, field: "salario_base" | "observacoes", value: any) => {
     setLancamentos(prev => ({
       ...prev,
       [empId]: {
@@ -164,12 +161,10 @@ const LancamentoFolhaForm = ({ employees, empresaId, mes, ano, tipoFolha, onSucc
 
     Object.entries(lancamento.itens).forEach(([varId, valor]) => {
       const variavel = variaveis.find(v => v.id === varId);
-      if (variavel) {
-        if (variavel.tipo === "provento") {
-          totalProventos += valor;
-        } else {
-          totalDescontos += valor;
-        }
+      if (variavel?.tipo === "provento") {
+        totalProventos += valor;
+      } else if (variavel?.tipo === "desconto") {
+        totalDescontos += valor;
       }
     });
 
@@ -193,10 +188,10 @@ const LancamentoFolhaForm = ({ employees, empresaId, mes, ano, tipoFolha, onSucc
     employeesToProcess.forEach(emp => {
       const totais = calcularTotais(emp.id);
       if (totais.proventos > 0 || totais.descontos > 0) {
-        funcionariosComDados++;
         totalProventos += totais.proventos;
         totalDescontos += totais.descontos;
         totalLiquido += totais.liquido;
+        funcionariosComDados++;
       }
     });
 
@@ -219,11 +214,9 @@ const LancamentoFolhaForm = ({ employees, empresaId, mes, ano, tipoFolha, onSucc
 
         const totais = calcularTotais(emp.id);
         
-        // Validação: pular funcionários sem salário base
         if (totais.proventos === 0 && totais.descontos === 0) continue;
 
         try {
-          // Check if record already exists
           const { data: existingPag } = await supabase
             .from("folha_pagamento")
             .select("id")
@@ -236,7 +229,6 @@ const LancamentoFolhaForm = ({ employees, empresaId, mes, ano, tipoFolha, onSucc
           let pagamentoId: string;
 
           if (existingPag) {
-            // Update existing record
             const { data: updatedPag, error: updateError } = await supabase
               .from("folha_pagamento")
               .update({
@@ -253,7 +245,6 @@ const LancamentoFolhaForm = ({ employees, empresaId, mes, ano, tipoFolha, onSucc
             if (updateError) throw updateError;
             pagamentoId = updatedPag.id;
           } else {
-            // Insert new record
             const { data: newPag, error: insertError } = await supabase
               .from("folha_pagamento")
               .insert({
@@ -275,7 +266,6 @@ const LancamentoFolhaForm = ({ employees, empresaId, mes, ano, tipoFolha, onSucc
             pagamentoId = newPag.id;
           }
 
-          // Delete existing items and insert new ones
           await supabase
             .from("folha_pagamento_itens")
             .delete()
@@ -322,14 +312,32 @@ const LancamentoFolhaForm = ({ employees, empresaId, mes, ano, tipoFolha, onSucc
     }
   };
 
-  const handleAddVariavel = (empId: string, variavel: Variavel, valor: number) => {
+  const handleBuscarVariavel = (empId: string, tipo: "provento" | "desconto") => {
+    const codigo = codigoBusca[`${empId}-${tipo}`]?.trim();
+    const valor = valorBusca[`${empId}-${tipo}`] || 0;
+
+    if (!codigo) {
+      toast.error("Digite o código da variável");
+      return;
+    }
+
+    const variavel = variaveis.find(v => 
+      v.codigo?.toLowerCase() === codigo.toLowerCase() && v.tipo === tipo
+    );
+
+    if (!variavel) {
+      toast.error(`Variável com código "${codigo}" não encontrada`);
+      return;
+    }
+
     if (valor <= 0) {
       toast.error("Digite um valor maior que zero");
       return;
     }
+
     handleItemChange(empId, variavel.id, valor);
-    setOpenVariavelPopover(prev => ({ ...prev, [empId]: false }));
-    setTempValores(prev => ({ ...prev, [`${empId}-${variavel.id}`]: 0 }));
+    setCodigoBusca(prev => ({ ...prev, [`${empId}-${tipo}`]: "" }));
+    setValorBusca(prev => ({ ...prev, [`${empId}-${tipo}`]: 0 }));
     toast.success(`${variavel.nome} adicionado`);
   };
 
@@ -359,11 +367,6 @@ const LancamentoFolhaForm = ({ employees, empresaId, mes, ano, tipoFolha, onSucc
       .filter(Boolean) as (Variavel & { valor: number })[];
   };
 
-  const getVariaveisDisponiveis = (empId: string) => {
-    const itensAdicionados = new Set(Object.keys(lancamentos[empId]?.itens || {}));
-    return variaveis.filter(v => !itensAdicionados.has(v.id));
-  };
-
   const employeesToShow = selectedEmployee === "all" 
     ? employees 
     : employees.filter(e => e.id === selectedEmployee);
@@ -384,7 +387,6 @@ const LancamentoFolhaForm = ({ employees, empresaId, mes, ano, tipoFolha, onSucc
         </div>
 
         <div className="flex gap-2 items-center">
-          {/* Filtro de funcionário */}
           <Select value={selectedEmployee} onValueChange={setSelectedEmployee}>
             <SelectTrigger className="w-[220px]">
               <Users className="w-4 h-4 mr-2" />
@@ -408,25 +410,25 @@ const LancamentoFolhaForm = ({ employees, empresaId, mes, ano, tipoFolha, onSucc
       </div>
 
       {/* Resumo geral */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="bg-muted/50 p-3 rounded-lg">
-          <p className="text-sm text-muted-foreground">Funcionários</p>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 bg-muted/20 rounded-lg">
+        <div>
+          <p className="text-sm text-muted-foreground">Funcionários com dados</p>
           <p className="text-xl font-bold">{resumoGeral.funcionariosComDados}</p>
         </div>
-        <div className="bg-green-500/10 p-3 rounded-lg">
-          <p className="text-sm text-green-600">Total Proventos</p>
+        <div>
+          <p className="text-sm text-muted-foreground">Total Proventos</p>
           <p className="text-xl font-bold text-green-600">
             R$ {resumoGeral.totalProventos.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
           </p>
         </div>
-        <div className="bg-red-500/10 p-3 rounded-lg">
-          <p className="text-sm text-red-600">Total Descontos</p>
+        <div>
+          <p className="text-sm text-muted-foreground">Total Descontos</p>
           <p className="text-xl font-bold text-red-600">
             R$ {resumoGeral.totalDescontos.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
           </p>
         </div>
-        <div className="bg-primary/10 p-3 rounded-lg">
-          <p className="text-sm text-primary">Total Líquido</p>
+        <div>
+          <p className="text-sm text-muted-foreground">Total Líquido</p>
           <p className="text-xl font-bold text-primary">
             R$ {resumoGeral.totalLiquido.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
           </p>
@@ -443,9 +445,6 @@ const LancamentoFolhaForm = ({ employees, empresaId, mes, ano, tipoFolha, onSucc
           const itensAdicionados = getVariaveisComValor(emp.id);
           const proventosAdicionados = itensAdicionados.filter(v => v.tipo === "provento");
           const descontosAdicionados = itensAdicionados.filter(v => v.tipo === "desconto");
-          const variaveisDisponiveis = getVariaveisDisponiveis(emp.id);
-          const proventosDisponiveis = variaveisDisponiveis.filter(v => v.tipo === "provento");
-          const descontosDisponiveis = variaveisDisponiveis.filter(v => v.tipo === "desconto");
 
           return (
             <div key={emp.id} className="p-4 border rounded-lg space-y-4 bg-card">
@@ -467,93 +466,10 @@ const LancamentoFolhaForm = ({ employees, empresaId, mes, ano, tipoFolha, onSucc
               <div className="grid md:grid-cols-2 gap-4">
                 {/* Proventos */}
                 <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label className="flex items-center gap-2">
-                      <TrendingUp className="w-4 h-4 text-green-600" />
-                      Proventos
-                    </Label>
-                    
-                    {/* Dropdown para adicionar provento */}
-                    <Popover 
-                      open={openVariavelPopover[`${emp.id}-provento`]} 
-                      onOpenChange={(open) => setOpenVariavelPopover(prev => ({ ...prev, [`${emp.id}-provento`]: open }))}
-                    >
-                      <PopoverTrigger asChild>
-                        <Button variant="outline" size="sm" className="h-7">
-                          <Plus className="w-3 h-3 mr-1" />
-                          Adicionar
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-80 p-0" align="end">
-                        <Command>
-                          <CommandInput placeholder="Buscar provento..." />
-                          <CommandList>
-                            <CommandEmpty>Nenhum provento encontrado</CommandEmpty>
-                            <CommandGroup heading="Proventos disponíveis">
-                              {proventosDisponiveis.map(v => (
-                                <CommandItem 
-                                  key={v.id}
-                                  className="flex items-center justify-between"
-                                  onSelect={() => {
-                                    const valor = tempValores[`${emp.id}-${v.id}`] || 0;
-                                    if (valor > 0) {
-                                      handleAddVariavel(emp.id, v, valor);
-                                    }
-                                  }}
-                                >
-                                  <div className="flex items-center gap-2">
-                                    {v.codigo && (
-                                      <Badge variant="outline" className="font-mono text-xs">
-                                        {v.codigo}
-                                      </Badge>
-                                    )}
-                                    <span>{v.nome}</span>
-                                  </div>
-                                  <div className="flex items-center gap-1">
-                                    <Input
-                                      type="number"
-                                      step="0.01"
-                                      placeholder="Valor"
-                                      className="w-24 h-7"
-                                      value={tempValores[`${emp.id}-${v.id}`] || ""}
-                                      onChange={(e) => {
-                                        e.stopPropagation();
-                                        setTempValores(prev => ({ 
-                                          ...prev, 
-                                          [`${emp.id}-${v.id}`]: parseFloat(e.target.value) || 0 
-                                        }));
-                                      }}
-                                      onClick={(e) => e.stopPropagation()}
-                                      onKeyDown={(e) => {
-                                        if (e.key === "Enter") {
-                                          e.preventDefault();
-                                          const valor = tempValores[`${emp.id}-${v.id}`] || 0;
-                                          if (valor > 0) {
-                                            handleAddVariavel(emp.id, v, valor);
-                                          }
-                                        }
-                                      }}
-                                    />
-                                    <Button 
-                                      size="sm" 
-                                      className="h-7 w-7 p-0"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        const valor = tempValores[`${emp.id}-${v.id}`] || 0;
-                                        handleAddVariavel(emp.id, v, valor);
-                                      }}
-                                    >
-                                      <Check className="w-3 h-3" />
-                                    </Button>
-                                  </div>
-                                </CommandItem>
-                              ))}
-                            </CommandGroup>
-                          </CommandList>
-                        </Command>
-                      </PopoverContent>
-                    </Popover>
-                  </div>
+                  <Label className="flex items-center gap-2">
+                    <TrendingUp className="w-4 h-4 text-green-600" />
+                    Proventos
+                  </Label>
 
                   <div className="space-y-2">
                     {/* Salário base */}
@@ -595,6 +511,37 @@ const LancamentoFolhaForm = ({ employees, empresaId, mes, ano, tipoFolha, onSucc
                       </div>
                     ))}
 
+                    {/* Adicionar provento por código */}
+                    <div className="flex items-center gap-2 pt-2">
+                      <Input
+                        placeholder="Código"
+                        value={codigoBusca[`${emp.id}-provento`] || ""}
+                        onChange={(e) => setCodigoBusca(prev => ({ ...prev, [`${emp.id}-provento`]: e.target.value }))}
+                        className="w-24"
+                      />
+                      <Input
+                        type="number"
+                        step="0.01"
+                        placeholder="Valor"
+                        value={valorBusca[`${emp.id}-provento`] || ""}
+                        onChange={(e) => setValorBusca(prev => ({ ...prev, [`${emp.id}-provento`]: parseFloat(e.target.value) || 0 }))}
+                        className="flex-1"
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            handleBuscarVariavel(emp.id, "provento");
+                          }
+                        }}
+                      />
+                      <Button 
+                        variant="outline" 
+                        size="icon"
+                        onClick={() => handleBuscarVariavel(emp.id, "provento")}
+                      >
+                        <Plus className="w-4 h-4" />
+                      </Button>
+                    </div>
+
                     <div className="flex justify-between pt-2 border-t">
                       <span className="font-semibold text-green-600">Total:</span>
                       <span className="font-semibold text-green-600">
@@ -606,93 +553,10 @@ const LancamentoFolhaForm = ({ employees, empresaId, mes, ano, tipoFolha, onSucc
 
                 {/* Descontos */}
                 <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label className="flex items-center gap-2">
-                      <TrendingDown className="w-4 h-4 text-red-600" />
-                      Descontos
-                    </Label>
-                    
-                    {/* Dropdown para adicionar desconto */}
-                    <Popover 
-                      open={openVariavelPopover[`${emp.id}-desconto`]} 
-                      onOpenChange={(open) => setOpenVariavelPopover(prev => ({ ...prev, [`${emp.id}-desconto`]: open }))}
-                    >
-                      <PopoverTrigger asChild>
-                        <Button variant="outline" size="sm" className="h-7">
-                          <Plus className="w-3 h-3 mr-1" />
-                          Adicionar
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-80 p-0" align="end">
-                        <Command>
-                          <CommandInput placeholder="Buscar desconto..." />
-                          <CommandList>
-                            <CommandEmpty>Nenhum desconto encontrado</CommandEmpty>
-                            <CommandGroup heading="Descontos disponíveis">
-                              {descontosDisponiveis.map(v => (
-                                <CommandItem 
-                                  key={v.id}
-                                  className="flex items-center justify-between"
-                                  onSelect={() => {
-                                    const valor = tempValores[`${emp.id}-${v.id}`] || 0;
-                                    if (valor > 0) {
-                                      handleAddVariavel(emp.id, v, valor);
-                                    }
-                                  }}
-                                >
-                                  <div className="flex items-center gap-2">
-                                    {v.codigo && (
-                                      <Badge variant="outline" className="font-mono text-xs">
-                                        {v.codigo}
-                                      </Badge>
-                                    )}
-                                    <span>{v.nome}</span>
-                                  </div>
-                                  <div className="flex items-center gap-1">
-                                    <Input
-                                      type="number"
-                                      step="0.01"
-                                      placeholder="Valor"
-                                      className="w-24 h-7"
-                                      value={tempValores[`${emp.id}-${v.id}`] || ""}
-                                      onChange={(e) => {
-                                        e.stopPropagation();
-                                        setTempValores(prev => ({ 
-                                          ...prev, 
-                                          [`${emp.id}-${v.id}`]: parseFloat(e.target.value) || 0 
-                                        }));
-                                      }}
-                                      onClick={(e) => e.stopPropagation()}
-                                      onKeyDown={(e) => {
-                                        if (e.key === "Enter") {
-                                          e.preventDefault();
-                                          const valor = tempValores[`${emp.id}-${v.id}`] || 0;
-                                          if (valor > 0) {
-                                            handleAddVariavel(emp.id, v, valor);
-                                          }
-                                        }
-                                      }}
-                                    />
-                                    <Button 
-                                      size="sm" 
-                                      className="h-7 w-7 p-0"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        const valor = tempValores[`${emp.id}-${v.id}`] || 0;
-                                        handleAddVariavel(emp.id, v, valor);
-                                      }}
-                                    >
-                                      <Check className="w-3 h-3" />
-                                    </Button>
-                                  </div>
-                                </CommandItem>
-                              ))}
-                            </CommandGroup>
-                          </CommandList>
-                        </Command>
-                      </PopoverContent>
-                    </Popover>
-                  </div>
+                  <Label className="flex items-center gap-2">
+                    <TrendingDown className="w-4 h-4 text-red-600" />
+                    Descontos
+                  </Label>
 
                   <div className="space-y-2">
                     {descontosAdicionados.length === 0 ? (
@@ -725,6 +589,37 @@ const LancamentoFolhaForm = ({ employees, empresaId, mes, ano, tipoFolha, onSucc
                       ))
                     )}
 
+                    {/* Adicionar desconto por código */}
+                    <div className="flex items-center gap-2 pt-2">
+                      <Input
+                        placeholder="Código"
+                        value={codigoBusca[`${emp.id}-desconto`] || ""}
+                        onChange={(e) => setCodigoBusca(prev => ({ ...prev, [`${emp.id}-desconto`]: e.target.value }))}
+                        className="w-24"
+                      />
+                      <Input
+                        type="number"
+                        step="0.01"
+                        placeholder="Valor"
+                        value={valorBusca[`${emp.id}-desconto`] || ""}
+                        onChange={(e) => setValorBusca(prev => ({ ...prev, [`${emp.id}-desconto`]: parseFloat(e.target.value) || 0 }))}
+                        className="flex-1"
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            handleBuscarVariavel(emp.id, "desconto");
+                          }
+                        }}
+                      />
+                      <Button 
+                        variant="outline" 
+                        size="icon"
+                        onClick={() => handleBuscarVariavel(emp.id, "desconto")}
+                      >
+                        <Plus className="w-4 h-4" />
+                      </Button>
+                    </div>
+
                     <div className="flex justify-between pt-2 border-t">
                       <span className="font-semibold text-red-600">Total:</span>
                       <span className="font-semibold text-red-600">
@@ -751,64 +646,60 @@ const LancamentoFolhaForm = ({ employees, empresaId, mes, ano, tipoFolha, onSucc
         })}
       </div>
 
-      <Separator />
-
       {/* Botões de ação */}
+      <Separator />
       <div className="flex justify-between items-center">
-        <p className="text-sm text-muted-foreground">
-          {resumoGeral.funcionariosComDados} funcionário(s) com dados para lançar
-        </p>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={onCancel} disabled={loading}>
-            Cancelar
-          </Button>
-          
-          <AlertDialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
-            <AlertDialogTrigger asChild>
-              <Button disabled={loading || resumoGeral.funcionariosComDados === 0}>
-                {loading ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Salvando...
-                  </>
-                ) : (
-                  "Confirmar Lançamentos"
-                )}
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Confirmar Lançamentos</AlertDialogTitle>
-                <AlertDialogDescription asChild>
-                  <div className="space-y-3">
-                    <p>Você está prestes a lançar pagamentos para:</p>
-                    <div className="bg-muted p-3 rounded-lg space-y-1">
-                      <p><strong>{resumoGeral.funcionariosComDados}</strong> funcionário(s)</p>
-                      <p className="text-green-600">Total Proventos: R$ {resumoGeral.totalProventos.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
-                      <p className="text-red-600">Total Descontos: R$ {resumoGeral.totalDescontos.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
-                      <p className="text-primary font-bold">Total Líquido: R$ {resumoGeral.totalLiquido.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
-                    </div>
-                    <p className="text-sm">Deseja continuar?</p>
-                  </div>
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                <AlertDialogAction onClick={handleSubmit} disabled={loading}>
-                  {loading ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Salvando...
-                    </>
-                  ) : (
-                    "Confirmar"
-                  )}
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-        </div>
+        <Button variant="outline" onClick={onCancel} disabled={loading}>
+          Cancelar
+        </Button>
+        <Button 
+          onClick={() => setShowConfirmDialog(true)} 
+          disabled={loading || resumoGeral.funcionariosComDados === 0}
+        >
+          {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+          Lançar Pagamentos
+        </Button>
       </div>
+
+      {/* Dialog de confirmação */}
+      <AlertDialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar Lançamento</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-4">
+                <p>Você está prestes a lançar pagamentos com os seguintes totais:</p>
+                <div className="grid grid-cols-2 gap-2 p-4 bg-muted rounded-lg">
+                  <span>Funcionários:</span>
+                  <span className="font-semibold">{resumoGeral.funcionariosComDados}</span>
+                  <span>Total Proventos:</span>
+                  <span className="font-semibold text-green-600">
+                    R$ {resumoGeral.totalProventos.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                  </span>
+                  <span>Total Descontos:</span>
+                  <span className="font-semibold text-red-600">
+                    R$ {resumoGeral.totalDescontos.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                  </span>
+                  <span>Total Líquido:</span>
+                  <span className="font-semibold text-primary">
+                    R$ {resumoGeral.totalLiquido.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                  </span>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Esta ação irá criar ou atualizar os registros de pagamento para o período selecionado.
+                </p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={loading}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleSubmit} disabled={loading}>
+              {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              Confirmar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
