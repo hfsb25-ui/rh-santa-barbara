@@ -160,33 +160,39 @@ const Payroll = () => {
   };
 
   const fetchEmployees = async () => {
-    let query = supabase
-      .from("employees")
-      .select("id, nome_completo, cargo, setor, salario, tipo_contrato")
-      .eq("status", "ativo");
+    try {
+      let query = supabase
+        .from("employees")
+        .select("id, nome_completo, cargo, setor, salario, tipo_contrato")
+        .eq("status", "ativo");
 
-    if (selectedEmpresa && selectedEmpresa !== "all") {
-      query = query.eq("empresa_id", selectedEmpresa);
-    }
-
-    if (tipoContrato && tipoContrato !== "all") {
-      query = query.eq("tipo_contrato", tipoContrato as any);
-    }
-
-    if (selectedSetor && selectedSetor !== "all") {
-      const setorNome = setores.find(s => s.id === selectedSetor)?.nome;
-      if (setorNome) {
-        query = query.eq("setor", setorNome);
+      if (selectedEmpresa && selectedEmpresa !== "all") {
+        query = query.eq("empresa_id", selectedEmpresa);
       }
-    }
 
-    const { data, error } = await query.order("nome_completo");
+      if (tipoContrato && tipoContrato !== "all") {
+        query = query.eq("tipo_contrato", tipoContrato as any);
+      }
 
-    if (error) {
-      toast.error("Erro ao carregar funcionários");
-      return;
+      if (selectedSetor && selectedSetor !== "all") {
+        const setorNome = setores.find(s => s.id === selectedSetor)?.nome;
+        if (setorNome) {
+          query = query.eq("setor", setorNome);
+        }
+      }
+
+      const { data, error } = await query.order("nome_completo");
+
+      if (error) {
+        console.error("Erro ao carregar funcionários:", error);
+        setEmployees([]);
+        return;
+      }
+      setEmployees(data || []);
+    } catch (err) {
+      console.error("Erro inesperado ao carregar funcionários:", err);
+      setEmployees([]);
     }
-    setEmployees(data || []);
   };
 
   const fetchPagamentos = async () => {
