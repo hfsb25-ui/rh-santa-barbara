@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Download, Plus, Pencil, Trash2, ChevronDown, ChevronUp, Calendar } from "lucide-react";
+import { ArrowLeft, Download, Plus, Pencil, Trash2, ChevronDown, ChevronUp, Calendar, FileText } from "lucide-react";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
@@ -15,6 +15,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import VariaveisConfig from "@/components/payroll/VariaveisConfig";
 import LancamentoFolhaForm from "@/components/payroll/LancamentoFolhaForm";
+import RelatorioDetalhadoDialog from "@/components/payroll/RelatorioDetalhadoDialog";
 import jsPDF from "jspdf";
 
 interface Empresa {
@@ -102,6 +103,7 @@ const Payroll = () => {
   const [showLancamentoForm, setShowLancamentoForm] = useState(false);
   const [expandedMonth, setExpandedMonth] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("lancamentos");
+  const [showRelatorioDialog, setShowRelatorioDialog] = useState(false);
 
   useEffect(() => {
     fetchEmpresas();
@@ -654,10 +656,16 @@ const Payroll = () => {
             <h1 className="text-3xl font-bold">Folha de Pagamento</h1>
           </div>
           {activeTab === "lancamentos" && pagamentos.length > 0 && (
-            <Button onClick={exportToPDF}>
-              <Download className="w-4 h-4 mr-2" />
-              Exportar PDF
-            </Button>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => setShowRelatorioDialog(true)}>
+                <FileText className="w-4 h-4 mr-2" />
+                Relatório Detalhado
+              </Button>
+              <Button onClick={exportToPDF}>
+                <Download className="w-4 h-4 mr-2" />
+                Exportar PDF
+              </Button>
+            </div>
           )}
         </div>
 
@@ -884,6 +892,16 @@ const Payroll = () => {
             </TabsContent>
           </Tabs>
         )}
+
+        <RelatorioDetalhadoDialog
+          open={showRelatorioDialog}
+          onOpenChange={setShowRelatorioDialog}
+          pagamentos={pagamentos}
+          empresaId={selectedEmpresa}
+          empresaNome={empresas.find(e => e.id === selectedEmpresa)?.nome || ""}
+          mes={mes}
+          ano={ano}
+        />
       </div>
     </div>
   );
