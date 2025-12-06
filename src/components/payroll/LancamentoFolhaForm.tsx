@@ -1,11 +1,12 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
-import { Copy, TrendingUp, TrendingDown } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Copy, TrendingUp, TrendingDown, Plus, X } from "lucide-react";
 import { toast } from "sonner";
 
 interface Employee {
@@ -19,6 +20,7 @@ interface Employee {
 interface Variavel {
   id: string;
   nome: string;
+  codigo: string | null;
   tipo: "desconto" | "provento";
   ativo: boolean;
 }
@@ -42,6 +44,9 @@ const LancamentoFolhaForm = ({ employees, empresaId, mes, ano, onSuccess, onCanc
   const [variaveis, setVariaveis] = useState<Variavel[]>([]);
   const [lancamentos, setLancamentos] = useState<Record<string, LancamentoData>>({});
   const [loading, setLoading] = useState(false);
+  const [codigoInput, setCodigoInput] = useState<Record<string, string>>({});
+  const [foundVariavel, setFoundVariavel] = useState<Record<string, Variavel | null>>({});
+  const valorInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
   useEffect(() => {
     fetchVariaveis();
@@ -226,8 +231,53 @@ const LancamentoFolhaForm = ({ employees, empresaId, mes, ano, onSuccess, onCanc
     }
   };
 
-  const proventos = variaveis.filter(v => v.tipo === "provento");
-  const descontos = variaveis.filter(v => v.tipo === "desconto");
+  const handleCodigoSearch = (empId: string, codigo: string) => {
+    const upperCodigo = codigo.toUpperCase();
+    setCodigoInput(prev => ({ ...prev, [empId]: upperCodigo }));
+    
+    if (upperCodigo.length >= 1) {
+      const variavel = variaveis.find(v => v.codigo?.toUpperCase() === upperCodigo);
+      setFoundVariavel(prev => ({ ...prev, [empId]: variavel || null }));
+    } else {
+      setFoundVariavel(prev => ({ ...prev, [empId]: null }));
+    }
+  };
+
+  const handleAddVariavelByCodigo = (empId: string, valor: number) => {
+    const variavel = foundVariavel[empId];
+    if (!variavel || valor <= 0) return;
+    
+    handleItemChange(empId, variavel.id, valor);
+    setCodigoInput(prev => ({ ...prev, [empId]: "" }));
+    setFoundVariavel(prev => ({ ...prev, [empId]: null }));
+    toast.success(`${variavel.nome} adicionado`);
+  };
+
+  const handleRemoveItem = (empId: string, variavelId: string) => {
+    setLancamentos(prev => {
+      const newItens = { ...prev[empId].itens };
+      delete newItens[variavelId];
+      return {
+        ...prev,
+        [empId]: {
+          ...prev[empId],
+          itens: newItens,
+        }
+      };
+    });
+  };
+
+  const getVariaveisComValor = (empId: string) => {
+    const lancamento = lancamentos[empId];
+    if (!lancamento) return [];
+    return Object.entries(lancamento.itens)
+      .filter(([_, valor]) => valor > 0)
+      .map(([varId, valor]) => {
+        const variavel = variaveis.find(v => v.id === varId);
+        return variavel ? { ...variavel, valor } : null;
+      })
+      .filter(Boolean) as (Variavel & { valor: number })[];
+  };
 
   return (
     <div className="space-y-6">
@@ -262,71 +312,159 @@ const LancamentoFolhaForm = ({ employees, empresaId, mes, ano, onSuccess, onCanc
                 </div>
               </div>
 
-              <div className="grid md:grid-cols-2 gap-4">
-                <div>
-                  <Label className="flex items-center gap-2 mb-2">
-                    <TrendingUp className="w-4 h-4 text-green-600" />
-                    Proventos
-                  </Label>
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2">
-                      <Label className="w-32 text-sm">Salário Base</Label>
+              {/* Busca por código */}
+              <div className="bg-muted/50 p-3 rounded-lg">
+                <Label className="flex items-center gap-2 mb-2">
+                  <Plus className="w-4 h-4" />
+                  Adicionar variável por código
+                </Label>
+                <div className="flex gap-2 items-center">
+                  <Input
+                    placeholder="Digite o código (ex: HE, INSS)"
+                    value={codigoInput[emp.id] || ""}
+                    onChange={(e) => handleCodigoSearch(emp.id, e.target.value)}
+                    className="w-32 uppercase font-mono"
+                    maxLength={10}
+                  />
+                  {foundVariavel[emp.id] && (
+                    <>
+                      <Badge 
+                        variant={foundVariavel[emp.id]?.tipo === "provento" ? "default" : "destructive"}
+                        className="whitespace-nowrap"
+                      >
+                        {foundVariavel[emp.id]?.nome}
+                      </Badge>
                       <Input
+                        ref={el => valorInputRefs.current[`${emp.id}-valor`] = el}
                         type="number"
                         step="0.01"
-                        value={lancamento.salario_base}
-                        onChange={(e) => handleValueChange(emp.id, "salario_base", parseFloat(e.target.value) || 0)}
-                        className="flex-1"
+                        placeholder="Valor"
+                        className="w-32"
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            const input = e.target as HTMLInputElement;
+                            handleAddVariavelByCodigo(emp.id, parseFloat(input.value) || 0);
+                            input.value = "";
+                          }
+                        }}
                       />
-                    </div>
-                    {proventos.map(v => (
-                      <div key={v.id} className="flex items-center gap-2">
-                        <Label className="w-32 text-sm truncate" title={v.nome}>{v.nome}</Label>
-                        <Input
-                          type="number"
-                          step="0.01"
-                          value={lancamento.itens[v.id] || 0}
-                          onChange={(e) => handleItemChange(emp.id, v.id, parseFloat(e.target.value) || 0)}
-                          className="flex-1"
-                        />
-                      </div>
-                    ))}
-                    <div className="flex justify-between pt-2 border-t">
-                      <span className="font-semibold text-green-600">Total Proventos:</span>
-                      <span className="font-semibold text-green-600">
-                        R$ {totais.proventos.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                <div>
-                  <Label className="flex items-center gap-2 mb-2">
-                    <TrendingDown className="w-4 h-4 text-red-600" />
-                    Descontos
-                  </Label>
-                  <div className="space-y-2">
-                    {descontos.map(v => (
-                      <div key={v.id} className="flex items-center gap-2">
-                        <Label className="w-32 text-sm truncate" title={v.nome}>{v.nome}</Label>
-                        <Input
-                          type="number"
-                          step="0.01"
-                          value={lancamento.itens[v.id] || 0}
-                          onChange={(e) => handleItemChange(emp.id, v.id, parseFloat(e.target.value) || 0)}
-                          className="flex-1"
-                        />
-                      </div>
-                    ))}
-                    <div className="flex justify-between pt-2 border-t">
-                      <span className="font-semibold text-red-600">Total Descontos:</span>
-                      <span className="font-semibold text-red-600">
-                        R$ {totais.descontos.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
-                      </span>
-                    </div>
-                  </div>
+                      <Button 
+                        size="sm" 
+                        onClick={() => {
+                          const input = valorInputRefs.current[`${emp.id}-valor`];
+                          handleAddVariavelByCodigo(emp.id, parseFloat(input?.value || "0"));
+                          if (input) input.value = "";
+                        }}
+                      >
+                        Adicionar
+                      </Button>
+                    </>
+                  )}
+                  {codigoInput[emp.id] && !foundVariavel[emp.id] && (
+                    <span className="text-sm text-muted-foreground">Código não encontrado</span>
+                  )}
                 </div>
               </div>
+
+              {/* Itens adicionados */}
+              {(() => {
+                const itensAdicionados = getVariaveisComValor(emp.id);
+                const proventosAdicionados = itensAdicionados.filter(v => v.tipo === "provento");
+                const descontosAdicionados = itensAdicionados.filter(v => v.tipo === "desconto");
+
+                return (
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <div>
+                      <Label className="flex items-center gap-2 mb-2">
+                        <TrendingUp className="w-4 h-4 text-green-600" />
+                        Proventos
+                      </Label>
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2">
+                          <Label className="w-32 text-sm">Salário Base</Label>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            value={lancamento.salario_base}
+                            onChange={(e) => handleValueChange(emp.id, "salario_base", parseFloat(e.target.value) || 0)}
+                            className="flex-1"
+                          />
+                        </div>
+                        {proventosAdicionados.map(v => (
+                          <div key={v.id} className="flex items-center gap-2">
+                            <Badge variant="outline" className="font-mono text-xs">
+                              {v.codigo || "—"}
+                            </Badge>
+                            <Label className="flex-1 text-sm truncate" title={v.nome}>{v.nome}</Label>
+                            <Input
+                              type="number"
+                              step="0.01"
+                              value={v.valor}
+                              onChange={(e) => handleItemChange(emp.id, v.id, parseFloat(e.target.value) || 0)}
+                              className="w-28"
+                            />
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="h-8 w-8"
+                              onClick={() => handleRemoveItem(emp.id, v.id)}
+                            >
+                              <X className="w-4 h-4 text-muted-foreground" />
+                            </Button>
+                          </div>
+                        ))}
+                        <div className="flex justify-between pt-2 border-t">
+                          <span className="font-semibold text-green-600">Total Proventos:</span>
+                          <span className="font-semibold text-green-600">
+                            R$ {totais.proventos.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div>
+                      <Label className="flex items-center gap-2 mb-2">
+                        <TrendingDown className="w-4 h-4 text-red-600" />
+                        Descontos
+                      </Label>
+                      <div className="space-y-2">
+                        {descontosAdicionados.map(v => (
+                          <div key={v.id} className="flex items-center gap-2">
+                            <Badge variant="outline" className="font-mono text-xs">
+                              {v.codigo || "—"}
+                            </Badge>
+                            <Label className="flex-1 text-sm truncate" title={v.nome}>{v.nome}</Label>
+                            <Input
+                              type="number"
+                              step="0.01"
+                              value={v.valor}
+                              onChange={(e) => handleItemChange(emp.id, v.id, parseFloat(e.target.value) || 0)}
+                              className="w-28"
+                            />
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="h-8 w-8"
+                              onClick={() => handleRemoveItem(emp.id, v.id)}
+                            >
+                              <X className="w-4 h-4 text-muted-foreground" />
+                            </Button>
+                          </div>
+                        ))}
+                        {descontosAdicionados.length === 0 && (
+                          <p className="text-sm text-muted-foreground italic">Nenhum desconto adicionado</p>
+                        )}
+                        <div className="flex justify-between pt-2 border-t">
+                          <span className="font-semibold text-red-600">Total Descontos:</span>
+                          <span className="font-semibold text-red-600">
+                            R$ {totais.descontos.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
 
               <div>
                 <Label>Observações</Label>
