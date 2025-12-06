@@ -401,19 +401,24 @@ const Payroll = () => {
   const handleLancamentoSuccess = (lancamentoMes?: number, lancamentoAno?: number) => {
     setShowLancamentoForm(false);
     // Se recebeu mês/ano do lançamento, atualiza os filtros para mostrar o mês lançado
-    // O useEffect vai automaticamente recarregar os dados quando mes/ano mudar
     if (lancamentoMes !== undefined && lancamentoAno !== undefined) {
       if (lancamentoMes !== mes || lancamentoAno !== ano) {
         setMes(lancamentoMes);
         setAno(lancamentoAno);
+        // O useEffect vai automaticamente recarregar os dados quando mes/ano mudar
       } else {
-        // Se já está no mesmo mês/ano, força o refetch manualmente
-        fetchPagamentos();
-        fetchTodosPagamentos();
+        // Se já está no mesmo mês/ano, força o refetch com um pequeno delay
+        // para garantir que qualquer operação de banco tenha sido concluída
+        setTimeout(() => {
+          fetchPagamentos();
+          fetchTodosPagamentos();
+        }, 500);
       }
     } else {
-      fetchPagamentos();
-      fetchTodosPagamentos();
+      setTimeout(() => {
+        fetchPagamentos();
+        fetchTodosPagamentos();
+      }, 500);
     }
   };
 
