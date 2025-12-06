@@ -5,7 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Loader2, Bell, Clock, Wallet, Calendar, GraduationCap, Shield, Shirt, Plane, Users } from "lucide-react";
+import { Loader2, Bell, Clock, Wallet, Calendar, GraduationCap, Shield, Shirt, Plane, Users, Receipt } from "lucide-react";
 
 interface VisibilitySettings {
   id: string;
@@ -17,6 +17,7 @@ interface VisibilitySettings {
   epis_visivel: boolean;
   uniformes_visivel: boolean;
   ferias_visivel: boolean;
+  holerite_visivel: boolean;
   tipos_contrato_permitidos: string[];
 }
 
@@ -29,6 +30,7 @@ const settingsConfig = [
   { key: "treinamentos_visivel", label: "Treinamentos", description: "Exibir cursos e progresso de treinamento", icon: GraduationCap },
   { key: "epis_visivel", label: "EPIs Recebidos", description: "Exibir lista de EPIs entregues", icon: Shield },
   { key: "uniformes_visivel", label: "Uniformes Recebidos", description: "Exibir lista de uniformes entregues", icon: Shirt },
+  { key: "holerite_visivel", label: "Holerite", description: "Exibir holerites/contracheques do funcionário", icon: Receipt },
 ] as const;
 
 const contractTypes = [

@@ -13,6 +13,9 @@ import {
   Calendar,
   Clock,
   Wallet,
+  Receipt,
+  FileText,
+  Download,
 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { toast } from "sonner";
@@ -39,6 +42,7 @@ interface VisibilitySettings {
   epis_visivel: boolean;
   uniformes_visivel: boolean;
   ferias_visivel: boolean;
+  holerite_visivel: boolean;
   tipos_contrato_permitidos: string[];
 }
 
@@ -52,11 +56,12 @@ const FuncionarioDashboard = ({ user }: FuncionarioDashboardProps) => {
   const [epis, setEpis] = useState<any[]>([]);
   const [uniformes, setUniformes] = useState<any[]>([]);
   const [avisos, setAvisos] = useState<any[]>([]);
-  const [activeVacation, setActiveVacation] = useState<any>(null);
+  const [holerites, setHolerites] = useState<any[]>([]);
   const [companyLogo, setCompanyLogo] = useState<string | null>(null);
   const [horasMesAnterior, setHorasMesAnterior] = useState<number | null>(null);
   const [bancoHoras, setBancoHoras] = useState<number>(0);
   const [hasAccess, setHasAccess] = useState<boolean | null>(null);
+  const [activeVacation, setActiveVacation] = useState<any>(null);
   const [visibility, setVisibility] = useState<VisibilitySettings>({
     avisos_visivel: true,
     saldo_horas_visivel: true,
@@ -66,6 +71,7 @@ const FuncionarioDashboard = ({ user }: FuncionarioDashboardProps) => {
     epis_visivel: true,
     uniformes_visivel: true,
     ferias_visivel: true,
+    holerite_visivel: true,
     tipos_contrato_permitidos: ['fixo', 'intermitente', 'prestador_servico'],
   });
 
@@ -92,6 +98,7 @@ const FuncionarioDashboard = ({ user }: FuncionarioDashboardProps) => {
           epis_visivel: data.epis_visivel,
           uniformes_visivel: data.uniformes_visivel,
           ferias_visivel: data.ferias_visivel ?? true,
+          holerite_visivel: data.holerite_visivel ?? true,
           tipos_contrato_permitidos: data.tipos_contrato_permitidos || ['fixo', 'intermitente', 'prestador_servico'],
         });
       }
@@ -128,7 +135,7 @@ const FuncionarioDashboard = ({ user }: FuncionarioDashboardProps) => {
         
         setHasAccess(true);
 
-        const [episRes, uniformesRes, avisosRes, feriasRes, companyRes] = await Promise.all([
+        const [episRes, uniformesRes, avisosRes, feriasRes, companyRes, holeritesRes] = await Promise.all([
           supabase.from("epis").select("*").eq("employee_id", empData.id),
           supabase.from("uniformes").select("*").eq("employee_id", empData.id),
           supabase
@@ -148,7 +155,22 @@ const FuncionarioDashboard = ({ user }: FuncionarioDashboardProps) => {
             .maybeSingle(),
           empData.empresa_id 
             ? supabase.from("empresas").select("logo_url").eq("id", empData.empresa_id).maybeSingle()
-            : Promise.resolve({ data: null })
+            : Promise.resolve({ data: null }),
+          supabase
+            .from("folha_pagamento")
+            .select(`
+              *,
+              folha_pagamento_itens (
+                id,
+                variavel_id,
+                valor,
+                variaveis_folha (id, nome, codigo, tipo)
+              )
+            `)
+            .eq("employee_id", empData.id)
+            .order("ano", { ascending: false })
+            .order("mes", { ascending: false })
+            .limit(12)
         ]);
 
         setEpis(episRes.data || []);
@@ -156,6 +178,7 @@ const FuncionarioDashboard = ({ user }: FuncionarioDashboardProps) => {
         setAvisos(avisosRes.data || []);
         setActiveVacation(feriasRes.data || null);
         setCompanyLogo(companyRes.data?.logo_url || null);
+        setHolerites(holeritesRes.data || []);
 
         // Buscar horas do mês anterior
         const mesAnterior = subMonths(new Date(), 1);
@@ -536,6 +559,70 @@ const FuncionarioDashboard = ({ user }: FuncionarioDashboardProps) => {
                         )}
                       </div>
                     ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Holerites */}
+          {visibility.holerite_visivel && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Receipt className="w-5 h-5" />
+                  Meus Holerites
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {holerites.length === 0 ? (
+                  <p className="text-muted-foreground">Nenhum holerite disponível.</p>
+                ) : (
+                  <div className="space-y-3">
+                    {holerites.map((holerite) => {
+                      const mesNome = new Date(holerite.ano, holerite.mes - 1).toLocaleString("pt-BR", { month: "long" });
+                      const tipoLabel = {
+                        salario: "Folha de Salário",
+                        complementar: "Complementar",
+                        adiantamento: "Adiantamento",
+                        decimo_terceiro: "13º Salário",
+                      }[holerite.tipo_folha as string] || holerite.tipo_folha;
+
+                      return (
+                        <div key={holerite.id} className="border rounded-lg p-4">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="font-medium">
+                                {mesNome.charAt(0).toUpperCase() + mesNome.slice(1)} / {holerite.ano}
+                              </p>
+                              <p className="text-sm text-muted-foreground">{tipoLabel}</p>
+                            </div>
+                            <div className="text-right">
+                              <p className="font-bold text-lg">
+                                R$ {Number(holerite.valor_liquido).toFixed(2)}
+                              </p>
+                              <p className="text-xs text-muted-foreground">Valor Líquido</p>
+                            </div>
+                          </div>
+                          <div className="mt-3 pt-3 border-t">
+                            <div className="grid grid-cols-2 gap-2 text-sm">
+                              <div>
+                                <span className="text-muted-foreground">Bruto:</span>{" "}
+                                <span className="font-medium">R$ {Number(holerite.valor_bruto).toFixed(2)}</span>
+                              </div>
+                              <div>
+                                <span className="text-muted-foreground">Descontos:</span>{" "}
+                                <span className="font-medium text-destructive">
+                                  R$ {((holerite.desconto || 0) + (holerite.folha_pagamento_itens || [])
+                                    .filter((i: any) => i.variaveis_folha?.tipo === "desconto")
+                                    .reduce((sum: number, i: any) => sum + i.valor, 0)).toFixed(2)}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
               </CardContent>
