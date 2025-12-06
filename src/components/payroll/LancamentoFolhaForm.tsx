@@ -36,11 +36,12 @@ interface LancamentoFolhaFormProps {
   empresaId: string;
   mes: number;
   ano: number;
+  tipoFolha: string;
   onSuccess: () => void;
   onCancel: () => void;
 }
 
-const LancamentoFolhaForm = ({ employees, empresaId, mes, ano, onSuccess, onCancel }: LancamentoFolhaFormProps) => {
+const LancamentoFolhaForm = ({ employees, empresaId, mes, ano, tipoFolha, onSuccess, onCancel }: LancamentoFolhaFormProps) => {
   const [variaveis, setVariaveis] = useState<Variavel[]>([]);
   const [lancamentos, setLancamentos] = useState<Record<string, LancamentoData>>({});
   const [loading, setLoading] = useState(false);
@@ -188,12 +189,13 @@ const LancamentoFolhaForm = ({ employees, empresaId, mes, ano, onSuccess, onCanc
             empresa_id: empresaId,
             mes,
             ano,
+            tipo_folha: tipoFolha,
             valor_bruto: totais.proventos,
             desconto: totais.descontos,
             descontos: 0, // Legacy field
             valor_liquido: totais.liquido,
             observacoes: lancamento.observacoes || null,
-          }, { onConflict: "employee_id,mes,ano" })
+          }, { onConflict: "employee_id,mes,ano,tipo_folha" })
           .select()
           .single();
 

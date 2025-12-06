@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Download, Plus, Pencil, Trash2, ChevronDown, ChevronUp, Calendar, FileText } from "lucide-react";
+import { ArrowLeft, Download, Plus, Pencil, Trash2, ChevronDown, ChevronUp, Calendar, FileText, Printer } from "lucide-react";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
@@ -16,7 +16,15 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import VariaveisConfig from "@/components/payroll/VariaveisConfig";
 import LancamentoFolhaForm from "@/components/payroll/LancamentoFolhaForm";
 import RelatorioDetalhadoDialog from "@/components/payroll/RelatorioDetalhadoDialog";
+import HoleriteDialog from "@/components/payroll/HoleriteDialog";
 import jsPDF from "jspdf";
+
+const TIPO_FOLHA_OPTIONS = [
+  { value: "salario", label: "Folha de Salário" },
+  { value: "complementar", label: "Folha Complementar" },
+  { value: "adiantamento", label: "Folha de Adiantamento" },
+  { value: "decimo_terceiro", label: "13º Salário" },
+];
 
 interface Empresa {
   id: string;
@@ -40,6 +48,7 @@ interface Employee {
 interface Variavel {
   id: string;
   nome: string;
+  codigo?: string | null;
   tipo: "desconto" | "provento";
 }
 
@@ -60,11 +69,14 @@ interface Pagamento {
   observacoes: string | null;
   mes: number;
   ano: number;
+  tipo_folha: string;
   employees: {
     nome_completo: string;
     cargo: string;
     tipo_contrato: string;
     setor: string | null;
+    cpf: string | null;
+    data_admissao: string | null;
   };
   folha_pagamento_itens?: PagamentoItem[];
 }
@@ -95,6 +107,7 @@ const Payroll = () => {
   const [mes, setMes] = useState<number>(new Date().getMonth() + 1);
   const [ano, setAno] = useState<number>(new Date().getFullYear());
   const [tipoContrato, setTipoContrato] = useState<string>("all");
+  const [tipoFolha, setTipoFolha] = useState<string>("all");
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [pagamentos, setPagamentos] = useState<Pagamento[]>([]);
   const [todosPagamentos, setTodosPagamentos] = useState<Pagamento[]>([]);
@@ -104,6 +117,9 @@ const Payroll = () => {
   const [expandedMonth, setExpandedMonth] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("lancamentos");
   const [showRelatorioDialog, setShowRelatorioDialog] = useState(false);
+  const [holeriteDialogOpen, setHoleriteDialogOpen] = useState(false);
+  const [selectedPagamentoForHolerite, setSelectedPagamentoForHolerite] = useState<Pagamento | null>(null);
+  const [selectedTipoFolhaLancamento, setSelectedTipoFolhaLancamento] = useState<string>("salario");
 
   useEffect(() => {
     fetchEmpresas();
@@ -114,7 +130,7 @@ const Payroll = () => {
     fetchEmployees();
     fetchPagamentos();
     fetchTodosPagamentos();
-  }, [selectedEmpresa, mes, ano, tipoContrato, selectedSetor]);
+  }, [selectedEmpresa, mes, ano, tipoContrato, selectedSetor, tipoFolha]);
 
   const fetchEmpresas = async () => {
     const { data, error } = await supabase
@@ -185,11 +201,14 @@ const Payroll = () => {
         observacoes,
         mes,
         ano,
+        tipo_folha,
         employees (
           nome_completo,
           cargo,
           tipo_contrato,
-          setor
+          setor,
+          cpf,
+          data_admissao
         ),
         folha_pagamento_itens (
           id,
@@ -204,6 +223,14 @@ const Payroll = () => {
       `)
       .eq("mes", mes)
       .eq("ano", ano);
+
+    if (selectedEmpresa && selectedEmpresa !== "all") {
+      query = query.eq("empresa_id", selectedEmpresa);
+    }
+    
+    if (tipoFolha && tipoFolha !== "all") {
+      query = query.eq("tipo_folha", tipoFolha);
+    }
 
     if (selectedEmpresa && selectedEmpresa !== "all") {
       query = query.eq("empresa_id", selectedEmpresa);
@@ -245,11 +272,14 @@ const Payroll = () => {
         observacoes,
         mes,
         ano,
+        tipo_folha,
         employees (
           nome_completo,
           cargo,
           tipo_contrato,
-          setor
+          setor,
+          cpf,
+          data_admissao
         ),
         folha_pagamento_itens (
           id,
@@ -267,6 +297,10 @@ const Payroll = () => {
 
     if (selectedEmpresa && selectedEmpresa !== "all") {
       query = query.eq("empresa_id", selectedEmpresa);
+    }
+    
+    if (tipoFolha && tipoFolha !== "all") {
+      query = query.eq("tipo_folha", tipoFolha);
     }
 
     const { data, error } = await query;
@@ -541,6 +575,16 @@ const Payroll = () => {
   const resumosMensais = getResumosMensais();
   const resumoVariaveis = getResumoVariaveis();
 
+  const handleOpenHolerite = (pag: Pagamento) => {
+    setSelectedPagamentoForHolerite(pag);
+    setHoleriteDialogOpen(true);
+  };
+
+  const getTipoFolhaLabel = (tipo: string) => {
+    const option = TIPO_FOLHA_OPTIONS.find(o => o.value === tipo);
+    return option?.label || tipo;
+  };
+
   const renderPagamentoCard = (pag: Pagamento, showActions: boolean = true) => {
     const proventos = pag.folha_pagamento_itens?.filter(i => i.variaveis_folha?.tipo === 'provento') || [];
     const descontos = pag.folha_pagamento_itens?.filter(i => i.variaveis_folha?.tipo === 'desconto') || [];
@@ -548,7 +592,12 @@ const Payroll = () => {
     return (
       <div key={pag.id} className="flex items-start justify-between p-4 border rounded-lg">
         <div className="flex-1">
-          <p className="font-semibold">{pag.employees.nome_completo}</p>
+          <div className="flex items-center gap-2 mb-1">
+            <p className="font-semibold">{pag.employees.nome_completo}</p>
+            <span className="text-xs px-2 py-0.5 rounded bg-primary/10 text-primary font-medium">
+              {getTipoFolhaLabel(pag.tipo_folha || "salario")}
+            </span>
+          </div>
           <p className="text-sm text-muted-foreground">{pag.employees.cargo}</p>
           <p className="text-xs text-muted-foreground">
             {pag.employees.tipo_contrato === 'fixo' ? 'Fixo' : 
@@ -578,6 +627,9 @@ const Payroll = () => {
         </div>
         {showActions && (
           <div className="flex gap-2 ml-4">
+            <Button variant="outline" size="sm" onClick={() => handleOpenHolerite(pag)} title="Imprimir Holerite">
+              <Printer className="w-4 h-4" />
+            </Button>
             <Dialog>
               <DialogTrigger asChild>
                 <Button variant="outline" size="sm" onClick={() => setEditingPagamento(pag)}>
@@ -762,6 +814,22 @@ const Payroll = () => {
                   </SelectContent>
                 </Select>
               </div>
+              <div>
+                <Label>Tipo de Folha</Label>
+                <Select value={tipoFolha} onValueChange={setTipoFolha}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Todos" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos</SelectItem>
+                    {TIPO_FOLHA_OPTIONS.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -775,11 +843,28 @@ const Payroll = () => {
             </TabsList>
 
             <TabsContent value="lancamentos">
-              <div className="flex justify-between items-center mb-4">
-                <Button onClick={handleOpenLancamentoForm} disabled={loading}>
-                  <Plus className="w-4 h-4 mr-2" />
-                  Lançar Pagamentos
-                </Button>
+              <div className="flex justify-between items-center mb-4 flex-wrap gap-4">
+                <div className="flex items-center gap-4">
+                  <Button onClick={handleOpenLancamentoForm} disabled={loading}>
+                    <Plus className="w-4 h-4 mr-2" />
+                    Lançar Pagamentos
+                  </Button>
+                  <div className="flex items-center gap-2">
+                    <Label className="text-sm whitespace-nowrap">Tipo de Folha:</Label>
+                    <Select value={selectedTipoFolhaLancamento} onValueChange={setSelectedTipoFolhaLancamento}>
+                      <SelectTrigger className="w-48">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {TIPO_FOLHA_OPTIONS.map((opt) => (
+                          <SelectItem key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
                 <div className="text-lg font-semibold">
                   Total: R$ {valorTotal.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                 </div>
@@ -788,13 +873,14 @@ const Payroll = () => {
               <Dialog open={showLancamentoForm} onOpenChange={setShowLancamentoForm}>
                 <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
                   <DialogHeader>
-                    <DialogTitle>Lançar Pagamentos</DialogTitle>
+                    <DialogTitle>Lançar Pagamentos - {TIPO_FOLHA_OPTIONS.find(o => o.value === selectedTipoFolhaLancamento)?.label}</DialogTitle>
                   </DialogHeader>
                   <LancamentoFolhaForm
                     employees={employees}
                     empresaId={selectedEmpresa}
                     mes={mes}
                     ano={ano}
+                    tipoFolha={selectedTipoFolhaLancamento}
                     onSuccess={handleLancamentoSuccess}
                     onCancel={() => setShowLancamentoForm(false)}
                   />
@@ -913,6 +999,13 @@ const Payroll = () => {
           empresaNome={empresas.find(e => e.id === selectedEmpresa)?.nome || ""}
           mes={mes}
           ano={ano}
+        />
+
+        <HoleriteDialog
+          open={holeriteDialogOpen}
+          onOpenChange={setHoleriteDialogOpen}
+          pagamento={selectedPagamentoForHolerite}
+          empresaId={selectedEmpresa}
         />
       </div>
     </div>

@@ -1377,6 +1377,7 @@ export type Database = {
           id: string
           mes: number
           observacoes: string | null
+          tipo_folha: string
           updated_at: string | null
           valor_bruto: number
           valor_liquido: number
@@ -1392,6 +1393,7 @@ export type Database = {
           id?: string
           mes: number
           observacoes?: string | null
+          tipo_folha?: string
           updated_at?: string | null
           valor_bruto?: number
           valor_liquido?: number
@@ -1407,6 +1409,7 @@ export type Database = {
           id?: string
           mes?: number
           observacoes?: string | null
+          tipo_folha?: string
           updated_at?: string | null
           valor_bruto?: number
           valor_liquido?: number
