@@ -401,12 +401,20 @@ const Payroll = () => {
   const handleLancamentoSuccess = (lancamentoMes?: number, lancamentoAno?: number) => {
     setShowLancamentoForm(false);
     // Se recebeu mês/ano do lançamento, atualiza os filtros para mostrar o mês lançado
+    // O useEffect vai automaticamente recarregar os dados quando mes/ano mudar
     if (lancamentoMes !== undefined && lancamentoAno !== undefined) {
-      setMes(lancamentoMes);
-      setAno(lancamentoAno);
+      if (lancamentoMes !== mes || lancamentoAno !== ano) {
+        setMes(lancamentoMes);
+        setAno(lancamentoAno);
+      } else {
+        // Se já está no mesmo mês/ano, força o refetch manualmente
+        fetchPagamentos();
+        fetchTodosPagamentos();
+      }
+    } else {
+      fetchPagamentos();
+      fetchTodosPagamentos();
     }
-    fetchPagamentos();
-    fetchTodosPagamentos();
   };
 
   const handleUpdatePagamento = async (e: React.FormEvent<HTMLFormElement>) => {
