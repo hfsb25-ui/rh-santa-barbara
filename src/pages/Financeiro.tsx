@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft, Download } from "lucide-react";
+import { ArrowLeft, Download, Calendar } from "lucide-react";
 import { toast } from "sonner";
 import jsPDF from "jspdf";
 import {
@@ -13,6 +13,21 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+
+const MESES = [
+  { value: "01", label: "Janeiro" },
+  { value: "02", label: "Fevereiro" },
+  { value: "03", label: "Março" },
+  { value: "04", label: "Abril" },
+  { value: "05", label: "Maio" },
+  { value: "06", label: "Junho" },
+  { value: "07", label: "Julho" },
+  { value: "08", label: "Agosto" },
+  { value: "09", label: "Setembro" },
+  { value: "10", label: "Outubro" },
+  { value: "11", label: "Novembro" },
+  { value: "12", label: "Dezembro" },
+];
 
 interface SetorGasto {
   setor: string;
@@ -32,6 +47,12 @@ const Financeiro = () => {
   const [loading, setLoading] = useState(true);
   const [empresas, setEmpresas] = useState<Empresa[]>([]);
   const [selectedEmpresa, setSelectedEmpresa] = useState<string>("all");
+  const [filterType, setFilterType] = useState<string>("current");
+  const [selectedMonth, setSelectedMonth] = useState<string>(String(new Date().getMonth() + 1).padStart(2, "0"));
+  const [selectedYear, setSelectedYear] = useState<string>(String(new Date().getFullYear()));
+
+  const currentYear = new Date().getFullYear();
+  const years = Array.from({ length: 5 }, (_, i) => String(currentYear - i));
 
   useEffect(() => {
     fetchEmpresas();
@@ -175,9 +196,9 @@ const Financeiro = () => {
             </Button>
             <h1 className="text-3xl font-bold">Relatório Financeiro</h1>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex flex-wrap items-center gap-4">
             <Select value={selectedEmpresa} onValueChange={setSelectedEmpresa}>
-              <SelectTrigger className="w-[250px]">
+              <SelectTrigger className="w-[200px]">
                 <SelectValue placeholder="Selecione a empresa" />
               </SelectTrigger>
               <SelectContent>
@@ -189,6 +210,50 @@ const Financeiro = () => {
                 ))}
               </SelectContent>
             </Select>
+            
+            <Select value={filterType} onValueChange={setFilterType}>
+              <SelectTrigger className="w-[180px]">
+                <Calendar className="w-4 h-4 mr-2" />
+                <SelectValue placeholder="Período" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="current">Mês Atual</SelectItem>
+                <SelectItem value="specific">Mês Específico</SelectItem>
+                <SelectItem value="3months">Últimos 3 Meses</SelectItem>
+                <SelectItem value="6months">Últimos 6 Meses</SelectItem>
+                <SelectItem value="year">Último Ano</SelectItem>
+              </SelectContent>
+            </Select>
+
+            {filterType === "specific" && (
+              <>
+                <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+                  <SelectTrigger className="w-[140px]">
+                    <SelectValue placeholder="Mês" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {MESES.map((mes) => (
+                      <SelectItem key={mes.value} value={mes.value}>
+                        {mes.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Select value={selectedYear} onValueChange={setSelectedYear}>
+                  <SelectTrigger className="w-[100px]">
+                    <SelectValue placeholder="Ano" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {years.map((year) => (
+                      <SelectItem key={year} value={year}>
+                        {year}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </>
+            )}
+            
             <Button onClick={exportToPDF}>
               <Download className="w-4 h-4 mr-2" />
               Exportar PDF
