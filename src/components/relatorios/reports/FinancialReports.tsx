@@ -57,8 +57,15 @@ const FinancialReports = () => {
     doc.text(new Date().toLocaleDateString(), 14, 22);
 
     if (reportType === "payroll") {
-      const total = payroll?.reduce((sum, p) => sum + Number(p.valor_liquido), 0) || 0;
-      doc.text(`Total: R$ ${total.toFixed(2)}`, 14, 28);
+      const totalB = payroll?.reduce((sum, p) => sum + Number(p.valor_bruto), 0) || 0;
+      const totalC = payroll?.reduce((sum, p) => sum + Number(p.valor_liquido), 0) || 0;
+      const totalM = payroll?.reduce((sum, p) => {
+        const bruto = Number(p.valor_bruto);
+        const desconto = Number(p.desconto || 0);
+        const emConta = Number(p.valor_liquido);
+        return sum + (bruto - desconto - emConta);
+      }, 0) || 0;
+      doc.text(`Total: R$ ${totalB.toFixed(2)} | Em Conta: R$ ${totalC.toFixed(2)} | Em Mãos: R$ ${totalM.toFixed(2)}`, 14, 28);
 
       let yPos = 36;
       payroll?.forEach((item, i) => {
@@ -133,7 +140,14 @@ const FinancialReports = () => {
   }, [currentData, currentPage]);
 
   const totalPages = Math.ceil((currentData?.length || 0) / itemsPerPage);
-  const totalPayroll = payroll?.reduce((sum, p) => sum + Number(p.valor_liquido), 0) || 0;
+  const totalBruto = payroll?.reduce((sum, p) => sum + Number(p.valor_bruto), 0) || 0;
+  const totalEmConta = payroll?.reduce((sum, p) => sum + Number(p.valor_liquido), 0) || 0;
+  const totalEmMaos = payroll?.reduce((sum, p) => {
+    const bruto = Number(p.valor_bruto);
+    const desconto = Number(p.desconto || 0);
+    const emConta = Number(p.valor_liquido);
+    return sum + (bruto - desconto - emConta);
+  }, 0) || 0;
 
   return (
     <div className="space-y-6">
@@ -219,8 +233,14 @@ const FinancialReports = () => {
               ? `Folha de Pagamento - ${selectedMonth}/${selectedYear}`
               : "Histórico de Reajustes Salariais"}
           </CardTitle>
+          {reportType === "payroll" && (
+            <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
+              <span><strong>Total:</strong> R$ {totalBruto.toFixed(2)}</span>
+              <span><strong>Total em Conta:</strong> R$ {totalEmConta.toFixed(2)}</span>
+              <span><strong>Total em Mãos:</strong> R$ {totalEmMaos.toFixed(2)}</span>
+            </div>
+          )}
           <p className="text-sm text-muted-foreground">
-            {reportType === "payroll" && `Total: R$ ${totalPayroll.toFixed(2)} | `}
             {currentData?.length || 0} registros | Página {currentPage} de {totalPages}
           </p>
         </CardHeader>
