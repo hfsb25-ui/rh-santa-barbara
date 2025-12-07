@@ -23,7 +23,7 @@ const FinancialReports = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("folha_pagamento")
-        .select("*, employees(nome_completo, cargo, tipo_contrato), empresas(nome)")
+        .select("*, employees(nome_completo, cargo, tipo_contrato), empresas(nome), folha_pagamento_itens(id, variavel_id, valor, variaveis_folha(id, nome, tipo, codigo))")
         .eq("mes", selectedMonth)
         .eq("ano", selectedYear);
       if (error) throw error;
@@ -140,13 +140,24 @@ const FinancialReports = () => {
   }, [currentData, currentPage]);
 
   const totalPages = Math.ceil((currentData?.length || 0) / itemsPerPage);
+  // Função helper para calcular valor em conta de um pagamento
+  const calcularValorEmConta = (p: any) => {
+    const itens = p.folha_pagamento_itens || [];
+    const itemEmConta = itens.find((i: any) => 
+      i.variaveis_folha?.nome?.toLowerCase().includes("valor em conta") ||
+      i.variaveis_folha?.codigo === "3503"
+    );
+    return itemEmConta?.valor || 0;
+  };
+
   const totalBruto = payroll?.reduce((sum, p) => sum + Number(p.valor_bruto), 0) || 0;
-  const totalEmConta = payroll?.reduce((sum, p) => sum + Number(p.valor_liquido), 0) || 0;
+  const totalEmConta = payroll?.reduce((sum, p) => sum + calcularValorEmConta(p), 0) || 0;
   const totalEmMaos = payroll?.reduce((sum, p) => {
     const bruto = Number(p.valor_bruto);
-    const desconto = Number(p.desconto || 0);
-    const emConta = Number(p.valor_liquido);
-    return sum + (bruto - desconto - emConta);
+    const descontos = Number(p.desconto || 0) + (p.folha_pagamento_itens || [])
+      .filter((i: any) => i.variaveis_folha?.tipo === "desconto")
+      .reduce((s: number, i: any) => s + Number(i.valor), 0);
+    return sum + (bruto - descontos);
   }, 0) || 0;
 
   return (

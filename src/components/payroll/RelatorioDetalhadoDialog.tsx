@@ -206,12 +206,24 @@ const RelatorioDetalhadoDialog = ({
       // Totais na capa
       const totalFuncionarios = pagamentosOrdenados.length;
       const totalBruto = pagamentosOrdenados.reduce((sum, p) => sum + p.valor_bruto, 0);
-      const totalEmConta = pagamentosOrdenados.reduce((sum, p) => sum + p.valor_liquido, 0);
+      
+      // Calcular total em conta somando os valores da variável "Valor em Conta" de cada funcionário
+      const calcularValorEmConta = (p: Pagamento) => {
+        const itens = p.folha_pagamento_itens || [];
+        const itemEmConta = itens.find(i => 
+          i.variaveis_folha?.nome?.toLowerCase().includes("valor em conta") ||
+          i.variaveis_folha?.codigo === "3503"
+        );
+        return itemEmConta?.valor || 0;
+      };
+      
+      const totalEmConta = pagamentosOrdenados.reduce((sum, p) => sum + calcularValorEmConta(p), 0);
       const totalEmMaos = pagamentosOrdenados.reduce((sum, p) => {
         const bruto = p.valor_bruto;
-        const desconto = p.desconto || 0;
-        const emConta = p.valor_liquido;
-        return sum + (bruto - desconto - emConta);
+        const descontos = (p.desconto || 0) + (p.folha_pagamento_itens || [])
+          .filter(i => i.variaveis_folha?.tipo === "desconto")
+          .reduce((s, i) => s + i.valor, 0);
+        return sum + (bruto - descontos);
       }, 0);
 
       doc.setFillColor(240, 240, 240);
