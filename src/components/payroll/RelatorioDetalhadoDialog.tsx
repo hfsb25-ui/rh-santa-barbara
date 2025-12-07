@@ -218,13 +218,18 @@ const RelatorioDetalhadoDialog = ({
       };
       
       const totalEmConta = pagamentosOrdenados.reduce((sum, p) => sum + calcularValorEmConta(p), 0);
-      const totalEmMaos = pagamentosOrdenados.reduce((sum, p) => {
-        const bruto = p.valor_bruto;
-        const descontos = (p.desconto || 0) + (p.folha_pagamento_itens || [])
-          .filter(i => i.variaveis_folha?.tipo === "desconto")
-          .reduce((s, i) => s + i.valor, 0);
-        return sum + (bruto - descontos);
-      }, 0);
+      
+      // Calcular total em mãos somando os valores da variável "Valor em Mãos" de cada funcionário
+      const calcularValorEmMaos = (p: Pagamento) => {
+        const itens = p.folha_pagamento_itens || [];
+        const itemEmMaos = itens.find(i => 
+          i.variaveis_folha?.nome?.toLowerCase().includes("valor em mãos") ||
+          i.variaveis_folha?.nome?.toLowerCase().includes("valor em maos")
+        );
+        return itemEmMaos?.valor || 0;
+      };
+      
+      const totalEmMaos = pagamentosOrdenados.reduce((sum, p) => sum + calcularValorEmMaos(p), 0);
 
       doc.setFillColor(240, 240, 240);
       doc.roundedRect(30, yPosition, pageWidth - 60, 50, 3, 3, "F");

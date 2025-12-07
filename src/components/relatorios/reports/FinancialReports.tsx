@@ -150,15 +150,19 @@ const FinancialReports = () => {
     return itemEmConta?.valor || 0;
   };
 
+  // Função helper para calcular valor em mãos de um pagamento
+  const calcularValorEmMaos = (p: any) => {
+    const itens = p.folha_pagamento_itens || [];
+    const itemEmMaos = itens.find((i: any) => 
+      i.variaveis_folha?.nome?.toLowerCase().includes("valor em mãos") ||
+      i.variaveis_folha?.nome?.toLowerCase().includes("valor em maos")
+    );
+    return itemEmMaos?.valor || 0;
+  };
+
   const totalBruto = payroll?.reduce((sum, p) => sum + Number(p.valor_bruto), 0) || 0;
   const totalEmConta = payroll?.reduce((sum, p) => sum + calcularValorEmConta(p), 0) || 0;
-  const totalEmMaos = payroll?.reduce((sum, p) => {
-    const bruto = Number(p.valor_bruto);
-    const descontos = Number(p.desconto || 0) + (p.folha_pagamento_itens || [])
-      .filter((i: any) => i.variaveis_folha?.tipo === "desconto")
-      .reduce((s: number, i: any) => s + Number(i.valor), 0);
-    return sum + (bruto - descontos);
-  }, 0) || 0;
+  const totalEmMaos = payroll?.reduce((sum, p) => sum + calcularValorEmMaos(p), 0) || 0;
 
   return (
     <div className="space-y-6">
