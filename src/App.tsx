@@ -32,6 +32,7 @@ import Avaliacoes from "./pages/Avaliacoes";
 import Treinamentos from "./pages/Treinamentos";
 import Adiantamentos from "./pages/Adiantamentos";
 import PlanoAdmissaoDesligamento from "./pages/PlanoAdmissaoDesligamento";
+import PeopleManager from "./pages/PeopleManager";
 
 const queryClient = new QueryClient();
 
@@ -89,6 +90,7 @@ const App = () => {
           <Route path="/treinamentos" element={<Treinamentos />} />
           <Route path="/adiantamentos" element={<Adiantamentos />} />
           <Route path="/plano-admissao-desligamento" element={<PlanoAdmissaoDesligamento />} />
+          <Route path="/people-manager" element={<PeopleManager />} />
           <Route path="/settings" element={<Settings />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
