@@ -206,8 +206,13 @@ const RelatorioDetalhadoDialog = ({
       // Totais na capa
       const totalFuncionarios = pagamentosOrdenados.length;
       const totalBruto = pagamentosOrdenados.reduce((sum, p) => sum + p.valor_bruto, 0);
-      const totalDescontos = pagamentosOrdenados.reduce((sum, p) => sum + (p.desconto || 0), 0);
-      const totalLiquido = pagamentosOrdenados.reduce((sum, p) => sum + p.valor_liquido, 0);
+      const totalEmConta = pagamentosOrdenados.reduce((sum, p) => sum + p.valor_liquido, 0);
+      const totalEmMaos = pagamentosOrdenados.reduce((sum, p) => {
+        const bruto = p.valor_bruto;
+        const desconto = p.desconto || 0;
+        const emConta = p.valor_liquido;
+        return sum + (bruto - desconto - emConta);
+      }, 0);
 
       doc.setFillColor(240, 240, 240);
       doc.roundedRect(30, yPosition, pageWidth - 60, 50, 3, 3, "F");
@@ -219,10 +224,10 @@ const RelatorioDetalhadoDialog = ({
       yPosition += 10;
       doc.text(`Total Bruto: ${formatCurrency(totalBruto)}`, pageWidth / 2, yPosition, { align: "center" });
       yPosition += 10;
-      doc.text(`Total Descontos: ${formatCurrency(totalDescontos)}`, pageWidth / 2, yPosition, { align: "center" });
+      doc.text(`Total em Conta: ${formatCurrency(totalEmConta)}`, pageWidth / 2, yPosition, { align: "center" });
       yPosition += 10;
       doc.setTextColor(0, 100, 0);
-      doc.text(`Total em Mãos: ${formatCurrency(totalLiquido)}`, pageWidth / 2, yPosition, { align: "center" });
+      doc.text(`Total em Mãos: ${formatCurrency(totalEmMaos)}`, pageWidth / 2, yPosition, { align: "center" });
       doc.setTextColor(0, 0, 0);
 
       // === PÁGINA 2: SUMÁRIO EXECUTIVO ===
@@ -262,7 +267,7 @@ const RelatorioDetalhadoDialog = ({
           "TOTAL",
           totalFuncionarios.toString(),
           formatCurrency(totalBruto),
-          formatCurrency(totalLiquido),
+          formatCurrency(totalEmConta),
         ]);
 
         autoTable(doc, {
@@ -309,7 +314,7 @@ const RelatorioDetalhadoDialog = ({
           "TOTAL",
           totalFuncionarios.toString(),
           formatCurrency(totalBruto),
-          formatCurrency(totalLiquido),
+          formatCurrency(totalEmConta),
         ]);
 
         autoTable(doc, {
@@ -611,7 +616,7 @@ const RelatorioDetalhadoDialog = ({
         const totalDescontosAnterior = pagamentosAnteriores.reduce((sum, p) => sum + (p.desconto || 0), 0);
 
         const variacaoBruto = totalBrutoAnterior > 0 ? ((totalBruto - totalBrutoAnterior) / totalBrutoAnterior) * 100 : 0;
-        const variacaoLiquido = totalLiquidoAnterior > 0 ? ((totalLiquido - totalLiquidoAnterior) / totalLiquidoAnterior) * 100 : 0;
+        const variacaoLiquido = totalLiquidoAnterior > 0 ? ((totalEmConta - totalLiquidoAnterior) / totalLiquidoAnterior) * 100 : 0;
         const variacaoFunc = pagamentosAnteriores.length > 0 ? totalFuncionarios - pagamentosAnteriores.length : 0;
 
         const comparativoData = [
@@ -628,16 +633,16 @@ const RelatorioDetalhadoDialog = ({
             `${variacaoBruto >= 0 ? "+" : ""}${variacaoBruto.toFixed(1)}%`,
           ],
           [
-            "Total Descontos",
-            formatCurrency(totalDescontosAnterior),
-            formatCurrency(totalDescontos),
-            "-",
+            "Total em Conta",
+            formatCurrency(totalLiquidoAnterior),
+            formatCurrency(totalEmConta),
+            `${variacaoLiquido >= 0 ? "+" : ""}${variacaoLiquido.toFixed(1)}%`,
           ],
           [
-            "Total Líquido",
-            formatCurrency(totalLiquidoAnterior),
-            formatCurrency(totalLiquido),
-            `${variacaoLiquido >= 0 ? "+" : ""}${variacaoLiquido.toFixed(1)}%`,
+            "Total em Mãos",
+            formatCurrency(totalDescontosAnterior),
+            formatCurrency(totalEmMaos),
+            "-",
           ],
         ];
 
