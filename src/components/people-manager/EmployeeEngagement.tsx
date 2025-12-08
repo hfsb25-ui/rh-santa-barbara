@@ -157,7 +157,7 @@ export default function EmployeeEngagement() {
             </div>
             <Progress value={trainingEngagement} className="mt-4 h-2" />
             <p className="text-xs text-muted-foreground mt-1">
-              {employeesWithProgress} com progresso em cursos
+              Cursos disponíveis: {cursos?.length || 0}
             </p>
           </CardContent>
         </Card>
