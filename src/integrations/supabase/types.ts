@@ -380,6 +380,51 @@ export type Database = {
           },
         ]
       }
+      certificados_liberados: {
+        Row: {
+          created_at: string
+          curso_id: string
+          data_conclusao: string
+          data_liberacao: string
+          employee_id: string
+          id: string
+          liberado_por: string | null
+        }
+        Insert: {
+          created_at?: string
+          curso_id: string
+          data_conclusao: string
+          data_liberacao?: string
+          employee_id: string
+          id?: string
+          liberado_por?: string | null
+        }
+        Update: {
+          created_at?: string
+          curso_id?: string
+          data_conclusao?: string
+          data_liberacao?: string
+          employee_id?: string
+          id?: string
+          liberado_por?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "certificados_liberados_curso_id_fkey"
+            columns: ["curso_id"]
+            isOneToOne: false
+            referencedRelation: "cursos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "certificados_liberados_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ciclos_avaliacao: {
         Row: {
           ativo: boolean | null
