@@ -302,19 +302,19 @@ const FilesTab = ({ employeeId }: FilesTabProps) => {
   return (
     <>
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle>Arquivos do Funcionário</CardTitle>
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={() => {
+        <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <CardTitle className="text-lg">Arquivos do Funcionário</CardTitle>
+          <div className="flex gap-2 w-full sm:w-auto">
+            <Button variant="outline" size="sm" className="flex-1 sm:flex-none" onClick={() => {
               setShowScannerDialog(true);
               setTimeout(() => startCamera(), 100);
             }}>
-              <ScanLine className="w-4 h-4 mr-2" />
-              Scanner
+              <ScanLine className="w-4 h-4 mr-1 sm:mr-2" />
+              <span className="text-xs sm:text-sm">Scanner</span>
             </Button>
-            <Button onClick={() => setShowUploadDialog(true)}>
-              <Upload className="w-4 h-4 mr-2" />
-              Enviar Arquivo
+            <Button size="sm" className="flex-1 sm:flex-none" onClick={() => setShowUploadDialog(true)}>
+              <Upload className="w-4 h-4 mr-1 sm:mr-2" />
+              <span className="text-xs sm:text-sm">Enviar</span>
             </Button>
           </div>
         </CardHeader>
@@ -328,14 +328,14 @@ const FilesTab = ({ employeeId }: FilesTabProps) => {
               {files.map((file) => (
                 <div
                   key={file.id}
-                  className="flex items-center justify-between p-4 border rounded-lg hover:bg-accent/50 transition-colors"
+                  className="flex flex-col sm:flex-row sm:items-center justify-between p-3 sm:p-4 border rounded-lg hover:bg-accent/50 transition-colors gap-3"
                 >
-                  <div className="flex items-center gap-3 flex-1">
-                    <FileText className="w-5 h-5 text-muted-foreground" />
+                  <div className="flex items-start sm:items-center gap-3 flex-1 min-w-0">
+                    <FileText className="w-5 h-5 text-muted-foreground shrink-0 mt-0.5 sm:mt-0" />
                     <div className="flex-1 min-w-0">
-                      <p className="font-medium truncate">{file.file_name}</p>
+                      <p className="font-medium text-sm sm:text-base break-words">{file.file_name}</p>
                       {file.description && (
-                        <p className="text-sm text-muted-foreground truncate">
+                        <p className="text-xs sm:text-sm text-muted-foreground break-words">
                           {file.description}
                         </p>
                       )}
@@ -345,7 +345,7 @@ const FilesTab = ({ employeeId }: FilesTabProps) => {
                       </p>
                     </div>
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 self-end sm:self-auto shrink-0">
                     <Button
                       variant="outline"
                       size="sm"
