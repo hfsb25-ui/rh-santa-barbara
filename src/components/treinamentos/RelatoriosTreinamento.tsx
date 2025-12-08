@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import {
   Card,
@@ -10,11 +10,24 @@ import {
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Award, Download } from "lucide-react";
+import { Award, Download, Unlock, Check } from "lucide-react";
 import { toast } from "sonner";
 import jsPDF from "jspdf";
 
 export function RelatoriosTreinamento() {
+  const queryClient = useQueryClient();
+
+  // Buscar certificados já liberados
+  const { data: certificadosLiberados } = useQuery({
+    queryKey: ["certificados-liberados"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("certificados_liberados")
+        .select("employee_id, curso_id");
+      return data || [];
+    },
+  });
+
   const { data: progressData } = useQuery({
     queryKey: ["relatorios-treinamento"],
     queryFn: async () => {
@@ -112,6 +125,41 @@ export function RelatoriosTreinamento() {
       return stats;
     },
   });
+
+  // Mutation para liberar certificado
+  const liberarCertificado = useMutation({
+    mutationFn: async ({ employeeId, cursoId, dataConclusao }: { employeeId: string; cursoId: string; dataConclusao: Date }) => {
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      const { error } = await supabase
+        .from("certificados_liberados")
+        .insert({
+          employee_id: employeeId,
+          curso_id: cursoId,
+          liberado_por: user?.id,
+          data_conclusao: dataConclusao.toISOString(),
+        });
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["certificados-liberados"] });
+      toast.success("Certificado liberado para o funcionário!");
+    },
+    onError: (error: any) => {
+      if (error.code === "23505") {
+        toast.info("Certificado já foi liberado para este funcionário");
+      } else {
+        toast.error("Erro ao liberar certificado");
+      }
+    },
+  });
+
+  const isCertificadoLiberado = (employeeId: string, cursoId: string) => {
+    return certificadosLiberados?.some(
+      (c) => c.employee_id === employeeId && c.curso_id === cursoId
+    );
+  };
 
   const gerarCertificado = async (
     funcionario: any,
@@ -286,34 +334,63 @@ export function RelatoriosTreinamento() {
                         </span>
                       </div>
                       <div className="space-y-2">
-                        {stat.funcionariosCompletos.map((func: any) => (
-                          <div
-                            key={func.id}
-                            className="flex items-center justify-between p-2 rounded-lg bg-muted/50"
-                          >
-                            <div className="flex-1">
-                              <p className="text-sm font-medium">{func.nome}</p>
-                              <p className="text-xs text-muted-foreground">
-                                CPF: {func.cpf || "Não informado"}
-                              </p>
-                              <p className="text-xs text-muted-foreground">
-                                Concluído em:{" "}
-                                {new Date(func.dataConclusao).toLocaleDateString(
-                                  "pt-BR"
-                                )}
-                              </p>
-                            </div>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => gerarCertificado(func, stat.curso)}
-                              className="gap-2"
+                        {stat.funcionariosCompletos.map((func: any) => {
+                          const liberado = isCertificadoLiberado(func.id, stat.curso.id);
+                          
+                          return (
+                            <div
+                              key={func.id}
+                              className="flex flex-col sm:flex-row sm:items-center justify-between p-2 rounded-lg bg-muted/50 gap-2"
                             >
-                              <Download className="w-3 h-3" />
-                              Certificado
-                            </Button>
-                          </div>
-                        ))}
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium">{func.nome}</p>
+                                <p className="text-xs text-muted-foreground">
+                                  CPF: {func.cpf || "Não informado"}
+                                </p>
+                                <p className="text-xs text-muted-foreground">
+                                  Concluído em:{" "}
+                                  {new Date(func.dataConclusao).toLocaleDateString(
+                                    "pt-BR"
+                                  )}
+                                </p>
+                              </div>
+                              <div className="flex gap-1 shrink-0">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => gerarCertificado(func, stat.curso)}
+                                  className="gap-1"
+                                >
+                                  <Download className="w-3 h-3" />
+                                  <span className="hidden sm:inline">Baixar</span>
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant={liberado ? "secondary" : "default"}
+                                  onClick={() => liberarCertificado.mutate({
+                                    employeeId: func.id,
+                                    cursoId: stat.curso.id,
+                                    dataConclusao: func.dataConclusao,
+                                  })}
+                                  disabled={liberado || liberarCertificado.isPending}
+                                  className="gap-1"
+                                >
+                                  {liberado ? (
+                                    <>
+                                      <Check className="w-3 h-3" />
+                                      <span className="hidden sm:inline">Liberado</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Unlock className="w-3 h-3" />
+                                      <span className="hidden sm:inline">Liberar</span>
+                                    </>
+                                  )}
+                                </Button>
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
                   )}

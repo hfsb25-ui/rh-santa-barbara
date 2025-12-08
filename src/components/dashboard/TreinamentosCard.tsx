@@ -4,10 +4,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { GraduationCap, Play, CheckCircle2, Clock } from "lucide-react";
+import { GraduationCap, Play, CheckCircle2, Clock, Award, Download } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useState, useEffect, useCallback } from "react";
 import { toast } from "sonner";
+import jsPDF from "jspdf";
 
 interface TreinamentosCardProps {
   employeeId: string;
@@ -19,7 +20,35 @@ export function TreinamentosCard({ employeeId }: TreinamentosCardProps) {
   const [remainingSeconds, setRemainingSeconds] = useState<number>(0);
   const queryClient = useQueryClient();
 
-  const { data: cursosDisponiveis, data: progresso } = useQuery({
+  // Buscar dados do funcionário para o certificado
+  const { data: employeeData } = useQuery({
+    queryKey: ["employee-data", employeeId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("employees")
+        .select("nome_completo, cpf, empresa_id")
+        .eq("id", employeeId)
+        .single();
+      return data;
+    },
+  });
+
+  // Buscar certificados liberados para este funcionário
+  const { data: certificadosLiberados } = useQuery({
+    queryKey: ["certificados-liberados-funcionario", employeeId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("certificados_liberados")
+        .select(`
+          *,
+          curso:cursos(id, titulo, carga_horaria)
+        `)
+        .eq("employee_id", employeeId);
+      return data || [];
+    },
+  });
+
+  const { data: cursosDisponiveis } = useQuery({
     queryKey: ["cursos-funcionario", employeeId],
     queryFn: async () => {
       // Buscar dados do funcionário
@@ -152,6 +181,7 @@ export function TreinamentosCard({ employeeId }: TreinamentosCardProps) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["cursos-funcionario"] });
+      queryClient.invalidateQueries({ queryKey: ["certificados-liberados-funcionario"] });
       toast.success("Aula marcada como concluída!");
       setSelectedAula(null);
     },
@@ -176,6 +206,130 @@ export function TreinamentosCard({ employeeId }: TreinamentosCardProps) {
     });
   };
 
+  const gerarCertificado = async (certificado: any) => {
+    try {
+      // Buscar logo da empresa
+      const { data: empresa } = await supabase
+        .from("empresas")
+        .select("nome, logo_url")
+        .eq("id", employeeData?.empresa_id)
+        .single();
+
+      const doc = new jsPDF({ orientation: "landscape" });
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const pageHeight = doc.internal.pageSize.getHeight();
+
+      // Adicionar logo se existir
+      if (empresa?.logo_url) {
+        try {
+          doc.addImage(empresa.logo_url, "PNG", pageWidth / 2 - 15, 15, 30, 30);
+        } catch (error) {
+          console.error("Erro ao adicionar logo:", error);
+        }
+      }
+
+      // Borda decorativa
+      doc.setLineWidth(2);
+      doc.setDrawColor(59, 130, 246);
+      doc.rect(10, 10, pageWidth - 20, pageHeight - 20);
+
+      // Título
+      doc.setFontSize(28);
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(59, 130, 246);
+      doc.text("CERTIFICADO", pageWidth / 2, 55, { align: "center" });
+
+      // Subtítulo
+      doc.setFontSize(14);
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(0, 0, 0);
+      doc.text("DE CONCLUSÃO DE CURSO", pageWidth / 2, 65, { align: "center" });
+
+      // Texto principal
+      doc.setFontSize(11);
+      doc.setFont("helvetica", "normal");
+      doc.text("Certificamos que", pageWidth / 2, 80, { align: "center" });
+
+      // Nome do funcionário
+      doc.setFontSize(20);
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(59, 130, 246);
+      doc.text(employeeData?.nome_completo || "", pageWidth / 2, 92, { align: "center" });
+
+      // CPF do funcionário
+      doc.setFontSize(10);
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(100, 100, 100);
+      doc.text(`CPF: ${employeeData?.cpf || "Não informado"}`, pageWidth / 2, 100, {
+        align: "center",
+      });
+
+      // Texto do curso
+      doc.setFontSize(11);
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(0, 0, 0);
+      doc.text("concluiu com êxito o curso", pageWidth / 2, 112, {
+        align: "center",
+      });
+
+      // Nome do curso
+      doc.setFontSize(16);
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(59, 130, 246);
+      const cursoTitulo = doc.splitTextToSize(certificado.curso.titulo, pageWidth - 100);
+      doc.text(cursoTitulo, pageWidth / 2, 124, { align: "center" });
+
+      // Carga horária
+      if (certificado.curso.carga_horaria) {
+        doc.setFontSize(10);
+        doc.setFont("helvetica", "normal");
+        doc.setTextColor(100, 100, 100);
+        doc.text(`Carga Horária: ${certificado.curso.carga_horaria} horas`, pageWidth / 2, 136, {
+          align: "center",
+        });
+      }
+
+      // Nome da empresa - posicionado na parte inferior
+      if (empresa?.nome) {
+        doc.setFontSize(11);
+        doc.setFont("helvetica", "bold");
+        doc.setTextColor(0, 0, 0);
+        doc.text(empresa.nome, pageWidth / 2, pageHeight - 45, {
+          align: "center",
+        });
+      }
+
+      // Data de conclusão - logo abaixo do nome da empresa
+      const dataFormatada = new Date(certificado.data_conclusao).toLocaleDateString(
+        "pt-BR",
+        { day: "2-digit", month: "long", year: "numeric" }
+      );
+      doc.setFontSize(10);
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(100, 100, 100);
+      doc.text(`Concluído em ${dataFormatada}`, pageWidth / 2, pageHeight - 36, {
+        align: "center",
+      });
+
+      // Linha de assinatura
+      doc.setLineWidth(0.5);
+      doc.setDrawColor(0, 0, 0);
+      doc.line(pageWidth / 2 - 40, pageHeight - 22, pageWidth / 2 + 40, pageHeight - 22);
+      doc.setFontSize(10);
+      doc.text("Assinatura Autorizada", pageWidth / 2, pageHeight - 17, {
+        align: "center",
+      });
+
+      doc.save(
+        `Certificado_${employeeData?.nome_completo?.replace(/\s/g, "_")}_${certificado.curso.titulo.replace(/\s/g, "_")}.pdf`
+      );
+      toast.success("Certificado baixado com sucesso!");
+    } catch (error) {
+      console.error("Erro ao gerar certificado:", error);
+      toast.error("Erro ao gerar certificado");
+    }
+  };
+
   return (
     <>
       <Card>
@@ -186,6 +340,42 @@ export function TreinamentosCard({ employeeId }: TreinamentosCardProps) {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
+          {/* Certificados disponíveis para download */}
+          {certificadosLiberados && certificadosLiberados.length > 0 && (
+            <div className="space-y-2 pb-4 border-b">
+              <div className="flex items-center gap-2 mb-2">
+                <Award className="h-4 w-4 text-primary" />
+                <span className="text-sm font-medium">Meus Certificados</span>
+              </div>
+              <div className="space-y-2">
+                {certificadosLiberados.map((cert) => (
+                  <div
+                    key={cert.id}
+                    className="flex items-center justify-between p-2 rounded-lg bg-green-500/10"
+                  >
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-green-700 dark:text-green-400">
+                        {cert.curso?.titulo}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        Concluído em {new Date(cert.data_conclusao).toLocaleDateString("pt-BR")}
+                      </p>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => gerarCertificado(cert)}
+                      className="gap-1"
+                    >
+                      <Download className="h-3 w-3" />
+                      Baixar
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {cursosDisponiveis && cursosDisponiveis.length > 0 ? (
             cursosDisponiveis.map((curso) => (
               <div key={curso.id} className="space-y-2">
