@@ -46,11 +46,6 @@ export default function TalentAnalytics() {
       return data;
     },
   });
-        .select("*");
-      if (error) throw error;
-      return data;
-    },
-  });
 
   const activeEmployees = employees?.filter(e => e.status === "ativo") || [];
 
