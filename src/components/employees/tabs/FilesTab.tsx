@@ -5,11 +5,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Upload, FileText, Download, Trash2, Loader2, Camera, ScanLine } from "lucide-react";
+import { Upload, FileText, Download, Trash2, Loader2, Camera, ScanLine, Crop } from "lucide-react";
 import { format } from "date-fns";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
-
+import { ImageCropper } from "./ImageCropper";
 interface FilesTabProps {
   employeeId: string;
 }
@@ -35,6 +35,7 @@ const FilesTab = ({ employeeId }: FilesTabProps) => {
   const [scannerDescription, setScannerDescription] = useState("");
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const [isCameraActive, setIsCameraActive] = useState(false);
+  const [isCropping, setIsCropping] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -162,7 +163,21 @@ const FilesTab = ({ employeeId }: FilesTabProps) => {
 
   const retakePhoto = () => {
     setCapturedImage(null);
+    setIsCropping(false);
     startCamera();
+  };
+
+  const startCropping = () => {
+    setIsCropping(true);
+  };
+
+  const handleCropComplete = (croppedImage: string) => {
+    setCapturedImage(croppedImage);
+    setIsCropping(false);
+  };
+
+  const cancelCropping = () => {
+    setIsCropping(false);
   };
 
   const handleScannerUpload = async () => {
@@ -216,6 +231,7 @@ const FilesTab = ({ employeeId }: FilesTabProps) => {
     stopCamera();
     setCapturedImage(null);
     setScannerDescription("");
+    setIsCropping(false);
     setShowScannerDialog(false);
   };
 
@@ -420,98 +436,117 @@ const FilesTab = ({ employeeId }: FilesTabProps) => {
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
-            {/* Camera/Preview Area */}
-            <div className="relative bg-muted rounded-lg overflow-hidden aspect-[4/3]">
-              {!capturedImage ? (
-                <>
-                  <video
-                    ref={videoRef}
-                    autoPlay
-                    playsInline
-                    className="w-full h-full object-cover"
-                  />
-                  {!isCameraActive && (
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <div className="text-center text-muted-foreground">
-                        <Camera className="w-12 h-12 mx-auto mb-2 opacity-50" />
-                        <p>Carregando câmera...</p>
-                      </div>
-                    </div>
-                  )}
-                </>
-              ) : (
-                <img
-                  src={capturedImage}
-                  alt="Documento capturado"
-                  className="w-full h-full object-contain"
-                />
-              )}
-            </div>
-
-            <canvas ref={canvasRef} className="hidden" />
-
-            {/* Capture/Retake Buttons */}
-            {!capturedImage ? (
-              <Button
-                onClick={capturePhoto}
-                disabled={!isCameraActive}
-                className="w-full"
-                size="lg"
-              >
-                <Camera className="w-5 h-5 mr-2" />
-                Capturar Documento
-              </Button>
+            {isCropping && capturedImage ? (
+              <ImageCropper
+                imageSrc={capturedImage}
+                onCropComplete={handleCropComplete}
+                onCancel={cancelCropping}
+              />
             ) : (
               <>
-                <div>
-                  <Label htmlFor="scannerDescription">Descrição (opcional)</Label>
-                  <Textarea
-                    id="scannerDescription"
-                    value={scannerDescription}
-                    onChange={(e) => setScannerDescription(e.target.value)}
-                    placeholder="Ex: RG frente, CNH, Comprovante..."
-                    rows={2}
-                  />
+                {/* Camera/Preview Area */}
+                <div className="relative bg-muted rounded-lg overflow-hidden aspect-[4/3]">
+                  {!capturedImage ? (
+                    <>
+                      <video
+                        ref={videoRef}
+                        autoPlay
+                        playsInline
+                        className="w-full h-full object-cover"
+                      />
+                      {!isCameraActive && (
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <div className="text-center text-muted-foreground">
+                            <Camera className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                            <p>Carregando câmera...</p>
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <img
+                      src={capturedImage}
+                      alt="Documento capturado"
+                      className="w-full h-full object-contain"
+                    />
+                  )}
                 </div>
-                <div className="flex gap-2">
+
+                <canvas ref={canvasRef} className="hidden" />
+
+                {/* Capture/Retake Buttons */}
+                {!capturedImage ? (
                   <Button
-                    variant="outline"
-                    onClick={retakePhoto}
-                    disabled={uploading}
-                    className="flex-1"
+                    onClick={capturePhoto}
+                    disabled={!isCameraActive}
+                    className="w-full"
+                    size="lg"
                   >
-                    <Camera className="w-4 h-4 mr-2" />
-                    Capturar Novamente
+                    <Camera className="w-5 h-5 mr-2" />
+                    Capturar Documento
                   </Button>
-                  <Button
-                    onClick={handleScannerUpload}
-                    disabled={uploading}
-                    className="flex-1"
-                  >
-                    {uploading ? (
-                      <>
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        Salvando...
-                      </>
-                    ) : (
-                      <>
-                        <Upload className="w-4 h-4 mr-2" />
-                        Salvar Documento
-                      </>
-                    )}
-                  </Button>
-                </div>
+                ) : (
+                  <>
+                    <div>
+                      <Label htmlFor="scannerDescription">Descrição (opcional)</Label>
+                      <Textarea
+                        id="scannerDescription"
+                        value={scannerDescription}
+                        onChange={(e) => setScannerDescription(e.target.value)}
+                        placeholder="Ex: RG frente, CNH, Comprovante..."
+                        rows={2}
+                      />
+                    </div>
+                    <div className="flex gap-2 flex-wrap">
+                      <Button
+                        variant="outline"
+                        onClick={retakePhoto}
+                        disabled={uploading}
+                        className="flex-1 min-w-[100px]"
+                      >
+                        <Camera className="w-4 h-4 mr-2" />
+                        Nova Captura
+                      </Button>
+                      <Button
+                        variant="outline"
+                        onClick={startCropping}
+                        disabled={uploading}
+                        className="flex-1 min-w-[100px]"
+                      >
+                        <Crop className="w-4 h-4 mr-2" />
+                        Recortar
+                      </Button>
+                      <Button
+                        onClick={handleScannerUpload}
+                        disabled={uploading}
+                        className="flex-1 min-w-[100px]"
+                      >
+                        {uploading ? (
+                          <>
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            Salvando...
+                          </>
+                        ) : (
+                          <>
+                            <Upload className="w-4 h-4 mr-2" />
+                            Salvar
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </>
+                )}
+
+                <Button
+                  variant="ghost"
+                  onClick={closeScannerDialog}
+                  disabled={uploading}
+                  className="w-full"
+                >
+                  Cancelar
+                </Button>
               </>
             )}
-
-            <Button
-              variant="ghost"
-              onClick={closeScannerDialog}
-              disabled={uploading}
-              className="w-full"
-            >
-              Cancelar
-            </Button>
           </div>
         </DialogContent>
       </Dialog>
