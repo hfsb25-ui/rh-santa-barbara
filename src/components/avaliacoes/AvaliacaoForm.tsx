@@ -263,6 +263,7 @@ export default function AvaliacaoForm({ avaliacao, onClose, onSuccess }: Avaliac
                           >
                             <Checkbox
                               checked={selectedEmployees.includes(emp.id)}
+                              onClick={(e) => e.stopPropagation()}
                               onCheckedChange={() => toggleEmployee(emp.id)}
                             />
                             <div className="flex-1">
