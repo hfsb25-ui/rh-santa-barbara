@@ -16,7 +16,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
-import { Printer, Search, Users, Loader2, Palette } from "lucide-react";
+import { Printer, Search, Users, Loader2, Settings2, RectangleHorizontal, RectangleVertical } from "lucide-react";
 import { toast } from "sonner";
 import { generateBadgesPDF, BADGE_TEMPLATES, BadgeTemplate } from "@/lib/pdfGeneratorCrachas";
 
@@ -32,6 +32,9 @@ const CrachaEmployeeList = () => {
   const [showCpf, setShowCpf] = useState(true);
   const [showSector, setShowSector] = useState(true);
   const [showCompanyLogo, setShowCompanyLogo] = useState(true);
+  const [showPhoto, setShowPhoto] = useState(true);
+  const [showCargo, setShowCargo] = useState(true);
+  const [orientation, setOrientation] = useState<"horizontal" | "vertical">("horizontal");
   const [selectedTemplate, setSelectedTemplate] = useState<BadgeTemplate>(BADGE_TEMPLATES[0]);
   const [customColor, setCustomColor] = useState<string>("");
 
@@ -152,6 +155,9 @@ const CrachaEmployeeList = () => {
         showCpf,
         showSector,
         showCompanyLogo,
+        showPhoto,
+        showCargo,
+        orientation,
         template: selectedTemplate,
         customHeaderColor: customColor || undefined,
       });
@@ -166,6 +172,101 @@ const CrachaEmployeeList = () => {
   };
 
   const allSelected = filteredEmployees.length > 0 && selectedEmployees.size === filteredEmployees.length;
+
+  // Template preview component
+  const TemplatePreview = ({ template, isSelected }: { template: BadgeTemplate; isSelected: boolean }) => (
+    <button
+      onClick={() => setSelectedTemplate(template)}
+      className={`group relative overflow-hidden rounded-xl border-2 transition-all duration-200 ${
+        isSelected
+          ? "border-primary ring-2 ring-primary/30 scale-[1.02]"
+          : "border-transparent hover:border-primary/40 hover:scale-[1.01]"
+      }`}
+    >
+      {/* Mini badge preview */}
+      <div className="w-full aspect-[1.6] relative">
+        {template.style === "modern" && (
+          <div className="absolute inset-0 bg-gradient-to-b from-background to-muted/50 p-1.5">
+            <div
+              className="h-3 rounded-t-md"
+              style={{ backgroundColor: template.headerColor }}
+            />
+            <div
+              className="h-0.5"
+              style={{ backgroundColor: template.accentColor }}
+            />
+            <div className="flex gap-1.5 mt-1.5 px-1">
+              <div className="w-5 h-5 rounded bg-muted border" style={{ borderColor: template.headerColor }} />
+              <div className="flex-1 space-y-1">
+                <div className="h-1.5 bg-foreground/60 rounded w-3/4" />
+                <div className="h-1 bg-muted-foreground/40 rounded w-1/2" />
+              </div>
+            </div>
+          </div>
+        )}
+        {template.style === "classic" && (
+          <div className="absolute inset-0 bg-background p-1.5 border-2 rounded-md" style={{ borderColor: template.headerColor }}>
+            <div
+              className="h-2.5 rounded-sm"
+              style={{ backgroundColor: template.headerColor }}
+            />
+            <div className="h-px mt-1" style={{ backgroundColor: template.headerColor }} />
+            <div className="flex gap-1.5 mt-1 px-0.5">
+              <div className="w-5 h-5 bg-muted rounded-sm" />
+              <div className="flex-1 space-y-1">
+                <div className="h-1.5 bg-foreground/60 rounded w-3/4" />
+                <div className="h-1 bg-muted-foreground/40 rounded w-1/2" />
+              </div>
+            </div>
+          </div>
+        )}
+        {template.style === "minimal" && (
+          <div className="absolute inset-0 bg-background p-1.5 rounded-md border border-border">
+            <div
+              className="h-1 rounded-full"
+              style={{ backgroundColor: template.headerColor }}
+            />
+            <div className="flex gap-1.5 mt-2 px-0.5">
+              <div className="w-6 h-6 bg-muted rounded-full" />
+              <div className="flex-1 space-y-1 mt-1">
+                <div className="h-1.5 bg-foreground/60 rounded w-2/3" />
+                <div className="h-1 bg-muted-foreground/30 rounded w-1/2" />
+              </div>
+            </div>
+          </div>
+        )}
+        {template.style === "corporate" && (
+          <div className="absolute inset-0 bg-muted/30 p-1.5 rounded-md">
+            <div
+              className="absolute left-0 top-0 bottom-0 w-1.5 rounded-l-md"
+              style={{ backgroundColor: template.headerColor }}
+            />
+            <div className="ml-2">
+              <div
+                className="h-2.5 rounded-sm -mx-0.5"
+                style={{ backgroundColor: template.headerColor }}
+              />
+              <div className="flex gap-1.5 mt-1">
+                <div className="w-5 h-5 bg-muted rounded-sm" style={{ borderLeft: `2px solid ${template.accentColor}` }} />
+                <div className="flex-1 space-y-1">
+                  <div className="h-1.5 rounded w-3/4" style={{ backgroundColor: template.headerColor }} />
+                  <div className="h-1 bg-muted-foreground/40 rounded w-1/2" />
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+      <div className="p-2 bg-card border-t">
+        <span className="text-xs font-medium block truncate">{template.name}</span>
+      </div>
+      {isSelected && (
+        <div className="absolute top-1 right-1 w-5 h-5 bg-primary rounded-full flex items-center justify-center shadow-md">
+          <span className="text-primary-foreground text-xs font-bold">✓</span>
+        </div>
+      )}
+    </button>
+  );
 
   return (
     <div className="space-y-6">
@@ -240,69 +341,106 @@ const CrachaEmployeeList = () => {
       {/* Template Selection */}
       <Card>
         <CardHeader>
+          <CardTitle>Escolha o Template</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
+            {BADGE_TEMPLATES.map((template) => (
+              <TemplatePreview
+                key={template.id}
+                template={template}
+                isSelected={selectedTemplate.id === template.id}
+              />
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Badge Options */}
+      <Card>
+        <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Palette className="h-5 w-5" />
-            Estilo do Crachá
+            <Settings2 className="h-5 w-5" />
+            Opções do Crachá
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-            {BADGE_TEMPLATES.map((template) => (
+        <CardContent className="space-y-6">
+          {/* Orientation */}
+          <div className="space-y-3">
+            <Label className="text-base font-medium">Orientação</Label>
+            <div className="flex gap-3">
               <button
-                key={template.id}
-                onClick={() => setSelectedTemplate(template)}
-                className={`relative p-3 rounded-lg border-2 transition-all ${
-                  selectedTemplate.id === template.id
-                    ? "border-primary ring-2 ring-primary/20"
+                onClick={() => setOrientation("horizontal")}
+                className={`flex items-center gap-2 px-4 py-3 rounded-lg border-2 transition-all ${
+                  orientation === "horizontal"
+                    ? "border-primary bg-primary/5"
                     : "border-border hover:border-primary/50"
                 }`}
               >
-                <div
-                  className="w-full h-8 rounded mb-2"
-                  style={{ backgroundColor: template.headerColor }}
-                />
-                <span className="text-xs font-medium">{template.name}</span>
-                {selectedTemplate.id === template.id && (
-                  <div className="absolute -top-1 -right-1 w-4 h-4 bg-primary rounded-full flex items-center justify-center">
-                    <span className="text-primary-foreground text-xs">✓</span>
-                  </div>
-                )}
+                <RectangleHorizontal className="h-5 w-5" />
+                <span className="font-medium">Horizontal</span>
               </button>
-            ))}
+              <button
+                onClick={() => setOrientation("vertical")}
+                className={`flex items-center gap-2 px-4 py-3 rounded-lg border-2 transition-all ${
+                  orientation === "vertical"
+                    ? "border-primary bg-primary/5"
+                    : "border-border hover:border-primary/50"
+                }`}
+              >
+                <RectangleVertical className="h-5 w-5" />
+                <span className="font-medium">Vertical</span>
+              </button>
+            </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-6 pt-4 border-t">
-            <div className="flex items-center gap-2">
-              <Label htmlFor="customColor">Cor personalizada:</Label>
-              <Input
-                id="customColor"
-                type="color"
-                value={customColor || selectedTemplate.headerColor}
-                onChange={(e) => setCustomColor(e.target.value)}
-                className="w-12 h-8 p-1 cursor-pointer"
-              />
+          {/* Custom Color */}
+          <div className="space-y-3">
+            <Label className="text-base font-medium">Cor Personalizada</Label>
+            <div className="flex items-center gap-3">
+              <div className="relative">
+                <Input
+                  type="color"
+                  value={customColor || selectedTemplate.headerColor}
+                  onChange={(e) => setCustomColor(e.target.value)}
+                  className="w-14 h-10 p-1 cursor-pointer"
+                />
+              </div>
+              <span className="text-sm text-muted-foreground">
+                {customColor || selectedTemplate.headerColor}
+              </span>
               {customColor && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setCustomColor("")}
-                >
+                <Button variant="ghost" size="sm" onClick={() => setCustomColor("")}>
                   Resetar
                 </Button>
               )}
             </div>
+          </div>
 
-            <div className="flex items-center gap-2">
-              <Switch checked={showCpf} onCheckedChange={setShowCpf} id="showCpf" />
-              <Label htmlFor="showCpf">Exibir CPF</Label>
-            </div>
-            <div className="flex items-center gap-2">
-              <Switch checked={showSector} onCheckedChange={setShowSector} id="showSector" />
-              <Label htmlFor="showSector">Exibir Setor</Label>
-            </div>
-            <div className="flex items-center gap-2">
-              <Switch checked={showCompanyLogo} onCheckedChange={setShowCompanyLogo} id="showLogo" />
-              <Label htmlFor="showLogo">Exibir Logo</Label>
+          {/* Toggle Options */}
+          <div className="space-y-3">
+            <Label className="text-base font-medium">Elementos Visíveis</Label>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+              <div className="flex items-center gap-3 p-3 rounded-lg border bg-card">
+                <Switch checked={showPhoto} onCheckedChange={setShowPhoto} id="showPhoto" />
+                <Label htmlFor="showPhoto" className="cursor-pointer">Foto</Label>
+              </div>
+              <div className="flex items-center gap-3 p-3 rounded-lg border bg-card">
+                <Switch checked={showCargo} onCheckedChange={setShowCargo} id="showCargo" />
+                <Label htmlFor="showCargo" className="cursor-pointer">Cargo</Label>
+              </div>
+              <div className="flex items-center gap-3 p-3 rounded-lg border bg-card">
+                <Switch checked={showSector} onCheckedChange={setShowSector} id="showSector" />
+                <Label htmlFor="showSector" className="cursor-pointer">Setor</Label>
+              </div>
+              <div className="flex items-center gap-3 p-3 rounded-lg border bg-card">
+                <Switch checked={showCpf} onCheckedChange={setShowCpf} id="showCpf" />
+                <Label htmlFor="showCpf" className="cursor-pointer">CPF</Label>
+              </div>
+              <div className="flex items-center gap-3 p-3 rounded-lg border bg-card">
+                <Switch checked={showCompanyLogo} onCheckedChange={setShowCompanyLogo} id="showLogo" />
+                <Label htmlFor="showLogo" className="cursor-pointer">Logo</Label>
+              </div>
             </div>
           </div>
         </CardContent>
