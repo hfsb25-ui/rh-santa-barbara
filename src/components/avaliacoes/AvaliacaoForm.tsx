@@ -8,7 +8,10 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
+import { Users, User, CheckSquare } from "lucide-react";
 
 interface AvaliacaoFormProps {
   avaliacao?: any;
@@ -18,6 +21,10 @@ interface AvaliacaoFormProps {
 
 export default function AvaliacaoForm({ avaliacao, onClose, onSuccess }: AvaliacaoFormProps) {
   const [loading, setLoading] = useState(false);
+  const [mode, setMode] = useState<"individual" | "setor">("individual");
+  const [selectedSetor, setSelectedSetor] = useState<string>("");
+  const [selectedEmployees, setSelectedEmployees] = useState<string[]>([]);
+
   const form = useForm({
     defaultValues: {
       employee_id: avaliacao?.employee_id || "",
@@ -28,12 +35,25 @@ export default function AvaliacaoForm({ avaliacao, onClose, onSuccess }: Avaliac
     },
   });
 
+  const { data: setores } = useQuery({
+    queryKey: ["setores-select"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("setores")
+        .select("id, nome")
+        .order("nome");
+
+      if (error) throw error;
+      return data;
+    },
+  });
+
   const { data: employees } = useQuery({
     queryKey: ["employees-select"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("employees")
-        .select("id, nome_completo, cargo")
+        .select("id, nome_completo, cargo, setor")
         .eq("status", "ativo")
         .order("nome_completo");
 
@@ -42,32 +62,78 @@ export default function AvaliacaoForm({ avaliacao, onClose, onSuccess }: Avaliac
     },
   });
 
+  // Filter employees by selected sector
+  const employeesBySetor = employees?.filter(emp => emp.setor === selectedSetor) || [];
+
+  const handleSelectAll = () => {
+    if (selectedEmployees.length === employeesBySetor.length) {
+      setSelectedEmployees([]);
+    } else {
+      setSelectedEmployees(employeesBySetor.map(emp => emp.id));
+    }
+  };
+
+  const toggleEmployee = (employeeId: string) => {
+    setSelectedEmployees(prev => 
+      prev.includes(employeeId)
+        ? prev.filter(id => id !== employeeId)
+        : [...prev, employeeId]
+    );
+  };
+
   const onSubmit = async (values: any) => {
     setLoading(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
 
-      const avaliacaoData = {
-        ...values,
-        avaliador_id: user?.id,
-        status: "pendente",
-      };
+      if (mode === "setor") {
+        // Create evaluations for multiple employees
+        if (selectedEmployees.length === 0) {
+          toast.error("Selecione pelo menos um funcionário");
+          setLoading(false);
+          return;
+        }
 
-      if (avaliacao?.id) {
+        const avaliacoesData = selectedEmployees.map(empId => ({
+          employee_id: empId,
+          tipo: values.tipo,
+          periodo_inicio: values.periodo_inicio,
+          periodo_fim: values.periodo_fim,
+          observacoes: values.observacoes,
+          avaliador_id: user?.id,
+          status: "pendente",
+        }));
+
         const { error } = await supabase
           .from("avaliacoes_desempenho")
-          .update(avaliacaoData)
-          .eq("id", avaliacao.id);
+          .insert(avaliacoesData);
 
         if (error) throw error;
-        toast.success("Avaliação atualizada com sucesso!");
+        toast.success(`${selectedEmployees.length} avaliações criadas com sucesso!`);
       } else {
-        const { error } = await supabase
-          .from("avaliacoes_desempenho")
-          .insert(avaliacaoData);
+        // Single employee evaluation
+        const avaliacaoData = {
+          ...values,
+          avaliador_id: user?.id,
+          status: "pendente",
+        };
 
-        if (error) throw error;
-        toast.success("Avaliação criada com sucesso!");
+        if (avaliacao?.id) {
+          const { error } = await supabase
+            .from("avaliacoes_desempenho")
+            .update(avaliacaoData)
+            .eq("id", avaliacao.id);
+
+          if (error) throw error;
+          toast.success("Avaliação atualizada com sucesso!");
+        } else {
+          const { error } = await supabase
+            .from("avaliacoes_desempenho")
+            .insert(avaliacaoData);
+
+          if (error) throw error;
+          toast.success("Avaliação criada com sucesso!");
+        }
       }
 
       onSuccess();
@@ -87,33 +153,136 @@ export default function AvaliacaoForm({ avaliacao, onClose, onSuccess }: Avaliac
           </DialogTitle>
         </DialogHeader>
 
+        {/* Mode selector - only show when creating new */}
+        {!avaliacao && (
+          <div className="flex gap-2 mb-4">
+            <Button
+              type="button"
+              variant={mode === "individual" ? "default" : "outline"}
+              onClick={() => {
+                setMode("individual");
+                setSelectedSetor("");
+                setSelectedEmployees([]);
+              }}
+              className="flex-1"
+            >
+              <User className="w-4 h-4 mr-2" />
+              Individual
+            </Button>
+            <Button
+              type="button"
+              variant={mode === "setor" ? "default" : "outline"}
+              onClick={() => {
+                setMode("setor");
+                form.setValue("employee_id", "");
+              }}
+              className="flex-1"
+            >
+              <Users className="w-4 h-4 mr-2" />
+              Por Setor
+            </Button>
+          </div>
+        )}
+
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <FormField
-              control={form.control}
-              name="employee_id"
-              rules={{ required: "Selecione um funcionário" }}
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Funcionário</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione o funcionário" />
-                      </SelectTrigger>
-                    </FormControl>
+            {mode === "individual" ? (
+              <FormField
+                control={form.control}
+                name="employee_id"
+                rules={{ required: "Selecione um funcionário" }}
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Funcionário</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione o funcionário" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {employees?.map((emp) => (
+                          <SelectItem key={emp.id} value={emp.id}>
+                            {emp.nome_completo} - {emp.cargo}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            ) : (
+              <div className="space-y-4">
+                <div>
+                  <Label>Setor</Label>
+                  <Select value={selectedSetor} onValueChange={setSelectedSetor}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione o setor" />
+                    </SelectTrigger>
                     <SelectContent>
-                      {employees?.map((emp) => (
-                        <SelectItem key={emp.id} value={emp.id}>
-                          {emp.nome_completo} - {emp.cargo}
+                      {setores?.map((setor) => (
+                        <SelectItem key={setor.id} value={setor.nome}>
+                          {setor.nome}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+                </div>
+
+                {selectedSetor && (
+                  <div className="border rounded-lg p-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-sm font-medium">
+                        Funcionários do setor ({employeesBySetor.length})
+                      </Label>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleSelectAll}
+                      >
+                        <CheckSquare className="w-4 h-4 mr-1" />
+                        {selectedEmployees.length === employeesBySetor.length 
+                          ? "Desmarcar Todos" 
+                          : "Selecionar Todos"}
+                      </Button>
+                    </div>
+
+                    {employeesBySetor.length === 0 ? (
+                      <p className="text-sm text-muted-foreground text-center py-4">
+                        Nenhum funcionário ativo neste setor
+                      </p>
+                    ) : (
+                      <div className="max-h-48 overflow-y-auto space-y-2">
+                        {employeesBySetor.map((emp) => (
+                          <div 
+                            key={emp.id} 
+                            className="flex items-center space-x-3 p-2 rounded hover:bg-muted/50 cursor-pointer"
+                            onClick={() => toggleEmployee(emp.id)}
+                          >
+                            <Checkbox
+                              checked={selectedEmployees.includes(emp.id)}
+                              onCheckedChange={() => toggleEmployee(emp.id)}
+                            />
+                            <div className="flex-1">
+                              <p className="text-sm font-medium">{emp.nome_completo}</p>
+                              <p className="text-xs text-muted-foreground">{emp.cargo}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {selectedEmployees.length > 0 && (
+                      <p className="text-sm text-primary font-medium">
+                        {selectedEmployees.length} funcionário(s) selecionado(s)
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
 
             <FormField
               control={form.control}
@@ -194,8 +363,16 @@ export default function AvaliacaoForm({ avaliacao, onClose, onSuccess }: Avaliac
               <Button type="button" variant="outline" onClick={onClose}>
                 Cancelar
               </Button>
-              <Button type="submit" disabled={loading}>
-                {loading ? "Salvando..." : "Salvar"}
+              <Button 
+                type="submit" 
+                disabled={loading || (mode === "setor" && selectedEmployees.length === 0)}
+              >
+                {loading 
+                  ? "Salvando..." 
+                  : mode === "setor" 
+                    ? `Criar ${selectedEmployees.length} Avaliação(ões)` 
+                    : "Salvar"
+                }
               </Button>
             </div>
           </form>
