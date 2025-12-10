@@ -343,6 +343,16 @@ const Payroll = () => {
     setTodosPagamentos(filteredData as any);
   };
 
+  // Helper para calcular valor em conta de um pagamento
+  const calcularValorEmConta = (pag: Pagamento) => {
+    const itens = pag.folha_pagamento_itens || [];
+    const itemEmConta = itens.find(i => 
+      i.variaveis_folha?.nome?.toLowerCase().includes("valor em conta") ||
+      (i.variaveis_folha as any)?.codigo === "3503"
+    );
+    return itemEmConta?.valor || 0;
+  };
+
   const getResumosMensais = (): ResumoMensal[] => {
     const resumos: Record<string, ResumoMensal> = {};
     
@@ -359,9 +369,10 @@ const Payroll = () => {
           totalGeral: 0,
         };
       }
+      const valorEmConta = calcularValorEmConta(pag);
       resumos[key].totalPagamentos += 1;
-      resumos[key].totalEmConta += pag.descontos || 0;
-      resumos[key].totalEmMaos += pag.valor_liquido;
+      resumos[key].totalEmConta += valorEmConta;
+      resumos[key].totalEmMaos += pag.valor_bruto - valorEmConta; // Valor em Mãos = Bruto - Em Conta
       resumos[key].totalDescontos += pag.desconto || 0;
       resumos[key].totalGeral += pag.valor_bruto;
     });
