@@ -165,100 +165,113 @@ function drawHorizontalModern(
   const headerColor = hexToRgb(options.customHeaderColor || options.template.headerColor);
   const accentColor = hexToRgb(options.template.accentColor);
 
-  // Background
-  doc.setFillColor(252, 252, 254);
+  // Shadow effect
+  doc.setFillColor(220, 220, 225);
+  doc.roundedRect(x + 0.5, y + 0.5, H_BADGE_WIDTH, H_BADGE_HEIGHT, 3, 3, "F");
+
+  // Main background with gradient effect
+  doc.setFillColor(255, 255, 255);
   doc.roundedRect(x, y, H_BADGE_WIDTH, H_BADGE_HEIGHT, 3, 3, "F");
 
-  // Header
+  // Header with extended height
   doc.setFillColor(headerColor.r, headerColor.g, headerColor.b);
-  doc.roundedRect(x, y, H_BADGE_WIDTH, 13, 3, 3, "F");
-  doc.rect(x, y + 7, H_BADGE_WIDTH, 6, "F");
+  doc.roundedRect(x, y, H_BADGE_WIDTH, 16, 3, 3, "F");
+  doc.rect(x, y + 10, H_BADGE_WIDTH, 6, "F");
 
-  // Accent line
+  // Decorative accent stripe
   doc.setFillColor(accentColor.r, accentColor.g, accentColor.b);
-  doc.rect(x, y + 13, H_BADGE_WIDTH, 1.5, "F");
+  doc.rect(x, y + 16, H_BADGE_WIDTH, 2.5, "F");
+
+  // Bottom decorative line
+  doc.setFillColor(headerColor.r, headerColor.g, headerColor.b);
+  doc.rect(x, y + H_BADGE_HEIGHT - 3, H_BADGE_WIDTH, 3, "F");
+  doc.roundedRect(x, y + H_BADGE_HEIGHT - 3, H_BADGE_WIDTH, 3, 0, 0, "F");
+  doc.roundedRect(x, y, H_BADGE_WIDTH, H_BADGE_HEIGHT, 3, 3, "S");
 
   // Company name/logo
   doc.setTextColor(255, 255, 255);
-  doc.setFontSize(8);
+  doc.setFontSize(9);
   doc.setFont("helvetica", "bold");
 
   if (options.showCompanyLogo && companyLogo) {
     try {
-      doc.addImage(companyLogo, "PNG", x + 3, y + 2.5, 16, 8);
+      doc.addImage(companyLogo, "PNG", x + 4, y + 3, 18, 9);
       if (employee.empresa?.nome) {
-        doc.text(employee.empresa.nome.substring(0, 22), x + 21, y + 8);
+        doc.setFontSize(8);
+        doc.text(employee.empresa.nome.substring(0, 18).toUpperCase(), x + 24, y + 10);
       }
     } catch {
-      doc.text(employee.empresa?.nome || "IDENTIFICAÇÃO", x + H_BADGE_WIDTH / 2, y + 8, { align: "center" });
+      doc.text(employee.empresa?.nome?.toUpperCase() || "IDENTIFICAÇÃO", x + H_BADGE_WIDTH / 2, y + 10, { align: "center" });
     }
   } else {
-    doc.text(employee.empresa?.nome || "IDENTIFICAÇÃO", x + H_BADGE_WIDTH / 2, y + 8, { align: "center" });
+    doc.text(employee.empresa?.nome?.toUpperCase() || "IDENTIFICAÇÃO", x + H_BADGE_WIDTH / 2, y + 10, { align: "center" });
   }
 
-  // Content area
-  let contentX = x + 4;
-  const contentY = y + 18;
+  // Content area - with proper top margin
+  let contentX = x + 5;
+  const contentY = y + 22; // Increased top margin
 
-  // Photo
+  // Photo with border effect
   if (options.showPhoto) {
-    const photoSize = 22;
+    const photoSize = 24;
     if (employeePhoto) {
       try {
+        // Photo shadow
+        doc.setFillColor(200, 200, 205);
+        doc.roundedRect(contentX + 0.5, contentY + 0.5, photoSize, photoSize, 2, 2, "F");
+        // Photo border
+        doc.setFillColor(255, 255, 255);
+        doc.roundedRect(contentX, contentY, photoSize, photoSize, 2, 2, "F");
         doc.setDrawColor(headerColor.r, headerColor.g, headerColor.b);
-        doc.setLineWidth(0.4);
+        doc.setLineWidth(0.8);
         doc.roundedRect(contentX, contentY, photoSize, photoSize, 2, 2, "D");
-        doc.addImage(employeePhoto, "JPEG", contentX + 0.3, contentY + 0.3, photoSize - 0.6, photoSize - 0.6);
+        doc.addImage(employeePhoto, "JPEG", contentX + 1, contentY + 1, photoSize - 2, photoSize - 2);
       } catch {
         drawPlaceholderIcon(doc, contentX, contentY, photoSize);
       }
     } else {
       drawPlaceholderIcon(doc, contentX, contentY, photoSize);
     }
-    contentX += photoSize + 4;
+    contentX += photoSize + 5;
   }
 
-  // Info area - centered with padding
-  const infoAreaX = options.showPhoto ? contentX : x + 6;
-  const infoAreaWidth = options.showPhoto ? H_BADGE_WIDTH - contentX + x - 4 : H_BADGE_WIDTH - 12;
-  const infoAreaCenterX = infoAreaX + infoAreaWidth / 2;
-  let infoY = contentY + 6;
+  // Info area - centered with proper padding
+  const infoAreaCenterX = options.showPhoto ? contentX + (H_BADGE_WIDTH - contentX + x - 5) / 2 : x + H_BADGE_WIDTH / 2;
+  let infoY = contentY + 5; // Top margin for text
 
-  // Name - larger and centered
-  doc.setTextColor(30, 30, 40);
-  doc.setFontSize(11);
+  // Name - larger, bold, centered
+  doc.setTextColor(25, 25, 35);
+  doc.setFontSize(12);
   doc.setFont("helvetica", "bold");
-  const maxNameLen = options.showPhoto ? 16 : 24;
+  const maxNameLen = options.showPhoto ? 14 : 22;
   const name = employee.nome_completo.length > maxNameLen ? employee.nome_completo.substring(0, maxNameLen) + "..." : employee.nome_completo;
   doc.text(name.toUpperCase(), infoAreaCenterX, infoY, { align: "center" });
-  infoY += 6;
+  infoY += 7;
 
   if (options.showCargo) {
-    doc.setFont("helvetica", "normal");
+    doc.setFont("helvetica", "italic");
     doc.setFontSize(8);
-    doc.setTextColor(80, 80, 90);
-    const maxCargoLen = options.showPhoto ? 18 : 30;
+    doc.setTextColor(90, 90, 100);
+    const maxCargoLen = options.showPhoto ? 16 : 28;
     const cargo = employee.cargo.length > maxCargoLen ? employee.cargo.substring(0, maxCargoLen) + "..." : employee.cargo;
     doc.text(cargo, infoAreaCenterX, infoY, { align: "center" });
-    infoY += 5;
+    infoY += 6;
   }
 
   if (options.showSector && employee.setor) {
-    doc.setFontSize(8);
+    doc.setFontSize(9);
     doc.setFont("helvetica", "bold");
     doc.setTextColor(headerColor.r, headerColor.g, headerColor.b);
-    const maxSetorLen = options.showPhoto ? 18 : 32;
+    const maxSetorLen = options.showPhoto ? 14 : 26;
     const setor = employee.setor.length > maxSetorLen ? employee.setor.substring(0, maxSetorLen) + "..." : employee.setor;
     doc.text(setor.toUpperCase(), infoAreaCenterX, infoY, { align: "center" });
   }
 
-  // CPF
+  // CPF in bottom bar
   if (options.showCpf && employee.cpf) {
-    doc.setFillColor(headerColor.r, headerColor.g, headerColor.b);
-    doc.roundedRect(x + 12, y + H_BADGE_HEIGHT - 7, H_BADGE_WIDTH - 24, 5, 1, 1, "F");
     doc.setFontSize(6);
     doc.setTextColor(255, 255, 255);
-    doc.text(`CPF: ${employee.cpf}`, x + H_BADGE_WIDTH / 2, y + H_BADGE_HEIGHT - 3.5, { align: "center" });
+    doc.text(`CPF: ${employee.cpf}`, x + H_BADGE_WIDTH / 2, y + H_BADGE_HEIGHT - 0.5, { align: "center" });
   }
 
   drawCutMarks(doc, x, y, H_BADGE_WIDTH, H_BADGE_HEIGHT);
@@ -275,91 +288,99 @@ function drawHorizontalClassic(
 ) {
   const headerColor = hexToRgb(options.customHeaderColor || options.template.headerColor);
 
-  // Border
-  doc.setFillColor(255, 255, 255);
+  // Elegant border with double line effect
+  doc.setFillColor(252, 252, 255);
   doc.setDrawColor(headerColor.r, headerColor.g, headerColor.b);
-  doc.setLineWidth(0.8);
+  doc.setLineWidth(1.2);
   doc.roundedRect(x, y, H_BADGE_WIDTH, H_BADGE_HEIGHT, 2, 2, "FD");
-
-  // Header
-  doc.setFillColor(headerColor.r, headerColor.g, headerColor.b);
-  doc.rect(x + 0.5, y + 0.5, H_BADGE_WIDTH - 1, 10, "F");
-
-  // Divider line
+  
+  // Inner border
   doc.setLineWidth(0.3);
-  doc.line(x + 0.5, y + 12, x + H_BADGE_WIDTH - 0.5, y + 12);
+  doc.roundedRect(x + 2, y + 2, H_BADGE_WIDTH - 4, H_BADGE_HEIGHT - 4, 1.5, 1.5, "D");
+
+  // Header with elegant design
+  doc.setFillColor(headerColor.r, headerColor.g, headerColor.b);
+  doc.roundedRect(x + 3, y + 3, H_BADGE_WIDTH - 6, 13, 1.5, 1.5, "F");
+
+  // Gold-style accent line
+  const lighterColor = {
+    r: Math.min(255, headerColor.r + 60),
+    g: Math.min(255, headerColor.g + 60),
+    b: Math.min(255, headerColor.b + 60)
+  };
+  doc.setFillColor(lighterColor.r, lighterColor.g, lighterColor.b);
+  doc.rect(x + 3, y + 14, H_BADGE_WIDTH - 6, 1.5, "F");
 
   // Company
   doc.setTextColor(255, 255, 255);
-  doc.setFontSize(7);
+  doc.setFontSize(8);
   doc.setFont("helvetica", "bold");
 
   if (options.showCompanyLogo && companyLogo) {
     try {
-      doc.addImage(companyLogo, "PNG", x + 3, y + 1.5, 14, 7);
+      doc.addImage(companyLogo, "PNG", x + 6, y + 5, 14, 8);
       if (employee.empresa?.nome) {
-        doc.text(employee.empresa.nome.substring(0, 24), x + 19, y + 6.5);
+        doc.text(employee.empresa.nome.substring(0, 20).toUpperCase(), x + 22, y + 11);
       }
     } catch {
-      doc.text(employee.empresa?.nome || "CRACHÁ", x + H_BADGE_WIDTH / 2, y + 6.5, { align: "center" });
+      doc.text(employee.empresa?.nome?.toUpperCase() || "CRACHÁ", x + H_BADGE_WIDTH / 2, y + 11, { align: "center" });
     }
   } else {
-    doc.text(employee.empresa?.nome || "CRACHÁ", x + H_BADGE_WIDTH / 2, y + 6.5, { align: "center" });
+    doc.text(employee.empresa?.nome?.toUpperCase() || "CRACHÁ", x + H_BADGE_WIDTH / 2, y + 11, { align: "center" });
   }
 
-  // Content
-  let contentX = x + 4;
-  const contentY = y + 15;
+  // Content with proper top margin
+  let contentX = x + 6;
+  const contentY = y + 20; // Increased top margin
 
   if (options.showPhoto) {
-    const photoSize = 20;
+    const photoSize = 22;
     if (employeePhoto) {
       try {
-        doc.setDrawColor(200, 200, 200);
-        doc.setLineWidth(0.2);
+        doc.setDrawColor(headerColor.r, headerColor.g, headerColor.b);
+        doc.setLineWidth(0.5);
         doc.rect(contentX, contentY, photoSize, photoSize, "D");
-        doc.addImage(employeePhoto, "JPEG", contentX, contentY, photoSize, photoSize);
+        doc.addImage(employeePhoto, "JPEG", contentX + 0.5, contentY + 0.5, photoSize - 1, photoSize - 1);
       } catch {
         drawPlaceholderIcon(doc, contentX, contentY, photoSize);
       }
     } else {
       drawPlaceholderIcon(doc, contentX, contentY, photoSize);
     }
-    contentX += photoSize + 4;
+    contentX += photoSize + 5;
   }
 
-  // Info area - centered with padding
-  const infoAreaX = options.showPhoto ? contentX : x + 6;
-  const infoAreaWidth = options.showPhoto ? H_BADGE_WIDTH - contentX + x - 4 : H_BADGE_WIDTH - 12;
-  const infoAreaCenterX = infoAreaX + infoAreaWidth / 2;
-  let infoY = contentY + 6;
+  // Info area - centered with proper padding
+  const infoAreaCenterX = options.showPhoto ? contentX + (H_BADGE_WIDTH - contentX + x - 6) / 2 : x + H_BADGE_WIDTH / 2;
+  let infoY = contentY + 5;
 
-  // Name - larger and centered
-  doc.setTextColor(30, 30, 30);
-  doc.setFontSize(11);
+  // Name - elegant, centered
+  doc.setTextColor(headerColor.r, headerColor.g, headerColor.b);
+  doc.setFontSize(12);
   doc.setFont("helvetica", "bold");
-  const maxLen = options.showPhoto ? 16 : 26;
+  const maxLen = options.showPhoto ? 14 : 24;
   doc.text(employee.nome_completo.substring(0, maxLen).toUpperCase(), infoAreaCenterX, infoY, { align: "center" });
-  infoY += 6;
+  infoY += 7;
 
   if (options.showCargo) {
     doc.setFont("helvetica", "normal");
     doc.setFontSize(8);
-    doc.setTextColor(60, 60, 60);
-    doc.text(employee.cargo.substring(0, options.showPhoto ? 18 : 32), infoAreaCenterX, infoY, { align: "center" });
-    infoY += 5;
+    doc.setTextColor(70, 70, 75);
+    doc.text(employee.cargo.substring(0, options.showPhoto ? 16 : 28), infoAreaCenterX, infoY, { align: "center" });
+    infoY += 6;
   }
 
   if (options.showSector && employee.setor) {
-    doc.setFontSize(8);
+    doc.setFontSize(9);
     doc.setFont("helvetica", "bold");
-    doc.text(employee.setor.substring(0, options.showPhoto ? 18 : 34).toUpperCase(), infoAreaCenterX, infoY, { align: "center" });
+    doc.setTextColor(headerColor.r, headerColor.g, headerColor.b);
+    doc.text(employee.setor.substring(0, options.showPhoto ? 14 : 28).toUpperCase(), infoAreaCenterX, infoY, { align: "center" });
   }
 
   if (options.showCpf && employee.cpf) {
-    doc.setFontSize(5);
-    doc.setTextColor(100, 100, 100);
-    doc.text(`CPF: ${employee.cpf}`, x + H_BADGE_WIDTH / 2, y + H_BADGE_HEIGHT - 2, { align: "center" });
+    doc.setFontSize(6);
+    doc.setTextColor(120, 120, 125);
+    doc.text(`CPF: ${employee.cpf}`, x + H_BADGE_WIDTH / 2, y + H_BADGE_HEIGHT - 4, { align: "center" });
   }
 
   drawCutMarks(doc, x, y, H_BADGE_WIDTH, H_BADGE_HEIGHT);
@@ -376,76 +397,84 @@ function drawHorizontalMinimal(
 ) {
   const headerColor = hexToRgb(options.customHeaderColor || options.template.headerColor);
 
-  // Clean background
+  // Clean white background with subtle shadow
+  doc.setFillColor(235, 235, 240);
+  doc.roundedRect(x + 0.4, y + 0.4, H_BADGE_WIDTH, H_BADGE_HEIGHT, 4, 4, "F");
+  
   doc.setFillColor(255, 255, 255);
-  doc.setDrawColor(230, 230, 230);
-  doc.setLineWidth(0.2);
-  doc.roundedRect(x, y, H_BADGE_WIDTH, H_BADGE_HEIGHT, 2, 2, "FD");
+  doc.roundedRect(x, y, H_BADGE_WIDTH, H_BADGE_HEIGHT, 4, 4, "F");
 
-  // Top accent line
+  // Elegant top stripe with rounded corners
   doc.setFillColor(headerColor.r, headerColor.g, headerColor.b);
-  doc.roundedRect(x, y, H_BADGE_WIDTH, 2.5, 2, 2, "F");
-  doc.rect(x, y + 1.5, H_BADGE_WIDTH, 1, "F");
+  doc.roundedRect(x, y, H_BADGE_WIDTH, 5, 4, 4, "F");
+  doc.rect(x, y + 3, H_BADGE_WIDTH, 2, "F");
 
-  // Company name subtle
+  // Company name - elegant placement
   if (employee.empresa?.nome) {
     doc.setTextColor(headerColor.r, headerColor.g, headerColor.b);
-    doc.setFontSize(6);
-    doc.setFont("helvetica", "normal");
-    doc.text(employee.empresa.nome.substring(0, 30), x + 4, y + 8);
+    doc.setFontSize(7);
+    doc.setFont("helvetica", "bold");
+    doc.text(employee.empresa.nome.substring(0, 28).toUpperCase(), x + H_BADGE_WIDTH / 2, y + 11, { align: "center" });
   }
 
-  // Content
-  let contentX = x + 4;
-  const contentY = y + 12;
+  // Subtle divider line
+  doc.setDrawColor(headerColor.r, headerColor.g, headerColor.b);
+  doc.setLineWidth(0.2);
+  doc.line(x + 10, y + 14, x + H_BADGE_WIDTH - 10, y + 14);
+
+  // Content with proper top margin
+  let contentX = x + 5;
+  const contentY = y + 18; // Good top margin
 
   if (options.showPhoto) {
     const photoSize = 24;
     if (employeePhoto) {
       try {
+        // Circular photo effect
+        doc.setFillColor(headerColor.r, headerColor.g, headerColor.b);
+        doc.circle(contentX + photoSize / 2, contentY + photoSize / 2, photoSize / 2 + 0.8, "F");
         doc.addImage(employeePhoto, "JPEG", contentX, contentY, photoSize, photoSize);
       } catch {
-        doc.setFillColor(245, 245, 248);
-        doc.roundedRect(contentX, contentY, photoSize, photoSize, photoSize / 2, photoSize / 2, "F");
+        doc.setFillColor(240, 240, 245);
+        doc.circle(contentX + photoSize / 2, contentY + photoSize / 2, photoSize / 2, "F");
       }
     } else {
-      doc.setFillColor(245, 245, 248);
-      doc.roundedRect(contentX, contentY, photoSize, photoSize, photoSize / 2, photoSize / 2, "F");
+      doc.setFillColor(240, 240, 245);
+      doc.circle(contentX + photoSize / 2, contentY + photoSize / 2, photoSize / 2, "F");
     }
-    contentX += photoSize + 5;
+    contentX += photoSize + 6;
   }
 
   // Info area - centered with padding
-  const infoAreaX = options.showPhoto ? contentX : x + 6;
-  const infoAreaWidth = options.showPhoto ? H_BADGE_WIDTH - contentX + x - 4 : H_BADGE_WIDTH - 12;
-  const infoAreaCenterX = infoAreaX + infoAreaWidth / 2;
-  let infoY = contentY + 8;
+  const infoAreaCenterX = options.showPhoto ? contentX + (H_BADGE_WIDTH - contentX + x - 5) / 2 : x + H_BADGE_WIDTH / 2;
+  let infoY = contentY + 6;
 
-  // Name - larger and centered
-  doc.setTextColor(40, 40, 40);
-  doc.setFontSize(11);
+  // Name - clean, bold, centered
+  doc.setTextColor(35, 35, 45);
+  doc.setFontSize(12);
   doc.setFont("helvetica", "bold");
-  doc.text(employee.nome_completo.substring(0, options.showPhoto ? 14 : 24).toUpperCase(), infoAreaCenterX, infoY, { align: "center" });
-  infoY += 6;
+  doc.text(employee.nome_completo.substring(0, options.showPhoto ? 12 : 22).toUpperCase(), infoAreaCenterX, infoY, { align: "center" });
+  infoY += 7;
 
   if (options.showCargo) {
     doc.setFont("helvetica", "normal");
     doc.setFontSize(8);
-    doc.setTextColor(120, 120, 120);
-    doc.text(employee.cargo.substring(0, options.showPhoto ? 16 : 30), infoAreaCenterX, infoY, { align: "center" });
-    infoY += 5;
+    doc.setTextColor(130, 130, 135);
+    doc.text(employee.cargo.substring(0, options.showPhoto ? 14 : 26), infoAreaCenterX, infoY, { align: "center" });
+    infoY += 6;
   }
 
   if (options.showSector && employee.setor) {
-    doc.setFontSize(8);
+    doc.setFontSize(9);
     doc.setFont("helvetica", "bold");
-    doc.text(employee.setor.substring(0, options.showPhoto ? 18 : 32).toUpperCase(), infoAreaCenterX, infoY, { align: "center" });
+    doc.setTextColor(headerColor.r, headerColor.g, headerColor.b);
+    doc.text(employee.setor.substring(0, options.showPhoto ? 14 : 26).toUpperCase(), infoAreaCenterX, infoY, { align: "center" });
   }
 
   if (options.showCpf && employee.cpf) {
-    doc.setFontSize(5);
-    doc.setTextColor(160, 160, 160);
-    doc.text(employee.cpf, x + H_BADGE_WIDTH / 2, y + H_BADGE_HEIGHT - 2, { align: "center" });
+    doc.setFontSize(6);
+    doc.setTextColor(170, 170, 175);
+    doc.text(employee.cpf, x + H_BADGE_WIDTH / 2, y + H_BADGE_HEIGHT - 3, { align: "center" });
   }
 
   drawCutMarks(doc, x, y, H_BADGE_WIDTH, H_BADGE_HEIGHT);
@@ -463,48 +492,57 @@ function drawHorizontalCorporate(
   const headerColor = hexToRgb(options.customHeaderColor || options.template.headerColor);
   const accentColor = hexToRgb(options.template.accentColor);
 
-  // Background
-  doc.setFillColor(250, 250, 252);
+  // Professional background with subtle texture
+  doc.setFillColor(248, 248, 252);
   doc.roundedRect(x, y, H_BADGE_WIDTH, H_BADGE_HEIGHT, 2, 2, "F");
 
-  // Left accent bar
+  // Strong left accent bar
   doc.setFillColor(headerColor.r, headerColor.g, headerColor.b);
-  doc.roundedRect(x, y, 5, H_BADGE_HEIGHT, 2, 0, "F");
-  doc.rect(x + 3, y, 2, H_BADGE_HEIGHT, "F");
+  doc.roundedRect(x, y, 6, H_BADGE_HEIGHT, 2, 0, "F");
+  doc.rect(x + 4, y, 2, H_BADGE_HEIGHT, "F");
 
-  // Header
+  // Top header bar
   doc.setFillColor(headerColor.r, headerColor.g, headerColor.b);
-  doc.rect(x + 5, y, H_BADGE_WIDTH - 5, 11, "F");
+  doc.rect(x + 6, y, H_BADGE_WIDTH - 6, 14, "F");
+  
+  // Accent stripe under header
+  doc.setFillColor(accentColor.r, accentColor.g, accentColor.b);
+  doc.rect(x + 6, y + 14, H_BADGE_WIDTH - 6, 2, "F");
+
+  // Bottom bar
+  doc.setFillColor(headerColor.r, headerColor.g, headerColor.b);
+  doc.rect(x + 6, y + H_BADGE_HEIGHT - 4, H_BADGE_WIDTH - 6, 4, "F");
+  doc.roundedRect(x, y, H_BADGE_WIDTH, H_BADGE_HEIGHT, 2, 2, "S");
 
   // Company
   doc.setTextColor(255, 255, 255);
-  doc.setFontSize(7);
+  doc.setFontSize(8);
   doc.setFont("helvetica", "bold");
 
   if (options.showCompanyLogo && companyLogo) {
     try {
-      doc.addImage(companyLogo, "PNG", x + 8, y + 1.5, 14, 8);
+      doc.addImage(companyLogo, "PNG", x + 10, y + 2.5, 16, 9);
       if (employee.empresa?.nome) {
-        doc.text(employee.empresa.nome.substring(0, 20), x + 24, y + 7);
+        doc.text(employee.empresa.nome.substring(0, 18).toUpperCase(), x + 28, y + 9);
       }
     } catch {
-      doc.text(employee.empresa?.nome || "CORPORATIVO", x + (H_BADGE_WIDTH + 5) / 2, y + 7, { align: "center" });
+      doc.text(employee.empresa?.nome?.toUpperCase() || "CORPORATIVO", x + (H_BADGE_WIDTH + 6) / 2, y + 9, { align: "center" });
     }
   } else {
-    doc.text(employee.empresa?.nome || "CORPORATIVO", x + (H_BADGE_WIDTH + 5) / 2, y + 7, { align: "center" });
+    doc.text(employee.empresa?.nome?.toUpperCase() || "CORPORATIVO", x + (H_BADGE_WIDTH + 6) / 2, y + 9, { align: "center" });
   }
 
-  // Content
-  let contentX = x + 8;
-  const contentY = y + 14;
+  // Content with proper top margin
+  let contentX = x + 10;
+  const contentY = y + 20; // Increased top margin
 
   if (options.showPhoto) {
-    const photoSize = 20;
+    const photoSize = 22;
     if (employeePhoto) {
       try {
-        doc.setDrawColor(accentColor.r, accentColor.g, accentColor.b);
-        doc.setLineWidth(0.4);
-        doc.rect(contentX, contentY, photoSize, photoSize, "D");
+        // Professional photo frame
+        doc.setFillColor(accentColor.r, accentColor.g, accentColor.b);
+        doc.rect(contentX - 1, contentY - 1, photoSize + 2, photoSize + 2, "F");
         doc.addImage(employeePhoto, "JPEG", contentX, contentY, photoSize, photoSize);
       } catch {
         drawPlaceholderIcon(doc, contentX, contentY, photoSize);
@@ -512,41 +550,40 @@ function drawHorizontalCorporate(
     } else {
       drawPlaceholderIcon(doc, contentX, contentY, photoSize);
     }
-    contentX += photoSize + 4;
+    contentX += photoSize + 5;
   }
 
-  // Info area - centered with padding
-  const infoAreaX = options.showPhoto ? contentX : x + 10;
-  const infoAreaWidth = options.showPhoto ? H_BADGE_WIDTH - contentX + x - 4 : H_BADGE_WIDTH - 18;
-  const infoAreaCenterX = infoAreaX + infoAreaWidth / 2;
-  let infoY = contentY + 6;
+  // Info area - centered with proper padding
+  const infoAreaCenterX = options.showPhoto ? contentX + (H_BADGE_WIDTH - contentX + x - 8) / 2 : x + (H_BADGE_WIDTH + 6) / 2;
+  let infoY = contentY + 5;
 
-  // Name - larger and centered
+  // Name - corporate style, centered
   doc.setTextColor(headerColor.r, headerColor.g, headerColor.b);
-  doc.setFontSize(11);
+  doc.setFontSize(12);
   doc.setFont("helvetica", "bold");
-  doc.text(employee.nome_completo.substring(0, options.showPhoto ? 14 : 22).toUpperCase(), infoAreaCenterX, infoY, { align: "center" });
-  infoY += 6;
+  doc.text(employee.nome_completo.substring(0, options.showPhoto ? 12 : 20).toUpperCase(), infoAreaCenterX, infoY, { align: "center" });
+  infoY += 7;
 
   if (options.showCargo) {
-    doc.setTextColor(80, 80, 85);
-    doc.setFont("helvetica", "normal");
+    doc.setTextColor(85, 85, 95);
+    doc.setFont("helvetica", "italic");
     doc.setFontSize(8);
-    doc.text(employee.cargo.substring(0, options.showPhoto ? 16 : 28), infoAreaCenterX, infoY, { align: "center" });
-    infoY += 5;
+    doc.text(employee.cargo.substring(0, options.showPhoto ? 14 : 26), infoAreaCenterX, infoY, { align: "center" });
+    infoY += 6;
   }
 
   if (options.showSector && employee.setor) {
-    doc.setFontSize(8);
+    doc.setFontSize(9);
     doc.setFont("helvetica", "bold");
     doc.setTextColor(accentColor.r, accentColor.g, accentColor.b);
-    doc.text(employee.setor.substring(0, options.showPhoto ? 16 : 30).toUpperCase(), infoAreaCenterX, infoY, { align: "center" });
+    doc.text(employee.setor.substring(0, options.showPhoto ? 14 : 24).toUpperCase(), infoAreaCenterX, infoY, { align: "center" });
   }
 
+  // CPF in bottom bar
   if (options.showCpf && employee.cpf) {
-    doc.setFontSize(5);
-    doc.setTextColor(120, 120, 125);
-    doc.text(`CPF: ${employee.cpf}`, x + (H_BADGE_WIDTH + 5) / 2, y + H_BADGE_HEIGHT - 2, { align: "center" });
+    doc.setFontSize(6);
+    doc.setTextColor(255, 255, 255);
+    doc.text(`CPF: ${employee.cpf}`, x + (H_BADGE_WIDTH + 6) / 2, y + H_BADGE_HEIGHT - 1, { align: "center" });
   }
 
   drawCutMarks(doc, x, y, H_BADGE_WIDTH, H_BADGE_HEIGHT);
@@ -566,18 +603,27 @@ function drawVerticalModern(
   const headerColor = hexToRgb(options.customHeaderColor || options.template.headerColor);
   const accentColor = hexToRgb(options.template.accentColor);
 
-  // Background
-  doc.setFillColor(252, 252, 254);
+  // Shadow effect
+  doc.setFillColor(220, 220, 225);
+  doc.roundedRect(x + 0.4, y + 0.4, V_BADGE_WIDTH, V_BADGE_HEIGHT, 3, 3, "F");
+
+  // Main background
+  doc.setFillColor(255, 255, 255);
   doc.roundedRect(x, y, V_BADGE_WIDTH, V_BADGE_HEIGHT, 3, 3, "F");
 
-  // Header
+  // Extended header
   doc.setFillColor(headerColor.r, headerColor.g, headerColor.b);
-  doc.roundedRect(x, y, V_BADGE_WIDTH, 16, 3, 3, "F");
-  doc.rect(x, y + 10, V_BADGE_WIDTH, 6, "F");
+  doc.roundedRect(x, y, V_BADGE_WIDTH, 20, 3, 3, "F");
+  doc.rect(x, y + 14, V_BADGE_WIDTH, 6, "F");
 
-  // Accent
+  // Accent stripe
   doc.setFillColor(accentColor.r, accentColor.g, accentColor.b);
-  doc.rect(x, y + 16, V_BADGE_WIDTH, 2, "F");
+  doc.rect(x, y + 20, V_BADGE_WIDTH, 3, "F");
+
+  // Bottom bar
+  doc.setFillColor(headerColor.r, headerColor.g, headerColor.b);
+  doc.roundedRect(x, y + V_BADGE_HEIGHT - 5, V_BADGE_WIDTH, 5, 0, 0, "F");
+  doc.roundedRect(x, y, V_BADGE_WIDTH, V_BADGE_HEIGHT, 3, 3, "S");
 
   // Company
   doc.setTextColor(255, 255, 255);
@@ -586,65 +632,70 @@ function drawVerticalModern(
 
   if (options.showCompanyLogo && companyLogo) {
     try {
-      doc.addImage(companyLogo, "PNG", x + (V_BADGE_WIDTH - 20) / 2, y + 2, 20, 10);
+      doc.addImage(companyLogo, "PNG", x + (V_BADGE_WIDTH - 22) / 2, y + 3, 22, 12);
     } catch {
-      doc.text(employee.empresa?.nome?.substring(0, 12) || "ID", x + V_BADGE_WIDTH / 2, y + 10, { align: "center" });
+      doc.text(employee.empresa?.nome?.substring(0, 10).toUpperCase() || "ID", x + V_BADGE_WIDTH / 2, y + 12, { align: "center" });
     }
   } else {
-    doc.text(employee.empresa?.nome?.substring(0, 12) || "ID", x + V_BADGE_WIDTH / 2, y + 10, { align: "center" });
+    doc.text(employee.empresa?.nome?.substring(0, 10).toUpperCase() || "ID", x + V_BADGE_WIDTH / 2, y + 12, { align: "center" });
   }
 
-  // Photo centered
-  let contentY = y + 22;
+  // Photo centered with top margin
+  let contentY = y + 27; // Increased top margin
 
   if (options.showPhoto) {
     const photoSize = 28;
     const photoX = x + (V_BADGE_WIDTH - photoSize) / 2;
     if (employeePhoto) {
       try {
+        // Photo shadow
+        doc.setFillColor(200, 200, 205);
+        doc.roundedRect(photoX + 0.4, contentY + 0.4, photoSize, photoSize, 2, 2, "F");
+        // Photo border
+        doc.setFillColor(255, 255, 255);
+        doc.roundedRect(photoX, contentY, photoSize, photoSize, 2, 2, "F");
         doc.setDrawColor(headerColor.r, headerColor.g, headerColor.b);
-        doc.setLineWidth(0.5);
+        doc.setLineWidth(0.8);
         doc.roundedRect(photoX, contentY, photoSize, photoSize, 2, 2, "D");
-        doc.addImage(employeePhoto, "JPEG", photoX + 0.3, contentY + 0.3, photoSize - 0.6, photoSize - 0.6);
+        doc.addImage(employeePhoto, "JPEG", photoX + 1, contentY + 1, photoSize - 2, photoSize - 2);
       } catch {
         drawPlaceholderIcon(doc, photoX, contentY, photoSize);
       }
     } else {
       drawPlaceholderIcon(doc, photoX, contentY, photoSize);
     }
-    contentY += photoSize + 4;
+    contentY += photoSize + 5;
   }
 
-  // Name centered - larger with padding
+  // Name centered - larger with proper margin
   const centerX = x + V_BADGE_WIDTH / 2;
-  doc.setTextColor(30, 30, 40);
-  doc.setFontSize(9);
+  doc.setTextColor(25, 25, 35);
+  doc.setFontSize(10);
   doc.setFont("helvetica", "bold");
   const name = employee.nome_completo.split(" ").slice(0, 2).join(" ");
-  doc.text(name.substring(0, 12).toUpperCase(), centerX, contentY, { align: "center" });
-  contentY += 5;
+  doc.text(name.substring(0, 10).toUpperCase(), centerX, contentY, { align: "center" });
+  contentY += 6;
 
   if (options.showCargo) {
-    doc.setFont("helvetica", "normal");
+    doc.setFont("helvetica", "italic");
     doc.setFontSize(7);
-    doc.setTextColor(80, 80, 90);
-    doc.text(employee.cargo.substring(0, 12), centerX, contentY, { align: "center" });
-    contentY += 4;
+    doc.setTextColor(90, 90, 100);
+    doc.text(employee.cargo.substring(0, 10), centerX, contentY, { align: "center" });
+    contentY += 5;
   }
 
   if (options.showSector && employee.setor) {
-    doc.setFontSize(7);
+    doc.setFontSize(8);
     doc.setFont("helvetica", "bold");
     doc.setTextColor(headerColor.r, headerColor.g, headerColor.b);
-    doc.text(employee.setor.substring(0, 12).toUpperCase(), centerX, contentY, { align: "center" });
+    doc.text(employee.setor.substring(0, 10).toUpperCase(), centerX, contentY, { align: "center" });
   }
 
+  // CPF in bottom bar
   if (options.showCpf && employee.cpf) {
-    doc.setFillColor(headerColor.r, headerColor.g, headerColor.b);
-    doc.roundedRect(x + 5, y + V_BADGE_HEIGHT - 8, V_BADGE_WIDTH - 10, 6, 1, 1, "F");
     doc.setFontSize(5);
     doc.setTextColor(255, 255, 255);
-    doc.text(employee.cpf, x + V_BADGE_WIDTH / 2, y + V_BADGE_HEIGHT - 4, { align: "center" });
+    doc.text(employee.cpf, x + V_BADGE_WIDTH / 2, y + V_BADGE_HEIGHT - 1.5, { align: "center" });
   }
 
   drawCutMarks(doc, x, y, V_BADGE_WIDTH, V_BADGE_HEIGHT);
@@ -661,66 +712,83 @@ function drawVerticalClassic(
 ) {
   const headerColor = hexToRgb(options.customHeaderColor || options.template.headerColor);
 
-  doc.setFillColor(255, 255, 255);
+  // Elegant double border
+  doc.setFillColor(252, 252, 255);
   doc.setDrawColor(headerColor.r, headerColor.g, headerColor.b);
-  doc.setLineWidth(0.8);
+  doc.setLineWidth(1.2);
   doc.roundedRect(x, y, V_BADGE_WIDTH, V_BADGE_HEIGHT, 2, 2, "FD");
+  
+  // Inner border
+  doc.setLineWidth(0.3);
+  doc.roundedRect(x + 2, y + 2, V_BADGE_WIDTH - 4, V_BADGE_HEIGHT - 4, 1.5, 1.5, "D");
 
+  // Header
   doc.setFillColor(headerColor.r, headerColor.g, headerColor.b);
-  doc.rect(x + 0.5, y + 0.5, V_BADGE_WIDTH - 1, 12, "F");
+  doc.roundedRect(x + 3, y + 3, V_BADGE_WIDTH - 6, 16, 1.5, 1.5, "F");
+
+  // Accent line
+  const lighterColor = {
+    r: Math.min(255, headerColor.r + 60),
+    g: Math.min(255, headerColor.g + 60),
+    b: Math.min(255, headerColor.b + 60)
+  };
+  doc.setFillColor(lighterColor.r, lighterColor.g, lighterColor.b);
+  doc.rect(x + 3, y + 17, V_BADGE_WIDTH - 6, 1.5, "F");
 
   doc.setTextColor(255, 255, 255);
   doc.setFontSize(6);
   doc.setFont("helvetica", "bold");
-  doc.text(employee.empresa?.nome?.substring(0, 14) || "CRACHÁ", x + V_BADGE_WIDTH / 2, y + 8, { align: "center" });
+  doc.text(employee.empresa?.nome?.substring(0, 12).toUpperCase() || "CRACHÁ", x + V_BADGE_WIDTH / 2, y + 12, { align: "center" });
 
-  let contentY = y + 18;
+  // Content with proper top margin
+  let contentY = y + 24; // Increased top margin
 
   if (options.showPhoto) {
     const photoSize = 26;
     const photoX = x + (V_BADGE_WIDTH - photoSize) / 2;
     if (employeePhoto) {
       try {
-        doc.setDrawColor(200, 200, 200);
-        doc.setLineWidth(0.2);
+        doc.setDrawColor(headerColor.r, headerColor.g, headerColor.b);
+        doc.setLineWidth(0.5);
         doc.rect(photoX, contentY, photoSize, photoSize, "D");
-        doc.addImage(employeePhoto, "JPEG", photoX, contentY, photoSize, photoSize);
+        doc.addImage(employeePhoto, "JPEG", photoX + 0.5, contentY + 0.5, photoSize - 1, photoSize - 1);
       } catch {
         drawPlaceholderIcon(doc, photoX, contentY, photoSize);
       }
     } else {
       drawPlaceholderIcon(doc, photoX, contentY, photoSize);
     }
-    contentY += photoSize + 4;
+    contentY += photoSize + 5;
   }
 
-  // Name centered - larger with padding
+  // Name centered - elegant
   const centerX = x + V_BADGE_WIDTH / 2;
-  doc.setTextColor(30, 30, 30);
-  doc.setFontSize(9);
+  doc.setTextColor(headerColor.r, headerColor.g, headerColor.b);
+  doc.setFontSize(10);
   doc.setFont("helvetica", "bold");
   const name = employee.nome_completo.split(" ").slice(0, 2).join(" ");
-  doc.text(name.substring(0, 12).toUpperCase(), centerX, contentY, { align: "center" });
-  contentY += 5;
+  doc.text(name.substring(0, 10).toUpperCase(), centerX, contentY, { align: "center" });
+  contentY += 6;
 
   if (options.showCargo) {
     doc.setFont("helvetica", "normal");
     doc.setFontSize(7);
-    doc.setTextColor(60, 60, 60);
-    doc.text(employee.cargo.substring(0, 12), centerX, contentY, { align: "center" });
-    contentY += 4;
+    doc.setTextColor(70, 70, 75);
+    doc.text(employee.cargo.substring(0, 10), centerX, contentY, { align: "center" });
+    contentY += 5;
   }
 
   if (options.showSector && employee.setor) {
-    doc.setFontSize(7);
+    doc.setFontSize(8);
     doc.setFont("helvetica", "bold");
-    doc.text(employee.setor.substring(0, 12).toUpperCase(), centerX, contentY, { align: "center" });
+    doc.setTextColor(headerColor.r, headerColor.g, headerColor.b);
+    doc.text(employee.setor.substring(0, 10).toUpperCase(), centerX, contentY, { align: "center" });
   }
 
   if (options.showCpf && employee.cpf) {
-    doc.setFontSize(4);
-    doc.setTextColor(100, 100, 100);
-    doc.text(employee.cpf, x + V_BADGE_WIDTH / 2, y + V_BADGE_HEIGHT - 2, { align: "center" });
+    doc.setFontSize(5);
+    doc.setTextColor(120, 120, 125);
+    doc.text(employee.cpf, x + V_BADGE_WIDTH / 2, y + V_BADGE_HEIGHT - 5, { align: "center" });
   }
 
   drawCutMarks(doc, x, y, V_BADGE_WIDTH, V_BADGE_HEIGHT);
@@ -737,68 +805,83 @@ function drawVerticalMinimal(
 ) {
   const headerColor = hexToRgb(options.customHeaderColor || options.template.headerColor);
 
+  // Shadow
+  doc.setFillColor(235, 235, 240);
+  doc.roundedRect(x + 0.4, y + 0.4, V_BADGE_WIDTH, V_BADGE_HEIGHT, 4, 4, "F");
+
+  // Clean white background
   doc.setFillColor(255, 255, 255);
-  doc.setDrawColor(230, 230, 230);
-  doc.setLineWidth(0.2);
-  doc.roundedRect(x, y, V_BADGE_WIDTH, V_BADGE_HEIGHT, 2, 2, "FD");
+  doc.roundedRect(x, y, V_BADGE_WIDTH, V_BADGE_HEIGHT, 4, 4, "F");
 
+  // Elegant top stripe
   doc.setFillColor(headerColor.r, headerColor.g, headerColor.b);
-  doc.roundedRect(x, y, V_BADGE_WIDTH, 3, 2, 2, "F");
-  doc.rect(x, y + 2, V_BADGE_WIDTH, 1, "F");
+  doc.roundedRect(x, y, V_BADGE_WIDTH, 6, 4, 4, "F");
+  doc.rect(x, y + 4, V_BADGE_WIDTH, 2, "F");
 
+  // Company name
   if (employee.empresa?.nome) {
     doc.setTextColor(headerColor.r, headerColor.g, headerColor.b);
-    doc.setFontSize(5);
-    doc.setFont("helvetica", "normal");
-    doc.text(employee.empresa.nome.substring(0, 16), x + V_BADGE_WIDTH / 2, y + 9, { align: "center" });
+    doc.setFontSize(6);
+    doc.setFont("helvetica", "bold");
+    doc.text(employee.empresa.nome.substring(0, 12).toUpperCase(), x + V_BADGE_WIDTH / 2, y + 13, { align: "center" });
   }
 
-  let contentY = y + 14;
+  // Subtle divider
+  doc.setDrawColor(headerColor.r, headerColor.g, headerColor.b);
+  doc.setLineWidth(0.2);
+  doc.line(x + 8, y + 16, x + V_BADGE_WIDTH - 8, y + 16);
+
+  // Content with proper top margin
+  let contentY = y + 21; // Good top margin
 
   if (options.showPhoto) {
     const photoSize = 28;
     const photoX = x + (V_BADGE_WIDTH - photoSize) / 2;
     if (employeePhoto) {
       try {
+        // Circular photo effect
+        doc.setFillColor(headerColor.r, headerColor.g, headerColor.b);
+        doc.circle(photoX + photoSize / 2, contentY + photoSize / 2, photoSize / 2 + 0.8, "F");
         doc.addImage(employeePhoto, "JPEG", photoX, contentY, photoSize, photoSize);
       } catch {
-        doc.setFillColor(245, 245, 248);
-        doc.roundedRect(photoX, contentY, photoSize, photoSize, photoSize / 2, photoSize / 2, "F");
+        doc.setFillColor(240, 240, 245);
+        doc.circle(photoX + photoSize / 2, contentY + photoSize / 2, photoSize / 2, "F");
       }
     } else {
-      doc.setFillColor(245, 245, 248);
-      doc.roundedRect(photoX, contentY, photoSize, photoSize, photoSize / 2, photoSize / 2, "F");
+      doc.setFillColor(240, 240, 245);
+      doc.circle(photoX + photoSize / 2, contentY + photoSize / 2, photoSize / 2, "F");
     }
-    contentY += photoSize + 4;
+    contentY += photoSize + 5;
   }
 
-  // Name centered - larger with padding
+  // Name centered - clean
   const centerX = x + V_BADGE_WIDTH / 2;
-  doc.setTextColor(40, 40, 40);
-  doc.setFontSize(9);
+  doc.setTextColor(35, 35, 45);
+  doc.setFontSize(10);
   doc.setFont("helvetica", "bold");
   const name = employee.nome_completo.split(" ").slice(0, 2).join(" ");
-  doc.text(name.substring(0, 10).toUpperCase(), centerX, contentY, { align: "center" });
-  contentY += 5;
+  doc.text(name.substring(0, 9).toUpperCase(), centerX, contentY, { align: "center" });
+  contentY += 6;
 
   if (options.showCargo) {
     doc.setFont("helvetica", "normal");
     doc.setFontSize(7);
-    doc.setTextColor(120, 120, 120);
-    doc.text(employee.cargo.substring(0, 10), centerX, contentY, { align: "center" });
-    contentY += 4;
+    doc.setTextColor(130, 130, 135);
+    doc.text(employee.cargo.substring(0, 9), centerX, contentY, { align: "center" });
+    contentY += 5;
   }
 
   if (options.showSector && employee.setor) {
-    doc.setFontSize(7);
+    doc.setFontSize(8);
     doc.setFont("helvetica", "bold");
-    doc.text(employee.setor.substring(0, 10).toUpperCase(), centerX, contentY, { align: "center" });
+    doc.setTextColor(headerColor.r, headerColor.g, headerColor.b);
+    doc.text(employee.setor.substring(0, 9).toUpperCase(), centerX, contentY, { align: "center" });
   }
 
   if (options.showCpf && employee.cpf) {
-    doc.setFontSize(4);
-    doc.setTextColor(160, 160, 160);
-    doc.text(employee.cpf, x + V_BADGE_WIDTH / 2, y + V_BADGE_HEIGHT - 2, { align: "center" });
+    doc.setFontSize(5);
+    doc.setTextColor(170, 170, 175);
+    doc.text(employee.cpf, x + V_BADGE_WIDTH / 2, y + V_BADGE_HEIGHT - 3, { align: "center" });
   }
 
   drawCutMarks(doc, x, y, V_BADGE_WIDTH, V_BADGE_HEIGHT);
@@ -816,36 +899,44 @@ function drawVerticalCorporate(
   const headerColor = hexToRgb(options.customHeaderColor || options.template.headerColor);
   const accentColor = hexToRgb(options.template.accentColor);
 
-  doc.setFillColor(250, 250, 252);
+  // Professional background
+  doc.setFillColor(248, 248, 252);
   doc.roundedRect(x, y, V_BADGE_WIDTH, V_BADGE_HEIGHT, 2, 2, "F");
 
-  // Top bar
+  // Top bar extended
   doc.setFillColor(headerColor.r, headerColor.g, headerColor.b);
-  doc.roundedRect(x, y, V_BADGE_WIDTH, 4, 2, 2, "F");
-  doc.rect(x, y + 2, V_BADGE_WIDTH, 2, "F");
+  doc.roundedRect(x, y, V_BADGE_WIDTH, 6, 2, 2, "F");
+  doc.rect(x, y + 4, V_BADGE_WIDTH, 2, "F");
+
+  // Accent stripe
+  doc.setFillColor(accentColor.r, accentColor.g, accentColor.b);
+  doc.rect(x, y + 6, V_BADGE_WIDTH, 2, "F");
 
   // Bottom bar
-  doc.roundedRect(x, y + V_BADGE_HEIGHT - 4, V_BADGE_WIDTH, 4, 0, 0, "F");
-  doc.roundedRect(x, y + V_BADGE_HEIGHT - 4, V_BADGE_WIDTH, 4, 2, 2, "F");
+  doc.setFillColor(headerColor.r, headerColor.g, headerColor.b);
+  doc.roundedRect(x, y + V_BADGE_HEIGHT - 6, V_BADGE_WIDTH, 6, 0, 0, "F");
+  doc.roundedRect(x, y + V_BADGE_HEIGHT - 6, V_BADGE_WIDTH, 6, 2, 2, "F");
+  doc.roundedRect(x, y, V_BADGE_WIDTH, V_BADGE_HEIGHT, 2, 2, "S");
 
   // Company
   if (employee.empresa?.nome) {
     doc.setTextColor(headerColor.r, headerColor.g, headerColor.b);
     doc.setFontSize(6);
     doc.setFont("helvetica", "bold");
-    doc.text(employee.empresa.nome.substring(0, 14), x + V_BADGE_WIDTH / 2, y + 11, { align: "center" });
+    doc.text(employee.empresa.nome.substring(0, 12).toUpperCase(), x + V_BADGE_WIDTH / 2, y + 14, { align: "center" });
   }
 
-  let contentY = y + 16;
+  // Content with proper top margin
+  let contentY = y + 20; // Good top margin
 
   if (options.showPhoto) {
     const photoSize = 26;
     const photoX = x + (V_BADGE_WIDTH - photoSize) / 2;
     if (employeePhoto) {
       try {
-        doc.setDrawColor(accentColor.r, accentColor.g, accentColor.b);
-        doc.setLineWidth(0.4);
-        doc.rect(photoX, contentY, photoSize, photoSize, "D");
+        // Professional photo frame
+        doc.setFillColor(accentColor.r, accentColor.g, accentColor.b);
+        doc.rect(photoX - 1, contentY - 1, photoSize + 2, photoSize + 2, "F");
         doc.addImage(employeePhoto, "JPEG", photoX, contentY, photoSize, photoSize);
       } catch {
         drawPlaceholderIcon(doc, photoX, contentY, photoSize);
@@ -853,37 +944,38 @@ function drawVerticalCorporate(
     } else {
       drawPlaceholderIcon(doc, photoX, contentY, photoSize);
     }
-    contentY += photoSize + 4;
+    contentY += photoSize + 5;
   }
 
-  // Name centered - larger with padding
+  // Name centered - corporate style
   const centerX = x + V_BADGE_WIDTH / 2;
   doc.setTextColor(headerColor.r, headerColor.g, headerColor.b);
-  doc.setFontSize(9);
+  doc.setFontSize(10);
   doc.setFont("helvetica", "bold");
   const name = employee.nome_completo.split(" ").slice(0, 2).join(" ");
-  doc.text(name.substring(0, 10).toUpperCase(), centerX, contentY, { align: "center" });
-  contentY += 5;
+  doc.text(name.substring(0, 9).toUpperCase(), centerX, contentY, { align: "center" });
+  contentY += 6;
 
   if (options.showCargo) {
-    doc.setTextColor(80, 80, 85);
-    doc.setFont("helvetica", "normal");
+    doc.setTextColor(85, 85, 95);
+    doc.setFont("helvetica", "italic");
     doc.setFontSize(7);
-    doc.text(employee.cargo.substring(0, 10), centerX, contentY, { align: "center" });
-    contentY += 4;
+    doc.text(employee.cargo.substring(0, 9), centerX, contentY, { align: "center" });
+    contentY += 5;
   }
 
   if (options.showSector && employee.setor) {
-    doc.setFontSize(7);
+    doc.setFontSize(8);
     doc.setFont("helvetica", "bold");
     doc.setTextColor(accentColor.r, accentColor.g, accentColor.b);
-    doc.text(employee.setor.substring(0, 10).toUpperCase(), centerX, contentY, { align: "center" });
+    doc.text(employee.setor.substring(0, 9).toUpperCase(), centerX, contentY, { align: "center" });
   }
 
+  // CPF in bottom bar
   if (options.showCpf && employee.cpf) {
-    doc.setFontSize(4);
+    doc.setFontSize(5);
     doc.setTextColor(255, 255, 255);
-    doc.text(employee.cpf, x + V_BADGE_WIDTH / 2, y + V_BADGE_HEIGHT - 1, { align: "center" });
+    doc.text(employee.cpf, x + V_BADGE_WIDTH / 2, y + V_BADGE_HEIGHT - 2, { align: "center" });
   }
 
   drawCutMarks(doc, x, y, V_BADGE_WIDTH, V_BADGE_HEIGHT);
