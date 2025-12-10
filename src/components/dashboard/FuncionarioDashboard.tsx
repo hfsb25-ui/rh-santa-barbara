@@ -22,6 +22,7 @@ import { toast } from "sonner";
 import { VacationProgress } from "@/components/ui/vacation-progress";
 import PendingSignaturesAlert from "./PendingSignaturesAlert";
 import { TreinamentosCard } from "./TreinamentosCard";
+import TacCard from "@/components/tac/TacCard";
 import { format, subMonths, startOfMonth, endOfMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -43,6 +44,7 @@ interface VisibilitySettings {
   uniformes_visivel: boolean;
   ferias_visivel: boolean;
   holerite_visivel: boolean;
+  tacs_visivel: boolean;
   tipos_contrato_permitidos: string[];
 }
 
@@ -72,6 +74,7 @@ const FuncionarioDashboard = ({ user }: FuncionarioDashboardProps) => {
     uniformes_visivel: true,
     ferias_visivel: true,
     holerite_visivel: true,
+    tacs_visivel: true,
     tipos_contrato_permitidos: ['fixo', 'intermitente', 'prestador_servico'],
   });
 
@@ -99,6 +102,7 @@ const FuncionarioDashboard = ({ user }: FuncionarioDashboardProps) => {
           uniformes_visivel: data.uniformes_visivel,
           ferias_visivel: data.ferias_visivel ?? true,
           holerite_visivel: data.holerite_visivel ?? true,
+          tacs_visivel: data.tacs_visivel ?? true,
           tipos_contrato_permitidos: data.tipos_contrato_permitidos || ['fixo', 'intermitente', 'prestador_servico'],
         });
       }
@@ -395,6 +399,9 @@ const FuncionarioDashboard = ({ user }: FuncionarioDashboardProps) => {
             }
             return null;
           })()}
+
+          {/* TACs */}
+          {visibility.tacs_visivel && <TacCard employeeId={employee.id} />}
 
           {/* Avisos */}
           {visibility.avisos_visivel && avisos.length > 0 && (
