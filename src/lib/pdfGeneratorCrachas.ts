@@ -218,34 +218,38 @@ function drawHorizontalModern(
     contentX += photoSize + 4;
   }
 
-  // Info
-  const infoX = contentX;
-  let infoY = contentY + 5;
+  // Info area - centered with padding
+  const infoAreaX = options.showPhoto ? contentX : x + 6;
+  const infoAreaWidth = options.showPhoto ? H_BADGE_WIDTH - contentX + x - 4 : H_BADGE_WIDTH - 12;
+  const infoAreaCenterX = infoAreaX + infoAreaWidth / 2;
+  let infoY = contentY + 6;
 
+  // Name - larger and centered
   doc.setTextColor(30, 30, 40);
-  doc.setFontSize(9);
+  doc.setFontSize(11);
   doc.setFont("helvetica", "bold");
-  const maxNameLen = options.showPhoto ? 18 : 28;
+  const maxNameLen = options.showPhoto ? 16 : 24;
   const name = employee.nome_completo.length > maxNameLen ? employee.nome_completo.substring(0, maxNameLen) + "..." : employee.nome_completo;
-  doc.text(name, infoX, infoY);
-  infoY += 5;
+  doc.text(name.toUpperCase(), infoAreaCenterX, infoY, { align: "center" });
+  infoY += 6;
 
   if (options.showCargo) {
     doc.setFont("helvetica", "normal");
-    doc.setFontSize(7);
+    doc.setFontSize(8);
     doc.setTextColor(80, 80, 90);
-    const maxCargoLen = options.showPhoto ? 22 : 35;
+    const maxCargoLen = options.showPhoto ? 18 : 30;
     const cargo = employee.cargo.length > maxCargoLen ? employee.cargo.substring(0, maxCargoLen) + "..." : employee.cargo;
-    doc.text(cargo, infoX, infoY);
-    infoY += 4;
+    doc.text(cargo, infoAreaCenterX, infoY, { align: "center" });
+    infoY += 5;
   }
 
   if (options.showSector && employee.setor) {
-    doc.setFontSize(6);
+    doc.setFontSize(8);
+    doc.setFont("helvetica", "bold");
     doc.setTextColor(headerColor.r, headerColor.g, headerColor.b);
-    const maxSetorLen = options.showPhoto ? 24 : 38;
+    const maxSetorLen = options.showPhoto ? 18 : 32;
     const setor = employee.setor.length > maxSetorLen ? employee.setor.substring(0, maxSetorLen) + "..." : employee.setor;
-    doc.text(setor, infoX, infoY);
+    doc.text(setor.toUpperCase(), infoAreaCenterX, infoY, { align: "center" });
   }
 
   // CPF
@@ -324,26 +328,32 @@ function drawHorizontalClassic(
     contentX += photoSize + 4;
   }
 
-  let infoY = contentY + 5;
+  // Info area - centered with padding
+  const infoAreaX = options.showPhoto ? contentX : x + 6;
+  const infoAreaWidth = options.showPhoto ? H_BADGE_WIDTH - contentX + x - 4 : H_BADGE_WIDTH - 12;
+  const infoAreaCenterX = infoAreaX + infoAreaWidth / 2;
+  let infoY = contentY + 6;
 
+  // Name - larger and centered
   doc.setTextColor(30, 30, 30);
-  doc.setFontSize(9);
+  doc.setFontSize(11);
   doc.setFont("helvetica", "bold");
-  const maxLen = options.showPhoto ? 18 : 30;
-  doc.text(employee.nome_completo.substring(0, maxLen), contentX, infoY);
-  infoY += 5;
+  const maxLen = options.showPhoto ? 16 : 26;
+  doc.text(employee.nome_completo.substring(0, maxLen).toUpperCase(), infoAreaCenterX, infoY, { align: "center" });
+  infoY += 6;
 
   if (options.showCargo) {
     doc.setFont("helvetica", "normal");
-    doc.setFontSize(7);
+    doc.setFontSize(8);
     doc.setTextColor(60, 60, 60);
-    doc.text(employee.cargo.substring(0, options.showPhoto ? 22 : 38), contentX, infoY);
-    infoY += 4;
+    doc.text(employee.cargo.substring(0, options.showPhoto ? 18 : 32), infoAreaCenterX, infoY, { align: "center" });
+    infoY += 5;
   }
 
   if (options.showSector && employee.setor) {
-    doc.setFontSize(6);
-    doc.text(employee.setor.substring(0, options.showPhoto ? 24 : 40), contentX, infoY);
+    doc.setFontSize(8);
+    doc.setFont("helvetica", "bold");
+    doc.text(employee.setor.substring(0, options.showPhoto ? 18 : 34).toUpperCase(), infoAreaCenterX, infoY, { align: "center" });
   }
 
   if (options.showCpf && employee.cpf) {
@@ -405,25 +415,31 @@ function drawHorizontalMinimal(
     contentX += photoSize + 5;
   }
 
-  let infoY = contentY + 7;
+  // Info area - centered with padding
+  const infoAreaX = options.showPhoto ? contentX : x + 6;
+  const infoAreaWidth = options.showPhoto ? H_BADGE_WIDTH - contentX + x - 4 : H_BADGE_WIDTH - 12;
+  const infoAreaCenterX = infoAreaX + infoAreaWidth / 2;
+  let infoY = contentY + 8;
 
+  // Name - larger and centered
   doc.setTextColor(40, 40, 40);
-  doc.setFontSize(10);
+  doc.setFontSize(11);
   doc.setFont("helvetica", "bold");
-  doc.text(employee.nome_completo.substring(0, options.showPhoto ? 16 : 28), contentX, infoY);
-  infoY += 5;
+  doc.text(employee.nome_completo.substring(0, options.showPhoto ? 14 : 24).toUpperCase(), infoAreaCenterX, infoY, { align: "center" });
+  infoY += 6;
 
   if (options.showCargo) {
     doc.setFont("helvetica", "normal");
-    doc.setFontSize(7);
+    doc.setFontSize(8);
     doc.setTextColor(120, 120, 120);
-    doc.text(employee.cargo.substring(0, options.showPhoto ? 20 : 35), contentX, infoY);
-    infoY += 4;
+    doc.text(employee.cargo.substring(0, options.showPhoto ? 16 : 30), infoAreaCenterX, infoY, { align: "center" });
+    infoY += 5;
   }
 
   if (options.showSector && employee.setor) {
-    doc.setFontSize(6);
-    doc.text(employee.setor.substring(0, options.showPhoto ? 22 : 38), contentX, infoY);
+    doc.setFontSize(8);
+    doc.setFont("helvetica", "bold");
+    doc.text(employee.setor.substring(0, options.showPhoto ? 18 : 32).toUpperCase(), infoAreaCenterX, infoY, { align: "center" });
   }
 
   if (options.showCpf && employee.cpf) {
@@ -499,26 +515,32 @@ function drawHorizontalCorporate(
     contentX += photoSize + 4;
   }
 
-  let infoY = contentY + 5;
+  // Info area - centered with padding
+  const infoAreaX = options.showPhoto ? contentX : x + 10;
+  const infoAreaWidth = options.showPhoto ? H_BADGE_WIDTH - contentX + x - 4 : H_BADGE_WIDTH - 18;
+  const infoAreaCenterX = infoAreaX + infoAreaWidth / 2;
+  let infoY = contentY + 6;
 
+  // Name - larger and centered
   doc.setTextColor(headerColor.r, headerColor.g, headerColor.b);
-  doc.setFontSize(9);
+  doc.setFontSize(11);
   doc.setFont("helvetica", "bold");
-  doc.text(employee.nome_completo.substring(0, options.showPhoto ? 16 : 26), contentX, infoY);
-  infoY += 5;
+  doc.text(employee.nome_completo.substring(0, options.showPhoto ? 14 : 22).toUpperCase(), infoAreaCenterX, infoY, { align: "center" });
+  infoY += 6;
 
   if (options.showCargo) {
     doc.setTextColor(80, 80, 85);
     doc.setFont("helvetica", "normal");
-    doc.setFontSize(7);
-    doc.text(employee.cargo.substring(0, options.showPhoto ? 18 : 32), contentX, infoY);
-    infoY += 4;
+    doc.setFontSize(8);
+    doc.text(employee.cargo.substring(0, options.showPhoto ? 16 : 28), infoAreaCenterX, infoY, { align: "center" });
+    infoY += 5;
   }
 
   if (options.showSector && employee.setor) {
-    doc.setFontSize(6);
+    doc.setFontSize(8);
+    doc.setFont("helvetica", "bold");
     doc.setTextColor(accentColor.r, accentColor.g, accentColor.b);
-    doc.text(employee.setor.substring(0, options.showPhoto ? 20 : 35), contentX, infoY);
+    doc.text(employee.setor.substring(0, options.showPhoto ? 16 : 30).toUpperCase(), infoAreaCenterX, infoY, { align: "center" });
   }
 
   if (options.showCpf && employee.cpf) {
@@ -593,26 +615,28 @@ function drawVerticalModern(
     contentY += photoSize + 4;
   }
 
-  // Name centered
+  // Name centered - larger with padding
+  const centerX = x + V_BADGE_WIDTH / 2;
   doc.setTextColor(30, 30, 40);
-  doc.setFontSize(8);
+  doc.setFontSize(9);
   doc.setFont("helvetica", "bold");
   const name = employee.nome_completo.split(" ").slice(0, 2).join(" ");
-  doc.text(name.substring(0, 14), x + V_BADGE_WIDTH / 2, contentY, { align: "center" });
-  contentY += 4;
+  doc.text(name.substring(0, 12).toUpperCase(), centerX, contentY, { align: "center" });
+  contentY += 5;
 
   if (options.showCargo) {
     doc.setFont("helvetica", "normal");
-    doc.setFontSize(6);
+    doc.setFontSize(7);
     doc.setTextColor(80, 80, 90);
-    doc.text(employee.cargo.substring(0, 14), x + V_BADGE_WIDTH / 2, contentY, { align: "center" });
-    contentY += 3;
+    doc.text(employee.cargo.substring(0, 12), centerX, contentY, { align: "center" });
+    contentY += 4;
   }
 
   if (options.showSector && employee.setor) {
-    doc.setFontSize(5);
+    doc.setFontSize(7);
+    doc.setFont("helvetica", "bold");
     doc.setTextColor(headerColor.r, headerColor.g, headerColor.b);
-    doc.text(employee.setor.substring(0, 14), x + V_BADGE_WIDTH / 2, contentY, { align: "center" });
+    doc.text(employee.setor.substring(0, 12).toUpperCase(), centerX, contentY, { align: "center" });
   }
 
   if (options.showCpf && employee.cpf) {
@@ -670,24 +694,27 @@ function drawVerticalClassic(
     contentY += photoSize + 4;
   }
 
+  // Name centered - larger with padding
+  const centerX = x + V_BADGE_WIDTH / 2;
   doc.setTextColor(30, 30, 30);
-  doc.setFontSize(8);
+  doc.setFontSize(9);
   doc.setFont("helvetica", "bold");
   const name = employee.nome_completo.split(" ").slice(0, 2).join(" ");
-  doc.text(name.substring(0, 14), x + V_BADGE_WIDTH / 2, contentY, { align: "center" });
-  contentY += 4;
+  doc.text(name.substring(0, 12).toUpperCase(), centerX, contentY, { align: "center" });
+  contentY += 5;
 
   if (options.showCargo) {
     doc.setFont("helvetica", "normal");
-    doc.setFontSize(6);
+    doc.setFontSize(7);
     doc.setTextColor(60, 60, 60);
-    doc.text(employee.cargo.substring(0, 14), x + V_BADGE_WIDTH / 2, contentY, { align: "center" });
-    contentY += 3;
+    doc.text(employee.cargo.substring(0, 12), centerX, contentY, { align: "center" });
+    contentY += 4;
   }
 
   if (options.showSector && employee.setor) {
-    doc.setFontSize(5);
-    doc.text(employee.setor.substring(0, 14), x + V_BADGE_WIDTH / 2, contentY, { align: "center" });
+    doc.setFontSize(7);
+    doc.setFont("helvetica", "bold");
+    doc.text(employee.setor.substring(0, 12).toUpperCase(), centerX, contentY, { align: "center" });
   }
 
   if (options.showCpf && employee.cpf) {
@@ -745,24 +772,27 @@ function drawVerticalMinimal(
     contentY += photoSize + 4;
   }
 
+  // Name centered - larger with padding
+  const centerX = x + V_BADGE_WIDTH / 2;
   doc.setTextColor(40, 40, 40);
-  doc.setFontSize(8);
+  doc.setFontSize(9);
   doc.setFont("helvetica", "bold");
   const name = employee.nome_completo.split(" ").slice(0, 2).join(" ");
-  doc.text(name.substring(0, 12), x + V_BADGE_WIDTH / 2, contentY, { align: "center" });
-  contentY += 4;
+  doc.text(name.substring(0, 10).toUpperCase(), centerX, contentY, { align: "center" });
+  contentY += 5;
 
   if (options.showCargo) {
     doc.setFont("helvetica", "normal");
-    doc.setFontSize(6);
+    doc.setFontSize(7);
     doc.setTextColor(120, 120, 120);
-    doc.text(employee.cargo.substring(0, 12), x + V_BADGE_WIDTH / 2, contentY, { align: "center" });
-    contentY += 3;
+    doc.text(employee.cargo.substring(0, 10), centerX, contentY, { align: "center" });
+    contentY += 4;
   }
 
   if (options.showSector && employee.setor) {
-    doc.setFontSize(5);
-    doc.text(employee.setor.substring(0, 12), x + V_BADGE_WIDTH / 2, contentY, { align: "center" });
+    doc.setFontSize(7);
+    doc.setFont("helvetica", "bold");
+    doc.text(employee.setor.substring(0, 10).toUpperCase(), centerX, contentY, { align: "center" });
   }
 
   if (options.showCpf && employee.cpf) {
@@ -826,25 +856,28 @@ function drawVerticalCorporate(
     contentY += photoSize + 4;
   }
 
+  // Name centered - larger with padding
+  const centerX = x + V_BADGE_WIDTH / 2;
   doc.setTextColor(headerColor.r, headerColor.g, headerColor.b);
-  doc.setFontSize(8);
+  doc.setFontSize(9);
   doc.setFont("helvetica", "bold");
   const name = employee.nome_completo.split(" ").slice(0, 2).join(" ");
-  doc.text(name.substring(0, 12), x + V_BADGE_WIDTH / 2, contentY, { align: "center" });
-  contentY += 4;
+  doc.text(name.substring(0, 10).toUpperCase(), centerX, contentY, { align: "center" });
+  contentY += 5;
 
   if (options.showCargo) {
     doc.setTextColor(80, 80, 85);
     doc.setFont("helvetica", "normal");
-    doc.setFontSize(6);
-    doc.text(employee.cargo.substring(0, 12), x + V_BADGE_WIDTH / 2, contentY, { align: "center" });
-    contentY += 3;
+    doc.setFontSize(7);
+    doc.text(employee.cargo.substring(0, 10), centerX, contentY, { align: "center" });
+    contentY += 4;
   }
 
   if (options.showSector && employee.setor) {
-    doc.setFontSize(5);
+    doc.setFontSize(7);
+    doc.setFont("helvetica", "bold");
     doc.setTextColor(accentColor.r, accentColor.g, accentColor.b);
-    doc.text(employee.setor.substring(0, 12), x + V_BADGE_WIDTH / 2, contentY, { align: "center" });
+    doc.text(employee.setor.substring(0, 10).toUpperCase(), centerX, contentY, { align: "center" });
   }
 
   if (options.showCpf && employee.cpf) {
