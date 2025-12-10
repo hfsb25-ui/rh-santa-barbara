@@ -58,13 +58,8 @@ const FinancialReports = () => {
 
     if (reportType === "payroll") {
       const totalB = payroll?.reduce((sum, p) => sum + Number(p.valor_bruto), 0) || 0;
-      const totalC = payroll?.reduce((sum, p) => sum + Number(p.valor_liquido), 0) || 0;
-      const totalM = payroll?.reduce((sum, p) => {
-        const bruto = Number(p.valor_bruto);
-        const desconto = Number(p.desconto || 0);
-        const emConta = Number(p.valor_liquido);
-        return sum + (bruto - desconto - emConta);
-      }, 0) || 0;
+      const totalC = payroll?.reduce((sum, p) => sum + calcularValorEmConta(p), 0) || 0;
+      const totalM = totalB - totalC;
       doc.text(`Total: R$ ${totalB.toFixed(2)} | Em Conta: R$ ${totalC.toFixed(2)} | Em Mãos: R$ ${totalM.toFixed(2)}`, 14, 28);
 
       let yPos = 36;
@@ -152,14 +147,8 @@ const FinancialReports = () => {
 
   const totalBruto = payroll?.reduce((sum, p) => sum + Number(p.valor_bruto), 0) || 0;
   const totalEmConta = payroll?.reduce((sum, p) => sum + calcularValorEmConta(p), 0) || 0;
-  // Total em Mãos = Total Bruto - Total Descontos (incluindo valor em conta)
-  const totalEmMaos = totalBruto - totalEmConta - (payroll?.reduce((sum, p) => {
-    const desconto = Number(p.desconto || 0);
-    const descontosItens = (p.folha_pagamento_itens || [])
-      .filter((i: any) => i.variaveis_folha?.tipo === "desconto" && i.variaveis_folha?.codigo !== "3503")
-      .reduce((s: number, i: any) => s + Number(i.valor), 0);
-    return sum + desconto + descontosItens;
-  }, 0) || 0);
+  // Total em Mãos = Valor Bruto - Valor em Conta
+  const totalEmMaos = totalBruto - totalEmConta;
 
   return (
     <div className="space-y-6">
