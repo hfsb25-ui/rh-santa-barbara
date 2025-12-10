@@ -582,6 +582,7 @@ export type Database = {
           holerite_visivel: boolean
           id: string
           saldo_horas_visivel: boolean
+          tacs_visivel: boolean
           tipos_contrato_permitidos: string[]
           treinamentos_visivel: boolean
           uniformes_visivel: boolean
@@ -597,6 +598,7 @@ export type Database = {
           holerite_visivel?: boolean
           id?: string
           saldo_horas_visivel?: boolean
+          tacs_visivel?: boolean
           tipos_contrato_permitidos?: string[]
           treinamentos_visivel?: boolean
           uniformes_visivel?: boolean
@@ -612,6 +614,7 @@ export type Database = {
           holerite_visivel?: boolean
           id?: string
           saldo_horas_visivel?: boolean
+          tacs_visivel?: boolean
           tipos_contrato_permitidos?: string[]
           treinamentos_visivel?: boolean
           uniformes_visivel?: boolean
@@ -2516,6 +2519,72 @@ export type Database = {
         }
         Relationships: []
       }
+      tacs: {
+        Row: {
+          confirmado_em: string | null
+          created_at: string
+          created_by: string | null
+          data_ocorrencia: string
+          data_publicacao: string
+          descricao: string
+          employee_id: string
+          id: string
+          lido_em: string | null
+          observacoes: string | null
+          status: Database["public"]["Enums"]["status_tac"]
+          tipo: Database["public"]["Enums"]["tipo_tac"]
+          titulo: string
+          updated_at: string
+        }
+        Insert: {
+          confirmado_em?: string | null
+          created_at?: string
+          created_by?: string | null
+          data_ocorrencia: string
+          data_publicacao?: string
+          descricao: string
+          employee_id: string
+          id?: string
+          lido_em?: string | null
+          observacoes?: string | null
+          status?: Database["public"]["Enums"]["status_tac"]
+          tipo: Database["public"]["Enums"]["tipo_tac"]
+          titulo: string
+          updated_at?: string
+        }
+        Update: {
+          confirmado_em?: string | null
+          created_at?: string
+          created_by?: string | null
+          data_ocorrencia?: string
+          data_publicacao?: string
+          descricao?: string
+          employee_id?: string
+          id?: string
+          lido_em?: string | null
+          observacoes?: string | null
+          status?: Database["public"]["Enums"]["status_tac"]
+          tipo?: Database["public"]["Enums"]["tipo_tac"]
+          titulo?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tacs_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tacs_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       uniformes: {
         Row: {
           assinatura_funcionario: string | null
@@ -2760,6 +2829,7 @@ export type Database = {
       employee_status: "ativo" | "ferias" | "afastado" | "demitido"
       status_checklist: "em_andamento" | "concluido" | "cancelado"
       status_encaminhamento: "pendente" | "agendado" | "realizado" | "cancelado"
+      status_tac: "pendente" | "visualizado" | "confirmado"
       tipo_checklist: "admissao" | "desligamento"
       tipo_contrato: "fixo" | "intermitente" | "prestador_servico"
       tipo_exame_medico:
@@ -2769,6 +2839,11 @@ export type Database = {
         | "mudanca_riscos"
         | "retorno_trabalho"
       tipo_salario: "mensal" | "diario" | "por_hora"
+      tipo_tac:
+        | "advertencia_verbal"
+        | "advertencia_escrita"
+        | "suspensao"
+        | "compromisso"
       tipo_variavel_folha: "desconto" | "provento"
       vaga_status: "aberta" | "pausada" | "fechada"
     }
@@ -2910,6 +2985,7 @@ export const Constants = {
       employee_status: ["ativo", "ferias", "afastado", "demitido"],
       status_checklist: ["em_andamento", "concluido", "cancelado"],
       status_encaminhamento: ["pendente", "agendado", "realizado", "cancelado"],
+      status_tac: ["pendente", "visualizado", "confirmado"],
       tipo_checklist: ["admissao", "desligamento"],
       tipo_contrato: ["fixo", "intermitente", "prestador_servico"],
       tipo_exame_medico: [
@@ -2920,6 +2996,12 @@ export const Constants = {
         "retorno_trabalho",
       ],
       tipo_salario: ["mensal", "diario", "por_hora"],
+      tipo_tac: [
+        "advertencia_verbal",
+        "advertencia_escrita",
+        "suspensao",
+        "compromisso",
+      ],
       tipo_variavel_folha: ["desconto", "provento"],
       vaga_status: ["aberta", "pausada", "fechada"],
     },

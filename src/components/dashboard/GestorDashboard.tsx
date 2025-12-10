@@ -34,6 +34,7 @@ import {
   ClipboardList,
   CheckCircle2,
   UsersRound,
+  FileWarning,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -893,6 +894,10 @@ const GestorDashboard = ({ user }: GestorDashboardProps) => {
                 <Button variant="outline" onClick={() => navigate("/people-manager")} className="w-full">
                   <UsersRound className="w-4 h-4 mr-2" />
                   People Manager
+                </Button>
+                <Button variant="outline" onClick={() => navigate("/tacs")} className="w-full">
+                  <FileWarning className="w-4 h-4 mr-2" />
+                  TACs
                 </Button>
               </div>
             </div>
