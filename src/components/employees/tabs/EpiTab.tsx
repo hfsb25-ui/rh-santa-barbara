@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus, Shield, Trash2, FileDown } from "lucide-react";
+import { Plus, Shield, Trash2, FileDown, PenLine } from "lucide-react";
 import EpiForm from "@/components/forms/EpiForm";
 import { toast } from "sonner";
 import { generateEpiReceipt } from "@/lib/pdfGenerator";
@@ -50,15 +50,32 @@ const EpiTab = ({ employeeId }: EpiTabProps) => {
     }
   };
 
+  const handleMarkAsPhysicallySigned = async (id: string) => {
+    if (!confirm("Confirma que o funcionário assinou fisicamente este recibo?")) return;
+
+    const { error } = await supabase
+      .from("epis")
+      .update({
+        assinatura_funcionario: "ASSINATURA_FISICA",
+        data_assinatura: new Date().toISOString(),
+      })
+      .eq("id", id);
+
+    if (error) {
+      toast.error("Erro ao registrar assinatura");
+    } else {
+      toast.success("Assinatura física registrada com sucesso");
+      fetchEpis();
+    }
+  };
+
   const handleReprintReceipt = async (epi: any) => {
-    // Buscar dados completos do funcionário
     const { data: employee } = await supabase
       .from("employees")
       .select("nome_completo, cpf, cargo")
       .eq("id", employeeId)
       .single();
 
-    // Buscar dados completos do EPI do estoque (se disponível)
     const { data: stockData } = await supabase
       .from("estoque_epis")
       .select("marca_modelo, ca, tamanho, finalidade")
@@ -89,6 +106,16 @@ const EpiTab = ({ employeeId }: EpiTabProps) => {
     toast.success("Recibo gerado com sucesso!");
   };
 
+  const getSignatureStatus = (epi: any) => {
+    if (!epi.assinatura_funcionario) {
+      return { text: "Pendente de assinatura", color: "text-yellow-600", signed: false };
+    }
+    if (epi.assinatura_funcionario === "ASSINATURA_FISICA") {
+      return { text: "✓ Assinado fisicamente", color: "text-green-600", signed: true };
+    }
+    return { text: "✓ Assinado digitalmente", color: "text-green-600", signed: true };
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
@@ -111,61 +138,73 @@ const EpiTab = ({ employeeId }: EpiTabProps) => {
         </Card>
       ) : (
         <div className="grid gap-4">
-          {epis.map((epi) => (
-            <Card key={epi.id}>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-base flex items-center gap-2">
-                    <Shield className="w-4 h-4" />
-                    {epi.tipo_epi}
-                  </CardTitle>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={() => handleReprintReceipt(epi)}
-                      title="Reimprimir Recibo"
-                    >
-                      <FileDown className="w-4 h-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleDelete(epi.id)}
-                    >
-                      <Trash2 className="w-4 h-4 text-destructive" />
-                    </Button>
+          {epis.map((epi) => {
+            const signatureStatus = getSignatureStatus(epi);
+            return (
+              <Card key={epi.id}>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <Shield className="w-4 h-4" />
+                      {epi.tipo_epi}
+                    </CardTitle>
+                    <div className="flex gap-2">
+                      {!signatureStatus.signed && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleMarkAsPhysicallySigned(epi.id)}
+                          title="Marcar como assinado fisicamente"
+                        >
+                          <PenLine className="w-4 h-4 mr-1" />
+                          Assinatura Física
+                        </Button>
+                      )}
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() => handleReprintReceipt(epi)}
+                        title="Reimprimir Recibo"
+                      >
+                        <FileDown className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleDelete(epi.id)}
+                      >
+                        <Trash2 className="w-4 h-4 text-destructive" />
+                      </Button>
+                    </div>
                   </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 gap-2 text-sm">
-                  <div>
-                    <p className="text-muted-foreground">Quantidade</p>
-                    <p className="font-medium">{epi.quantidade}</p>
-                  </div>
-                  <div>
-                    <p className="text-muted-foreground">Data de Entrega</p>
-                    <p className="font-medium">
-                      {new Date(epi.data_entrega).toLocaleDateString("pt-BR")}
-                    </p>
-                  </div>
-                  {epi.assinatura_funcionario && (
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    <div>
+                      <p className="text-muted-foreground">Quantidade</p>
+                      <p className="font-medium">{epi.quantidade}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">Data de Entrega</p>
+                      <p className="font-medium">
+                        {new Date(epi.data_entrega).toLocaleDateString("pt-BR")}
+                      </p>
+                    </div>
                     <div className="col-span-2">
                       <p className="text-muted-foreground">Status da Assinatura</p>
-                      <p className="font-medium text-green-600">✓ Assinado digitalmente</p>
+                      <p className={`font-medium ${signatureStatus.color}`}>{signatureStatus.text}</p>
                     </div>
-                  )}
-                  {epi.observacoes && (
-                    <div className="col-span-2">
-                      <p className="text-muted-foreground">Observações</p>
-                      <p className="font-medium">{epi.observacoes}</p>
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                    {epi.observacoes && (
+                      <div className="col-span-2">
+                        <p className="text-muted-foreground">Observações</p>
+                        <p className="font-medium">{epi.observacoes}</p>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       )}
     </div>
