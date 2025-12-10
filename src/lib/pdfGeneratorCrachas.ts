@@ -196,18 +196,20 @@ function drawHorizontalModern(
     try {
       // Logo centered at top
       doc.addImage(companyLogo, "PNG", x + (H_BADGE_WIDTH - 20) / 2, y + 2, 20, 8);
-      // Company name below logo
+      // Company name below logo - full name with dynamic font
       if (employee.empresa?.nome) {
-        doc.setFontSize(6);
-        doc.text(employee.empresa.nome.substring(0, 22).toUpperCase(), x + H_BADGE_WIDTH / 2, y + 13, { align: "center" });
+        const companyName = employee.empresa.nome.toUpperCase();
+        doc.setFontSize(companyName.length > 30 ? 5 : companyName.length > 20 ? 6 : 7);
+        doc.text(companyName, x + H_BADGE_WIDTH / 2, y + 13, { align: "center" });
       }
     } catch {
       doc.setFontSize(9);
       doc.text(employee.empresa?.nome?.toUpperCase() || "IDENTIFICAÇÃO", x + H_BADGE_WIDTH / 2, y + 10, { align: "center" });
     }
   } else {
-    doc.setFontSize(9);
-    doc.text(employee.empresa?.nome?.toUpperCase() || "IDENTIFICAÇÃO", x + H_BADGE_WIDTH / 2, y + 10, { align: "center" });
+    const companyName = employee.empresa?.nome?.toUpperCase() || "IDENTIFICAÇÃO";
+    doc.setFontSize(companyName.length > 30 ? 6 : companyName.length > 20 ? 7 : 9);
+    doc.text(companyName, x + H_BADGE_WIDTH / 2, y + 10, { align: "center" });
   }
 
   // Content area - with proper top margin
@@ -336,18 +338,21 @@ function drawHorizontalClassic(
     try {
       // Logo centered at top
       doc.addImage(companyLogo, "PNG", x + (H_BADGE_WIDTH - 18) / 2, y + 4, 18, 7);
-      // Company name below logo
+      // Company name below logo - full name
       if (employee.empresa?.nome) {
-        doc.setFontSize(5);
-        doc.text(employee.empresa.nome.substring(0, 24).toUpperCase(), x + H_BADGE_WIDTH / 2, y + 14, { align: "center" });
+        const companyName = employee.empresa.nome.toUpperCase();
+        doc.setFontSize(companyName.length > 30 ? 4 : companyName.length > 20 ? 5 : 6);
+        doc.text(companyName, x + H_BADGE_WIDTH / 2, y + 14, { align: "center" });
       }
     } catch {
-      doc.setFontSize(8);
-      doc.text(employee.empresa?.nome?.toUpperCase() || "CRACHÁ", x + H_BADGE_WIDTH / 2, y + 11, { align: "center" });
+      const companyName = employee.empresa?.nome?.toUpperCase() || "CRACHÁ";
+      doc.setFontSize(companyName.length > 20 ? 6 : 8);
+      doc.text(companyName, x + H_BADGE_WIDTH / 2, y + 11, { align: "center" });
     }
   } else {
-    doc.setFontSize(8);
-    doc.text(employee.empresa?.nome?.toUpperCase() || "CRACHÁ", x + H_BADGE_WIDTH / 2, y + 11, { align: "center" });
+    const companyName = employee.empresa?.nome?.toUpperCase() || "CRACHÁ";
+    doc.setFontSize(companyName.length > 20 ? 6 : 8);
+    doc.text(companyName, x + H_BADGE_WIDTH / 2, y + 11, { align: "center" });
   }
 
   // Content with proper top margin
@@ -443,12 +448,13 @@ function drawHorizontalMinimal(
   doc.roundedRect(x, y, H_BADGE_WIDTH, 5, 4, 4, "F");
   doc.rect(x, y + 3, H_BADGE_WIDTH, 2, "F");
 
-  // Company name - elegant placement
+  // Company name - full name with dynamic font
   if (employee.empresa?.nome) {
     doc.setTextColor(headerColor.r, headerColor.g, headerColor.b);
-    doc.setFontSize(7);
     doc.setFont("helvetica", "bold");
-    doc.text(employee.empresa.nome.substring(0, 28).toUpperCase(), x + H_BADGE_WIDTH / 2, y + 11, { align: "center" });
+    const companyName = employee.empresa.nome.toUpperCase();
+    doc.setFontSize(companyName.length > 30 ? 5 : companyName.length > 20 ? 6 : 7);
+    doc.text(companyName, x + H_BADGE_WIDTH / 2, y + 11, { align: "center" });
   }
 
   // Subtle divider line
@@ -570,18 +576,21 @@ function drawHorizontalCorporate(
     try {
       // Logo centered at top
       doc.addImage(companyLogo, "PNG", x + 6 + (H_BADGE_WIDTH - 6 - 18) / 2, y + 2, 18, 8);
-      // Company name below logo
+      // Company name below logo - full name
       if (employee.empresa?.nome) {
-        doc.setFontSize(5);
-        doc.text(employee.empresa.nome.substring(0, 22).toUpperCase(), x + (H_BADGE_WIDTH + 6) / 2, y + 12, { align: "center" });
+        const companyName = employee.empresa.nome.toUpperCase();
+        doc.setFontSize(companyName.length > 30 ? 4 : companyName.length > 20 ? 5 : 6);
+        doc.text(companyName, x + (H_BADGE_WIDTH + 6) / 2, y + 12, { align: "center" });
       }
     } catch {
-      doc.setFontSize(8);
-      doc.text(employee.empresa?.nome?.toUpperCase() || "CORPORATIVO", x + (H_BADGE_WIDTH + 6) / 2, y + 9, { align: "center" });
+      const companyName = employee.empresa?.nome?.toUpperCase() || "CORPORATIVO";
+      doc.setFontSize(companyName.length > 20 ? 6 : 8);
+      doc.text(companyName, x + (H_BADGE_WIDTH + 6) / 2, y + 9, { align: "center" });
     }
   } else {
-    doc.setFontSize(8);
-    doc.text(employee.empresa?.nome?.toUpperCase() || "CORPORATIVO", x + (H_BADGE_WIDTH + 6) / 2, y + 9, { align: "center" });
+    const companyName = employee.empresa?.nome?.toUpperCase() || "CORPORATIVO";
+    doc.setFontSize(companyName.length > 20 ? 6 : 8);
+    doc.text(companyName, x + (H_BADGE_WIDTH + 6) / 2, y + 9, { align: "center" });
   }
 
   // Content with proper top margin
