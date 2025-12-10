@@ -188,22 +188,25 @@ function drawHorizontalModern(
   doc.roundedRect(x, y + H_BADGE_HEIGHT - 3, H_BADGE_WIDTH, 3, 0, 0, "F");
   doc.roundedRect(x, y, H_BADGE_WIDTH, H_BADGE_HEIGHT, 3, 3, "S");
 
-  // Company name/logo
+  // Company logo and name - logo above name, centered
   doc.setTextColor(255, 255, 255);
-  doc.setFontSize(9);
   doc.setFont("helvetica", "bold");
 
   if (options.showCompanyLogo && companyLogo) {
     try {
-      doc.addImage(companyLogo, "PNG", x + 4, y + 3, 18, 9);
+      // Logo centered at top
+      doc.addImage(companyLogo, "PNG", x + (H_BADGE_WIDTH - 20) / 2, y + 2, 20, 8);
+      // Company name below logo
       if (employee.empresa?.nome) {
-        doc.setFontSize(8);
-        doc.text(employee.empresa.nome.substring(0, 18).toUpperCase(), x + 24, y + 10);
+        doc.setFontSize(6);
+        doc.text(employee.empresa.nome.substring(0, 22).toUpperCase(), x + H_BADGE_WIDTH / 2, y + 13, { align: "center" });
       }
     } catch {
+      doc.setFontSize(9);
       doc.text(employee.empresa?.nome?.toUpperCase() || "IDENTIFICAÇÃO", x + H_BADGE_WIDTH / 2, y + 10, { align: "center" });
     }
   } else {
+    doc.setFontSize(9);
     doc.text(employee.empresa?.nome?.toUpperCase() || "IDENTIFICAÇÃO", x + H_BADGE_WIDTH / 2, y + 10, { align: "center" });
   }
 
@@ -325,21 +328,25 @@ function drawHorizontalClassic(
   doc.setFillColor(lighterColor.r, lighterColor.g, lighterColor.b);
   doc.rect(x + 3, y + 14, H_BADGE_WIDTH - 6, 1.5, "F");
 
-  // Company
+  // Company logo and name - logo above name, centered
   doc.setTextColor(255, 255, 255);
-  doc.setFontSize(8);
   doc.setFont("helvetica", "bold");
 
   if (options.showCompanyLogo && companyLogo) {
     try {
-      doc.addImage(companyLogo, "PNG", x + 6, y + 5, 14, 8);
+      // Logo centered at top
+      doc.addImage(companyLogo, "PNG", x + (H_BADGE_WIDTH - 18) / 2, y + 4, 18, 7);
+      // Company name below logo
       if (employee.empresa?.nome) {
-        doc.text(employee.empresa.nome.substring(0, 20).toUpperCase(), x + 22, y + 11);
+        doc.setFontSize(5);
+        doc.text(employee.empresa.nome.substring(0, 24).toUpperCase(), x + H_BADGE_WIDTH / 2, y + 14, { align: "center" });
       }
     } catch {
+      doc.setFontSize(8);
       doc.text(employee.empresa?.nome?.toUpperCase() || "CRACHÁ", x + H_BADGE_WIDTH / 2, y + 11, { align: "center" });
     }
   } else {
+    doc.setFontSize(8);
     doc.text(employee.empresa?.nome?.toUpperCase() || "CRACHÁ", x + H_BADGE_WIDTH / 2, y + 11, { align: "center" });
   }
 
@@ -555,21 +562,25 @@ function drawHorizontalCorporate(
   doc.rect(x + 6, y + H_BADGE_HEIGHT - 4, H_BADGE_WIDTH - 6, 4, "F");
   doc.roundedRect(x, y, H_BADGE_WIDTH, H_BADGE_HEIGHT, 2, 2, "S");
 
-  // Company
+  // Company logo and name - logo above name, centered
   doc.setTextColor(255, 255, 255);
-  doc.setFontSize(8);
   doc.setFont("helvetica", "bold");
 
   if (options.showCompanyLogo && companyLogo) {
     try {
-      doc.addImage(companyLogo, "PNG", x + 10, y + 2.5, 16, 9);
+      // Logo centered at top
+      doc.addImage(companyLogo, "PNG", x + 6 + (H_BADGE_WIDTH - 6 - 18) / 2, y + 2, 18, 8);
+      // Company name below logo
       if (employee.empresa?.nome) {
-        doc.text(employee.empresa.nome.substring(0, 18).toUpperCase(), x + 28, y + 9);
+        doc.setFontSize(5);
+        doc.text(employee.empresa.nome.substring(0, 22).toUpperCase(), x + (H_BADGE_WIDTH + 6) / 2, y + 12, { align: "center" });
       }
     } catch {
+      doc.setFontSize(8);
       doc.text(employee.empresa?.nome?.toUpperCase() || "CORPORATIVO", x + (H_BADGE_WIDTH + 6) / 2, y + 9, { align: "center" });
     }
   } else {
+    doc.setFontSize(8);
     doc.text(employee.empresa?.nome?.toUpperCase() || "CORPORATIVO", x + (H_BADGE_WIDTH + 6) / 2, y + 9, { align: "center" });
   }
 
