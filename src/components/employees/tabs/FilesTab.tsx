@@ -122,8 +122,13 @@ const FilesTab = ({ employeeId }: FilesTabProps) => {
 
   const startCamera = async () => {
     try {
+      // Request high resolution camera for better document quality
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: "environment" }
+        video: { 
+          facingMode: "environment",
+          width: { ideal: 3840, min: 1920 },
+          height: { ideal: 2160, min: 1080 },
+        }
       });
       streamRef.current = stream;
       if (videoRef.current) {
@@ -131,6 +136,11 @@ const FilesTab = ({ employeeId }: FilesTabProps) => {
         videoRef.current.play();
       }
       setIsCameraActive(true);
+      
+      // Log actual resolution for debugging
+      const track = stream.getVideoTracks()[0];
+      const settings = track.getSettings();
+      console.log(`Camera resolution: ${settings.width}x${settings.height}`);
     } catch (error) {
       console.error("Error accessing camera:", error);
       toast.error("Erro ao acessar câmera. Verifique as permissões.");
@@ -149,14 +159,23 @@ const FilesTab = ({ employeeId }: FilesTabProps) => {
     if (videoRef.current && canvasRef.current) {
       const video = videoRef.current;
       const canvas = canvasRef.current;
+      
+      // Use full video resolution for high quality capture
       canvas.width = video.videoWidth;
       canvas.height = video.videoHeight;
+      
       const ctx = canvas.getContext("2d");
       if (ctx) {
-        ctx.drawImage(video, 0, 0);
-        const imageData = canvas.toDataURL("image/jpeg", 0.9);
+        // Disable image smoothing for sharper capture
+        ctx.imageSmoothingEnabled = false;
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        
+        // Use PNG for lossless quality
+        const imageData = canvas.toDataURL("image/png");
         setCapturedImage(imageData);
         stopCamera();
+        
+        console.log(`Captured image: ${canvas.width}x${canvas.height}`);
       }
     }
   };
@@ -188,15 +207,20 @@ const FilesTab = ({ employeeId }: FilesTabProps) => {
 
     setUploading(true);
     try {
-      // Convert base64 to blob
+      // Convert base64 to blob - keeping PNG for high quality
       const response = await fetch(capturedImage);
       const blob = await response.blob();
       
-      const fileName = `${employeeId}/${Date.now()}_scan.jpg`;
+      // Determine format from the captured image
+      const isPng = capturedImage.startsWith("data:image/png");
+      const extension = isPng ? "png" : "jpg";
+      const contentType = isPng ? "image/png" : "image/jpeg";
+      
+      const fileName = `${employeeId}/${Date.now()}_scan.${extension}`;
 
       const { error: uploadError } = await supabase.storage
         .from("employee-files")
-        .upload(fileName, blob, { contentType: "image/jpeg" });
+        .upload(fileName, blob, { contentType });
 
       if (uploadError) throw uploadError;
 
@@ -206,9 +230,9 @@ const FilesTab = ({ employeeId }: FilesTabProps) => {
         .from("employee_files")
         .insert({
           employee_id: employeeId,
-          file_name: `Documento_${format(new Date(), "dd-MM-yyyy_HH-mm")}.jpg`,
+          file_name: `Documento_${format(new Date(), "dd-MM-yyyy_HH-mm")}.${extension}`,
           file_path: fileName,
-          file_type: "image/jpeg",
+          file_type: contentType,
           file_size: blob.size,
           description: scannerDescription || "Documento escaneado",
           uploaded_by: user?.id,

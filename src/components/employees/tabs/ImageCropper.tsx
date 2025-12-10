@@ -54,6 +54,9 @@ export const ImageCropper = ({ imageSrc, onCropComplete, onCancel }: ImageCroppe
     canvas.width = completedCrop.width * scaleX;
     canvas.height = completedCrop.height * scaleY;
 
+    // Disable image smoothing for sharper crop
+    ctx.imageSmoothingEnabled = false;
+    
     ctx.drawImage(
       image,
       completedCrop.x * scaleX,
@@ -66,7 +69,8 @@ export const ImageCropper = ({ imageSrc, onCropComplete, onCancel }: ImageCroppe
       canvas.height
     );
 
-    const croppedImageUrl = canvas.toDataURL("image/jpeg", 0.9);
+    // Use PNG for lossless quality after crop
+    const croppedImageUrl = canvas.toDataURL("image/png");
     onCropComplete(croppedImageUrl);
   }, [completedCrop, onCropComplete]);
 
