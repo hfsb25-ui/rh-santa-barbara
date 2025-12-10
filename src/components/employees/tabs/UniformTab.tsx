@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus, Shirt, Trash2, FileDown } from "lucide-react";
+import { Plus, Shirt, Trash2, FileDown, PenLine } from "lucide-react";
 import UniformForm from "@/components/forms/UniformForm";
 import { toast } from "sonner";
 import { generateUniformReceipt } from "@/lib/pdfGenerator";
@@ -50,8 +50,26 @@ const UniformTab = ({ employeeId }: UniformTabProps) => {
     }
   };
 
+  const handleMarkAsPhysicallySigned = async (id: string) => {
+    if (!confirm("Confirma que o funcionário assinou fisicamente este recibo?")) return;
+
+    const { error } = await supabase
+      .from("uniformes")
+      .update({
+        assinatura_funcionario: "ASSINATURA_FISICA",
+        data_assinatura: new Date().toISOString(),
+      })
+      .eq("id", id);
+
+    if (error) {
+      toast.error("Erro ao registrar assinatura");
+    } else {
+      toast.success("Assinatura física registrada com sucesso");
+      fetchUniformes();
+    }
+  };
+
   const handleReprintReceipt = async (uniforme: any) => {
-    // Buscar dados completos do funcionário
     const { data: employee } = await supabase
       .from("employees")
       .select("nome_completo, cpf, cargo")
@@ -76,6 +94,16 @@ const UniformTab = ({ employeeId }: UniformTabProps) => {
     });
 
     toast.success("Recibo gerado com sucesso!");
+  };
+
+  const getSignatureStatus = (uniforme: any) => {
+    if (!uniforme.assinatura_funcionario) {
+      return { text: "Pendente de assinatura", color: "text-yellow-600", signed: false };
+    }
+    if (uniforme.assinatura_funcionario === "ASSINATURA_FISICA") {
+      return { text: "✓ Assinado fisicamente", color: "text-green-600", signed: true };
+    }
+    return { text: "✓ Assinado digitalmente", color: "text-green-600", signed: true };
   };
 
   return (
@@ -104,65 +132,77 @@ const UniformTab = ({ employeeId }: UniformTabProps) => {
         </Card>
       ) : (
         <div className="grid gap-4">
-          {uniformes.map((uniforme) => (
-            <Card key={uniforme.id}>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-base flex items-center gap-2">
-                    <Shirt className="w-4 h-4" />
-                    {uniforme.tipo_uniforme}
-                  </CardTitle>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={() => handleReprintReceipt(uniforme)}
-                      title="Reimprimir Recibo"
-                    >
-                      <FileDown className="w-4 h-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleDelete(uniforme.id)}
-                    >
-                      <Trash2 className="w-4 h-4 text-destructive" />
-                    </Button>
+          {uniformes.map((uniforme) => {
+            const signatureStatus = getSignatureStatus(uniforme);
+            return (
+              <Card key={uniforme.id}>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <Shirt className="w-4 h-4" />
+                      {uniforme.tipo_uniforme}
+                    </CardTitle>
+                    <div className="flex gap-2">
+                      {!signatureStatus.signed && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleMarkAsPhysicallySigned(uniforme.id)}
+                          title="Marcar como assinado fisicamente"
+                        >
+                          <PenLine className="w-4 h-4 mr-1" />
+                          Assinatura Física
+                        </Button>
+                      )}
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() => handleReprintReceipt(uniforme)}
+                        title="Reimprimir Recibo"
+                      >
+                        <FileDown className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleDelete(uniforme.id)}
+                      >
+                        <Trash2 className="w-4 h-4 text-destructive" />
+                      </Button>
+                    </div>
                   </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-3 gap-2 text-sm">
-                  <div>
-                    <p className="text-muted-foreground">Tamanho</p>
-                    <p className="font-medium">{uniforme.tamanho}</p>
-                  </div>
-                  <div>
-                    <p className="text-muted-foreground">Quantidade</p>
-                    <p className="font-medium">{uniforme.quantidade}</p>
-                  </div>
-                  <div>
-                    <p className="text-muted-foreground">Data de Entrega</p>
-                    <p className="font-medium">
-                      {new Date(uniforme.data_entrega).toLocaleDateString("pt-BR")}
-                    </p>
-                  </div>
-                  {uniforme.assinatura_funcionario && (
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-3 gap-2 text-sm">
+                    <div>
+                      <p className="text-muted-foreground">Tamanho</p>
+                      <p className="font-medium">{uniforme.tamanho}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">Quantidade</p>
+                      <p className="font-medium">{uniforme.quantidade}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">Data de Entrega</p>
+                      <p className="font-medium">
+                        {new Date(uniforme.data_entrega).toLocaleDateString("pt-BR")}
+                      </p>
+                    </div>
                     <div className="col-span-3">
                       <p className="text-muted-foreground">Status da Assinatura</p>
-                      <p className="font-medium text-green-600">✓ Assinado digitalmente</p>
+                      <p className={`font-medium ${signatureStatus.color}`}>{signatureStatus.text}</p>
                     </div>
-                  )}
-                  {uniforme.observacoes && (
-                    <div className="col-span-3">
-                      <p className="text-muted-foreground">Observações</p>
-                      <p className="font-medium">{uniforme.observacoes}</p>
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                    {uniforme.observacoes && (
+                      <div className="col-span-3">
+                        <p className="text-muted-foreground">Observações</p>
+                        <p className="font-medium">{uniforme.observacoes}</p>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       )}
     </div>
