@@ -56,6 +56,7 @@ import { WorkforceAlerts } from "@/components/dashboard/WorkforceAlerts";
 import { BirthdayCard } from "@/components/dashboard/BirthdayCard";
 import { BirthdayListDialog } from "@/components/dashboard/BirthdayListDialog";
 import { PendingChecklistsAlert } from "@/components/dashboard/PendingChecklistsAlert";
+import { ExperiencePeriodAlerts } from "@/components/dashboard/ExperiencePeriodAlerts";
 import { toast } from "sonner";
 
 interface GestorDashboardProps {
@@ -643,6 +644,9 @@ const GestorDashboard = ({ user }: GestorDashboardProps) => {
 
             {/* Pending Checklists Alert */}
             <PendingChecklistsAlert />
+
+            {/* Experience Period Alerts */}
+            <ExperiencePeriodAlerts selectedEmpresa={selectedEmpresa} />
 
             {/* Workforce Alerts */}
             <WorkforceAlerts />
