@@ -5,11 +5,22 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, BarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts";
-import { Heart, Award, GraduationCap, Clock, TrendingUp, Star, Users } from "lucide-react";
-import { format, parseISO, differenceInDays, subDays } from "date-fns";
-import { ptBR } from "date-fns/locale";
+import { Heart, Award, GraduationCap, Clock, TrendingUp, FileWarning, Users } from "lucide-react";
+import { differenceInDays, parseISO, subDays } from "date-fns";
 
-const COLORS = ["hsl(var(--primary))", "hsl(var(--chart-2))", "hsl(var(--chart-3))", "hsl(var(--chart-4))", "hsl(var(--chart-5))"];
+interface EmployeeEngagementScore {
+  id: string;
+  nome_completo: string;
+  cargo: string;
+  setor: string | null;
+  foto_url: string | null;
+  loginScore: number;
+  avaliacaoScore: number;
+  treinamentoScore: number;
+  tacScore: number;
+  totalScore: number;
+  category: "alta" | "media" | "baixa";
+}
 
 export default function EmployeeEngagement() {
   const { data: employees } = useQuery({
@@ -43,10 +54,32 @@ export default function EmployeeEngagement() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("avaliacoes_desempenho")
-        .select("*, employees(nome_completo)")
+        .select("*")
         .eq("status", "concluida");
       if (error) throw error;
       return data;
+    },
+  });
+
+  const { data: certificados } = useQuery({
+    queryKey: ["engagement-certificados"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("certificados_liberados")
+        .select("*");
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  const { data: tacs } = useQuery({
+    queryKey: ["engagement-tacs"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("tacs")
+        .select("*");
+      if (error) throw error;
+      return data || [];
     },
   });
 
@@ -59,50 +92,128 @@ export default function EmployeeEngagement() {
     },
   });
 
-  // Calcular métricas de engajamento
+  // Calcular scores de engajamento por funcionário
+  const calculateEngagementScores = (): EmployeeEngagementScore[] => {
+    if (!employees) return [];
+
+    const maxLogins = Math.max(
+      1,
+      ...employees.map(e => loginHistory?.filter(l => l.employee_id === e.id).length || 0)
+    );
+    const maxAvaliacoes = Math.max(
+      1,
+      ...employees.map(e => avaliacoes?.filter(a => a.employee_id === e.id).length || 0)
+    );
+    const maxCertificados = Math.max(
+      1,
+      ...employees.map(e => certificados?.filter(c => c.employee_id === e.id).length || 0)
+    );
+
+    return employees.map(employee => {
+      // Score de Logins (30%) - baseado em quantidade de logins nos últimos 30 dias
+      const employeeLogins = loginHistory?.filter(l => l.employee_id === employee.id).length || 0;
+      const loginScore = (employeeLogins / maxLogins) * 100;
+
+      // Score de Avaliações (25%) - baseado em participação e notas
+      const employeeAvaliacoes = avaliacoes?.filter(a => a.employee_id === employee.id) || [];
+      const avaliacaoCount = employeeAvaliacoes.length;
+      const avgNota = employeeAvaliacoes.length > 0
+        ? employeeAvaliacoes.reduce((sum, a) => sum + (a.nota_final || 0), 0) / employeeAvaliacoes.length
+        : 0;
+      const avaliacaoScore = maxAvaliacoes > 0
+        ? ((avaliacaoCount / maxAvaliacoes) * 50) + ((avgNota / 10) * 50)
+        : 0;
+
+      // Score de Treinamentos (25%) - baseado em certificados concluídos
+      const employeeCertificados = certificados?.filter(c => c.employee_id === employee.id).length || 0;
+      const treinamentoScore = maxCertificados > 0 ? (employeeCertificados / maxCertificados) * 100 : 0;
+
+      // Score de TACs (20%) - baseado em confirmação de TACs
+      const employeeTacs = tacs?.filter(t => t.employee_id === employee.id) || [];
+      const tacsConfirmados = employeeTacs.filter(t => t.confirmado_em).length;
+      const tacsPendentes = employeeTacs.filter(t => !t.confirmado_em).length;
+      const tacScore = employeeTacs.length > 0
+        ? (tacsConfirmados / employeeTacs.length) * 100
+        : 100; // Se não tem TACs, considera como 100%
+
+      // Penalizar por TACs pendentes antigos
+      const tacPenalty = tacsPendentes > 0 ? Math.min(tacsPendentes * 10, 30) : 0;
+      const adjustedTacScore = Math.max(0, tacScore - tacPenalty);
+
+      // Score Total ponderado
+      const totalScore = (loginScore * 0.30) + (avaliacaoScore * 0.25) + (treinamentoScore * 0.25) + (adjustedTacScore * 0.20);
+
+      // Categoria baseada no score
+      let category: "alta" | "media" | "baixa";
+      if (totalScore >= 70) {
+        category = "alta";
+      } else if (totalScore >= 40) {
+        category = "media";
+      } else {
+        category = "baixa";
+      }
+
+      return {
+        id: employee.id,
+        nome_completo: employee.nome_completo,
+        cargo: employee.cargo,
+        setor: employee.setor,
+        foto_url: employee.foto_url,
+        loginScore,
+        avaliacaoScore,
+        treinamentoScore,
+        tacScore: adjustedTacScore,
+        totalScore,
+        category,
+      };
+    });
+  };
+
+  const engagementScores = calculateEngagementScores();
   const totalEmployees = employees?.length || 0;
 
-  // Logins nos últimos 30 dias
+  // Distribuição real de engajamento
+  const altaAtividade = engagementScores.filter(e => e.category === "alta").length;
+  const mediaAtividade = engagementScores.filter(e => e.category === "media").length;
+  const baixaAtividade = engagementScores.filter(e => e.category === "baixa").length;
+
+  const engagementDistribution = [
+    { name: "Alta Atividade (≥70%)", value: altaAtividade, color: "hsl(142, 76%, 36%)" },
+    { name: "Atividade Média (40-69%)", value: mediaAtividade, color: "hsl(221, 83%, 53%)" },
+    { name: "Baixa Atividade (<40%)", value: baixaAtividade, color: "hsl(0, 84%, 60%)" },
+  ].filter(d => d.value > 0);
+
+  // Top 5 engajados
+  const topEngaged = [...engagementScores].sort((a, b) => b.totalScore - a.totalScore).slice(0, 5);
+
+  // KPIs
   const uniqueLoginsLast30Days = new Set(loginHistory?.map(l => l.employee_id).filter(Boolean)).size;
   const loginRate = totalEmployees > 0 ? (uniqueLoginsLast30Days / totalEmployees) * 100 : 0;
-
-  // Participação em avaliações
+  
   const employeesWithEvaluation = new Set(avaliacoes?.map(a => a.employee_id)).size;
   const evaluationParticipation = totalEmployees > 0 ? (employeesWithEvaluation / totalEmployees) * 100 : 0;
 
-  // Engajamento em treinamentos (simplified)
-  const trainingEngagement = 0;
+  const employeesWithCertificado = new Set(certificados?.map(c => c.employee_id)).size;
+  const trainingEngagement = totalEmployees > 0 ? (employeesWithCertificado / totalEmployees) * 100 : 0;
 
-  // Distribuição de engajamento
-  const engagementDistribution = [
-    { name: "Alta Atividade", value: Math.floor(totalEmployees * 0.3), color: "hsl(142, 76%, 36%)" },
-    { name: "Atividade Média", value: Math.floor(totalEmployees * 0.45), color: "hsl(221, 83%, 53%)" },
-    { name: "Baixa Atividade", value: Math.floor(totalEmployees * 0.25), color: "hsl(0, 84%, 60%)" },
-  ].filter(d => d.value > 0);
-
-  // Top engajados (baseado em avaliações)
-  const topEngaged = employees?.slice(0, 5).map(e => {
-    const evalCount = avaliacoes?.filter(a => a.employee_id === e.id).length || 0;
-    return {
-      ...e,
-      score: evalCount * 2,
-    };
-  }).sort((a, b) => b.score - a.score) || [];
+  const tacsConfirmados = tacs?.filter(t => t.confirmado_em).length || 0;
+  const totalTacs = tacs?.length || 0;
+  const tacConfirmationRate = totalTacs > 0 ? (tacsConfirmados / totalTacs) * 100 : 100;
 
   // Métricas por setor
   const setores = [...new Set(employees?.map(e => e.setor).filter(Boolean))];
   const sectorEngagement = setores.map(setor => {
-    const sectorEmployees = employees?.filter(e => e.setor === setor) || [];
-    const sectorLogins = loginHistory?.filter(l =>
-      sectorEmployees.some(e => e.id === l.employee_id)
-    ).length || 0;
+    const sectorScores = engagementScores.filter(e => e.setor === setor);
+    const avgScore = sectorScores.length > 0
+      ? sectorScores.reduce((sum, e) => sum + e.totalScore, 0) / sectorScores.length
+      : 0;
     
     return {
       setor,
-      logins: sectorLogins,
-      employees: sectorEmployees.length,
+      score: Math.round(avgScore),
+      employees: sectorScores.length,
     };
-  }).filter(s => s.employees > 0).slice(0, 5);
+  }).filter(s => s.employees > 0).sort((a, b) => b.score - a.score).slice(0, 5);
 
   return (
     <div className="space-y-6">
@@ -112,7 +223,7 @@ export default function EmployeeEngagement() {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Taxa de Acesso</p>
+                <p className="text-sm text-muted-foreground">Taxa de Acesso (30d)</p>
                 <p className="text-3xl font-bold">{loginRate.toFixed(0)}%</p>
               </div>
               <div className="p-3 bg-primary/10 rounded-full">
@@ -121,7 +232,7 @@ export default function EmployeeEngagement() {
             </div>
             <Progress value={loginRate} className="mt-4 h-2" />
             <p className="text-xs text-muted-foreground mt-1">
-              {uniqueLoginsLast30Days} de {totalEmployees} (30 dias)
+              {uniqueLoginsLast30Days} de {totalEmployees} funcionários
             </p>
           </CardContent>
         </Card>
@@ -148,7 +259,7 @@ export default function EmployeeEngagement() {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Engajamento Treinamentos</p>
+                <p className="text-sm text-muted-foreground">Cursos Concluídos</p>
                 <p className="text-3xl font-bold">{trainingEngagement.toFixed(0)}%</p>
               </div>
               <div className="p-3 bg-green-500/10 rounded-full">
@@ -157,7 +268,7 @@ export default function EmployeeEngagement() {
             </div>
             <Progress value={trainingEngagement} className="mt-4 h-2" />
             <p className="text-xs text-muted-foreground mt-1">
-              Cursos disponíveis: {cursos?.length || 0}
+              {employeesWithCertificado} com certificados
             </p>
           </CardContent>
         </Card>
@@ -166,15 +277,16 @@ export default function EmployeeEngagement() {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Cursos Ativos</p>
-                <p className="text-3xl font-bold">{cursos?.length || 0}</p>
+                <p className="text-sm text-muted-foreground">TACs Confirmados</p>
+                <p className="text-3xl font-bold">{tacConfirmationRate.toFixed(0)}%</p>
               </div>
               <div className="p-3 bg-blue-500/10 rounded-full">
-                <Star className="h-6 w-6 text-blue-500" />
+                <FileWarning className="h-6 w-6 text-blue-500" />
               </div>
             </div>
-            <p className="text-sm text-muted-foreground mt-4">
-              disponíveis para os funcionários
+            <Progress value={tacConfirmationRate} className="mt-4 h-2" />
+            <p className="text-xs text-muted-foreground mt-1">
+              {tacsConfirmados} de {totalTacs} TACs
             </p>
           </CardContent>
         </Card>
@@ -203,7 +315,7 @@ export default function EmployeeEngagement() {
                       paddingAngle={5}
                       dataKey="value"
                       nameKey="name"
-                      label={({ name, value }) => `${value}`}
+                      label={({ value }) => `${value}`}
                     >
                       {engagementDistribution.map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={entry.color} />
@@ -219,13 +331,27 @@ export default function EmployeeEngagement() {
                 Dados insuficientes
               </div>
             )}
+            <div className="mt-4 flex justify-center gap-4 text-sm">
+              <span className="flex items-center gap-1">
+                <div className="w-3 h-3 rounded-full" style={{ backgroundColor: "hsl(142, 76%, 36%)" }} />
+                Alta: {altaAtividade}
+              </span>
+              <span className="flex items-center gap-1">
+                <div className="w-3 h-3 rounded-full" style={{ backgroundColor: "hsl(221, 83%, 53%)" }} />
+                Média: {mediaAtividade}
+              </span>
+              <span className="flex items-center gap-1">
+                <div className="w-3 h-3 rounded-full" style={{ backgroundColor: "hsl(0, 84%, 60%)" }} />
+                Baixa: {baixaAtividade}
+              </span>
+            </div>
           </CardContent>
         </Card>
 
         {/* Engajamento por Setor */}
         <Card>
           <CardHeader>
-            <CardTitle>Atividade por Setor</CardTitle>
+            <CardTitle>Score Médio por Setor</CardTitle>
           </CardHeader>
           <CardContent>
             {sectorEngagement.length > 0 ? (
@@ -233,10 +359,18 @@ export default function EmployeeEngagement() {
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={sectorEngagement} layout="vertical">
                     <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                    <XAxis type="number" className="text-xs" />
+                    <XAxis type="number" domain={[0, 100]} className="text-xs" />
                     <YAxis type="category" dataKey="setor" className="text-xs" width={100} />
-                    <Tooltip />
-                    <Bar dataKey="logins" name="Logins" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} />
+                    <Tooltip 
+                      formatter={(value: number) => [`${value}%`, "Score"]}
+                      labelFormatter={(label) => `Setor: ${label}`}
+                    />
+                    <Bar 
+                      dataKey="score" 
+                      name="Score" 
+                      fill="hsl(var(--primary))" 
+                      radius={[0, 4, 4, 0]}
+                    />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
@@ -280,9 +414,30 @@ export default function EmployeeEngagement() {
                 </div>
                 <p className="font-medium mt-2 truncate w-full">{employee.nome_completo?.split(" ")[0]}</p>
                 <p className="text-xs text-muted-foreground truncate w-full">{employee.cargo}</p>
-                <Badge variant="secondary" className="mt-2">
-                  Score: {employee.score}
+                <Badge 
+                  variant={employee.category === "alta" ? "default" : employee.category === "media" ? "secondary" : "destructive"}
+                  className="mt-2"
+                >
+                  {employee.totalScore.toFixed(0)}%
                 </Badge>
+                <div className="mt-2 text-xs text-muted-foreground space-y-1 w-full">
+                  <div className="flex justify-between">
+                    <span>Logins:</span>
+                    <span>{employee.loginScore.toFixed(0)}%</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Aval.:</span>
+                    <span>{employee.avaliacaoScore.toFixed(0)}%</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Treino:</span>
+                    <span>{employee.treinamentoScore.toFixed(0)}%</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>TACs:</span>
+                    <span>{employee.tacScore.toFixed(0)}%</span>
+                  </div>
+                </div>
               </div>
             ))}
           </div>
