@@ -5,14 +5,16 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ArrowLeft } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { format, parseISO, isWithinInterval } from "date-fns";
+import { parseISO, isWithinInterval } from "date-fns";
 
 export default function Turnover() {
   const navigate = useNavigate();
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+  const [selectedSetor, setSelectedSetor] = useState<string>("todos");
 
   const { data: employees } = useQuery({
     queryKey: ["employees"],
@@ -27,35 +29,53 @@ export default function Turnover() {
     },
   });
 
-  const calculateTurnover = () => {
+  const { data: setores } = useQuery({
+    queryKey: ["setores"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("setores")
+        .select("*")
+        .order("nome");
+      
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const calculateTurnover = (setor?: string) => {
     if (!employees || !startDate || !endDate) return null;
 
     const start = parseISO(startDate);
     const end = parseISO(endDate);
 
+    // Filtrar por setor se especificado
+    const filteredEmployees = setor && setor !== "todos" 
+      ? employees.filter(emp => emp.setor === setor)
+      : employees;
+
     // Funcionários ativos no início do período
-    const activeAtStart = employees.filter(emp => {
+    const activeAtStart = filteredEmployees.filter(emp => {
       if (!emp.data_admissao) return false;
       const admissionDate = parseISO(emp.data_admissao);
       return admissionDate <= start;
     }).length;
 
     // Funcionários demitidos durante o período
-    const dismissed = employees.filter(emp => {
+    const dismissed = filteredEmployees.filter(emp => {
       if (emp.status !== 'demitido' || !emp.updated_at) return false;
       const updateDate = parseISO(emp.updated_at);
       return isWithinInterval(updateDate, { start, end });
     }).length;
 
     // Novos funcionários contratados durante o período
-    const hired = employees.filter(emp => {
+    const hired = filteredEmployees.filter(emp => {
       if (!emp.data_admissao) return false;
       const admissionDate = parseISO(emp.data_admissao);
       return isWithinInterval(admissionDate, { start, end });
     }).length;
 
     // Funcionários ativos no final do período
-    const activeAtEnd = employees.filter(emp => {
+    const activeAtEnd = filteredEmployees.filter(emp => {
       if (!emp.data_admissao) return false;
       const admissionDate = parseISO(emp.data_admissao);
       return admissionDate <= end && emp.status !== 'demitido';
@@ -74,7 +94,16 @@ export default function Turnover() {
     };
   };
 
-  const stats = calculateTurnover();
+  const stats = calculateTurnover(selectedSetor);
+
+  // Calcular turnover por setor
+  const turnoverPorSetor = setores?.map(setor => {
+    const setorStats = calculateTurnover(setor.nome);
+    return {
+      nome: setor.nome,
+      ...setorStats,
+    };
+  }).filter(s => s.averageEmployees && s.averageEmployees > 0);
 
   return (
     <div className="container mx-auto p-6 max-w-6xl">
@@ -90,13 +119,13 @@ export default function Turnover() {
 
       <Card className="mb-6">
         <CardHeader>
-          <CardTitle>Selecionar Período</CardTitle>
+          <CardTitle>Selecionar Período e Filtros</CardTitle>
           <CardDescription>
-            Escolha o período para análise do turnover
+            Escolha o período e setor para análise do turnover
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="grid gap-4 md:grid-cols-3">
             <div>
               <Label htmlFor="startDate">Data Inicial</Label>
               <Input
@@ -115,66 +144,123 @@ export default function Turnover() {
                 onChange={(e) => setEndDate(e.target.value)}
               />
             </div>
+            <div>
+              <Label>Setor</Label>
+              <Select value={selectedSetor} onValueChange={setSelectedSetor}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione o setor" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todos">Todos os Setores</SelectItem>
+                  {setores?.map((setor) => (
+                    <SelectItem key={setor.id} value={setor.nome}>
+                      {setor.nome}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         </CardContent>
       </Card>
 
       {stats && (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          <Card>
-            <CardHeader>
-              <CardTitle>Funcionários Ativos (Início)</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-3xl font-bold">{stats.activeAtStart}</p>
-            </CardContent>
-          </Card>
+        <>
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 mb-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Funcionários Ativos (Início)</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-3xl font-bold">{stats.activeAtStart}</p>
+              </CardContent>
+            </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Funcionários Ativos (Fim)</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-3xl font-bold">{stats.activeAtEnd}</p>
-            </CardContent>
-          </Card>
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Funcionários Ativos (Fim)</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-3xl font-bold">{stats.activeAtEnd}</p>
+              </CardContent>
+            </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Demissões</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-3xl font-bold text-red-600">{stats.dismissed}</p>
-            </CardContent>
-          </Card>
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Demissões</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-3xl font-bold text-destructive">{stats.dismissed}</p>
+              </CardContent>
+            </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Contratações</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-3xl font-bold text-green-600">{stats.hired}</p>
-            </CardContent>
-          </Card>
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Contratações</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-3xl font-bold text-green-600">{stats.hired}</p>
+              </CardContent>
+            </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Média de Funcionários</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-3xl font-bold">{stats.averageEmployees.toFixed(1)}</p>
-            </CardContent>
-          </Card>
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Média de Funcionários</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-3xl font-bold">{stats.averageEmployees.toFixed(1)}</p>
+              </CardContent>
+            </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Taxa de Turnover</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-3xl font-bold">{stats.turnoverRate.toFixed(2)}%</p>
-            </CardContent>
-          </Card>
-        </div>
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Taxa de Turnover</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-3xl font-bold">{stats.turnoverRate.toFixed(2)}%</p>
+              </CardContent>
+            </Card>
+          </div>
+
+          {selectedSetor === "todos" && turnoverPorSetor && turnoverPorSetor.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Turnover por Setor</CardTitle>
+                <CardDescription>Comparativo de taxa de turnover entre setores</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b">
+                        <th className="text-left p-2">Setor</th>
+                        <th className="text-center p-2">Ativos (Início)</th>
+                        <th className="text-center p-2">Ativos (Fim)</th>
+                        <th className="text-center p-2">Demissões</th>
+                        <th className="text-center p-2">Contratações</th>
+                        <th className="text-center p-2">Média</th>
+                        <th className="text-center p-2">Taxa Turnover</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {turnoverPorSetor.map((setor) => (
+                        <tr key={setor.nome} className="border-b hover:bg-muted/50">
+                          <td className="p-2 font-medium">{setor.nome}</td>
+                          <td className="text-center p-2">{setor.activeAtStart}</td>
+                          <td className="text-center p-2">{setor.activeAtEnd}</td>
+                          <td className="text-center p-2 text-destructive">{setor.dismissed}</td>
+                          <td className="text-center p-2 text-green-600">{setor.hired}</td>
+                          <td className="text-center p-2">{setor.averageEmployees?.toFixed(1)}</td>
+                          <td className="text-center p-2 font-bold">{setor.turnoverRate?.toFixed(2)}%</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </>
       )}
     </div>
   );
