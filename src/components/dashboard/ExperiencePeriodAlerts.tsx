@@ -12,8 +12,14 @@ interface ExperienceAlert {
   setor: string | null;
   data_admissao: string;
   daysUntilMilestone: number;
-  milestone: 45 | 90;
+  milestone: number;
   milestoneDate: Date;
+}
+
+interface Config {
+  ativo: boolean;
+  dias_antecedencia: number;
+  marcos_dias: number[];
 }
 
 interface ExperiencePeriodAlertsProps {
@@ -23,12 +29,43 @@ interface ExperiencePeriodAlertsProps {
 export const ExperiencePeriodAlerts = ({ selectedEmpresa }: ExperiencePeriodAlertsProps) => {
   const [alerts, setAlerts] = useState<ExperienceAlert[]>([]);
   const [loading, setLoading] = useState(true);
+  const [config, setConfig] = useState<Config | null>(null);
 
   useEffect(() => {
-    fetchExperienceAlerts();
-  }, [selectedEmpresa]);
+    fetchConfig();
+  }, []);
+
+  useEffect(() => {
+    if (config?.ativo) {
+      fetchExperienceAlerts();
+    } else if (config !== null) {
+      setLoading(false);
+    }
+  }, [selectedEmpresa, config]);
+
+  const fetchConfig = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("configuracao_alertas_experiencia")
+        .select("ativo, dias_antecedencia, marcos_dias")
+        .single();
+
+      if (error) {
+        console.error("Error fetching config:", error);
+        setConfig({ ativo: true, dias_antecedencia: 7, marcos_dias: [45, 90] });
+        return;
+      }
+
+      setConfig(data);
+    } catch (error) {
+      console.error("Error:", error);
+      setConfig({ ativo: true, dias_antecedencia: 7, marcos_dias: [45, 90] });
+    }
+  };
 
   const fetchExperienceAlerts = async () => {
+    if (!config) return;
+
     try {
       let query = supabase
         .from("employees")
@@ -51,6 +88,7 @@ export const ExperiencePeriodAlerts = ({ selectedEmpresa }: ExperiencePeriodAler
       today.setHours(0, 0, 0, 0);
 
       const experienceAlerts: ExperienceAlert[] = [];
+      const sortedMarcos = [...config.marcos_dias].sort((a, b) => a - b);
 
       employees?.forEach((emp) => {
         if (!emp.data_admissao) return;
@@ -58,39 +96,26 @@ export const ExperiencePeriodAlerts = ({ selectedEmpresa }: ExperiencePeriodAler
         const admissionDate = new Date(emp.data_admissao);
         const daysSinceAdmission = differenceInDays(today, admissionDate);
 
-        // Check for 45-day milestone (alert 7 days before)
-        const milestone45Date = addDays(admissionDate, 45);
-        const daysUntil45 = differenceInDays(milestone45Date, today);
-        
-        if (daysUntil45 >= 0 && daysUntil45 <= 7) {
-          experienceAlerts.push({
-            id: emp.id,
-            nome_completo: emp.nome_completo,
-            cargo: emp.cargo,
-            setor: emp.setor,
-            data_admissao: emp.data_admissao,
-            daysUntilMilestone: daysUntil45,
-            milestone: 45,
-            milestoneDate: milestone45Date,
-          });
-        }
-
-        // Check for 90-day milestone (alert 7 days before)
-        const milestone90Date = addDays(admissionDate, 90);
-        const daysUntil90 = differenceInDays(milestone90Date, today);
-        
-        if (daysUntil90 >= 0 && daysUntil90 <= 7 && daysSinceAdmission >= 45) {
-          experienceAlerts.push({
-            id: emp.id,
-            nome_completo: emp.nome_completo,
-            cargo: emp.cargo,
-            setor: emp.setor,
-            data_admissao: emp.data_admissao,
-            daysUntilMilestone: daysUntil90,
-            milestone: 90,
-            milestoneDate: milestone90Date,
-          });
-        }
+        sortedMarcos.forEach((marco, index) => {
+          const milestoneDate = addDays(admissionDate, marco);
+          const daysUntilMilestone = differenceInDays(milestoneDate, today);
+          
+          // Check if within alert window and hasn't passed the previous milestone recently
+          const previousMarco = index > 0 ? sortedMarcos[index - 1] : 0;
+          
+          if (daysUntilMilestone >= 0 && daysUntilMilestone <= config.dias_antecedencia && daysSinceAdmission >= previousMarco) {
+            experienceAlerts.push({
+              id: emp.id,
+              nome_completo: emp.nome_completo,
+              cargo: emp.cargo,
+              setor: emp.setor,
+              data_admissao: emp.data_admissao,
+              daysUntilMilestone,
+              milestone: marco,
+              milestoneDate,
+            });
+          }
+        });
       });
 
       // Sort by days until milestone (most urgent first)
@@ -107,7 +132,7 @@ export const ExperiencePeriodAlerts = ({ selectedEmpresa }: ExperiencePeriodAler
     return null;
   }
 
-  if (alerts.length === 0) {
+  if (!config?.ativo || alerts.length === 0) {
     return null;
   }
 

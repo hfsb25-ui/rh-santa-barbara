@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import { SiteSettings } from "@/components/settings/SiteSettings";
 import { DashboardVisibilitySettings } from "@/components/settings/DashboardVisibilitySettings";
+import { ExperienceAlertSettings } from "@/components/settings/ExperienceAlertSettings";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const Settings = () => {
@@ -50,6 +51,7 @@ const Settings = () => {
             <TabsList>
               <TabsTrigger value="site">Site</TabsTrigger>
               <TabsTrigger value="dashboard">Dashboard Funcionário</TabsTrigger>
+              <TabsTrigger value="alertas">Alertas</TabsTrigger>
             </TabsList>
             
             <TabsContent value="site">
@@ -58,6 +60,10 @@ const Settings = () => {
             
             <TabsContent value="dashboard">
               <DashboardVisibilitySettings />
+            </TabsContent>
+            
+            <TabsContent value="alertas">
+              <ExperienceAlertSettings />
             </TabsContent>
           </Tabs>
         </div>

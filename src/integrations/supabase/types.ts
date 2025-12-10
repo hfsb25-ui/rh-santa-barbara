@@ -498,6 +498,33 @@ export type Database = {
           },
         ]
       }
+      configuracao_alertas_experiencia: {
+        Row: {
+          ativo: boolean
+          created_at: string
+          dias_antecedencia: number
+          id: string
+          marcos_dias: number[]
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean
+          created_at?: string
+          dias_antecedencia?: number
+          id?: string
+          marcos_dias?: number[]
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean
+          created_at?: string
+          dias_antecedencia?: number
+          id?: string
+          marcos_dias?: number[]
+          updated_at?: string
+        }
+        Relationships: []
+      }
       configuracao_horas_trabalho: {
         Row: {
           created_at: string | null
