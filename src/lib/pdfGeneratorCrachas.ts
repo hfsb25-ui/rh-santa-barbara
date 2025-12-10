@@ -256,15 +256,15 @@ function drawHorizontalModern(
     const midPoint = Math.ceil(nameWords.length / 2);
     const line1 = nameWords.slice(0, midPoint).join(" ");
     const line2 = nameWords.slice(midPoint).join(" ");
-    doc.setFontSize(10);
+    doc.setFontSize(11);
     doc.text(line1, infoAreaCenterX, infoY, { align: "center" });
-    infoY += 4;
+    infoY += 5;
     doc.text(line2, infoAreaCenterX, infoY, { align: "center" });
     infoY += 5;
   } else {
-    doc.setFontSize(fullName.length > 16 ? 10 : 12);
+    doc.setFontSize(fullName.length > 16 ? 12 : 14);
     doc.text(fullName, infoAreaCenterX, infoY, { align: "center" });
-    infoY += 6;
+    infoY += 7;
   }
 
   if (options.showCargo) {
@@ -390,15 +390,15 @@ function drawHorizontalClassic(
     const midPoint = Math.ceil(nameWords.length / 2);
     const line1 = nameWords.slice(0, midPoint).join(" ");
     const line2 = nameWords.slice(midPoint).join(" ");
-    doc.setFontSize(10);
+    doc.setFontSize(11);
     doc.text(line1, infoAreaCenterX, infoY, { align: "center" });
-    infoY += 4;
+    infoY += 5;
     doc.text(line2, infoAreaCenterX, infoY, { align: "center" });
     infoY += 5;
   } else {
-    doc.setFontSize(fullName.length > 16 ? 10 : 12);
+    doc.setFontSize(fullName.length > 16 ? 12 : 14);
     doc.text(fullName, infoAreaCenterX, infoY, { align: "center" });
-    infoY += 6;
+    infoY += 7;
   }
 
   if (options.showCargo) {
@@ -499,15 +499,15 @@ function drawHorizontalMinimal(
     const midPoint = Math.ceil(nameWords.length / 2);
     const line1 = nameWords.slice(0, midPoint).join(" ");
     const line2 = nameWords.slice(midPoint).join(" ");
-    doc.setFontSize(10);
+    doc.setFontSize(11);
     doc.text(line1, infoAreaCenterX, infoY, { align: "center" });
-    infoY += 4;
+    infoY += 5;
     doc.text(line2, infoAreaCenterX, infoY, { align: "center" });
     infoY += 5;
   } else {
-    doc.setFontSize(fullName.length > 16 ? 10 : 12);
+    doc.setFontSize(fullName.length > 16 ? 12 : 14);
     doc.text(fullName, infoAreaCenterX, infoY, { align: "center" });
-    infoY += 6;
+    infoY += 7;
   }
 
   if (options.showCargo) {
@@ -628,15 +628,15 @@ function drawHorizontalCorporate(
     const midPoint = Math.ceil(nameWords.length / 2);
     const line1 = nameWords.slice(0, midPoint).join(" ");
     const line2 = nameWords.slice(midPoint).join(" ");
-    doc.setFontSize(10);
+    doc.setFontSize(11);
     doc.text(line1, infoAreaCenterX, infoY, { align: "center" });
-    infoY += 4;
+    infoY += 5;
     doc.text(line2, infoAreaCenterX, infoY, { align: "center" });
     infoY += 5;
   } else {
-    doc.setFontSize(fullName.length > 16 ? 10 : 12);
+    doc.setFontSize(fullName.length > 16 ? 12 : 14);
     doc.text(fullName, infoAreaCenterX, infoY, { align: "center" });
-    infoY += 6;
+    infoY += 7;
   }
 
   if (options.showCargo) {
@@ -753,13 +753,13 @@ function drawVerticalModern(
     const midPoint = Math.ceil(nameWords.length / 2);
     const line1 = nameWords.slice(0, midPoint).join(" ");
     const line2 = nameWords.slice(midPoint).join(" ");
-    doc.setFontSize(8);
+    doc.setFontSize(9);
     doc.text(line1, centerX, contentY, { align: "center" });
     contentY += 4;
     doc.text(line2, centerX, contentY, { align: "center" });
     contentY += 4;
   } else {
-    doc.setFontSize(fullName.length > 12 ? 8 : 10);
+    doc.setFontSize(fullName.length > 12 ? 9 : 11);
     doc.text(fullName, centerX, contentY, { align: "center" });
     contentY += 5;
   }
@@ -860,13 +860,13 @@ function drawVerticalClassic(
     const midPoint = Math.ceil(nameWords.length / 2);
     const line1 = nameWords.slice(0, midPoint).join(" ");
     const line2 = nameWords.slice(midPoint).join(" ");
-    doc.setFontSize(8);
+    doc.setFontSize(9);
     doc.text(line1, centerX, contentY, { align: "center" });
     contentY += 4;
     doc.text(line2, centerX, contentY, { align: "center" });
     contentY += 4;
   } else {
-    doc.setFontSize(fullName.length > 12 ? 8 : 10);
+    doc.setFontSize(fullName.length > 12 ? 9 : 11);
     doc.text(fullName, centerX, contentY, { align: "center" });
     contentY += 5;
   }
@@ -966,13 +966,13 @@ function drawVerticalMinimal(
     const midPoint = Math.ceil(nameWords.length / 2);
     const line1 = nameWords.slice(0, midPoint).join(" ");
     const line2 = nameWords.slice(midPoint).join(" ");
-    doc.setFontSize(8);
+    doc.setFontSize(9);
     doc.text(line1, centerX, contentY, { align: "center" });
     contentY += 4;
     doc.text(line2, centerX, contentY, { align: "center" });
     contentY += 4;
   } else {
-    doc.setFontSize(fullName.length > 12 ? 8 : 10);
+    doc.setFontSize(fullName.length > 12 ? 9 : 11);
     doc.text(fullName, centerX, contentY, { align: "center" });
     contentY += 5;
   }
@@ -1072,13 +1072,13 @@ function drawVerticalCorporate(
     const midPoint = Math.ceil(nameWords.length / 2);
     const line1 = nameWords.slice(0, midPoint).join(" ");
     const line2 = nameWords.slice(midPoint).join(" ");
-    doc.setFontSize(8);
+    doc.setFontSize(9);
     doc.text(line1, centerX, contentY, { align: "center" });
     contentY += 4;
     doc.text(line2, centerX, contentY, { align: "center" });
     contentY += 4;
   } else {
-    doc.setFontSize(fullName.length > 12 ? 8 : 10);
+    doc.setFontSize(fullName.length > 12 ? 9 : 11);
     doc.text(fullName, centerX, contentY, { align: "center" });
     contentY += 5;
   }
