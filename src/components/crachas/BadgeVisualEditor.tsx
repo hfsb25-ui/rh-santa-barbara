@@ -219,7 +219,12 @@ export default function BadgeVisualEditor({ templateId, onSave, onCancel }: Badg
     if (!file || !fabricCanvas) return;
 
     try {
-      const fileName = `${Date.now()}_${file.name}`;
+      // Sanitize filename: remove special characters and spaces
+      const sanitizedName = file.name
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '') // Remove accents
+        .replace(/[^a-zA-Z0-9.-]/g, '_'); // Replace special chars with underscore
+      const fileName = `${Date.now()}_${sanitizedName}`;
       const { data, error } = await supabase.storage
         .from('cracha-templates')
         .upload(fileName, file);
