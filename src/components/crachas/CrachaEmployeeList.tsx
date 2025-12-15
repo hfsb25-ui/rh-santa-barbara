@@ -16,9 +16,23 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
-import { Printer, Search, Users, Loader2, Settings2, RectangleHorizontal, RectangleVertical } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Printer, Search, Users, Loader2, Settings2, RectangleHorizontal, RectangleVertical, Plus, LayoutTemplate } from "lucide-react";
 import { toast } from "sonner";
 import { generateBadgesPDF, BADGE_TEMPLATES, BadgeTemplate } from "@/lib/pdfGeneratorCrachas";
+import { generateCustomBadgesPDF } from "@/lib/pdfGeneratorCrachasCustom";
+import BadgeVisualEditor from "./BadgeVisualEditor";
+import BadgeTemplateList from "./BadgeTemplateList";
+
+interface CustomTemplate {
+  id: string;
+  nome: string;
+  background_url: string | null;
+  orientacao: string;
+  largura: number;
+  altura: number;
+}
 
 const CrachaEmployeeList = () => {
   const [selectedEmployees, setSelectedEmployees] = useState<Set<string>>(new Set());
@@ -37,6 +51,13 @@ const CrachaEmployeeList = () => {
   const [orientation, setOrientation] = useState<"horizontal" | "vertical">("horizontal");
   const [selectedTemplate, setSelectedTemplate] = useState<BadgeTemplate>(BADGE_TEMPLATES[0]);
   const [customColor, setCustomColor] = useState<string>("");
+
+  // Custom template state
+  const [templateTab, setTemplateTab] = useState<"predefinido" | "personalizado">("predefinido");
+  const [selectedCustomTemplate, setSelectedCustomTemplate] = useState<CustomTemplate | null>(null);
+  const [showEditor, setShowEditor] = useState(false);
+  const [editingTemplateId, setEditingTemplateId] = useState<string | undefined>();
+  const [refreshTemplates, setRefreshTemplates] = useState(0);
 
   const { data: employees = [], isLoading: loadingEmployees } = useQuery({
     queryKey: ["employees-for-badges", empresaFilter, setorFilter, statusFilter],
@@ -151,16 +172,34 @@ const CrachaEmployeeList = () => {
             : null,
         }));
 
-      await generateBadgesPDF(selectedData, {
-        showCpf,
-        showSector,
-        showCompanyLogo,
-        showPhoto,
-        showCargo,
-        orientation,
-        template: selectedTemplate,
-        customHeaderColor: customColor || undefined,
-      });
+      if (templateTab === "personalizado" && selectedCustomTemplate) {
+        // Use custom template
+        const { data: fullTemplate, error } = await supabase
+          .from('cracha_templates')
+          .select('*')
+          .eq('id', selectedCustomTemplate.id)
+          .single();
+
+        if (error) throw error;
+
+        await generateCustomBadgesPDF(selectedData, {
+          ...fullTemplate,
+          orientacao: fullTemplate.orientacao as 'horizontal' | 'vertical',
+          configuracao_json: fullTemplate.configuracao_json as any,
+        });
+      } else {
+        // Use predefined template
+        await generateBadgesPDF(selectedData, {
+          showCpf,
+          showSector,
+          showCompanyLogo,
+          showPhoto,
+          showCargo,
+          orientation,
+          template: selectedTemplate,
+          customHeaderColor: customColor || undefined,
+        });
+      }
 
       toast.success(`PDF gerado com ${selectedData.length} crachá(s)`);
     } catch (error) {
@@ -169,6 +208,22 @@ const CrachaEmployeeList = () => {
     } finally {
       setIsGenerating(false);
     }
+  };
+
+  const handleEditTemplate = (templateId: string) => {
+    setEditingTemplateId(templateId);
+    setShowEditor(true);
+  };
+
+  const handleSelectCustomTemplate = (template: CustomTemplate) => {
+    setSelectedCustomTemplate(template);
+  };
+
+  const handleSaveTemplate = () => {
+    setShowEditor(false);
+    setEditingTemplateId(undefined);
+    setRefreshTemplates((r) => r + 1);
+    toast.success("Template salvo com sucesso!");
   };
 
   const allSelected = filteredEmployees.length > 0 && selectedEmployees.size === filteredEmployees.length;
@@ -338,113 +393,142 @@ const CrachaEmployeeList = () => {
         </CardContent>
       </Card>
 
-      {/* Template Selection */}
+      {/* Template Selection with Tabs */}
       <Card>
         <CardHeader>
-          <CardTitle>Escolha o Template</CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2">
+              <LayoutTemplate className="h-5 w-5" />
+              Templates de Crachá
+            </CardTitle>
+            <Button onClick={() => { setEditingTemplateId(undefined); setShowEditor(true); }}>
+              <Plus className="h-4 w-4 mr-2" />
+              Criar Template
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
-            {BADGE_TEMPLATES.map((template) => (
-              <TemplatePreview
-                key={template.id}
-                template={template}
-                isSelected={selectedTemplate.id === template.id}
+          <Tabs value={templateTab} onValueChange={(v) => setTemplateTab(v as "predefinido" | "personalizado")}>
+            <TabsList className="mb-4">
+              <TabsTrigger value="predefinido">Templates Predefinidos</TabsTrigger>
+              <TabsTrigger value="personalizado">Meus Templates</TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="predefinido">
+              <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
+                {BADGE_TEMPLATES.map((template) => (
+                  <TemplatePreview
+                    key={template.id}
+                    template={template}
+                    isSelected={selectedTemplate.id === template.id}
+                  />
+                ))}
+              </div>
+            </TabsContent>
+            
+            <TabsContent value="personalizado">
+              <BadgeTemplateList
+                key={refreshTemplates}
+                onEdit={handleEditTemplate}
+                onSelect={handleSelectCustomTemplate}
+                selectedTemplateId={selectedCustomTemplate?.id}
               />
-            ))}
-          </div>
+            </TabsContent>
+          </Tabs>
         </CardContent>
       </Card>
 
-      {/* Badge Options */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Settings2 className="h-5 w-5" />
-            Opções do Crachá
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          {/* Orientation */}
-          <div className="space-y-3">
-            <Label className="text-base font-medium">Orientação</Label>
-            <div className="flex gap-3">
-              <button
-                onClick={() => setOrientation("horizontal")}
-                className={`flex items-center gap-2 px-4 py-3 rounded-lg border-2 transition-all ${
-                  orientation === "horizontal"
-                    ? "border-primary bg-primary/5"
-                    : "border-border hover:border-primary/50"
-                }`}
-              >
-                <RectangleHorizontal className="h-5 w-5" />
-                <span className="font-medium">Horizontal</span>
-              </button>
-              <button
-                onClick={() => setOrientation("vertical")}
-                className={`flex items-center gap-2 px-4 py-3 rounded-lg border-2 transition-all ${
-                  orientation === "vertical"
-                    ? "border-primary bg-primary/5"
-                    : "border-border hover:border-primary/50"
-                }`}
-              >
-                <RectangleVertical className="h-5 w-5" />
-                <span className="font-medium">Vertical</span>
-              </button>
+      {/* Badge Options - only show for predefined templates */}
+      {templateTab === "predefinido" && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Settings2 className="h-5 w-5" />
+              Opções do Crachá
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {/* Orientation */}
+            <div className="space-y-3">
+              <Label className="text-base font-medium">Orientação</Label>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setOrientation("horizontal")}
+                  className={`flex items-center gap-2 px-4 py-3 rounded-lg border-2 transition-all ${
+                    orientation === "horizontal"
+                      ? "border-primary bg-primary/5"
+                      : "border-border hover:border-primary/50"
+                  }`}
+                >
+                  <RectangleHorizontal className="h-5 w-5" />
+                  <span className="font-medium">Horizontal</span>
+                </button>
+                <button
+                  onClick={() => setOrientation("vertical")}
+                  className={`flex items-center gap-2 px-4 py-3 rounded-lg border-2 transition-all ${
+                    orientation === "vertical"
+                      ? "border-primary bg-primary/5"
+                      : "border-border hover:border-primary/50"
+                  }`}
+                >
+                  <RectangleVertical className="h-5 w-5" />
+                  <span className="font-medium">Vertical</span>
+                </button>
+              </div>
             </div>
-          </div>
 
-          {/* Custom Color */}
-          <div className="space-y-3">
-            <Label className="text-base font-medium">Cor Personalizada</Label>
-            <div className="flex items-center gap-3">
-              <div className="relative">
-                <Input
-                  type="color"
-                  value={customColor || selectedTemplate.headerColor}
-                  onChange={(e) => setCustomColor(e.target.value)}
-                  className="w-14 h-10 p-1 cursor-pointer"
-                />
+            {/* Custom Color */}
+            <div className="space-y-3">
+              <Label className="text-base font-medium">Cor Personalizada</Label>
+              <div className="flex items-center gap-3">
+                <div className="relative">
+                  <Input
+                    type="color"
+                    value={customColor || selectedTemplate.headerColor}
+                    onChange={(e) => setCustomColor(e.target.value)}
+                    className="w-14 h-10 p-1 cursor-pointer"
+                  />
+                </div>
+                <span className="text-sm text-muted-foreground">
+                  {customColor || selectedTemplate.headerColor}
+                </span>
+                {customColor && (
+                  <Button variant="ghost" size="sm" onClick={() => setCustomColor("")}>
+                    Resetar
+                  </Button>
+                )}
               </div>
-              <span className="text-sm text-muted-foreground">
-                {customColor || selectedTemplate.headerColor}
-              </span>
-              {customColor && (
-                <Button variant="ghost" size="sm" onClick={() => setCustomColor("")}>
-                  Resetar
-                </Button>
-              )}
             </div>
-          </div>
 
-          {/* Toggle Options */}
-          <div className="space-y-3">
-            <Label className="text-base font-medium">Elementos Visíveis</Label>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-              <div className="flex items-center gap-3 p-3 rounded-lg border bg-card">
-                <Switch checked={showPhoto} onCheckedChange={setShowPhoto} id="showPhoto" />
-                <Label htmlFor="showPhoto" className="cursor-pointer">Foto</Label>
-              </div>
-              <div className="flex items-center gap-3 p-3 rounded-lg border bg-card">
-                <Switch checked={showCargo} onCheckedChange={setShowCargo} id="showCargo" />
-                <Label htmlFor="showCargo" className="cursor-pointer">Cargo</Label>
-              </div>
-              <div className="flex items-center gap-3 p-3 rounded-lg border bg-card">
-                <Switch checked={showSector} onCheckedChange={setShowSector} id="showSector" />
-                <Label htmlFor="showSector" className="cursor-pointer">Setor</Label>
-              </div>
-              <div className="flex items-center gap-3 p-3 rounded-lg border bg-card">
-                <Switch checked={showCpf} onCheckedChange={setShowCpf} id="showCpf" />
-                <Label htmlFor="showCpf" className="cursor-pointer">CPF</Label>
-              </div>
-              <div className="flex items-center gap-3 p-3 rounded-lg border bg-card">
-                <Switch checked={showCompanyLogo} onCheckedChange={setShowCompanyLogo} id="showLogo" />
-                <Label htmlFor="showLogo" className="cursor-pointer">Logo</Label>
+            {/* Toggle Options */}
+            <div className="space-y-3">
+              <Label className="text-base font-medium">Elementos Visíveis</Label>
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                <div className="flex items-center gap-3 p-3 rounded-lg border bg-card">
+                  <Switch checked={showPhoto} onCheckedChange={setShowPhoto} id="showPhoto" />
+                  <Label htmlFor="showPhoto" className="cursor-pointer">Foto</Label>
+                </div>
+                <div className="flex items-center gap-3 p-3 rounded-lg border bg-card">
+                  <Switch checked={showCargo} onCheckedChange={setShowCargo} id="showCargo" />
+                  <Label htmlFor="showCargo" className="cursor-pointer">Cargo</Label>
+                </div>
+                <div className="flex items-center gap-3 p-3 rounded-lg border bg-card">
+                  <Switch checked={showSector} onCheckedChange={setShowSector} id="showSector" />
+                  <Label htmlFor="showSector" className="cursor-pointer">Setor</Label>
+                </div>
+                <div className="flex items-center gap-3 p-3 rounded-lg border bg-card">
+                  <Switch checked={showCpf} onCheckedChange={setShowCpf} id="showCpf" />
+                  <Label htmlFor="showCpf" className="cursor-pointer">CPF</Label>
+                </div>
+                <div className="flex items-center gap-3 p-3 rounded-lg border bg-card">
+                  <Switch checked={showCompanyLogo} onCheckedChange={setShowCompanyLogo} id="showLogo" />
+                  <Label htmlFor="showLogo" className="cursor-pointer">Logo</Label>
+                </div>
               </div>
             </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Employee List */}
       <Card>
@@ -459,7 +543,14 @@ const CrachaEmployeeList = () => {
               <Button variant="outline" size="sm" onClick={handleSelectAll}>
                 {allSelected ? "Desmarcar Todos" : "Selecionar Todos"}
               </Button>
-              <Button onClick={handleGeneratePDF} disabled={selectedEmployees.size === 0 || isGenerating}>
+              <Button 
+                onClick={handleGeneratePDF} 
+                disabled={
+                  selectedEmployees.size === 0 || 
+                  isGenerating ||
+                  (templateTab === "personalizado" && !selectedCustomTemplate)
+                }
+              >
                 {isGenerating ? (
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                 ) : (
@@ -505,6 +596,22 @@ const CrachaEmployeeList = () => {
           )}
         </CardContent>
       </Card>
+
+      {/* Visual Editor Dialog */}
+      <Dialog open={showEditor} onOpenChange={setShowEditor}>
+        <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              {editingTemplateId ? "Editar Template" : "Criar Novo Template"}
+            </DialogTitle>
+          </DialogHeader>
+          <BadgeVisualEditor
+            templateId={editingTemplateId}
+            onSave={handleSaveTemplate}
+            onCancel={() => setShowEditor(false)}
+          />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

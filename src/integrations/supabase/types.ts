@@ -682,6 +682,63 @@ export type Database = {
         }
         Relationships: []
       }
+      cracha_templates: {
+        Row: {
+          altura: number
+          background_url: string | null
+          configuracao_json: Json
+          created_at: string
+          created_by: string | null
+          empresa_id: string | null
+          id: string
+          largura: number
+          nome: string
+          orientacao: string
+          updated_at: string
+        }
+        Insert: {
+          altura?: number
+          background_url?: string | null
+          configuracao_json?: Json
+          created_at?: string
+          created_by?: string | null
+          empresa_id?: string | null
+          id?: string
+          largura?: number
+          nome: string
+          orientacao?: string
+          updated_at?: string
+        }
+        Update: {
+          altura?: number
+          background_url?: string | null
+          configuracao_json?: Json
+          created_at?: string
+          created_by?: string | null
+          empresa_id?: string | null
+          id?: string
+          largura?: number
+          nome?: string
+          orientacao?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cracha_templates_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cracha_templates_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       criterios_avaliacao: {
         Row: {
           ativo: boolean | null
