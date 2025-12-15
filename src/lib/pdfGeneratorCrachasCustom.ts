@@ -223,13 +223,16 @@ export async function generateCustomBadgesPDF(
             doc.setTextColor(0, 0, 0);
           }
 
+          const elemWidth = (element.width || 150) * scaleX;
           let textX = elemX;
           let align: 'left' | 'center' | 'right' = 'left';
           
           if (element.textAlign === 'center') {
             align = 'center';
+            textX = elemX + elemWidth / 2;
           } else if (element.textAlign === 'right') {
             align = 'right';
+            textX = elemX + elemWidth;
           }
 
           doc.text(text, textX, elemY + fontSize * 0.35, { align });
