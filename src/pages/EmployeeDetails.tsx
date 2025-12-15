@@ -5,7 +5,18 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { ArrowLeft, Edit, Loader2 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { ArrowLeft, Edit, Loader2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { useIsMobile } from "@/hooks/use-mobile";
 import EmployeeInfo from "@/components/employees/EmployeeInfo";
@@ -30,6 +41,7 @@ const EmployeeDetails = () => {
   const [employee, setEmployee] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [showEditDialog, setShowEditDialog] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -53,6 +65,30 @@ const EmployeeDetails = () => {
       navigate("/dashboard");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!employee?.user_id) {
+      toast.error("Funcionário não possui usuário vinculado");
+      return;
+    }
+
+    setDeleting(true);
+    try {
+      const { error } = await supabase.functions.invoke('delete-user', {
+        body: { user_id: employee.user_id }
+      });
+
+      if (error) throw error;
+
+      toast.success("Funcionário excluído com sucesso!");
+      navigate("/dashboard");
+    } catch (error: any) {
+      console.error("Erro ao excluir funcionário:", error);
+      toast.error(error.message || "Erro ao excluir funcionário");
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -104,6 +140,29 @@ const EmployeeDetails = () => {
               />
             </DialogContent>
           </Dialog>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="destructive" disabled={deleting}>
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  {deleting ? "Excluindo..." : "Excluir"}
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Tem certeza que deseja excluir o funcionário <strong>{employee.nome_completo}</strong>?
+                    Esta ação não pode ser desfeita e todos os dados relacionados serão removidos.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                    Excluir
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </div>
         </div>
 
