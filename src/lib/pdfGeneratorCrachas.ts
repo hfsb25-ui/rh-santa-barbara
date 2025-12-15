@@ -244,28 +244,13 @@ function drawHorizontalModern(
   const infoAreaCenterX = options.showPhoto ? contentX + (H_BADGE_WIDTH - contentX + x - 5) / 2 : x + H_BADGE_WIDTH / 2;
   let infoY = contentY + 4; // Top margin for text
 
-  // Name - full name, split into two lines if needed
+  // Name - only first name
   doc.setTextColor(25, 25, 35);
   doc.setFont("helvetica", "bold");
-  const maxWidth = options.showPhoto ? 48 : 75;
-  const fullName = employee.nome_completo.toUpperCase();
-  const nameWords = fullName.split(" ");
-  
-  if (nameWords.length > 2 && fullName.length > 18) {
-    // Split into two lines
-    const midPoint = Math.ceil(nameWords.length / 2);
-    const line1 = nameWords.slice(0, midPoint).join(" ");
-    const line2 = nameWords.slice(midPoint).join(" ");
-    doc.setFontSize(11);
-    doc.text(line1, infoAreaCenterX, infoY, { align: "center" });
-    infoY += 5;
-    doc.text(line2, infoAreaCenterX, infoY, { align: "center" });
-    infoY += 5;
-  } else {
-    doc.setFontSize(fullName.length > 16 ? 12 : 14);
-    doc.text(fullName, infoAreaCenterX, infoY, { align: "center" });
-    infoY += 7;
-  }
+  const firstName = employee.nome_completo.split(" ")[0].toUpperCase();
+  doc.setFontSize(16);
+  doc.text(firstName, infoAreaCenterX, infoY, { align: "center" });
+  infoY += 7;
 
   if (options.showCargo) {
     doc.setFont("helvetica", "normal");
@@ -380,26 +365,13 @@ function drawHorizontalClassic(
   const infoAreaCenterX = options.showPhoto ? contentX + (H_BADGE_WIDTH - contentX + x - 6) / 2 : x + H_BADGE_WIDTH / 2;
   let infoY = contentY + 4;
 
-  // Name - full name, split into two lines if needed
+  // Name - only first name
   doc.setTextColor(headerColor.r, headerColor.g, headerColor.b);
   doc.setFont("helvetica", "bold");
-  const fullName = employee.nome_completo.toUpperCase();
-  const nameWords = fullName.split(" ");
-  
-  if (nameWords.length > 2 && fullName.length > 18) {
-    const midPoint = Math.ceil(nameWords.length / 2);
-    const line1 = nameWords.slice(0, midPoint).join(" ");
-    const line2 = nameWords.slice(midPoint).join(" ");
-    doc.setFontSize(11);
-    doc.text(line1, infoAreaCenterX, infoY, { align: "center" });
-    infoY += 5;
-    doc.text(line2, infoAreaCenterX, infoY, { align: "center" });
-    infoY += 5;
-  } else {
-    doc.setFontSize(fullName.length > 16 ? 12 : 14);
-    doc.text(fullName, infoAreaCenterX, infoY, { align: "center" });
-    infoY += 7;
-  }
+  const firstName = employee.nome_completo.split(" ")[0].toUpperCase();
+  doc.setFontSize(16);
+  doc.text(firstName, infoAreaCenterX, infoY, { align: "center" });
+  infoY += 7;
 
   if (options.showCargo) {
     doc.setFont("helvetica", "normal");
@@ -489,26 +461,13 @@ function drawHorizontalMinimal(
   const infoAreaCenterX = options.showPhoto ? contentX + (H_BADGE_WIDTH - contentX + x - 5) / 2 : x + H_BADGE_WIDTH / 2;
   let infoY = contentY + 4;
 
-  // Name - full name, split into two lines if needed
+  // Name - only first name
   doc.setTextColor(35, 35, 45);
   doc.setFont("helvetica", "bold");
-  const fullName = employee.nome_completo.toUpperCase();
-  const nameWords = fullName.split(" ");
-  
-  if (nameWords.length > 2 && fullName.length > 18) {
-    const midPoint = Math.ceil(nameWords.length / 2);
-    const line1 = nameWords.slice(0, midPoint).join(" ");
-    const line2 = nameWords.slice(midPoint).join(" ");
-    doc.setFontSize(11);
-    doc.text(line1, infoAreaCenterX, infoY, { align: "center" });
-    infoY += 5;
-    doc.text(line2, infoAreaCenterX, infoY, { align: "center" });
-    infoY += 5;
-  } else {
-    doc.setFontSize(fullName.length > 16 ? 12 : 14);
-    doc.text(fullName, infoAreaCenterX, infoY, { align: "center" });
-    infoY += 7;
-  }
+  const firstName = employee.nome_completo.split(" ")[0].toUpperCase();
+  doc.setFontSize(16);
+  doc.text(firstName, infoAreaCenterX, infoY, { align: "center" });
+  infoY += 7;
 
   if (options.showCargo) {
     doc.setFont("helvetica", "normal");
@@ -618,26 +577,13 @@ function drawHorizontalCorporate(
   const infoAreaCenterX = options.showPhoto ? contentX + (H_BADGE_WIDTH - contentX + x - 8) / 2 : x + (H_BADGE_WIDTH + 6) / 2;
   let infoY = contentY + 4;
 
-  // Name - full name, split into two lines if needed
+  // Name - only first name
   doc.setTextColor(headerColor.r, headerColor.g, headerColor.b);
   doc.setFont("helvetica", "bold");
-  const fullName = employee.nome_completo.toUpperCase();
-  const nameWords = fullName.split(" ");
-  
-  if (nameWords.length > 2 && fullName.length > 18) {
-    const midPoint = Math.ceil(nameWords.length / 2);
-    const line1 = nameWords.slice(0, midPoint).join(" ");
-    const line2 = nameWords.slice(midPoint).join(" ");
-    doc.setFontSize(11);
-    doc.text(line1, infoAreaCenterX, infoY, { align: "center" });
-    infoY += 5;
-    doc.text(line2, infoAreaCenterX, infoY, { align: "center" });
-    infoY += 5;
-  } else {
-    doc.setFontSize(fullName.length > 16 ? 12 : 14);
-    doc.text(fullName, infoAreaCenterX, infoY, { align: "center" });
-    infoY += 7;
-  }
+  const firstName = employee.nome_completo.split(" ")[0].toUpperCase();
+  doc.setFontSize(16);
+  doc.text(firstName, infoAreaCenterX, infoY, { align: "center" });
+  infoY += 7;
 
   if (options.showCargo) {
     doc.setTextColor(85, 85, 95);
@@ -742,27 +688,14 @@ function drawVerticalModern(
     contentY += photoSize + 5;
   }
 
-  // Name centered - full name split into lines
+  // Name centered - only first name
   const centerX = x + V_BADGE_WIDTH / 2;
   doc.setTextColor(25, 25, 35);
   doc.setFont("helvetica", "bold");
-  const fullName = employee.nome_completo.toUpperCase();
-  const nameWords = fullName.split(" ");
-  
-  if (nameWords.length > 2) {
-    const midPoint = Math.ceil(nameWords.length / 2);
-    const line1 = nameWords.slice(0, midPoint).join(" ");
-    const line2 = nameWords.slice(midPoint).join(" ");
-    doc.setFontSize(9);
-    doc.text(line1, centerX, contentY, { align: "center" });
-    contentY += 4;
-    doc.text(line2, centerX, contentY, { align: "center" });
-    contentY += 4;
-  } else {
-    doc.setFontSize(fullName.length > 12 ? 9 : 11);
-    doc.text(fullName, centerX, contentY, { align: "center" });
-    contentY += 5;
-  }
+  const firstName = employee.nome_completo.split(" ")[0].toUpperCase();
+  doc.setFontSize(12);
+  doc.text(firstName, centerX, contentY, { align: "center" });
+  contentY += 5;
 
   if (options.showCargo) {
     doc.setFont("helvetica", "normal");
@@ -849,27 +782,14 @@ function drawVerticalClassic(
     contentY += photoSize + 5;
   }
 
-  // Name centered - full name split into lines
+  // Name centered - only first name
   const centerX = x + V_BADGE_WIDTH / 2;
   doc.setTextColor(headerColor.r, headerColor.g, headerColor.b);
   doc.setFont("helvetica", "bold");
-  const fullName = employee.nome_completo.toUpperCase();
-  const nameWords = fullName.split(" ");
-  
-  if (nameWords.length > 2) {
-    const midPoint = Math.ceil(nameWords.length / 2);
-    const line1 = nameWords.slice(0, midPoint).join(" ");
-    const line2 = nameWords.slice(midPoint).join(" ");
-    doc.setFontSize(9);
-    doc.text(line1, centerX, contentY, { align: "center" });
-    contentY += 4;
-    doc.text(line2, centerX, contentY, { align: "center" });
-    contentY += 4;
-  } else {
-    doc.setFontSize(fullName.length > 12 ? 9 : 11);
-    doc.text(fullName, centerX, contentY, { align: "center" });
-    contentY += 5;
-  }
+  const firstName = employee.nome_completo.split(" ")[0].toUpperCase();
+  doc.setFontSize(12);
+  doc.text(firstName, centerX, contentY, { align: "center" });
+  contentY += 5;
 
   if (options.showCargo) {
     doc.setFont("helvetica", "normal");
@@ -955,27 +875,14 @@ function drawVerticalMinimal(
     contentY += photoSize + 5;
   }
 
-  // Name centered - full name split into lines
+  // Name centered - only first name
   const centerX = x + V_BADGE_WIDTH / 2;
   doc.setTextColor(35, 35, 45);
   doc.setFont("helvetica", "bold");
-  const fullName = employee.nome_completo.toUpperCase();
-  const nameWords = fullName.split(" ");
-  
-  if (nameWords.length > 2) {
-    const midPoint = Math.ceil(nameWords.length / 2);
-    const line1 = nameWords.slice(0, midPoint).join(" ");
-    const line2 = nameWords.slice(midPoint).join(" ");
-    doc.setFontSize(9);
-    doc.text(line1, centerX, contentY, { align: "center" });
-    contentY += 4;
-    doc.text(line2, centerX, contentY, { align: "center" });
-    contentY += 4;
-  } else {
-    doc.setFontSize(fullName.length > 12 ? 9 : 11);
-    doc.text(fullName, centerX, contentY, { align: "center" });
-    contentY += 5;
-  }
+  const firstName = employee.nome_completo.split(" ")[0].toUpperCase();
+  doc.setFontSize(12);
+  doc.text(firstName, centerX, contentY, { align: "center" });
+  contentY += 5;
 
   if (options.showCargo) {
     doc.setFont("helvetica", "normal");
@@ -1061,27 +968,14 @@ function drawVerticalCorporate(
     contentY += photoSize + 5;
   }
 
-  // Name centered - full name split into lines
+  // Name centered - only first name
   const centerX = x + V_BADGE_WIDTH / 2;
   doc.setTextColor(headerColor.r, headerColor.g, headerColor.b);
   doc.setFont("helvetica", "bold");
-  const fullName = employee.nome_completo.toUpperCase();
-  const nameWords = fullName.split(" ");
-  
-  if (nameWords.length > 2) {
-    const midPoint = Math.ceil(nameWords.length / 2);
-    const line1 = nameWords.slice(0, midPoint).join(" ");
-    const line2 = nameWords.slice(midPoint).join(" ");
-    doc.setFontSize(9);
-    doc.text(line1, centerX, contentY, { align: "center" });
-    contentY += 4;
-    doc.text(line2, centerX, contentY, { align: "center" });
-    contentY += 4;
-  } else {
-    doc.setFontSize(fullName.length > 12 ? 9 : 11);
-    doc.text(fullName, centerX, contentY, { align: "center" });
-    contentY += 5;
-  }
+  const firstName = employee.nome_completo.split(" ")[0].toUpperCase();
+  doc.setFontSize(12);
+  doc.text(firstName, centerX, contentY, { align: "center" });
+  contentY += 5;
 
   if (options.showCargo) {
     doc.setTextColor(85, 85, 95);
