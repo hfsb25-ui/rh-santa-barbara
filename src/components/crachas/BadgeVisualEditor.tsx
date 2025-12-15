@@ -341,17 +341,39 @@ export default function BadgeVisualEditor({ templateId, onSave, onCancel }: Badg
       
       fabricCanvas.getObjects().forEach((obj: any) => {
         if (obj.type === 'i-text' || obj.type === 'text') {
+          // Get the bounding rect to get actual position and dimensions
+          const boundingRect = obj.getBoundingRect();
+          const actualWidth = obj.width * (obj.scaleX || 1);
+          
+          // Calculate left position accounting for originX
+          let actualLeft = obj.left;
+          if (obj.originX === 'center') {
+            actualLeft = obj.left - actualWidth / 2;
+          } else if (obj.originX === 'right') {
+            actualLeft = obj.left - actualWidth;
+          }
+          
+          // Calculate top position accounting for originY
+          let actualTop = obj.top;
+          if (obj.originY === 'center') {
+            actualTop = obj.top - (obj.height * (obj.scaleY || 1)) / 2;
+          } else if (obj.originY === 'bottom') {
+            actualTop = obj.top - (obj.height * (obj.scaleY || 1));
+          }
+          
           elements.push({
             id: obj.customId || `element_${Date.now()}`,
             type: obj.isPlaceholder ? 'placeholder' : 'text',
             placeholder: obj.text,
-            left: obj.left,
-            top: obj.top,
+            left: actualLeft,
+            top: actualTop,
+            width: actualWidth,
+            height: obj.height * (obj.scaleY || 1),
             fontSize: obj.fontSize,
             fontFamily: obj.fontFamily,
             fontWeight: obj.fontWeight,
             fill: obj.fill,
-            textAlign: obj.textAlign,
+            textAlign: obj.textAlign || 'left',
           });
         } else if (obj.type === 'rect') {
           elements.push({
