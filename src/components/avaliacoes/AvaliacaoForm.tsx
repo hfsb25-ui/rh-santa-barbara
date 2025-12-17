@@ -63,17 +63,25 @@ export default function AvaliacaoForm({ avaliacao, onClose, onSuccess }: Avaliac
   });
 
   // Filter employees by selected sector
-  const employeesBySetor = employees?.filter(emp => emp.setor === selectedSetor) || [];
+  const employeesBySetor = selectedSetor && employees 
+    ? employees.filter(emp => emp.setor === selectedSetor) 
+    : [];
 
   const handleSelectAll = () => {
+    if (!employeesBySetor || employeesBySetor.length === 0) return;
+    
     if (selectedEmployees.length === employeesBySetor.length) {
       setSelectedEmployees([]);
     } else {
-      setSelectedEmployees(employeesBySetor.map(emp => emp.id));
+      const ids = employeesBySetor
+        .filter(emp => emp && emp.id)
+        .map(emp => emp.id);
+      setSelectedEmployees(ids);
     }
   };
 
   const toggleEmployee = (employeeId: string) => {
+    if (!employeeId) return;
     setSelectedEmployees(prev => 
       prev.includes(employeeId)
         ? prev.filter(id => id !== employeeId)
@@ -255,23 +263,26 @@ export default function AvaliacaoForm({ avaliacao, onClose, onSuccess }: Avaliac
                       </p>
                     ) : (
                       <div className="max-h-48 overflow-y-auto space-y-2">
-                        {employeesBySetor.map((emp) => (
-                          <div 
-                            key={emp.id} 
-                            className="flex items-center space-x-3 p-2 rounded hover:bg-muted/50 cursor-pointer"
-                            onClick={() => toggleEmployee(emp.id)}
-                          >
-                            <Checkbox
-                              checked={selectedEmployees.includes(emp.id)}
-                              onClick={(e) => e.stopPropagation()}
-                              onCheckedChange={() => toggleEmployee(emp.id)}
-                            />
-                            <div className="flex-1">
-                              <p className="text-sm font-medium">{emp.nome_completo}</p>
-                              <p className="text-xs text-muted-foreground">{emp.cargo}</p>
+                        {employeesBySetor.map((emp) => {
+                          if (!emp || !emp.id) return null;
+                          return (
+                            <div 
+                              key={emp.id} 
+                              className="flex items-center space-x-3 p-2 rounded hover:bg-muted/50 cursor-pointer"
+                              onClick={() => toggleEmployee(emp.id)}
+                            >
+                              <Checkbox
+                                checked={selectedEmployees.includes(emp.id)}
+                                onClick={(e) => e.stopPropagation()}
+                                onCheckedChange={() => toggleEmployee(emp.id)}
+                              />
+                              <div className="flex-1">
+                                <p className="text-sm font-medium">{emp.nome_completo || 'Sem nome'}</p>
+                                <p className="text-xs text-muted-foreground">{emp.cargo || '-'}</p>
+                              </div>
                             </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     )}
 
