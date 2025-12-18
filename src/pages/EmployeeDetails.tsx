@@ -69,18 +69,24 @@ const EmployeeDetails = () => {
   };
 
   const handleDelete = async () => {
-    if (!employee?.user_id) {
-      toast.error("Funcionário não possui usuário vinculado");
-      return;
-    }
-
     setDeleting(true);
     try {
-      const { error } = await supabase.functions.invoke('delete-user', {
-        body: { user_id: employee.user_id }
-      });
+      // Se tiver user_id, exclui o usuário de autenticação (que por cascade exclui o employee)
+      if (employee?.user_id) {
+        const { error } = await supabase.functions.invoke('delete-user', {
+          body: { user_id: employee.user_id }
+        });
 
-      if (error) throw error;
+        if (error) throw error;
+      } else {
+        // Se não tiver user_id, exclui diretamente o registro do funcionário
+        const { error } = await supabase
+          .from("employees")
+          .delete()
+          .eq("id", employee.id);
+
+        if (error) throw error;
+      }
 
       toast.success("Funcionário excluído com sucesso!");
       navigate("/dashboard");
