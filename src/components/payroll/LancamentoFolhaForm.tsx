@@ -55,16 +55,23 @@ const LancamentoFolhaForm = ({ employees, empresaId, mes, ano, tipoFolha, onSucc
   useEffect(() => {
     fetchVariaveis();
     initializeLancamentos();
-  }, [employees]);
+  }, [employees, empresaId]);
 
   const fetchVariaveis = async () => {
-    const { data, error } = await supabase
+    let query = supabase
       .from("variaveis_folha")
       .select("*")
       .eq("ativo", true)
-      .or(`empresa_id.eq.${empresaId},empresa_id.is.null`)
       .order("tipo")
       .order("nome");
+
+    // Quando a tela estiver em "todas as empresas", não podemos filtrar por empresa_id = 'all'
+    // (isso faz a variável não aparecer). Nesse caso, buscamos todas as variáveis ativas.
+    if (empresaId && empresaId !== "all") {
+      query = query.or(`empresa_id.eq.${empresaId},empresa_id.is.null`);
+    }
+
+    const { data, error } = await query;
 
     if (error) {
       console.error("Erro ao carregar variáveis:", error);
@@ -326,6 +333,14 @@ const LancamentoFolhaForm = ({ employees, empresaId, mes, ano, tipoFolha, onSucc
     );
 
     if (!variavel) {
+      const variavelOutroTipo = variaveis.find(v => v.codigo?.toLowerCase() === codigo.toLowerCase());
+      if (variavelOutroTipo) {
+        toast.error(
+          `O código "${codigo}" está cadastrado como ${variavelOutroTipo.tipo}. Adicione na seção correta.`
+        );
+        return;
+      }
+
       toast.error(`Variável com código "${codigo}" não encontrada`);
       return;
     }
