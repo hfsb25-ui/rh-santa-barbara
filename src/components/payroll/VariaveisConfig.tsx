@@ -76,7 +76,7 @@ const VariaveisConfig = ({ empresaId }: VariaveisConfigProps) => {
       } else {
         const { error } = await supabase
           .from("variaveis_folha")
-          .insert({ nome, codigo, tipo, empresa_id: empresaId || null });
+          .insert({ nome, codigo, tipo, empresa_id: null });
         if (error) throw error;
         toast.success("Variável criada!");
       }
