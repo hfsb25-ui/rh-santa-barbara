@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { Copy, TrendingUp, TrendingDown, Plus, X, Loader2, Users, Search } from "lucide-react";
+import { Copy, TrendingUp, TrendingDown, Plus, X, Loader2, Users, Search, Save } from "lucide-react";
 import { toast } from "sonner";
 
 interface Employee {
@@ -33,6 +33,12 @@ interface LancamentoData {
   itens: Record<string, number>;
 }
 
+interface SavedDraftData {
+  lancamentos: Record<string, LancamentoData>;
+  selectedEmployee: string;
+  savedAt: string;
+}
+
 interface LancamentoFolhaFormProps {
   employees: Employee[];
   empresaId: string;
@@ -43,6 +49,8 @@ interface LancamentoFolhaFormProps {
   onCancel: () => void;
 }
 
+const STORAGE_KEY_PREFIX = "folha_lancamento_draft_";
+
 const LancamentoFolhaForm = ({ employees, empresaId, mes, ano, tipoFolha, onSuccess, onCancel }: LancamentoFolhaFormProps) => {
   const [variaveis, setVariaveis] = useState<Variavel[]>([]);
   const [lancamentos, setLancamentos] = useState<Record<string, LancamentoData>>({});
@@ -51,11 +59,92 @@ const LancamentoFolhaForm = ({ employees, empresaId, mes, ano, tipoFolha, onSucc
   const [codigoBusca, setCodigoBusca] = useState<Record<string, string>>({});
   const [valorBusca, setValorBusca] = useState<Record<string, number>>({});
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [showRestoreDialog, setShowRestoreDialog] = useState(false);
+  const [savedDraft, setSavedDraft] = useState<SavedDraftData | null>(null);
+  const [lastSaved, setLastSaved] = useState<Date | null>(null);
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const isInitializedRef = useRef(false);
+
+  const getStorageKey = useCallback(() => {
+    return `${STORAGE_KEY_PREFIX}${empresaId}_${mes}_${ano}_${tipoFolha}`;
+  }, [empresaId, mes, ano, tipoFolha]);
+
+  const saveDraft = useCallback(() => {
+    if (!isInitializedRef.current) return;
+    
+    const draftData: SavedDraftData = {
+      lancamentos,
+      selectedEmployee,
+      savedAt: new Date().toISOString(),
+    };
+    
+    try {
+      localStorage.setItem(getStorageKey(), JSON.stringify(draftData));
+      setLastSaved(new Date());
+    } catch (error) {
+      console.error("Erro ao salvar rascunho:", error);
+    }
+  }, [lancamentos, selectedEmployee, getStorageKey]);
+
+  const clearDraft = useCallback(() => {
+    try {
+      localStorage.removeItem(getStorageKey());
+      setLastSaved(null);
+    } catch (error) {
+      console.error("Erro ao limpar rascunho:", error);
+    }
+  }, [getStorageKey]);
+
+  // Check for saved draft on mount
+  useEffect(() => {
+    const checkForDraft = () => {
+      try {
+        const savedData = localStorage.getItem(getStorageKey());
+        if (savedData) {
+          const parsed: SavedDraftData = JSON.parse(savedData);
+          // Check if draft has actual data
+          const hasData = Object.values(parsed.lancamentos).some(l => 
+            l.salario_base > 0 || Object.keys(l.itens).length > 0 || l.observacoes
+          );
+          if (hasData) {
+            setSavedDraft(parsed);
+            setShowRestoreDialog(true);
+            return;
+          }
+        }
+      } catch (error) {
+        console.error("Erro ao verificar rascunho:", error);
+      }
+      // No valid draft, initialize normally
+      initializeLancamentos();
+      isInitializedRef.current = true;
+    };
+    
+    checkForDraft();
+  }, [getStorageKey]);
+
+  // Auto-save with debounce
+  useEffect(() => {
+    if (!isInitializedRef.current) return;
+    
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+    
+    saveTimeoutRef.current = setTimeout(() => {
+      saveDraft();
+    }, 1000); // Save after 1 second of inactivity
+    
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+    };
+  }, [lancamentos, selectedEmployee, saveDraft]);
 
   useEffect(() => {
     fetchVariaveis();
-    initializeLancamentos();
-  }, [employees, empresaId]);
+  }, [empresaId]);
 
   const fetchVariaveis = async () => {
     let query = supabase
@@ -90,6 +179,37 @@ const LancamentoFolhaForm = ({ employees, empresaId, mes, ano, tipoFolha, onSucc
       };
     });
     setLancamentos(initial);
+  };
+
+  const handleRestoreDraft = () => {
+    if (savedDraft) {
+      // Merge saved draft with current employees (in case employees changed)
+      const merged: Record<string, LancamentoData> = {};
+      employees.forEach(emp => {
+        if (savedDraft.lancamentos[emp.id]) {
+          merged[emp.id] = savedDraft.lancamentos[emp.id];
+        } else {
+          merged[emp.id] = {
+            salario_base: emp.salario || 0,
+            observacoes: "",
+            itens: {},
+          };
+        }
+      });
+      setLancamentos(merged);
+      setSelectedEmployee(savedDraft.selectedEmployee);
+      toast.success("Rascunho restaurado com sucesso!");
+    }
+    setShowRestoreDialog(false);
+    isInitializedRef.current = true;
+  };
+
+  const handleDiscardDraft = () => {
+    clearDraft();
+    initializeLancamentos();
+    setShowRestoreDialog(false);
+    isInitializedRef.current = true;
+    toast.info("Rascunho descartado");
   };
 
   const handleCopiarMesAnterior = async () => {
@@ -301,6 +421,7 @@ const LancamentoFolhaForm = ({ employees, empresaId, mes, ano, tipoFolha, onSucc
       }
 
       if (sucessos > 0) {
+        clearDraft(); // Clear saved draft after successful submission
         toast.success(`${sucessos} pagamento(s) lançado(s) com sucesso!`);
         onSuccess(mes, ano);
       }
@@ -317,6 +438,11 @@ const LancamentoFolhaForm = ({ employees, empresaId, mes, ano, tipoFolha, onSucc
       setLoading(false);
       setShowConfirmDialog(false);
     }
+  };
+
+  const handleCancel = () => {
+    clearDraft();
+    onCancel();
   };
 
   const handleBuscarVariavel = (empId: string, tipo: "provento" | "desconto") => {
@@ -664,9 +790,17 @@ const LancamentoFolhaForm = ({ employees, empresaId, mes, ano, tipoFolha, onSucc
       {/* Botões de ação */}
       <Separator />
       <div className="flex justify-between items-center">
-        <Button variant="outline" onClick={onCancel} disabled={loading}>
-          Cancelar
-        </Button>
+        <div className="flex items-center gap-4">
+          <Button variant="outline" onClick={handleCancel} disabled={loading}>
+            Cancelar
+          </Button>
+          {lastSaved && (
+            <span className="text-xs text-muted-foreground flex items-center gap-1">
+              <Save className="w-3 h-3" />
+              Salvo às {lastSaved.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+            </span>
+          )}
+        </div>
         <Button 
           onClick={() => setShowConfirmDialog(true)} 
           disabled={loading || resumoGeral.funcionariosComDados === 0}
@@ -711,6 +845,36 @@ const LancamentoFolhaForm = ({ employees, empresaId, mes, ano, tipoFolha, onSucc
             <AlertDialogAction onClick={handleSubmit} disabled={loading}>
               {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
               Confirmar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Dialog para restaurar rascunho */}
+      <AlertDialog open={showRestoreDialog} onOpenChange={setShowRestoreDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Rascunho Encontrado</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-2">
+                <p>
+                  Foi encontrado um rascunho salvo automaticamente para este período.
+                </p>
+                {savedDraft && (
+                  <p className="text-sm text-muted-foreground">
+                    Salvo em: {new Date(savedDraft.savedAt).toLocaleString("pt-BR")}
+                  </p>
+                )}
+                <p>Deseja restaurar os dados do rascunho ou começar do zero?</p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={handleDiscardDraft}>
+              Começar do Zero
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={handleRestoreDraft}>
+              Restaurar Rascunho
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
