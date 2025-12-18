@@ -372,8 +372,8 @@ const Payroll = () => {
       const valorEmConta = calcularValorEmConta(pag);
       resumos[key].totalPagamentos += 1;
       resumos[key].totalEmConta += valorEmConta;
-      resumos[key].totalEmMaos += pag.valor_bruto - valorEmConta; // Valor em Mãos = Bruto - Em Conta
-      resumos[key].totalDescontos += pag.desconto || 0;
+      resumos[key].totalEmMaos += pag.valor_liquido; // Valor em Mãos = Proventos - Descontos (valor líquido)
+      resumos[key].totalDescontos += pag.descontos || 0;
       resumos[key].totalGeral += pag.valor_bruto;
     });
     
