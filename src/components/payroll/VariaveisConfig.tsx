@@ -38,17 +38,12 @@ const VariaveisConfig = ({ empresaId }: VariaveisConfigProps) => {
 
   const fetchVariaveis = async () => {
     try {
-      let query = supabase
+      const { data, error } = await supabase
         .from("variaveis_folha")
         .select("*")
         .order("tipo")
         .order("nome");
 
-      if (empresaId && empresaId !== "all") {
-        query = query.or(`empresa_id.eq.${empresaId},empresa_id.is.null`);
-      }
-
-      const { data, error } = await query;
       if (error) {
         console.error("Erro ao carregar variáveis:", error);
         toast.error("Erro ao carregar variáveis");
