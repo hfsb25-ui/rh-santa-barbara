@@ -279,7 +279,12 @@ const Adiantamentos = () => {
         doc.text(`Setor: ${filtroHistoricoSetor}`, 14, 42);
       }
       
-      const tableData = historico.map(a => [
+      // Ordenar alfabeticamente por nome do funcionário
+      const historicoOrdenado = [...historico].sort((a, b) => 
+        a.employees.nome_completo.localeCompare(b.employees.nome_completo)
+      );
+      
+      const tableData = historicoOrdenado.map(a => [
         a.employees.nome_completo,
         a.employees.setor || "-",
         a.empresas.nome,
