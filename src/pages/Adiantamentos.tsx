@@ -175,6 +175,9 @@ const Adiantamentos = () => {
         filtered = filtered.filter(a => a.forma_pagamento === filtroHistoricoFormaPagamento);
       }
 
+      // Ordenar alfabeticamente por nome do funcionário
+      filtered.sort((a, b) => a.employees.nome_completo.localeCompare(b.employees.nome_completo));
+
       setHistorico(filtered);
     } catch (error: any) {
       console.error("Erro ao carregar histórico:", error);
