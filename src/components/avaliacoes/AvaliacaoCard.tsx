@@ -9,9 +9,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Star, Edit, Trash2, Eye, CheckCircle } from "lucide-react";
+import { Star, Edit, Trash2, Eye, CheckCircle, FileDown } from "lucide-react";
 import { toast } from "sonner";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 
 interface AvaliacaoCardProps {
   avaliacao: any;
@@ -71,6 +73,198 @@ export default function AvaliacaoCard({ avaliacao, onEdit, onDelete, onRefresh }
     trimestral: "Trimestral",
     semestral: "Semestral",
     anual: "Anual",
+  };
+
+  const exportarAvaliacaoPDF = async () => {
+    try {
+      // Buscar notas da avaliação se não estiverem carregadas
+      const { data: notasData } = await supabase
+        .from("notas_avaliacao")
+        .select("*, criterio:criterios_avaliacao(*)")
+        .eq("avaliacao_id", avaliacao.id);
+
+      // Buscar empresa do funcionário
+      const { data: empresaData } = await supabase
+        .from("empresas")
+        .select("nome, logo_url")
+        .eq("id", avaliacao.employee?.empresa_id)
+        .single();
+
+      const doc = new jsPDF();
+      let yPos = 20;
+
+      // Cabeçalho
+      doc.setFontSize(18);
+      doc.setFont(undefined, "bold");
+      doc.text("AVALIAÇÃO DE DESEMPENHO", 105, yPos, { align: "center" });
+      yPos += 10;
+
+      doc.setFontSize(12);
+      doc.setFont(undefined, "normal");
+      doc.text(tipoLabels[avaliacao.tipo as keyof typeof tipoLabels], 105, yPos, { align: "center" });
+      yPos += 15;
+
+      // Linha separadora
+      doc.setDrawColor(79, 70, 229);
+      doc.setLineWidth(0.5);
+      doc.line(20, yPos, 190, yPos);
+      yPos += 15;
+
+      // Informações do Funcionário
+      doc.setFontSize(14);
+      doc.setFont(undefined, "bold");
+      doc.text("DADOS DO COLABORADOR", 20, yPos);
+      yPos += 10;
+
+      doc.setFontSize(11);
+      doc.setFont(undefined, "normal");
+      doc.text(`Nome: ${avaliacao.employee?.nome_completo || "N/A"}`, 25, yPos);
+      yPos += 7;
+      doc.text(`Cargo: ${avaliacao.employee?.cargo || "N/A"}`, 25, yPos);
+      yPos += 7;
+      doc.text(`Setor: ${avaliacao.employee?.setor || "N/A"}`, 25, yPos);
+      yPos += 7;
+      if (empresaData?.nome) {
+        doc.text(`Empresa: ${empresaData.nome}`, 25, yPos);
+        yPos += 7;
+      }
+      yPos += 8;
+
+      // Informações da Avaliação
+      doc.setFontSize(14);
+      doc.setFont(undefined, "bold");
+      doc.text("INFORMAÇÕES DA AVALIAÇÃO", 20, yPos);
+      yPos += 10;
+
+      doc.setFontSize(11);
+      doc.setFont(undefined, "normal");
+      doc.text(`Tipo: ${tipoLabels[avaliacao.tipo as keyof typeof tipoLabels]}`, 25, yPos);
+      yPos += 7;
+      doc.text(`Período: ${new Date(avaliacao.periodo_inicio).toLocaleDateString("pt-BR")} até ${new Date(avaliacao.periodo_fim).toLocaleDateString("pt-BR")}`, 25, yPos);
+      yPos += 7;
+      doc.text(`Status: ${statusLabels[avaliacao.status as keyof typeof statusLabels]}`, 25, yPos);
+      yPos += 7;
+      
+      if (avaliacao.nota_final) {
+        doc.setFont(undefined, "bold");
+        doc.text(`NOTA FINAL: ${avaliacao.nota_final}`, 25, yPos);
+        doc.setFont(undefined, "normal");
+        yPos += 7;
+      }
+      yPos += 10;
+
+      // Critérios Avaliados
+      if (notasData && notasData.length > 0) {
+        doc.setFontSize(14);
+        doc.setFont(undefined, "bold");
+        doc.text("CRITÉRIOS AVALIADOS", 20, yPos);
+        yPos += 10;
+
+        const tableData = notasData.map((nota: any) => {
+          const notaMedia = nota.nota_gestor && nota.nota_funcionario
+            ? ((Number(nota.nota_gestor) + Number(nota.nota_funcionario)) / 2).toFixed(1)
+            : nota.nota_gestor || nota.nota_funcionario || "N/A";
+          
+          return [
+            nota.criterio?.nome || "Critério",
+            nota.nota_funcionario || "-",
+            nota.nota_gestor || "-",
+            notaMedia,
+            nota.comentario_gestor || nota.comentario_funcionario || "-"
+          ];
+        });
+
+        autoTable(doc, {
+          startY: yPos,
+          head: [["Critério", "Auto-Avaliação", "Gestor", "Média", "Comentário"]],
+          body: tableData,
+          theme: "grid",
+          headStyles: { fillColor: [79, 70, 229], fontSize: 10 },
+          bodyStyles: { fontSize: 9 },
+          columnStyles: {
+            0: { cellWidth: 40 },
+            1: { cellWidth: 25, halign: "center" },
+            2: { cellWidth: 25, halign: "center" },
+            3: { cellWidth: 20, halign: "center" },
+            4: { cellWidth: 60 }
+          },
+          margin: { left: 20, right: 20 }
+        });
+
+        yPos = (doc as any).lastAutoTable.finalY + 15;
+      }
+
+      // Observações
+      if (avaliacao.observacoes) {
+        if (yPos > 240) {
+          doc.addPage();
+          yPos = 20;
+        }
+        
+        doc.setFontSize(14);
+        doc.setFont(undefined, "bold");
+        doc.text("OBSERVAÇÕES GERAIS", 20, yPos);
+        yPos += 10;
+
+        doc.setFontSize(11);
+        doc.setFont(undefined, "normal");
+        const splitObs = doc.splitTextToSize(avaliacao.observacoes, 170);
+        doc.text(splitObs, 25, yPos);
+        yPos += splitObs.length * 6 + 15;
+      }
+
+      // Espaço para assinaturas
+      if (yPos > 230) {
+        doc.addPage();
+        yPos = 20;
+      } else {
+        yPos += 20;
+      }
+
+      doc.setFontSize(12);
+      doc.setFont(undefined, "bold");
+      doc.text("ASSINATURAS", 20, yPos);
+      yPos += 20;
+
+      // Linhas de assinatura
+      doc.setDrawColor(100, 100, 100);
+      doc.setLineWidth(0.3);
+      
+      doc.line(25, yPos, 90, yPos);
+      doc.line(115, yPos, 185, yPos);
+      yPos += 5;
+
+      doc.setFontSize(10);
+      doc.setFont(undefined, "normal");
+      doc.text("Colaborador", 57.5, yPos, { align: "center" });
+      doc.text("Gestor/Avaliador", 150, yPos, { align: "center" });
+      yPos += 15;
+
+      doc.line(25, yPos, 90, yPos);
+      yPos += 5;
+      doc.text("Data", 57.5, yPos, { align: "center" });
+
+      // Rodapé
+      const pageCount = doc.getNumberOfPages();
+      for (let i = 1; i <= pageCount; i++) {
+        doc.setPage(i);
+        doc.setFontSize(8);
+        doc.setTextColor(128);
+        doc.text(
+          `Gerado em ${new Date().toLocaleString("pt-BR")} - Página ${i} de ${pageCount}`,
+          105,
+          290,
+          { align: "center" }
+        );
+      }
+
+      const fileName = `avaliacao_${avaliacao.employee?.nome_completo?.replace(/\s+/g, "_") || "funcionario"}_${new Date(avaliacao.periodo_fim).toISOString().split("T")[0]}.pdf`;
+      doc.save(fileName);
+      toast.success("PDF da avaliação gerado com sucesso!");
+    } catch (error) {
+      console.error("Erro ao gerar PDF:", error);
+      toast.error("Erro ao gerar PDF");
+    }
   };
 
   const handleAvaliar = async () => {
@@ -168,7 +362,7 @@ export default function AvaliacaoCard({ avaliacao, onEdit, onDelete, onRefresh }
               </div>
             )}
 
-            <div className="flex gap-2 pt-2">
+            <div className="flex flex-wrap gap-2 pt-2">
               <Button
                 size="sm"
                 variant="outline"
@@ -176,6 +370,15 @@ export default function AvaliacaoCard({ avaliacao, onEdit, onDelete, onRefresh }
               >
                 <Eye className="w-4 h-4 mr-1" />
                 Ver Detalhes
+              </Button>
+
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={exportarAvaliacaoPDF}
+              >
+                <FileDown className="w-4 h-4 mr-1" />
+                Exportar PDF
               </Button>
 
               {avaliacao.status !== "concluida" ? (
