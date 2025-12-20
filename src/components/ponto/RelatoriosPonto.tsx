@@ -134,8 +134,9 @@ export function RelatoriosPonto() {
       }
 
       const horasDiarias = config?.horas_diarias_esperadas || 8.00;
-      const diasUteis = registros.filter(r => r.tipo_dia === "normal").length;
-      const horasEsperadas = diasUteis * horasDiarias;
+      // Calcular somente os dias lançados com tipo "normal"
+      const diasLancadosNormais = registros.filter(r => r.tipo_dia === "normal").length;
+      const horasEsperadas = diasLancadosNormais * horasDiarias;
       const horasTrabalhadas = registros.reduce((sum, r) => sum + (r.horas_trabalhadas || 0), 0);
       const saldo = horasTrabalhadas - horasEsperadas;
 
@@ -192,8 +193,9 @@ export function RelatoriosPonto() {
             .maybeSingle();
 
           const horasDiarias = config?.horas_diarias_esperadas || 8.00;
-          const diasUteis = registros?.filter(r => r.tipo_dia === "normal").length || 0;
-          const horasEsperadas = diasUteis * horasDiarias;
+          // Calcular somente os dias lançados com tipo "normal"
+          const diasLancadosNormais = registros?.filter(r => r.tipo_dia === "normal").length || 0;
+          const horasEsperadas = diasLancadosNormais * horasDiarias;
           const horasTrabalhadas = registros?.reduce((sum, r) => sum + (r.horas_trabalhadas || 0), 0) || 0;
           const saldo = horasTrabalhadas - horasEsperadas;
 
@@ -497,8 +499,9 @@ export function RelatoriosPonto() {
         }
 
         const horasDiarias = config?.horas_diarias_esperadas || 8.00;
-        const diasUteis = registros?.filter(r => r.tipo_dia === "normal").length || 0;
-        const horasEsperadas = diasUteis * horasDiarias;
+        // Calcular somente os dias lançados com tipo "normal"
+        const diasLancadosNormais = registros?.filter(r => r.tipo_dia === "normal").length || 0;
+        const horasEsperadas = diasLancadosNormais * horasDiarias;
         const horasTrabalhadas = registros?.reduce((sum, r) => sum + (r.horas_trabalhadas || 0), 0) || 0;
         const saldo = horasTrabalhadas - horasEsperadas;
 
