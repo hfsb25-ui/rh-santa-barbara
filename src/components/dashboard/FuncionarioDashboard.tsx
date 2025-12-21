@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import {
   UserCircle,
   LogOut,
@@ -16,6 +17,12 @@ import {
   Receipt,
   FileText,
   Download,
+  Paperclip,
+  AlertTriangle,
+  Megaphone,
+  Info,
+  Check,
+  Eye,
 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { toast } from "sonner";
@@ -25,6 +32,22 @@ import { TreinamentosCard } from "./TreinamentosCard";
 import TacCard from "@/components/tac/TacCard";
 import { format, subMonths, startOfMonth, endOfMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
+
+const prioridadeConfig: Record<string, { label: string; borderColor: string; bgColor: string }> = {
+  baixa: { label: "Baixa", borderColor: "border-green-500", bgColor: "bg-green-500/10" },
+  media: { label: "Média", borderColor: "border-yellow-500", bgColor: "bg-yellow-500/10" },
+  alta: { label: "Alta", borderColor: "border-orange-500", bgColor: "bg-orange-500/10" },
+  urgente: { label: "Urgente", borderColor: "border-red-500", bgColor: "bg-red-500/10" },
+};
+
+const categoriaIcons: Record<string, any> = {
+  comunicado: Megaphone,
+  lembrete: Calendar,
+  alerta: AlertTriangle,
+  evento: Calendar,
+  rh: FileText,
+  info: Info,
+};
 
 const formatDecimalToHoursMinutes = (decimal: number): string => {
   const sign = decimal < 0 ? "-" : "";
@@ -58,6 +81,7 @@ const FuncionarioDashboard = ({ user }: FuncionarioDashboardProps) => {
   const [epis, setEpis] = useState<any[]>([]);
   const [uniformes, setUniformes] = useState<any[]>([]);
   const [avisos, setAvisos] = useState<any[]>([]);
+  const [avisosLidos, setAvisosLidos] = useState<Set<string>>(new Set());
   const [holerites, setHolerites] = useState<any[]>([]);
   const [companyLogo, setCompanyLogo] = useState<string | null>(null);
   const [horasMesAnterior, setHorasMesAnterior] = useState<number | null>(null);
@@ -183,6 +207,18 @@ const FuncionarioDashboard = ({ user }: FuncionarioDashboardProps) => {
         setActiveVacation(feriasRes.data || null);
         setCompanyLogo(companyRes.data?.logo_url || null);
         setHolerites(holeritesRes.data || []);
+
+        // Buscar avisos já lidos
+        if (avisosRes.data && avisosRes.data.length > 0) {
+          const { data: leiturasData } = await supabase
+            .from("avisos_leituras")
+            .select("aviso_id")
+            .eq("employee_id", empData.id);
+          
+          if (leiturasData) {
+            setAvisosLidos(new Set(leiturasData.map(l => l.aviso_id)));
+          }
+        }
 
         // Buscar horas do mês anterior
         const mesAnterior = subMonths(new Date(), 1);
@@ -406,18 +442,80 @@ const FuncionarioDashboard = ({ user }: FuncionarioDashboardProps) => {
           {/* Avisos */}
           {visibility.avisos_visivel && avisos.length > 0 && (
             <div className="space-y-3">
-              {avisos.map((aviso) => (
-                <Alert key={aviso.id} className="border-primary bg-primary/10">
-                  <Bell className="h-5 w-5 text-primary" />
-                  <AlertTitle className="font-semibold text-lg">Aviso Importante</AlertTitle>
-                  <AlertDescription className="text-base mt-2">
-                    {aviso.mensagem}
-                    <p className="text-xs text-muted-foreground mt-2">
-                      Válido até: {new Date(aviso.data_expiracao).toLocaleDateString("pt-BR")}
-                    </p>
-                  </AlertDescription>
-                </Alert>
-              ))}
+              {avisos
+                .sort((a, b) => {
+                  const prioridadeOrder: Record<string, number> = { urgente: 0, alta: 1, media: 2, baixa: 3 };
+                  return (prioridadeOrder[a.prioridade] || 2) - (prioridadeOrder[b.prioridade] || 2);
+                })
+                .map((aviso) => {
+                  const prioridade = prioridadeConfig[aviso.prioridade] || prioridadeConfig.media;
+                  const CategoriaIcon = categoriaIcons[aviso.categoria] || Bell;
+                  const isLido = avisosLidos.has(aviso.id);
+
+                  const marcarComoLido = async () => {
+                    if (isLido) return;
+                    try {
+                      await supabase.from("avisos_leituras").insert({
+                        aviso_id: aviso.id,
+                        employee_id: employee.id,
+                      });
+                      setAvisosLidos(prev => new Set(prev).add(aviso.id));
+                    } catch (error) {
+                      console.error("Error marking as read:", error);
+                    }
+                  };
+
+                  return (
+                    <Alert 
+                      key={aviso.id} 
+                      className={`${prioridade.borderColor} ${prioridade.bgColor} ${isLido ? 'opacity-75' : ''}`}
+                    >
+                      <CategoriaIcon className="h-5 w-5" />
+                      <AlertTitle className="font-semibold text-lg flex items-center gap-2 flex-wrap">
+                        <span className="capitalize">{aviso.categoria || "Aviso"}</span>
+                        <Badge variant={aviso.prioridade === "urgente" ? "destructive" : "outline"} className="text-xs">
+                          {prioridade.label}
+                        </Badge>
+                        {isLido && (
+                          <Badge variant="secondary" className="text-xs">
+                            <Check className="w-3 h-3 mr-1" />
+                            Lido
+                          </Badge>
+                        )}
+                      </AlertTitle>
+                      <AlertDescription className="text-base mt-2">
+                        {aviso.mensagem}
+                        <div className="flex flex-wrap items-center gap-3 mt-3">
+                          <span className="text-xs text-muted-foreground">
+                            Válido até: {new Date(aviso.data_expiracao).toLocaleDateString("pt-BR")}
+                          </span>
+                          {aviso.anexo_url && (
+                            <a 
+                              href={aviso.anexo_url} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+                            >
+                              <Paperclip className="w-3 h-3" />
+                              Ver anexo
+                            </a>
+                          )}
+                          {!isLido && (
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              onClick={marcarComoLido}
+                              className="text-xs h-6"
+                            >
+                              <Eye className="w-3 h-3 mr-1" />
+                              Marcar como lido
+                            </Button>
+                          )}
+                        </div>
+                      </AlertDescription>
+                    </Alert>
+                  );
+                })}
             </div>
           )}
 
