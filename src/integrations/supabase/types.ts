@@ -228,28 +228,49 @@ export type Database = {
       }
       avisos: {
         Row: {
+          anexo_url: string | null
+          categoria: string | null
           created_at: string | null
           created_by: string | null
           data_expiracao: string
+          data_publicacao: string | null
+          empresa_id: string | null
+          funcionarios_ids: string[] | null
           id: string
           mensagem: string
+          prioridade: string | null
           setores: string[]
+          tipo_destinatario: string | null
         }
         Insert: {
+          anexo_url?: string | null
+          categoria?: string | null
           created_at?: string | null
           created_by?: string | null
           data_expiracao: string
+          data_publicacao?: string | null
+          empresa_id?: string | null
+          funcionarios_ids?: string[] | null
           id?: string
           mensagem: string
+          prioridade?: string | null
           setores: string[]
+          tipo_destinatario?: string | null
         }
         Update: {
+          anexo_url?: string | null
+          categoria?: string | null
           created_at?: string | null
           created_by?: string | null
           data_expiracao?: string
+          data_publicacao?: string | null
+          empresa_id?: string | null
+          funcionarios_ids?: string[] | null
           id?: string
           mensagem?: string
+          prioridade?: string | null
           setores?: string[]
+          tipo_destinatario?: string | null
         }
         Relationships: [
           {
@@ -257,6 +278,49 @@ export type Database = {
             columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "avisos_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      avisos_leituras: {
+        Row: {
+          aviso_id: string
+          employee_id: string
+          id: string
+          lido_em: string | null
+        }
+        Insert: {
+          aviso_id: string
+          employee_id: string
+          id?: string
+          lido_em?: string | null
+        }
+        Update: {
+          aviso_id?: string
+          employee_id?: string
+          id?: string
+          lido_em?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "avisos_leituras_aviso_id_fkey"
+            columns: ["aviso_id"]
+            isOneToOne: false
+            referencedRelation: "avisos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "avisos_leituras_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
             referencedColumns: ["id"]
           },
         ]
