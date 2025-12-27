@@ -49,13 +49,13 @@ export function HistoricoMensal({ data }: HistoricoMensalProps) {
           Histórico Mensal
         </CardTitle>
       </CardHeader>
-      <CardContent>
+      <CardContent className="px-2 sm:px-6">
         {/* Gráfico */}
-        <div className="h-[300px] mb-6">
+        <div className="h-[250px] sm:h-[300px] mb-6 -mx-2 sm:mx-0">
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart
               data={chartData}
-              margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
+              margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
             >
               <defs>
                 <linearGradient id="colorBruto" x1="0" y1="0" x2="0" y2="1">
@@ -99,8 +99,8 @@ export function HistoricoMensal({ data }: HistoricoMensalProps) {
           </ResponsiveContainer>
         </div>
 
-        {/* Tabela */}
-        <div className="overflow-auto max-h-[300px]">
+        {/* Tabela - Versão Desktop */}
+        <div className="hidden md:block overflow-auto max-h-[300px]">
           <table className="w-full text-sm">
             <thead className="sticky top-0 bg-muted/80 backdrop-blur-sm">
               <tr className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
@@ -160,6 +160,62 @@ export function HistoricoMensal({ data }: HistoricoMensalProps) {
               ))}
             </tbody>
           </table>
+        </div>
+
+        {/* Cards - Versão Mobile */}
+        <div className="md:hidden space-y-3 max-h-[400px] overflow-auto">
+          {data.map((item, index) => (
+            <div
+              key={`mobile-${item.ano}-${item.mesNumero}`}
+              className="bg-muted/30 rounded-lg p-3 space-y-2"
+            >
+              <div className="flex items-center justify-between">
+                <span className="font-semibold text-sm">
+                  {item.mes}/{item.ano}
+                </span>
+                {index === data.length - 1 ? (
+                  <Badge variant="secondary" className="text-xs">
+                    <Minus className="h-3 w-3 mr-1" />
+                    Base
+                  </Badge>
+                ) : item.diferencaPercentual === 0 ? (
+                  <Badge variant="secondary" className="text-xs">
+                    <Minus className="h-3 w-3 mr-1" />
+                    0%
+                  </Badge>
+                ) : item.diferencaPercentual > 0 ? (
+                  <Badge variant="destructive" className="text-xs">
+                    <TrendingUp className="h-3 w-3 mr-1" />
+                    +{item.diferencaPercentual.toFixed(1)}%
+                  </Badge>
+                ) : (
+                  <Badge className="bg-secondary text-secondary-foreground text-xs">
+                    <TrendingDown className="h-3 w-3 mr-1" />
+                    {item.diferencaPercentual.toFixed(1)}%
+                  </Badge>
+                )}
+              </div>
+              
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <div>
+                  <span className="text-muted-foreground">Em conta:</span>
+                  <p className="font-semibold">{formatCurrencyFull(item.totalBruto)}</p>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Descontos:</span>
+                  <p className="text-destructive">{formatCurrencyFull(item.totalDescontos)}</p>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Em mãos:</span>
+                  <p className="text-secondary font-medium">{formatCurrencyFull(item.totalLiquido)}</p>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Pagamentos:</span>
+                  <p>{item.quantidadePagamentos}</p>
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
       </CardContent>
     </Card>
