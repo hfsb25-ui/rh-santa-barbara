@@ -2,10 +2,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, Clock, MapPin, ExternalLink, Trash2 } from "lucide-react";
+import { Calendar, Clock, MapPin, Download, Trash2 } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
+import { downloadEventAsICS } from "@/lib/icsGenerator";
 
 interface Evento {
   id: string;
@@ -47,19 +48,9 @@ const EventoDetailsDialog = ({ evento, onClose, onDelete }: EventoDetailsDialogP
     onDelete();
   };
 
-  const generateGoogleCalendarLink = () => {
-    const start = format(parseISO(evento.data_inicio), "yyyyMMdd'T'HHmmss");
-    const end = format(parseISO(evento.data_fim), "yyyyMMdd'T'HHmmss");
-    
-    const params = new URLSearchParams({
-      action: "TEMPLATE",
-      text: evento.titulo,
-      dates: `${start}/${end}`,
-      details: evento.descricao || "",
-      location: evento.local || "",
-    });
-
-    return `https://calendar.google.com/calendar/render?${params.toString()}`;
+  const handleDownloadICS = () => {
+    downloadEventAsICS(evento);
+    toast.success("Arquivo .ics baixado! Importe no seu calendário.");
   };
 
   return (
@@ -105,10 +96,10 @@ const EventoDetailsDialog = ({ evento, onClose, onDelete }: EventoDetailsDialogP
             <Button
               variant="outline"
               className="flex-1"
-              onClick={() => window.open(generateGoogleCalendarLink(), "_blank")}
+              onClick={handleDownloadICS}
             >
-              <ExternalLink className="w-4 h-4 mr-2" />
-              Adicionar ao Google
+              <Download className="w-4 h-4 mr-2" />
+              Baixar .ics
             </Button>
             <Button variant="destructive" size="icon" onClick={handleDelete}>
               <Trash2 className="w-4 h-4" />
