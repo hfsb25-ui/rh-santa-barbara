@@ -908,6 +908,10 @@ const GestorDashboard = ({ user }: GestorDashboardProps) => {
                   <IdCard className="w-4 h-4 mr-2" />
                   Crachás
                 </Button>
+                <Button variant="outline" onClick={() => navigate("/eventos")} className="w-full">
+                  <Calendar className="w-4 h-4 mr-2" />
+                  Calendário de Eventos
+                </Button>
               </div>
             </div>
 
