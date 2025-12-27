@@ -1,186 +1,123 @@
-import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft, Download, Calendar } from "lucide-react";
-import { toast } from "sonner";
+import { useState } from "react";
+import { Skeleton } from "@/components/ui/skeleton";
 import jsPDF from "jspdf";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import * as XLSX from "xlsx";
+import { toast } from "sonner";
 
-const MESES = [
-  { value: "01", label: "Janeiro" },
-  { value: "02", label: "Fevereiro" },
-  { value: "03", label: "Março" },
-  { value: "04", label: "Abril" },
-  { value: "05", label: "Maio" },
-  { value: "06", label: "Junho" },
-  { value: "07", label: "Julho" },
-  { value: "08", label: "Agosto" },
-  { value: "09", label: "Setembro" },
-  { value: "10", label: "Outubro" },
-  { value: "11", label: "Novembro" },
-  { value: "12", label: "Dezembro" },
-];
-
-interface SetorGasto {
-  setor: string;
-  totalSalarios: number;
-  quantidadeFuncionarios: number;
-}
-
-interface Empresa {
-  id: string;
-  nome: string;
-}
+import { FinanceiroHeader } from "@/components/financeiro/FinanceiroHeader";
+import { FinanceiroFilters } from "@/components/financeiro/FinanceiroFilters";
+import { FinanceiroKPIs } from "@/components/financeiro/FinanceiroKPIs";
+import { GastosPorSetor } from "@/components/financeiro/GastosPorSetor";
+import { GastosPorContrato } from "@/components/financeiro/GastosPorContrato";
+import { HistoricoMensal } from "@/components/financeiro/HistoricoMensal";
+import { AnaliseVariacoes } from "@/components/financeiro/AnaliseVariacoes";
+import { AnaliseTendencias } from "@/components/financeiro/AnaliseTendencias";
+import { useFinanceiroData, type FinanceiroFilters as FilterType } from "@/components/financeiro/hooks/useFinanceiroData";
 
 const Financeiro = () => {
-  const navigate = useNavigate();
-  const [gastoPorSetor, setGastoPorSetor] = useState<SetorGasto[]>([]);
-  const [gastoTotal, setGastoTotal] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [empresas, setEmpresas] = useState<Empresa[]>([]);
-  const [selectedEmpresa, setSelectedEmpresa] = useState<string>("all");
-  const [filterType, setFilterType] = useState<string>("current");
-  const [selectedMonth, setSelectedMonth] = useState<string>(String(new Date().getMonth() + 1).padStart(2, "0"));
-  const [selectedYear, setSelectedYear] = useState<string>(String(new Date().getFullYear()));
+  const [filters, setFilters] = useState<FilterType>({
+    empresa: "all",
+    periodo: "12months",
+    setor: "all",
+    tipoContrato: "all",
+    tipoFolha: "all",
+  });
 
-  const currentYear = new Date().getFullYear();
-  const years = Array.from({ length: 5 }, (_, i) => String(currentYear - i));
-
-  useEffect(() => {
-    fetchEmpresas();
-  }, []);
-
-  useEffect(() => {
-    fetchFinancialData();
-  }, [selectedEmpresa]);
-
-  const fetchEmpresas = async () => {
-    try {
-      const { data, error } = await supabase
-        .from("empresas")
-        .select("id, nome")
-        .order("nome");
-
-      if (error) throw error;
-      setEmpresas(data || []);
-    } catch (error) {
-      console.error("Erro ao buscar empresas:", error);
-      toast.error("Erro ao carregar empresas");
-    }
-  };
-
-  const fetchFinancialData = async () => {
-    try {
-      let query = supabase
-        .from("employees")
-        .select("setor, salario, status, empresa_id")
-        .eq("status", "ativo");
-
-      if (selectedEmpresa !== "all") {
-        query = query.eq("empresa_id", selectedEmpresa);
-      }
-
-      const { data: employees, error } = await query;
-
-      if (error) throw error;
-
-      // Agrupar por setor
-      const setorMap = new Map<string, { total: number; count: number }>();
-      let total = 0;
-
-      employees?.forEach((emp) => {
-        const setor = emp.setor || "Sem Setor";
-        const salario = emp.salario || 0;
-        
-        if (!setorMap.has(setor)) {
-          setorMap.set(setor, { total: 0, count: 0 });
-        }
-        
-        const current = setorMap.get(setor)!;
-        current.total += salario;
-        current.count += 1;
-        total += salario;
-      });
-
-      // Converter para array
-      const setores: SetorGasto[] = Array.from(setorMap.entries()).map(([setor, data]) => ({
-        setor,
-        totalSalarios: data.total,
-        quantidadeFuncionarios: data.count,
-      }));
-
-      setGastoPorSetor(setores.sort((a, b) => b.totalSalarios - a.totalSalarios));
-      setGastoTotal(total);
-    } catch (error) {
-      console.error("Erro ao buscar dados financeiros:", error);
-      toast.error("Erro ao carregar dados financeiros");
-    } finally {
-      setLoading(false);
-    }
-  };
+  const {
+    loading,
+    empresas,
+    setores,
+    kpis,
+    gastosPorSetor,
+    gastosPorContrato,
+    historicoMensal,
+    variacoesFuncionarios,
+    tendencia,
+    evolucaoPorContrato,
+  } = useFinanceiroData(filters);
 
   const exportToPDF = () => {
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.getWidth();
     
-    const empresaNome = selectedEmpresa === "all" 
-      ? "TODAS AS EMPRESAS" 
-      : empresas.find(e => e.id === selectedEmpresa)?.nome || "";
-    
-    // Título
     doc.setFontSize(18);
-    doc.text("RELATÓRIO FINANCEIRO - GASTOS COM PESSOAL", pageWidth / 2, 20, { align: "center" });
-    
-    doc.setFontSize(12);
-    doc.text(`Data: ${new Date().toLocaleDateString("pt-BR")}`, pageWidth / 2, 30, { align: "center" });
-    doc.text(`Empresa: ${empresaNome}`, pageWidth / 2, 36, { align: "center" });
-    
-    // Gasto Total
-    doc.setFontSize(14);
-    doc.text("GASTO TOTAL COM PESSOAL", 20, 50);
-    doc.setFontSize(16);
-    doc.text(`R$ ${gastoTotal.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, 20, 60);
-    
-    // Gastos por Setor
-    doc.setFontSize(14);
-    doc.text("GASTOS POR SETOR", 20, 75);
-    
-    let yPosition = 85;
+    doc.text("RELATÓRIO FINANCEIRO", pageWidth / 2, 20, { align: "center" });
     doc.setFontSize(10);
-    
-    gastoPorSetor.forEach((setor) => {
-      if (yPosition > 270) {
-        doc.addPage();
-        yPosition = 20;
-      }
-      
-      doc.text(`Setor: ${setor.setor}`, 20, yPosition);
-      doc.text(`Funcionários: ${setor.quantidadeFuncionarios}`, 20, yPosition + 5);
-      doc.text(
-        `Total: R$ ${setor.totalSalarios.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
-        20,
-        yPosition + 10
-      );
-      doc.line(20, yPosition + 12, pageWidth - 20, yPosition + 12);
-      yPosition += 20;
+    doc.text(`Gerado em: ${new Date().toLocaleDateString("pt-BR")}`, pageWidth / 2, 28, { align: "center" });
+
+    let y = 45;
+    doc.setFontSize(14);
+    doc.text("Resumo", 20, y);
+    y += 10;
+    doc.setFontSize(10);
+    doc.text(`Custo Total: R$ ${kpis.custoTotal.toLocaleString("pt-BR")}`, 20, y);
+    y += 6;
+    doc.text(`Variação Mensal: ${kpis.variacaoMensal.toFixed(1)}%`, 20, y);
+    y += 6;
+    doc.text(`Funcionários: ${kpis.totalFuncionarios}`, 20, y);
+    y += 15;
+
+    doc.setFontSize(14);
+    doc.text("Gastos por Setor", 20, y);
+    y += 10;
+    doc.setFontSize(10);
+    gastosPorSetor.forEach((setor) => {
+      if (y > 270) { doc.addPage(); y = 20; }
+      doc.text(`${setor.setor}: R$ ${setor.custoTotal.toLocaleString("pt-BR")} (${setor.quantidadeFuncionarios} func.)`, 20, y);
+      y += 6;
     });
-    
+
     doc.save(`relatorio-financeiro-${new Date().toISOString().split("T")[0]}.pdf`);
-    toast.success("Relatório exportado com sucesso!");
+    toast.success("PDF exportado com sucesso!");
+  };
+
+  const exportToExcel = () => {
+    const wb = XLSX.utils.book_new();
+
+    // Resumo
+    const resumo = [
+      ["Custo Total", kpis.custoTotal],
+      ["Variação Mensal (%)", kpis.variacaoMensal],
+      ["Custo Médio/Funcionário", kpis.custoMedioFuncionario],
+      ["Total Funcionários", kpis.totalFuncionarios],
+    ];
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(resumo), "Resumo");
+
+    // Gastos por Setor
+    const setorData = gastosPorSetor.map(s => ({
+      Setor: s.setor,
+      "Custo Total": s.custoTotal,
+      Funcionários: s.quantidadeFuncionarios,
+      "Custo Médio": s.custoMedio,
+      "Variação (%)": s.variacao,
+    }));
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(setorData), "Por Setor");
+
+    // Histórico
+    const historicoData = historicoMensal.map(h => ({
+      "Mês/Ano": `${h.mes}/${h.ano}`,
+      "Valor Bruto": h.totalBruto,
+      "Descontos": h.totalDescontos,
+      "Valor Líquido": h.totalLiquido,
+      "Variação (%)": h.diferencaPercentual,
+    }));
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(historicoData), "Histórico");
+
+    XLSX.writeFile(wb, `relatorio-financeiro-${new Date().toISOString().split("T")[0]}.xlsx`);
+    toast.success("Excel exportado com sucesso!");
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <p>Carregando...</p>
+      <div className="min-h-screen bg-background">
+        <div className="container mx-auto px-4 py-8">
+          <Skeleton className="h-16 w-full mb-6" />
+          <Skeleton className="h-12 w-full mb-6" />
+          <div className="grid grid-cols-6 gap-4 mb-6">
+            {[...Array(6)].map((_, i) => <Skeleton key={i} className="h-24" />)}
+          </div>
+          <Skeleton className="h-96 w-full" />
+        </div>
       </div>
     );
   }
@@ -188,131 +125,30 @@ const Financeiro = () => {
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 py-8">
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-4">
-            <Button variant="outline" onClick={() => navigate("/dashboard")}>
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Voltar
-            </Button>
-            <h1 className="text-3xl font-bold">Relatório Financeiro</h1>
-          </div>
-          <div className="flex flex-wrap items-center gap-4">
-            <Select value={selectedEmpresa} onValueChange={setSelectedEmpresa}>
-              <SelectTrigger className="w-[200px]">
-                <SelectValue placeholder="Selecione a empresa" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todas as empresas</SelectItem>
-                {empresas.map((empresa) => (
-                  <SelectItem key={empresa.id} value={empresa.id}>
-                    {empresa.nome}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            
-            <Select value={filterType} onValueChange={setFilterType}>
-              <SelectTrigger className="w-[180px]">
-                <Calendar className="w-4 h-4 mr-2" />
-                <SelectValue placeholder="Período" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="current">Mês Atual</SelectItem>
-                <SelectItem value="specific">Mês Específico</SelectItem>
-                <SelectItem value="3months">Últimos 3 Meses</SelectItem>
-                <SelectItem value="6months">Últimos 6 Meses</SelectItem>
-                <SelectItem value="year">Último Ano</SelectItem>
-              </SelectContent>
-            </Select>
+        <FinanceiroHeader onExportPDF={exportToPDF} onExportExcel={exportToExcel} />
+        
+        <FinanceiroFilters
+          filters={filters}
+          setFilters={setFilters}
+          empresas={empresas}
+          setores={setores}
+        />
 
-            {filterType === "specific" && (
-              <>
-                <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-                  <SelectTrigger className="w-[140px]">
-                    <SelectValue placeholder="Mês" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {MESES.map((mes) => (
-                      <SelectItem key={mes.value} value={mes.value}>
-                        {mes.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Select value={selectedYear} onValueChange={setSelectedYear}>
-                  <SelectTrigger className="w-[100px]">
-                    <SelectValue placeholder="Ano" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {years.map((year) => (
-                      <SelectItem key={year} value={year}>
-                        {year}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </>
-            )}
-            
-            <Button onClick={exportToPDF}>
-              <Download className="w-4 h-4 mr-2" />
-              Exportar PDF
-            </Button>
-          </div>
+        <FinanceiroKPIs kpis={kpis} />
+
+        <div className="grid lg:grid-cols-2 gap-6 mb-6">
+          <GastosPorSetor data={gastosPorSetor} />
+          <GastosPorContrato data={gastosPorContrato} evolucao={evolucaoPorContrato} />
         </div>
 
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle className="text-2xl">Gasto Total com Pessoal</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-4xl font-bold text-primary">
-              R$ {gastoTotal.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            </p>
-            <p className="text-sm text-muted-foreground mt-2">
-              Funcionários ativos
-            </p>
-          </CardContent>
-        </Card>
+        <div className="mb-6">
+          <HistoricoMensal data={historicoMensal} />
+        </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Gastos por Setor</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {gastoPorSetor.length === 0 ? (
-                <p className="text-muted-foreground">Nenhum dado disponível</p>
-              ) : (
-                gastoPorSetor.map((setor) => (
-                  <div
-                    key={setor.setor}
-                    className="flex items-center justify-between p-4 border rounded-lg"
-                  >
-                    <div>
-                      <h3 className="font-semibold text-lg">{setor.setor}</h3>
-                      <p className="text-sm text-muted-foreground">
-                        {setor.quantidadeFuncionarios} funcionário{setor.quantidadeFuncionarios !== 1 ? "s" : ""}
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-2xl font-bold">
-                        R$ {setor.totalSalarios.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        Média: R${" "}
-                        {(setor.totalSalarios / setor.quantidadeFuncionarios).toLocaleString("pt-BR", {
-                          minimumFractionDigits: 2,
-                          maximumFractionDigits: 2,
-                        })}
-                      </p>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          </CardContent>
-        </Card>
+        <div className="grid lg:grid-cols-2 gap-6">
+          <AnaliseVariacoes data={variacoesFuncionarios} />
+          <AnaliseTendencias historico={historicoMensal} tendencia={tendencia} />
+        </div>
       </div>
     </div>
   );

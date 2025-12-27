@@ -2,14 +2,12 @@ import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Users, DollarSign, AlertTriangle, Package } from "lucide-react";
+import { Users, AlertTriangle, Package } from "lucide-react";
 import ChartFilters from "./charts/ChartFilters";
 import HRKPIs from "./kpis/HRKPIs";
-import FinancialKPIs from "./kpis/FinancialKPIs";
 import AttendanceKPIs from "./kpis/AttendanceKPIs";
 import StockKPIs from "./kpis/StockKPIs";
 import HRCharts from "./charts/HRCharts";
-import FinancialCharts from "./charts/FinancialCharts";
 import AttendanceCharts from "./charts/AttendanceCharts";
 import StockCharts from "./charts/StockCharts";
 
@@ -425,19 +423,6 @@ const MetricsCharts = ({ selectedEmpresa, setSelectedEmpresa, empresas, period, 
           </AccordionContent>
         </AccordionItem>
 
-        {/* Financial Section */}
-        <AccordionItem value="financial" className="border rounded-lg px-6">
-          <AccordionTrigger className="hover:no-underline">
-            <div className="flex items-center gap-2 text-lg font-semibold">
-              <DollarSign className="w-5 h-5 text-primary" />
-              Financeiro
-            </div>
-          </AccordionTrigger>
-          <AccordionContent className="pt-4 space-y-6">
-            <FinancialKPIs {...data.financial.kpis} />
-            <FinancialCharts {...data.financial.charts} />
-          </AccordionContent>
-        </AccordionItem>
 
         {/* Attendance Section */}
         <AccordionItem value="attendance" className="border rounded-lg px-6">
