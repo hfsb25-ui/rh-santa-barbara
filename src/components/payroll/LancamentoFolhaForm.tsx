@@ -169,13 +169,26 @@ const LancamentoFolhaForm = ({ employees, empresaId, mes, ano, tipoFolha, onSucc
     setVariaveis(data || []);
   };
 
-  const initializeLancamentos = () => {
+  const initializeLancamentos = async () => {
+    // Fetch fixed variables for all employees
+    const { data: variaveisFixas } = await supabase
+      .from("variaveis_fixas_funcionario")
+      .select("employee_id, variavel_id, valor")
+      .eq("ativo", true)
+      .in("employee_id", employees.map(e => e.id));
+
     const initial: Record<string, LancamentoData> = {};
     employees.forEach(emp => {
+      // Get fixed variables for this employee
+      const fixedItems: Record<string, number> = {};
+      variaveisFixas?.filter(vf => vf.employee_id === emp.id).forEach(vf => {
+        fixedItems[vf.variavel_id] = Number(vf.valor);
+      });
+
       initial[emp.id] = {
         salario_base: emp.salario || 0,
         observacoes: "",
-        itens: {},
+        itens: fixedItems,
       };
     });
     setLancamentos(initial);

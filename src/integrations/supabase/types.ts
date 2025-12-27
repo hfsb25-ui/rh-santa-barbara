@@ -3016,6 +3016,51 @@ export type Database = {
           },
         ]
       }
+      variaveis_fixas_funcionario: {
+        Row: {
+          ativo: boolean
+          created_at: string
+          employee_id: string
+          id: string
+          updated_at: string
+          valor: number
+          variavel_id: string
+        }
+        Insert: {
+          ativo?: boolean
+          created_at?: string
+          employee_id: string
+          id?: string
+          updated_at?: string
+          valor?: number
+          variavel_id: string
+        }
+        Update: {
+          ativo?: boolean
+          created_at?: string
+          employee_id?: string
+          id?: string
+          updated_at?: string
+          valor?: number
+          variavel_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "variaveis_fixas_funcionario_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "variaveis_fixas_funcionario_variavel_id_fkey"
+            columns: ["variavel_id"]
+            isOneToOne: false
+            referencedRelation: "variaveis_folha"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       variaveis_folha: {
         Row: {
           ativo: boolean
