@@ -1,13 +1,13 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, Plus, Calendar as CalendarIcon, List, Download } from "lucide-react";
+import { ArrowLeft, Plus, Calendar as CalendarIcon, List, ExternalLink } from "lucide-react";
 import EventoCalendar from "@/components/eventos/EventoCalendar";
 import EventoList from "@/components/eventos/EventoList";
 import EventoForm from "@/components/eventos/EventoForm";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { toast } from "sonner";
 
 const Eventos = () => {
   const navigate = useNavigate();
@@ -25,16 +25,9 @@ const Eventos = () => {
     setShowForm(true);
   };
 
-  const generateICalUrl = () => {
-    // Placeholder for iCal URL generation
-    const baseUrl = window.location.origin;
-    return `${baseUrl}/api/calendar/ical`;
-  };
-
-  const handleExportToGoogle = () => {
-    const googleCalendarUrl = "https://calendar.google.com/calendar/r?cid=";
-    // In a real implementation, this would use a webcal:// URL or Google Calendar API
-    window.open(`${googleCalendarUrl}${encodeURIComponent(generateICalUrl())}`, "_blank");
+  const handleOpenGoogleCalendar = () => {
+    toast.info("Para adicionar eventos ao Google Calendar, clique em um evento e use o botão 'Adicionar ao Google Calendar'");
+    window.open("https://calendar.google.com/calendar", "_blank");
   };
 
   return (
@@ -49,9 +42,9 @@ const Eventos = () => {
             <h1 className="text-3xl font-bold">Calendário de Eventos</h1>
           </div>
           <div className="flex gap-2">
-            <Button variant="outline" onClick={handleExportToGoogle}>
-              <Download className="w-4 h-4 mr-2" />
-              Integrar com Google
+            <Button variant="outline" onClick={handleOpenGoogleCalendar}>
+              <ExternalLink className="w-4 h-4 mr-2" />
+              Abrir Google Calendar
             </Button>
             <Dialog open={showForm} onOpenChange={setShowForm}>
               <DialogTrigger asChild>
