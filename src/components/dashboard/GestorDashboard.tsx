@@ -804,10 +804,6 @@ const GestorDashboard = ({ user }: GestorDashboardProps) => {
                   <TrendingUp className="w-4 h-4 mr-2" />
                   Turnover
                 </Button>
-                <Button variant="outline" onClick={() => navigate("/financeiro")} className="w-full">
-                  <DollarSign className="w-4 h-4 mr-2" />
-                  Financeiro
-                </Button>
                 <Button variant="outline" onClick={() => navigate("/payroll")} className="w-full">
                   <Receipt className="w-4 h-4 mr-2" />
                   Folha de Pagamento
