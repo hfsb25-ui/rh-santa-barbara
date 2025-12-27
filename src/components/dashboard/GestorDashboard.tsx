@@ -58,6 +58,7 @@ import { BirthdayCard } from "@/components/dashboard/BirthdayCard";
 import { BirthdayListDialog } from "@/components/dashboard/BirthdayListDialog";
 import { PendingChecklistsAlert } from "@/components/dashboard/PendingChecklistsAlert";
 import { ExperiencePeriodAlerts } from "@/components/dashboard/ExperiencePeriodAlerts";
+import EventoNotifications from "@/components/dashboard/EventoNotifications";
 import { toast } from "sonner";
 
 interface GestorDashboardProps {
@@ -586,6 +587,9 @@ const GestorDashboard = ({ user }: GestorDashboardProps) => {
 
           {/* Overview Tab */}
           <TabsContent value="overview" className="space-y-8">
+            {/* Event Notifications */}
+            <EventoNotifications />
+
             {/* Stats Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <Card>
