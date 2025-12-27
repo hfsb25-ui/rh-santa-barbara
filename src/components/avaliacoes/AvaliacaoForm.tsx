@@ -308,22 +308,23 @@ export default function AvaliacaoForm({ avaliacao, onClose, onSuccess }: Avaliac
                         <div className="max-h-48 overflow-y-auto space-y-2">
                           {employeesBySetor.map((emp) => {
                             if (!emp || !emp.id) return null;
+                            const isChecked = selectedEmployeesSet.has(emp.id);
                             return (
-                              <div
+                              <label
                                 key={emp.id}
+                                htmlFor={`employee-checkbox-${emp.id}`}
                                 className="flex items-center space-x-3 p-2 rounded hover:bg-muted/50 cursor-pointer"
-                                onClick={() => toggleEmployee(emp.id)}
                               >
                                 <Checkbox
-                                  checked={selectedEmployeesSet.has(emp.id)}
-                                  onClick={(e) => e.stopPropagation()}
+                                  id={`employee-checkbox-${emp.id}`}
+                                  checked={isChecked}
                                   onCheckedChange={() => toggleEmployee(emp.id)}
                                 />
                                 <div className="flex-1 min-w-0">
                                   <p className="text-sm font-medium truncate">{emp.nome_completo || "Sem nome"}</p>
                                   <p className="text-xs text-muted-foreground truncate">{emp.cargo || "-"}</p>
                                 </div>
-                              </div>
+                              </label>
                             );
                           })}
                         </div>
