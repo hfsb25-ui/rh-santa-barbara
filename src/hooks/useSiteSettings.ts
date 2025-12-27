@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 
 export function useSiteSettings() {
   useEffect(() => {
-    const loadAndApplySettings = async () => {
+    const carregarConfiguracoes = async () => {
       try {
         const { data, error } = await supabase
           .from('site_settings')
@@ -12,14 +12,13 @@ export function useSiteSettings() {
           .single();
 
         if (error && error.code !== 'PGRST116') {
-          console.error('Error loading site settings:', error);
-          // Fallback to localStorage if DB fails
-          applyFromLocalStorage();
+          console.error('Erro ao carregar configurações do site:', error);
+          aplicarDoLocalStorage();
           return;
         }
 
         if (data) {
-          // Apply from database and update localStorage
+          // Aplica do banco de dados e atualiza localStorage
           if (data.site_title) {
             document.title = data.site_title;
             localStorage.setItem("siteTitle", data.site_title);
@@ -44,34 +43,34 @@ export function useSiteSettings() {
             localStorage.setItem("siteFavicon", data.favicon_url);
           }
         } else {
-          // No database settings, use localStorage
-          applyFromLocalStorage();
+          // Sem configurações no banco, usa localStorage
+          aplicarDoLocalStorage();
         }
       } catch (error) {
-        console.error('Error loading site settings:', error);
-        applyFromLocalStorage();
+        console.error('Erro ao carregar configurações do site:', error);
+        aplicarDoLocalStorage();
       }
     };
 
-    const applyFromLocalStorage = () => {
-      const savedTitle = localStorage.getItem("siteTitle");
-      const savedFavicon = localStorage.getItem("siteFavicon");
+    const aplicarDoLocalStorage = () => {
+      const tituloSalvo = localStorage.getItem("siteTitle");
+      const faviconSalvo = localStorage.getItem("siteFavicon");
       
-      if (savedTitle) {
-        document.title = savedTitle;
+      if (tituloSalvo) {
+        document.title = tituloSalvo;
       }
       
-      if (savedFavicon) {
+      if (faviconSalvo) {
         let link = document.querySelector("link[rel~='icon']") as HTMLLinkElement;
         if (!link) {
           link = document.createElement("link");
           link.rel = "icon";
           document.head.appendChild(link);
         }
-        link.href = savedFavicon;
+        link.href = faviconSalvo;
       }
     };
 
-    loadAndApplySettings();
+    carregarConfiguracoes();
   }, []);
 }

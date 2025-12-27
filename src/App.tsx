@@ -39,7 +39,7 @@ import Eventos from "./pages/Eventos";
 const queryClient = new QueryClient();
 
 const App = () => {
-  // Load site settings from database on app start
+  // Carrega configurações do site do banco de dados ao iniciar
   useSiteSettings();
 
   return (
