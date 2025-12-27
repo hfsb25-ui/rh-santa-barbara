@@ -269,22 +269,28 @@ export default function AvaliacaoForm({ avaliacao, onClose, onSuccess }: Avaliac
                         setSelectedEmployees([]);
                       }}
                     >
-                      <SelectTrigger>
+                      <SelectTrigger className="w-full">
                         <SelectValue placeholder="Selecione o setor" />
                       </SelectTrigger>
-                      <SelectContent>
-                        {setores?.map((setor) => (
-                          <SelectItem key={setor.id} value={setor.nome}>
-                            {setor.nome}
-                          </SelectItem>
-                        ))}
+                      <SelectContent className="z-[100]" position="popper" sideOffset={4}>
+                        {setores && setores.length > 0 ? (
+                          setores.map((setor) => (
+                            <SelectItem key={setor.id} value={setor.nome}>
+                              {setor.nome}
+                            </SelectItem>
+                          ))
+                        ) : (
+                          <div className="p-2 text-sm text-muted-foreground">
+                            Nenhum setor cadastrado
+                          </div>
+                        )}
                       </SelectContent>
                     </Select>
                   </div>
 
-                  {selectedSetor && (
+                  {selectedSetor && employeesBySetor && (
                     <div className="border rounded-lg p-4 space-y-3">
-                      <div className="flex items-center justify-between">
+                      <div className="flex items-center justify-between flex-wrap gap-2">
                         <Label className="text-sm font-medium">Funcionários do setor ({employeesBySetor.length})</Label>
                         <Button type="button" variant="ghost" size="sm" onClick={handleSelectAll}>
                           <CheckSquare className="w-4 h-4 mr-1" />
@@ -313,9 +319,9 @@ export default function AvaliacaoForm({ avaliacao, onClose, onSuccess }: Avaliac
                                   onClick={(e) => e.stopPropagation()}
                                   onCheckedChange={() => toggleEmployee(emp.id)}
                                 />
-                                <div className="flex-1">
-                                  <p className="text-sm font-medium">{emp.nome_completo || "Sem nome"}</p>
-                                  <p className="text-xs text-muted-foreground">{emp.cargo || "-"}</p>
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-sm font-medium truncate">{emp.nome_completo || "Sem nome"}</p>
+                                  <p className="text-xs text-muted-foreground truncate">{emp.cargo || "-"}</p>
                                 </div>
                               </div>
                             );
