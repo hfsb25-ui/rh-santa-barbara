@@ -1,12 +1,10 @@
 import { useState } from "react";
-import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Users,
   FileText,
   Package,
-  DollarSign,
   Briefcase,
   BarChart3,
   ArrowLeft,
@@ -15,7 +13,6 @@ import { useNavigate } from "react-router-dom";
 import EmployeeReports from "@/components/relatorios/reports/EmployeeReports";
 import AttendanceReports from "@/components/relatorios/reports/AttendanceReports";
 import StockReports from "@/components/relatorios/reports/StockReports";
-import FinancialReports from "@/components/relatorios/reports/FinancialReports";
 import RecruitmentReports from "@/components/relatorios/reports/RecruitmentReports";
 
 const Relatorios = () => {
@@ -43,7 +40,7 @@ const Relatorios = () => {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="inline-flex lg:grid w-full lg:grid-cols-5 overflow-x-auto tabs-scroll">
+        <TabsList className="inline-flex lg:grid w-full lg:grid-cols-4 overflow-x-auto tabs-scroll">
           <TabsTrigger
             value="employees"
             className="flex items-center gap-2 flex-shrink-0 min-w-fit"
@@ -66,13 +63,6 @@ const Relatorios = () => {
             EPIs/Uniformes
           </TabsTrigger>
           <TabsTrigger
-            value="financial"
-            className="flex items-center gap-2 flex-shrink-0 min-w-fit"
-          >
-            <DollarSign className="w-4 h-4" />
-            Financeiro
-          </TabsTrigger>
-          <TabsTrigger
             value="recruitment"
             className="flex items-center gap-2 flex-shrink-0 min-w-fit"
           >
@@ -91,10 +81,6 @@ const Relatorios = () => {
 
         <TabsContent value="stock">
           <StockReports />
-        </TabsContent>
-
-        <TabsContent value="financial">
-          <FinancialReports />
         </TabsContent>
 
         <TabsContent value="recruitment">
