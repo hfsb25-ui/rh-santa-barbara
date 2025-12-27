@@ -82,7 +82,7 @@ export function HistoricoMensal({ data }: HistoricoMensalProps) {
               <Area
                 type="monotone"
                 dataKey="totalBruto"
-                name="Valor Bruto"
+                name="Valor em conta"
                 stroke="hsl(var(--primary))"
                 fillOpacity={1}
                 fill="url(#colorBruto)"
@@ -90,7 +90,7 @@ export function HistoricoMensal({ data }: HistoricoMensalProps) {
               <Area
                 type="monotone"
                 dataKey="totalLiquido"
-                name="Valor Líquido"
+                name="Valor em mãos"
                 stroke="hsl(var(--secondary))"
                 fillOpacity={1}
                 fill="url(#colorLiquido)"
@@ -105,9 +105,9 @@ export function HistoricoMensal({ data }: HistoricoMensalProps) {
             <thead className="sticky top-0 bg-muted/80 backdrop-blur-sm">
               <tr className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
                 <th className="text-left p-2">Mês/Ano</th>
-                <th className="text-right p-2">Bruto</th>
+                <th className="text-right p-2">Em conta</th>
                 <th className="text-right p-2">Descontos</th>
-                <th className="text-right p-2">Líquido</th>
+                <th className="text-right p-2">Em mãos</th>
                 <th className="text-right p-2">Pagamentos</th>
                 <th className="text-right p-2">Variação</th>
               </tr>
