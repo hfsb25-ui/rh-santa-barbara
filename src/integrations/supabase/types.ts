@@ -1327,6 +1327,81 @@ export type Database = {
         }
         Relationships: []
       }
+      eventos: {
+        Row: {
+          cor: string | null
+          created_at: string | null
+          criado_por: string | null
+          data_fim: string
+          data_inicio: string
+          descricao: string | null
+          empresa_id: string | null
+          google_event_id: string | null
+          id: string
+          lembrete_minutos: number | null
+          local: string | null
+          participantes: string[] | null
+          recorrencia_tipo: string | null
+          recorrente: boolean | null
+          tipo: string | null
+          titulo: string
+          updated_at: string | null
+        }
+        Insert: {
+          cor?: string | null
+          created_at?: string | null
+          criado_por?: string | null
+          data_fim: string
+          data_inicio: string
+          descricao?: string | null
+          empresa_id?: string | null
+          google_event_id?: string | null
+          id?: string
+          lembrete_minutos?: number | null
+          local?: string | null
+          participantes?: string[] | null
+          recorrencia_tipo?: string | null
+          recorrente?: boolean | null
+          tipo?: string | null
+          titulo: string
+          updated_at?: string | null
+        }
+        Update: {
+          cor?: string | null
+          created_at?: string | null
+          criado_por?: string | null
+          data_fim?: string
+          data_inicio?: string
+          descricao?: string | null
+          empresa_id?: string | null
+          google_event_id?: string | null
+          id?: string
+          lembrete_minutos?: number | null
+          local?: string | null
+          participantes?: string[] | null
+          recorrencia_tipo?: string | null
+          recorrente?: boolean | null
+          tipo?: string | null
+          titulo?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "eventos_criado_por_fkey"
+            columns: ["criado_por"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "eventos_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       execucoes_ciclo: {
         Row: {
           avaliacoes_criadas: number | null
