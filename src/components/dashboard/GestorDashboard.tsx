@@ -49,7 +49,7 @@ import AvisoForm from "@/components/forms/AvisoForm";
 import ManageAvisosDialog from "@/components/dashboard/ManageAvisosDialog";
 import LoginHistoryDialog from "@/components/dashboard/LoginHistoryDialog";
 import MetricsCharts from "@/components/dashboard/MetricsCharts";
-import FinancialMetrics from "@/components/dashboard/FinancialMetrics";
+
 import StockAlerts from "@/components/dashboard/StockAlerts";
 import AttendanceMetrics from "@/components/dashboard/AttendanceMetrics";
 import DashboardFilters from "@/components/dashboard/DashboardFilters";
@@ -553,7 +553,7 @@ const GestorDashboard = ({ user }: GestorDashboardProps) => {
       <div className="container mx-auto px-4 py-8 space-y-8">
         {/* Navigation Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="inline-flex lg:grid w-full lg:grid-cols-5 overflow-x-auto tabs-scroll">
+          <TabsList className="inline-flex lg:grid w-full lg:grid-cols-4 overflow-x-auto tabs-scroll">
             <TabsTrigger value="overview" className="flex items-center gap-2 flex-shrink-0 min-w-fit">
               <LayoutDashboard className="w-4 h-4" />
               Visão Geral
@@ -561,10 +561,6 @@ const GestorDashboard = ({ user }: GestorDashboardProps) => {
             <TabsTrigger value="charts" className="flex items-center gap-2 flex-shrink-0 min-w-fit">
               <BarChart3 className="w-4 h-4" />
               Gráficos
-            </TabsTrigger>
-            <TabsTrigger value="financial" className="flex items-center gap-2 flex-shrink-0 min-w-fit">
-              <DollarSign className="w-4 h-4" />
-              Financeiro
             </TabsTrigger>
             <TabsTrigger value="stock" className="flex items-center gap-2 flex-shrink-0 min-w-fit">
               <Package className="w-4 h-4" />
@@ -948,45 +944,6 @@ const GestorDashboard = ({ user }: GestorDashboardProps) => {
             ) : null}
           </TabsContent>
 
-          {/* Financial Tab */}
-          <TabsContent value="financial" className="space-y-6">
-            {loadingMetrics ? (
-              <div className="space-y-6">
-                <div className="grid gap-4 md:grid-cols-4">
-                  {[1, 2, 3, 4].map((i) => (
-                    <Card key={i}>
-                      <CardHeader>
-                        <Skeleton className="h-4 w-24" />
-                      </CardHeader>
-                      <CardContent>
-                        <Skeleton className="h-8 w-32" />
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-                <div className="grid gap-6 md:grid-cols-2">
-                  {[1, 2].map((i) => (
-                    <Card key={i}>
-                      <CardHeader>
-                        <Skeleton className="h-6 w-40" />
-                      </CardHeader>
-                      <CardContent>
-                        <Skeleton className="h-[300px] w-full" />
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              </div>
-            ) : metricsData ? (
-              <FinancialMetrics
-                totalPayroll={metricsData.financial.totalPayroll}
-                previousMonthPayroll={metricsData.financial.previousMonthPayroll}
-                payrollBySector={metricsData.financial.payrollBySector}
-                payrollEvolution={metricsData.financial.payrollEvolution}
-                averageSalary={metricsData.financial.averageSalary}
-              />
-            ) : null}
-          </TabsContent>
 
           {/* Stock Tab */}
           <TabsContent value="stock" className="space-y-6">
