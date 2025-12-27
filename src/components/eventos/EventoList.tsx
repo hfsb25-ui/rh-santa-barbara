@@ -3,12 +3,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, Clock, MapPin, Edit, Trash2, ExternalLink } from "lucide-react";
-import { format, parseISO, isAfter, isBefore, startOfDay } from "date-fns";
+import { Calendar, Clock, MapPin, Edit, Trash2, Download, FileDown } from "lucide-react";
+import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
 import EventoForm from "./EventoForm";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { downloadEventAsICS, downloadMultipleEventsAsICS } from "@/lib/icsGenerator";
 
 interface Evento {
   id: string;
@@ -65,19 +66,18 @@ const EventoList = ({ onRefresh }: EventoListProps) => {
     onRefresh();
   };
 
-  const generateGoogleCalendarLink = (evento: Evento) => {
-    const start = format(parseISO(evento.data_inicio), "yyyyMMdd'T'HHmmss");
-    const end = format(parseISO(evento.data_fim), "yyyyMMdd'T'HHmmss");
-    
-    const params = new URLSearchParams({
-      action: "TEMPLATE",
-      text: evento.titulo,
-      dates: `${start}/${end}`,
-      details: evento.descricao || "",
-      location: evento.local || "",
-    });
+  const handleDownloadICS = (evento: Evento) => {
+    downloadEventAsICS(evento);
+    toast.success("Arquivo .ics baixado!");
+  };
 
-    return `https://calendar.google.com/calendar/render?${params.toString()}`;
+  const handleExportAll = () => {
+    if (eventos.length === 0) {
+      toast.error("Nenhum evento para exportar");
+      return;
+    }
+    downloadMultipleEventsAsICS(eventos, "todos_eventos");
+    toast.success(`${eventos.length} eventos exportados!`);
   };
 
   const tipoLabels: Record<string, string> = {
@@ -111,9 +111,9 @@ const EventoList = ({ onRefresh }: EventoListProps) => {
 
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <CardTitle>Lista de Eventos</CardTitle>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               <Button
                 variant={filter === "upcoming" ? "default" : "outline"}
                 size="sm"
@@ -134,6 +134,15 @@ const EventoList = ({ onRefresh }: EventoListProps) => {
                 onClick={() => setFilter("all")}
               >
                 Todos
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleExportAll}
+                disabled={eventos.length === 0}
+              >
+                <FileDown className="w-4 h-4 mr-2" />
+                Exportar Todos
               </Button>
             </div>
           </div>
@@ -166,10 +175,10 @@ const EventoList = ({ onRefresh }: EventoListProps) => {
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => window.open(generateGoogleCalendarLink(evento), "_blank")}
-                          title="Adicionar ao Google Calendar"
+                          onClick={() => handleDownloadICS(evento)}
+                          title="Baixar arquivo .ics"
                         >
-                          <ExternalLink className="w-4 h-4" />
+                          <Download className="w-4 h-4" />
                         </Button>
                         <Button
                           variant="ghost"
