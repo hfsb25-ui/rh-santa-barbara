@@ -35,7 +35,7 @@ import PlanoAdmissaoDesligamento from "./pages/PlanoAdmissaoDesligamento";
 import PeopleManager from "./pages/PeopleManager";
 import Tacs from "./pages/Tacs";
 import Crachas from "./pages/Crachas";
-
+import Eventos from "./pages/Eventos";
 const queryClient = new QueryClient();
 
 const App = () => {
@@ -96,6 +96,7 @@ const App = () => {
             <Route path="/tacs" element={<Tacs />} />
             <Route path="/crachas" element={<Crachas />} />
             <Route path="/settings" element={<Settings />} />
+            <Route path="/eventos" element={<Eventos />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
         </BrowserRouter>
