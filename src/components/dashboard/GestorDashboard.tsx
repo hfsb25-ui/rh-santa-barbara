@@ -21,6 +21,7 @@ import {
   TrendingUp,
   Building2,
   DollarSign,
+  Wallet,
   Bell,
   Receipt,
   Briefcase,
@@ -883,6 +884,10 @@ const GestorDashboard = ({ user }: GestorDashboardProps) => {
                 <Button variant="outline" onClick={() => navigate("/adiantamentos")} className="w-full">
                   <DollarSign className="w-4 h-4 mr-2" />
                   Adiantamentos
+                </Button>
+                <Button variant="outline" onClick={() => navigate("/financeiro")} className="w-full">
+                  <Wallet className="w-4 h-4 mr-2" />
+                  Financeiro
                 </Button>
                 <Button variant="outline" onClick={() => navigate("/plano-admissao-desligamento")} className="w-full">
                   <ClipboardList className="w-4 h-4 mr-2" />
