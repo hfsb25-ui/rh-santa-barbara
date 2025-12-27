@@ -85,7 +85,6 @@ const EditTimeOffDialog = ({ employeeId, employeeName, currentAmount, onUpdated 
               type="number"
               defaultValue={currentAmount}
               required
-              min="0"
             />
             <p className="text-sm text-muted-foreground mt-1">
               Quantidade atual: {currentAmount}
