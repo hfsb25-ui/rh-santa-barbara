@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { ArrowLeft, Edit, Loader2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
-import { useIsMobile } from "@/hooks/use-mobile";
+
 import EmployeeInfo from "@/components/employees/EmployeeInfo";
 import EmployeeForm from "@/components/forms/EmployeeForm";
 import { GenerateContractButton } from "@/components/contracts/GenerateContractButton";
@@ -38,7 +38,7 @@ import { VariaveisFixasTab } from "@/components/employees/tabs/VariaveisFixasTab
 const EmployeeDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const isMobile = useIsMobile();
+  
   const [employee, setEmployee] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [showEditDialog, setShowEditDialog] = useState(false);
@@ -176,19 +176,19 @@ const EmployeeDetails = () => {
         <EmployeeInfo employee={employee} onUpdate={fetchEmployee} />
 
         <Tabs defaultValue="epis" className="mt-6">
-          <TabsList className={isMobile ? "inline-flex w-full overflow-x-auto justify-start" : "grid w-full grid-cols-12"}>
-            <TabsTrigger value="epis" className={isMobile ? "flex-shrink-0" : ""}>EPIs</TabsTrigger>
-            <TabsTrigger value="uniformes" className={isMobile ? "flex-shrink-0" : ""}>Uniformes</TabsTrigger>
-            <TabsTrigger value="ferias" className={isMobile ? "flex-shrink-0" : ""}>Férias</TabsTrigger>
-            <TabsTrigger value="afastamentos" className={isMobile ? "flex-shrink-0" : ""}>Afastamentos</TabsTrigger>
-            <TabsTrigger value="folgas" className={isMobile ? "flex-shrink-0" : ""}>Folgas</TabsTrigger>
-            <TabsTrigger value="faltas" className={isMobile ? "flex-shrink-0" : ""}>Faltas</TabsTrigger>
-            <TabsTrigger value="arquivos" className={isMobile ? "flex-shrink-0" : ""}>Arquivos</TabsTrigger>
-            <TabsTrigger value="reajustes" className={isMobile ? "flex-shrink-0" : ""}>Histórico Salarial</TabsTrigger>
-            <TabsTrigger value="variaveis" className={isMobile ? "flex-shrink-0" : ""}>Variáveis Fixas</TabsTrigger>
-            <TabsTrigger value="exames" className={isMobile ? "flex-shrink-0" : ""}>Exames Médicos</TabsTrigger>
-            <TabsTrigger value="avaliacoes" className={isMobile ? "flex-shrink-0" : ""}>Avaliações</TabsTrigger>
-            <TabsTrigger value="checklist" className={isMobile ? "flex-shrink-0" : ""}>Checklist</TabsTrigger>
+          <TabsList className="inline-flex w-full overflow-x-auto justify-start tabs-scroll">
+            <TabsTrigger value="epis" className="flex-shrink-0">EPIs</TabsTrigger>
+            <TabsTrigger value="uniformes" className="flex-shrink-0">Uniformes</TabsTrigger>
+            <TabsTrigger value="ferias" className="flex-shrink-0">Férias</TabsTrigger>
+            <TabsTrigger value="afastamentos" className="flex-shrink-0">Afastamentos</TabsTrigger>
+            <TabsTrigger value="folgas" className="flex-shrink-0">Folgas</TabsTrigger>
+            <TabsTrigger value="faltas" className="flex-shrink-0">Faltas</TabsTrigger>
+            <TabsTrigger value="arquivos" className="flex-shrink-0">Arquivos</TabsTrigger>
+            <TabsTrigger value="reajustes" className="flex-shrink-0">Histórico Salarial</TabsTrigger>
+            <TabsTrigger value="variaveis" className="flex-shrink-0">Variáveis Fixas</TabsTrigger>
+            <TabsTrigger value="exames" className="flex-shrink-0">Exames Médicos</TabsTrigger>
+            <TabsTrigger value="avaliacoes" className="flex-shrink-0">Avaliações</TabsTrigger>
+            <TabsTrigger value="checklist" className="flex-shrink-0">Checklist</TabsTrigger>
           </TabsList>
 
           <TabsContent value="epis">
