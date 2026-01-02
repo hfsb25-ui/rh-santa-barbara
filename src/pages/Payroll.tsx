@@ -62,6 +62,7 @@ interface PagamentoItem {
 interface Pagamento {
   id: string;
   employee_id: string;
+  empresa_id: string;
   valor_bruto: number;
   desconto: number;
   descontos: number;
@@ -201,6 +202,7 @@ const Payroll = () => {
       .select(`
         id,
         employee_id,
+        empresa_id,
         valor_bruto,
         desconto,
         descontos,
@@ -275,6 +277,7 @@ const Payroll = () => {
       .select(`
         id,
         employee_id,
+        empresa_id,
         valor_bruto,
         desconto,
         descontos,
