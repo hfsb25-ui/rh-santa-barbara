@@ -297,7 +297,8 @@ const HoleriteDialog = ({ open, onOpenChange, pagamento, empresaId }: HoleriteDi
 
     // Totais
     const totalProventos = pagamento.valor_bruto + proventos.reduce((sum, p) => sum + p.valor, 0);
-    const totalDescontos = (pagamento.desconto || 0) + descontos.reduce((sum, d) => sum + d.valor, 0);
+    // Total de descontos: somar apenas os itens de desconto do holerite
+    const totalDescontos = descontos.reduce((sum, d) => sum + d.valor, 0);
 
     doc.setFillColor(240, 240, 240);
     doc.rect(tableStartX, yPos - 3, tableWidth, 6, "F");
@@ -367,7 +368,8 @@ const HoleriteDialog = ({ open, onOpenChange, pagamento, empresaId }: HoleriteDi
   const proventos = pagamento.folha_pagamento_itens?.filter(i => i.variaveis_folha?.tipo === "provento") || [];
   const descontos = pagamento.folha_pagamento_itens?.filter(i => i.variaveis_folha?.tipo === "desconto") || [];
   const totalProventos = pagamento.valor_bruto + proventos.reduce((sum, p) => sum + p.valor, 0);
-  const totalDescontos = (pagamento.desconto || 0) + descontos.reduce((sum, d) => sum + d.valor, 0);
+  // Total de descontos: somar apenas os itens de desconto do holerite
+  const totalDescontos = descontos.reduce((sum, d) => sum + d.valor, 0);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
