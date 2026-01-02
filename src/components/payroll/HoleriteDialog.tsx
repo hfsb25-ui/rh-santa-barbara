@@ -22,6 +22,7 @@ interface PagamentoItem {
 interface Pagamento {
   id: string;
   employee_id: string;
+  empresa_id: string;
   valor_bruto: number;
   desconto: number;
   descontos: number;
@@ -85,26 +86,36 @@ const HoleriteDialog = ({ open, onOpenChange, pagamento, empresaId }: HoleriteDi
 
   const fetchData = async () => {
     if (!pagamento) return;
-    
+
+    const empresaIdToFetch = empresaId && empresaId !== "all" ? empresaId : pagamento.empresa_id;
+
     setLoading(true);
     try {
-      const { data: empresaData } = await supabase
-        .from("empresas")
-        .select("nome, cnpj, logo_url, endereco")
-        .eq("id", empresaId)
-        .single();
-      
-      setEmpresa(empresaData);
+      if (empresaIdToFetch) {
+        const { data: empresaData, error: empresaError } = await supabase
+          .from("empresas")
+          .select("nome, cnpj, logo_url, endereco")
+          .eq("id", empresaIdToFetch)
+          .single();
 
-      const { data: employeeData } = await supabase
+        if (empresaError) throw empresaError;
+        setEmpresa(empresaData);
+      } else {
+        setEmpresa(null);
+      }
+
+      const { data: employeeData, error: employeeError } = await supabase
         .from("employees")
         .select("nome_completo, cargo, cpf, data_admissao, setor, salario, tipo_salario")
         .eq("id", pagamento.employee_id)
         .single();
-      
+
+      if (employeeError) throw employeeError;
       setEmployee(employeeData);
     } catch (error) {
-      console.error("Erro ao carregar dados:", error);
+      console.error("Erro ao carregar dados do holerite:", error);
+      setEmpresa(null);
+      setEmployee(null);
     } finally {
       setLoading(false);
     }
@@ -487,9 +498,9 @@ const HoleriteDialog = ({ open, onOpenChange, pagamento, empresaId }: HoleriteDi
             </div>
 
             <div className="flex justify-end">
-              <Button onClick={generatePDF}>
+              <Button onClick={generatePDF} disabled={loading || !empresa || !employee}>
                 <Download className="w-4 h-4 mr-2" />
-                Baixar PDF
+                {loading ? "Carregando..." : "Baixar PDF"}
               </Button>
             </div>
           </div>
