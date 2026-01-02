@@ -145,8 +145,11 @@ const HoleriteDialog = ({ open, onOpenChange, pagamento, empresaId }: HoleriteDi
     return `${salario.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} ${sufixo}`;
   };
 
-  const generatePDF = async () => {
-    if (!pagamento || !empresa || !employee) return;
+  const generatePDF = () => {
+    if (!pagamento || !empresa || !employee) {
+      console.error("Dados insuficientes para gerar PDF");
+      return;
+    }
 
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.getWidth();
