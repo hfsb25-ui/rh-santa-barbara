@@ -47,12 +47,15 @@ interface Employee {
   cpf: string | null;
   data_admissao: string | null;
   setor: string | null;
+  salario: number | null;
+  tipo_salario: string | null;
 }
 
 interface Empresa {
   nome: string;
   cnpj: string | null;
   logo_url: string | null;
+  endereco: string | null;
 }
 
 interface HoleriteDialogProps {
@@ -63,10 +66,10 @@ interface HoleriteDialogProps {
 }
 
 const TIPO_FOLHA_LABELS: Record<string, string> = {
-  salario: "Folha de Salário",
-  complementar: "Folha Complementar",
-  adiantamento: "Folha de Adiantamento",
-  decimo_terceiro: "13º Salário",
+  salario: "Recibo de Pagamento",
+  complementar: "Recibo de Pagamento Complementar",
+  adiantamento: "Recibo de Adiantamento",
+  decimo_terceiro: "Recibo de 13º Salário",
 };
 
 const HoleriteDialog = ({ open, onOpenChange, pagamento, empresaId }: HoleriteDialogProps) => {
@@ -85,19 +88,17 @@ const HoleriteDialog = ({ open, onOpenChange, pagamento, empresaId }: HoleriteDi
     
     setLoading(true);
     try {
-      // Fetch empresa
       const { data: empresaData } = await supabase
         .from("empresas")
-        .select("nome, cnpj, logo_url")
+        .select("nome, cnpj, logo_url, endereco")
         .eq("id", empresaId)
         .single();
       
       setEmpresa(empresaData);
 
-      // Fetch employee details
       const { data: employeeData } = await supabase
         .from("employees")
-        .select("nome_completo, cargo, cpf, data_admissao, setor")
+        .select("nome_completo, cargo, cpf, data_admissao, setor, salario, tipo_salario")
         .eq("id", pagamento.employee_id)
         .single();
       
@@ -110,21 +111,38 @@ const HoleriteDialog = ({ open, onOpenChange, pagamento, empresaId }: HoleriteDi
   };
 
   const getTipoFolhaLabel = (tipo: string) => {
-    return TIPO_FOLHA_LABELS[tipo] || tipo;
+    return TIPO_FOLHA_LABELS[tipo] || "Recibo de Pagamento";
   };
 
-  const formatCPF = (cpf: string | null) => {
-    if (!cpf) return "-";
-    const cleaned = cpf.replace(/\D/g, "");
-    if (cleaned.length === 11) {
-      return `${cleaned.slice(0, 3)}.${cleaned.slice(3, 6)}.${cleaned.slice(6, 9)}-${cleaned.slice(9)}`;
+  const formatCNPJ = (cnpj: string | null) => {
+    if (!cnpj) return "";
+    const cleaned = cnpj.replace(/\D/g, "");
+    if (cleaned.length === 14) {
+      return `${cleaned.slice(0, 2)}.${cleaned.slice(2, 5)}.${cleaned.slice(5, 8)}/${cleaned.slice(8, 12)}-${cleaned.slice(12)}`;
     }
-    return cpf;
+    return cnpj;
   };
 
   const formatDate = (date: string | null) => {
     if (!date) return "-";
     return new Date(date).toLocaleDateString("pt-BR");
+  };
+
+  const getPeriodoStr = () => {
+    if (!pagamento) return "";
+    const ano = pagamento.ano;
+    const mes = pagamento.mes;
+    const primeiroDia = new Date(ano, mes - 1, 1);
+    const ultimoDia = new Date(ano, mes, 0);
+    return `${primeiroDia.toLocaleDateString("pt-BR")} Até ${ultimoDia.toLocaleDateString("pt-BR")}`;
+  };
+
+  const getSalarioBaseFormatado = () => {
+    if (!employee?.salario) return "-";
+    const salario = employee.salario;
+    const tipo = employee.tipo_salario;
+    const sufixo = tipo === "diaria" ? "/D" : tipo === "hora" ? "/H" : "";
+    return `${salario.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} ${sufixo}`;
   };
 
   const generatePDF = async () => {
@@ -133,166 +151,200 @@ const HoleriteDialog = ({ open, onOpenChange, pagamento, empresaId }: HoleriteDi
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.getWidth();
     
-    let yPos = 20;
+    let yPos = 15;
 
-    // Logo
-    if (empresa.logo_url) {
-      try {
-        const img = new Image();
-        img.crossOrigin = "anonymous";
-        await new Promise((resolve, reject) => {
-          img.onload = resolve;
-          img.onerror = reject;
-          img.src = empresa.logo_url!;
-        });
-        doc.addImage(img, "PNG", 15, yPos - 5, 25, 25);
-      } catch (e) {
-        console.log("Erro ao carregar logo");
-      }
-    }
-
-    // Header
-    doc.setFontSize(16);
+    // Header - Nome da empresa
+    doc.setFontSize(14);
     doc.setFont("helvetica", "bold");
-    doc.text("HOLERITE", pageWidth / 2, yPos, { align: "center" });
-    yPos += 8;
-
-    doc.setFontSize(12);
-    doc.setFont("helvetica", "normal");
-    doc.text(getTipoFolhaLabel(pagamento.tipo_folha || "salario"), pageWidth / 2, yPos, { align: "center" });
-    yPos += 12;
-
-    // Empresa info
-    doc.setFontSize(10);
-    doc.text(`Empresa: ${empresa.nome}`, 15, yPos);
-    yPos += 5;
-    if (empresa.cnpj) {
-      doc.text(`CNPJ: ${empresa.cnpj}`, 15, yPos);
-      yPos += 5;
-    }
-    
-    const mesNome = new Date(pagamento.ano, pagamento.mes - 1).toLocaleString("pt-BR", { month: "long" });
-    doc.text(`Período: ${mesNome.charAt(0).toUpperCase() + mesNome.slice(1)} / ${pagamento.ano}`, 15, yPos);
-    yPos += 10;
-
-    // Separator line
-    doc.setDrawColor(200);
-    doc.line(15, yPos, pageWidth - 15, yPos);
-    yPos += 8;
-
-    // Employee info
-    doc.setFont("helvetica", "bold");
-    doc.text("DADOS DO FUNCIONÁRIO", 15, yPos);
+    doc.text(empresa.nome, pageWidth / 2, yPos, { align: "center" });
     yPos += 6;
-    doc.setFont("helvetica", "normal");
-    doc.text(`Nome: ${employee.nome_completo}`, 15, yPos);
-    yPos += 5;
-    doc.text(`Cargo: ${employee.cargo}`, 15, yPos);
-    doc.text(`Setor: ${employee.setor || "-"}`, pageWidth / 2, yPos);
-    yPos += 5;
-    doc.text(`CPF: ${formatCPF(employee.cpf)}`, 15, yPos);
-    doc.text(`Admissão: ${formatDate(employee.data_admissao)}`, pageWidth / 2, yPos);
-    yPos += 10;
 
-    // Separator line
-    doc.line(15, yPos, pageWidth - 15, yPos);
+    // Endereço e CNPJ
+    doc.setFontSize(9);
+    doc.setFont("helvetica", "normal");
+    if (empresa.endereco) {
+      doc.text(empresa.endereco, pageWidth / 2, yPos, { align: "center" });
+      yPos += 4;
+    }
+    if (empresa.cnpj) {
+      doc.text(formatCNPJ(empresa.cnpj), pageWidth / 2, yPos, { align: "center" });
+      yPos += 6;
+    }
+
+    // Período
+    doc.setFontSize(9);
+    doc.text(`Período: ${getPeriodoStr()}`, pageWidth / 2, yPos, { align: "center" });
     yPos += 8;
 
-    // Proventos e Descontos
+    // Linha separadora
+    doc.setDrawColor(0);
+    doc.setLineWidth(0.5);
+    doc.line(10, yPos, pageWidth - 10, yPos);
+    yPos += 6;
+
+    // Título do recibo
+    doc.setFontSize(12);
+    doc.setFont("helvetica", "bold");
+    doc.text(getTipoFolhaLabel(pagamento.tipo_folha || "salario"), pageWidth / 2, yPos, { align: "center" });
+    yPos += 8;
+
+    // Tabela de dados do funcionário
+    const tableStartX = 10;
+    const tableWidth = pageWidth - 20;
+    
+    doc.setFontSize(8);
+    doc.setFont("helvetica", "normal");
+    
+    // Linha 1 - Headers
+    doc.setFillColor(240, 240, 240);
+    doc.rect(tableStartX, yPos - 3, tableWidth, 5, "F");
+    doc.setDrawColor(0);
+    doc.rect(tableStartX, yPos - 3, tableWidth, 5, "S");
+    
+    const col1 = tableStartX + 2;
+    const col2 = tableStartX + 30;
+    const col3 = tableStartX + 120;
+    const col4 = tableStartX + 155;
+    
+    doc.setFont("helvetica", "bold");
+    doc.text("Código:", col1, yPos);
+    doc.text("Nome:", col2, yPos);
+    doc.text("Setor:", col3, yPos);
+    doc.text("Admissão:", col4, yPos);
+    yPos += 5;
+
+    // Linha 2 - Values
+    doc.rect(tableStartX, yPos - 3, tableWidth, 5, "S");
+    doc.setFont("helvetica", "normal");
+    doc.text("-", col1, yPos);
+    doc.text(employee.nome_completo.toUpperCase(), col2, yPos);
+    doc.text(employee.setor || "-", col3, yPos);
+    doc.text(formatDate(employee.data_admissao), col4, yPos);
+    yPos += 8;
+
+    // Tabela de itens
     const proventos = pagamento.folha_pagamento_itens?.filter(i => i.variaveis_folha?.tipo === "provento") || [];
     const descontos = pagamento.folha_pagamento_itens?.filter(i => i.variaveis_folha?.tipo === "desconto") || [];
 
-    // Table header
+    // Header da tabela de itens
     doc.setFillColor(240, 240, 240);
-    doc.rect(15, yPos - 4, pageWidth - 30, 8, "F");
+    doc.rect(tableStartX, yPos - 3, tableWidth, 6, "F");
+    doc.rect(tableStartX, yPos - 3, tableWidth, 6, "S");
+    
     doc.setFont("helvetica", "bold");
-    doc.text("DESCRIÇÃO", 20, yPos);
-    doc.text("PROVENTOS", pageWidth - 70, yPos, { align: "right" });
-    doc.text("DESCONTOS", pageWidth - 20, yPos, { align: "right" });
-    yPos += 10;
-
-    doc.setFont("helvetica", "normal");
-
-    // Salário base
-    doc.text("Salário Base", 20, yPos);
-    doc.text(`R$ ${pagamento.valor_bruto.toFixed(2)}`, pageWidth - 70, yPos, { align: "right" });
-    doc.text("-", pageWidth - 20, yPos, { align: "right" });
+    doc.text("Cód.", tableStartX + 3, yPos);
+    doc.text("Descrição", tableStartX + 20, yPos);
+    doc.text("Referência", tableStartX + 90, yPos);
+    doc.text("Vencimentos", tableStartX + 125, yPos);
+    doc.text("Descontos", tableStartX + 160, yPos);
     yPos += 6;
 
+    doc.setFont("helvetica", "normal");
+    const rowHeight = 5;
+    
+    // Salário base
+    doc.rect(tableStartX, yPos - 3, tableWidth, rowHeight, "S");
+    doc.text("001", tableStartX + 3, yPos);
+    doc.text("Salário Base", tableStartX + 20, yPos);
+    doc.text("-", tableStartX + 90, yPos);
+    doc.text(pagamento.valor_bruto.toLocaleString("pt-BR", { minimumFractionDigits: 2 }), tableStartX + 125, yPos);
+    doc.text("", tableStartX + 160, yPos);
+    yPos += rowHeight;
+
     // Proventos
-    proventos.forEach(item => {
-      doc.text(item.variaveis_folha?.nome || "-", 20, yPos);
-      doc.text(`R$ ${item.valor.toFixed(2)}`, pageWidth - 70, yPos, { align: "right" });
-      doc.text("-", pageWidth - 20, yPos, { align: "right" });
-      yPos += 6;
+    proventos.forEach((item, index) => {
+      doc.rect(tableStartX, yPos - 3, tableWidth, rowHeight, "S");
+      doc.text(item.variaveis_folha?.codigo || String(index + 2).padStart(3, "0"), tableStartX + 3, yPos);
+      doc.text(item.variaveis_folha?.nome || "-", tableStartX + 20, yPos);
+      doc.text("-", tableStartX + 90, yPos);
+      doc.text(item.valor.toLocaleString("pt-BR", { minimumFractionDigits: 2 }), tableStartX + 125, yPos);
+      doc.text("", tableStartX + 160, yPos);
+      yPos += rowHeight;
     });
 
     // Descontos
-    descontos.forEach(item => {
-      doc.text(item.variaveis_folha?.nome || "-", 20, yPos);
-      doc.text("-", pageWidth - 70, yPos, { align: "right" });
-      doc.text(`R$ ${item.valor.toFixed(2)}`, pageWidth - 20, yPos, { align: "right" });
-      yPos += 6;
+    descontos.forEach((item, index) => {
+      doc.rect(tableStartX, yPos - 3, tableWidth, rowHeight, "S");
+      doc.text(item.variaveis_folha?.codigo || String(proventos.length + index + 2).padStart(3, "0"), tableStartX + 3, yPos);
+      doc.text(item.variaveis_folha?.nome || "-", tableStartX + 20, yPos);
+      doc.text("-", tableStartX + 90, yPos);
+      doc.text("", tableStartX + 125, yPos);
+      doc.text(item.valor.toLocaleString("pt-BR", { minimumFractionDigits: 2 }), tableStartX + 160, yPos);
+      yPos += rowHeight;
     });
 
-    yPos += 4;
+    // Linhas vazias para preencher
+    for (let i = 0; i < Math.max(0, 3 - proventos.length - descontos.length); i++) {
+      doc.rect(tableStartX, yPos - 3, tableWidth, rowHeight, "S");
+      yPos += rowHeight;
+    }
 
-    // Separator line
-    doc.line(15, yPos, pageWidth - 15, yPos);
-    yPos += 8;
+    yPos += 3;
 
-    // Totals
+    // Totais
     const totalProventos = pagamento.valor_bruto + proventos.reduce((sum, p) => sum + p.valor, 0);
     const totalDescontos = (pagamento.desconto || 0) + descontos.reduce((sum, d) => sum + d.valor, 0);
 
+    doc.setFillColor(240, 240, 240);
+    doc.rect(tableStartX, yPos - 3, tableWidth, 6, "F");
+    doc.rect(tableStartX, yPos - 3, tableWidth, 6, "S");
     doc.setFont("helvetica", "bold");
-    doc.text("TOTAL PROVENTOS:", 20, yPos);
-    doc.text(`R$ ${totalProventos.toFixed(2)}`, pageWidth - 70, yPos, { align: "right" });
-    yPos += 6;
+    doc.text("Total dos Vencimentos", tableStartX + 3, yPos);
+    doc.text(totalProventos.toLocaleString("pt-BR", { minimumFractionDigits: 2 }), tableStartX + 90, yPos);
+    doc.text("Total dos Descontos", tableStartX + 120, yPos);
+    doc.text(totalDescontos.toLocaleString("pt-BR", { minimumFractionDigits: 2 }), tableStartX + 170, yPos);
+    yPos += 8;
 
-    doc.text("TOTAL DESCONTOS:", 20, yPos);
-    doc.text(`R$ ${totalDescontos.toFixed(2)}`, pageWidth - 20, yPos, { align: "right" });
-    yPos += 10;
+    // Valor Líquido
+    doc.setFillColor(220, 220, 220);
+    doc.rect(tableStartX, yPos - 3, tableWidth, 8, "F");
+    doc.rect(tableStartX, yPos - 3, tableWidth, 8, "S");
+    doc.setFontSize(11);
+    doc.text("Valor Líquido ->", tableStartX + 3, yPos + 1);
+    doc.text(`R$ ${pagamento.valor_liquido.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`, tableStartX + 90, yPos + 1);
+    yPos += 12;
 
-    // Separator line
-    doc.setLineWidth(0.5);
-    doc.line(15, yPos, pageWidth - 15, yPos);
-    yPos += 10;
-
-    // Valor líquido
-    doc.setFontSize(14);
-    doc.text("VALOR LÍQUIDO:", 20, yPos);
-    doc.text(`R$ ${pagamento.valor_liquido.toFixed(2)}`, pageWidth - 20, yPos, { align: "right" });
-    yPos += 15;
-
-    // Observações
-    if (pagamento.observacoes) {
-      doc.setFontSize(10);
-      doc.setFont("helvetica", "normal");
-      doc.text("Observações:", 15, yPos);
-      yPos += 5;
-      doc.text(pagamento.observacoes, 15, yPos, { maxWidth: pageWidth - 30 });
-      yPos += 15;
-    }
-
-    // Signature line
-    yPos = Math.max(yPos + 20, 230);
-    doc.setLineWidth(0.2);
-    doc.line(30, yPos, 90, yPos);
-    doc.line(pageWidth - 90, yPos, pageWidth - 30, yPos);
+    // Base de cálculos
+    doc.setFontSize(8);
+    doc.setFont("helvetica", "bold");
+    doc.setFillColor(240, 240, 240);
+    doc.rect(tableStartX, yPos - 3, tableWidth, 5, "F");
+    doc.rect(tableStartX, yPos - 3, tableWidth, 5, "S");
+    doc.text("Salário Base", tableStartX + 3, yPos);
+    doc.text("Base INSS", tableStartX + 40, yPos);
+    doc.text("Base Cálc. FGTS", tableStartX + 75, yPos);
+    doc.text("FGTS do Mês", tableStartX + 115, yPos);
+    doc.text("Base Cálc. IRRF", tableStartX + 155, yPos);
     yPos += 5;
-    doc.setFontSize(9);
+
+    doc.setFont("helvetica", "normal");
+    doc.rect(tableStartX, yPos - 3, tableWidth, 5, "S");
+    doc.text(getSalarioBaseFormatado(), tableStartX + 3, yPos);
+    doc.text("0,00", tableStartX + 40, yPos);
+    doc.text("0,00", tableStartX + 75, yPos);
+    doc.text("0,00", tableStartX + 115, yPos);
+    doc.text("0,00", tableStartX + 155, yPos);
+    yPos += 10;
+
+    // Assinaturas
+    yPos = Math.max(yPos + 15, 220);
+    doc.setLineWidth(0.3);
+    doc.line(25, yPos, 95, yPos);
+    doc.line(pageWidth - 95, yPos, pageWidth - 25, yPos);
+    yPos += 4;
+    doc.setFontSize(8);
     doc.text("Assinatura do Empregador", 60, yPos, { align: "center" });
     doc.text("Assinatura do Funcionário", pageWidth - 60, yPos, { align: "center" });
 
-    // Footer
+    // Rodapé
     yPos = 280;
-    doc.setFontSize(8);
+    doc.setFontSize(7);
     doc.setTextColor(128);
-    doc.text(`Documento gerado em ${new Date().toLocaleDateString("pt-BR")} às ${new Date().toLocaleTimeString("pt-BR")}`, pageWidth / 2, yPos, { align: "center" });
+    doc.text("Processado por: Sistema RH", tableStartX, yPos);
+    doc.text(`Gerado em ${new Date().toLocaleDateString("pt-BR")}`, pageWidth - 10, yPos, { align: "right" });
 
     // Save
-    const nomeArquivo = `holerite-${employee.nome_completo.replace(/\s+/g, "-").toLowerCase()}-${pagamento.mes}-${pagamento.ano}.pdf`;
+    const nomeArquivo = `recibo-${employee.nome_completo.replace(/\s+/g, "-").toLowerCase()}-${pagamento.mes}-${pagamento.ano}.pdf`;
     doc.save(nomeArquivo);
   };
 
@@ -305,9 +357,9 @@ const HoleriteDialog = ({ open, onOpenChange, pagamento, empresaId }: HoleriteDi
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Holerite</DialogTitle>
+          <DialogTitle>Recibo de Pagamento</DialogTitle>
         </DialogHeader>
         
         {loading ? (
@@ -315,83 +367,120 @@ const HoleriteDialog = ({ open, onOpenChange, pagamento, empresaId }: HoleriteDi
             <p>Carregando...</p>
           </div>
         ) : (
-          <div className="space-y-6">
-            {/* Preview */}
-            <div className="border rounded-lg p-6 bg-white dark:bg-card">
-              <div className="text-center mb-4">
-                <h2 className="text-xl font-bold">HOLERITE</h2>
-                <p className="text-muted-foreground">{getTipoFolhaLabel(pagamento.tipo_folha || "salario")}</p>
+          <div className="space-y-4">
+            {/* Preview estilo recibo */}
+            <div className="border rounded-lg bg-white dark:bg-card text-foreground font-mono text-sm">
+              {/* Cabeçalho da empresa */}
+              <div className="text-center border-b p-4">
+                <h2 className="text-lg font-bold">{empresa?.nome}</h2>
+                {empresa?.endereco && (
+                  <p className="text-xs text-muted-foreground">{empresa.endereco}</p>
+                )}
+                {empresa?.cnpj && (
+                  <p className="text-xs text-muted-foreground">{formatCNPJ(empresa.cnpj)}</p>
+                )}
+                <p className="text-xs mt-2">Período: {getPeriodoStr()}</p>
               </div>
 
-              <div className="grid grid-cols-2 gap-4 text-sm mb-4">
-                <div>
-                  <p><strong>Empresa:</strong> {empresa?.nome}</p>
-                  {empresa?.cnpj && <p><strong>CNPJ:</strong> {empresa.cnpj}</p>}
+              {/* Título */}
+              <div className="text-center py-2 border-b bg-muted/30">
+                <h3 className="font-bold">{getTipoFolhaLabel(pagamento.tipo_folha || "salario")}</h3>
+              </div>
+
+              {/* Dados do funcionário */}
+              <div className="border-b">
+                <div className="grid grid-cols-4 text-xs bg-muted/50 border-b">
+                  <div className="p-2 border-r font-semibold">Código:</div>
+                  <div className="p-2 border-r font-semibold">Nome:</div>
+                  <div className="p-2 border-r font-semibold">Setor:</div>
+                  <div className="p-2 font-semibold">Admissão:</div>
                 </div>
-                <div className="text-right">
-                  <p><strong>Período:</strong> {new Date(pagamento.ano, pagamento.mes - 1).toLocaleString("pt-BR", { month: "long" })} / {pagamento.ano}</p>
+                <div className="grid grid-cols-4 text-xs">
+                  <div className="p-2 border-r">-</div>
+                  <div className="p-2 border-r font-medium">{employee?.nome_completo?.toUpperCase()}</div>
+                  <div className="p-2 border-r">{employee?.setor || "-"}</div>
+                  <div className="p-2">{formatDate(employee?.data_admissao || null)}</div>
                 </div>
               </div>
 
-              <div className="border-t pt-4 mb-4">
-                <p className="font-semibold mb-2">Dados do Funcionário</p>
-                <div className="grid grid-cols-2 gap-2 text-sm">
-                  <p><strong>Nome:</strong> {employee?.nome_completo}</p>
-                  <p><strong>Cargo:</strong> {employee?.cargo}</p>
-                  <p><strong>CPF:</strong> {formatCPF(employee?.cpf || null)}</p>
-                  <p><strong>Admissão:</strong> {formatDate(employee?.data_admissao || null)}</p>
+              {/* Tabela de itens */}
+              <div className="border-b">
+                <div className="grid grid-cols-5 text-xs bg-muted/50 border-b font-semibold">
+                  <div className="p-2 border-r">Cód.</div>
+                  <div className="p-2 border-r col-span-2">Descrição</div>
+                  <div className="p-2 border-r text-right">Vencimentos</div>
+                  <div className="p-2 text-right">Descontos</div>
+                </div>
+                
+                {/* Salário Base */}
+                <div className="grid grid-cols-5 text-xs border-b">
+                  <div className="p-2 border-r">001</div>
+                  <div className="p-2 border-r col-span-2">Salário Base</div>
+                  <div className="p-2 border-r text-right">{pagamento.valor_bruto.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</div>
+                  <div className="p-2 text-right"></div>
+                </div>
+
+                {/* Proventos */}
+                {proventos.map((item, index) => (
+                  <div key={item.id} className="grid grid-cols-5 text-xs border-b">
+                    <div className="p-2 border-r">{item.variaveis_folha?.codigo || String(index + 2).padStart(3, "0")}</div>
+                    <div className="p-2 border-r col-span-2">{item.variaveis_folha?.nome}</div>
+                    <div className="p-2 border-r text-right">{item.valor.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</div>
+                    <div className="p-2 text-right"></div>
+                  </div>
+                ))}
+
+                {/* Descontos */}
+                {descontos.map((item, index) => (
+                  <div key={item.id} className="grid grid-cols-5 text-xs border-b">
+                    <div className="p-2 border-r">{item.variaveis_folha?.codigo || String(proventos.length + index + 2).padStart(3, "0")}</div>
+                    <div className="p-2 border-r col-span-2">{item.variaveis_folha?.nome}</div>
+                    <div className="p-2 border-r text-right"></div>
+                    <div className="p-2 text-right">{item.valor.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Totais */}
+              <div className="grid grid-cols-2 text-xs border-b bg-muted/30">
+                <div className="p-2 border-r flex justify-between">
+                  <span className="font-semibold">Total dos Vencimentos</span>
+                  <span className="text-green-600 dark:text-green-400 font-bold">{totalProventos.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
+                </div>
+                <div className="p-2 flex justify-between">
+                  <span className="font-semibold">Total dos Descontos</span>
+                  <span className="text-red-600 dark:text-red-400 font-bold">{totalDescontos.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
                 </div>
               </div>
 
-              <div className="border-t pt-4">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="bg-muted">
-                      <th className="text-left p-2">Descrição</th>
-                      <th className="text-right p-2">Proventos</th>
-                      <th className="text-right p-2">Descontos</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr>
-                      <td className="p-2">Salário Base</td>
-                      <td className="text-right p-2">R$ {pagamento.valor_bruto.toFixed(2)}</td>
-                      <td className="text-right p-2">-</td>
-                    </tr>
-                    {proventos.map(item => (
-                      <tr key={item.id}>
-                        <td className="p-2">{item.variaveis_folha?.nome}</td>
-                        <td className="text-right p-2">R$ {item.valor.toFixed(2)}</td>
-                        <td className="text-right p-2">-</td>
-                      </tr>
-                    ))}
-                    {descontos.map(item => (
-                      <tr key={item.id}>
-                        <td className="p-2">{item.variaveis_folha?.nome}</td>
-                        <td className="text-right p-2">-</td>
-                        <td className="text-right p-2">R$ {item.valor.toFixed(2)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                  <tfoot className="border-t font-semibold">
-                    <tr>
-                      <td className="p-2">TOTAIS</td>
-                      <td className="text-right p-2 text-green-600">R$ {totalProventos.toFixed(2)}</td>
-                      <td className="text-right p-2 text-red-600">R$ {totalDescontos.toFixed(2)}</td>
-                    </tr>
-                    <tr className="bg-primary/10">
-                      <td className="p-2 font-bold" colSpan={2}>VALOR LÍQUIDO</td>
-                      <td className="text-right p-2 font-bold text-lg">R$ {pagamento.valor_liquido.toFixed(2)}</td>
-                    </tr>
-                  </tfoot>
-                </table>
+              {/* Valor Líquido */}
+              <div className="p-3 bg-primary/10 border-b flex justify-between items-center">
+                <span className="font-bold text-base">Valor Líquido →</span>
+                <span className="font-bold text-lg">R$ {pagamento.valor_liquido.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
               </div>
 
-              {pagamento.observacoes && (
-                <div className="border-t pt-4 mt-4">
-                  <p className="text-sm"><strong>Observações:</strong> {pagamento.observacoes}</p>
+              {/* Base de cálculos */}
+              <div className="text-xs">
+                <div className="grid grid-cols-5 bg-muted/50 border-b font-semibold">
+                  <div className="p-2 border-r">Salário Base</div>
+                  <div className="p-2 border-r">Base INSS</div>
+                  <div className="p-2 border-r">Base Cálc. FGTS</div>
+                  <div className="p-2 border-r">FGTS do Mês</div>
+                  <div className="p-2">Base Cálc. IRRF</div>
                 </div>
-              )}
+                <div className="grid grid-cols-5">
+                  <div className="p-2 border-r">{getSalarioBaseFormatado()}</div>
+                  <div className="p-2 border-r">0,00</div>
+                  <div className="p-2 border-r">0,00</div>
+                  <div className="p-2 border-r">0,00</div>
+                  <div className="p-2">0,00</div>
+                </div>
+              </div>
+
+              {/* Rodapé */}
+              <div className="p-2 text-xs text-muted-foreground border-t flex justify-between">
+                <span>Processado por: Sistema RH</span>
+              </div>
             </div>
 
             <div className="flex justify-end">
