@@ -66,13 +66,6 @@ interface HoleriteDialogProps {
   empresaId: string;
 }
 
-const TIPO_FOLHA_LABELS: Record<string, string> = {
-  salario: "Recibo de Pagamento",
-  complementar: "Recibo de Pagamento Complementar",
-  adiantamento: "Recibo de Adiantamento",
-  decimo_terceiro: "Recibo de 13º Salário",
-};
-
 const HoleriteDialog = ({ open, onOpenChange, pagamento, empresaId }: HoleriteDialogProps) => {
   const [empresa, setEmpresa] = useState<Empresa | null>(null);
   const [employee, setEmployee] = useState<Employee | null>(null);
@@ -121,10 +114,6 @@ const HoleriteDialog = ({ open, onOpenChange, pagamento, empresaId }: HoleriteDi
     }
   };
 
-  const getTipoFolhaLabel = (tipo: string) => {
-    return TIPO_FOLHA_LABELS[tipo] || "Recibo de Pagamento";
-  };
-
   const formatCNPJ = (cnpj: string | null) => {
     if (!cnpj) return "";
     const cleaned = cnpj.replace(/\D/g, "");
@@ -148,12 +137,11 @@ const HoleriteDialog = ({ open, onOpenChange, pagamento, empresaId }: HoleriteDi
     return `${primeiroDia.toLocaleDateString("pt-BR")} Até ${ultimoDia.toLocaleDateString("pt-BR")}`;
   };
 
-  const getSalarioBaseFormatado = () => {
-    if (!employee?.salario) return "-";
-    const salario = employee.salario;
+  const getSalarioBase = () => {
+    if (!employee?.salario) return { valor: 0, sufixo: "/M" };
     const tipo = employee.tipo_salario;
-    const sufixo = tipo === "diaria" ? "/D" : tipo === "hora" ? "/H" : "";
-    return `${salario.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} ${sufixo}`;
+    const sufixo = tipo === "diaria" ? "/D" : tipo === "hora" ? "/H" : "/M";
+    return { valor: employee.salario, sufixo };
   };
 
   const generatePDF = () => {
@@ -164,199 +152,226 @@ const HoleriteDialog = ({ open, onOpenChange, pagamento, empresaId }: HoleriteDi
 
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.getWidth();
+    const marginLeft = 10;
+    const marginRight = 25; // Espaço para barra de assinatura
+    const contentWidth = pageWidth - marginLeft - marginRight;
     
-    let yPos = 15;
+    let yPos = 12;
 
-    // Header - Nome da empresa
-    doc.setFontSize(14);
+    // Número + Nome da empresa no topo esquerdo
+    doc.setFontSize(10);
     doc.setFont("helvetica", "bold");
-    doc.text(empresa.nome, pageWidth / 2, yPos, { align: "center" });
-    yPos += 6;
+    doc.text(`3       ${empresa.nome}`, marginLeft, yPos);
+    yPos += 4;
 
     // Endereço e CNPJ
-    doc.setFontSize(9);
-    doc.setFont("helvetica", "normal");
-    if (empresa.endereco) {
-      doc.text(empresa.endereco, pageWidth / 2, yPos, { align: "center" });
-      yPos += 4;
-    }
-    if (empresa.cnpj) {
-      doc.text(formatCNPJ(empresa.cnpj), pageWidth / 2, yPos, { align: "center" });
-      yPos += 6;
-    }
-
-    // Período
-    doc.setFontSize(9);
-    doc.text(`Período: ${getPeriodoStr()}`, pageWidth / 2, yPos, { align: "center" });
-    yPos += 8;
-
-    // Linha separadora
-    doc.setDrawColor(0);
-    doc.setLineWidth(0.5);
-    doc.line(10, yPos, pageWidth - 10, yPos);
-    yPos += 6;
-
-    // Título do recibo
-    doc.setFontSize(12);
-    doc.setFont("helvetica", "bold");
-    doc.text(getTipoFolhaLabel(pagamento.tipo_folha || "salario"), pageWidth / 2, yPos, { align: "center" });
-    yPos += 8;
-
-    // Tabela de dados do funcionário
-    const tableStartX = 10;
-    const tableWidth = pageWidth - 20;
-    
     doc.setFontSize(8);
     doc.setFont("helvetica", "normal");
-    
-    // Linha 1 - Headers
-    doc.setFillColor(240, 240, 240);
-    doc.rect(tableStartX, yPos - 3, tableWidth, 5, "F");
-    doc.setDrawColor(0);
-    doc.rect(tableStartX, yPos - 3, tableWidth, 5, "S");
-    
-    const col1 = tableStartX + 2;
-    const col2 = tableStartX + 30;
-    const col3 = tableStartX + 120;
-    const col4 = tableStartX + 155;
-    
-    doc.setFont("helvetica", "bold");
-    doc.text("Código:", col1, yPos);
-    doc.text("Nome:", col2, yPos);
-    doc.text("Setor:", col3, yPos);
-    doc.text("Admissão:", col4, yPos);
-    yPos += 5;
+    if (empresa.endereco) {
+      const enderecoParts = empresa.endereco.split(",");
+      doc.text(`${enderecoParts[0] || ""} ${formatCNPJ(empresa.cnpj)}`, marginLeft, yPos);
+      yPos += 3;
+      if (enderecoParts.length > 1) {
+        doc.text(enderecoParts.slice(1).join(",").trim(), marginLeft, yPos);
+        yPos += 3;
+      }
+    }
 
-    // Linha 2 - Values
-    doc.rect(tableStartX, yPos - 3, tableWidth, 5, "S");
+    // Período no canto direito
+    doc.text(`Período: ${getPeriodoStr()}`, pageWidth - marginRight - 5, yPos - 6, { align: "right" });
+    yPos += 2;
+
+    // Linha horizontal
+    doc.setDrawColor(0);
+    doc.setLineWidth(0.3);
+    doc.line(marginLeft, yPos, pageWidth - marginRight, yPos);
+    yPos += 4;
+
+    // Dados do funcionário - Primeira linha
+    doc.setFontSize(7);
+    doc.setFont("helvetica", "bold");
+    doc.text("Cód/Contr: Nome:", marginLeft, yPos);
+    doc.text("PIS:", marginLeft + 85, yPos);
+    doc.text("CBO:", marginLeft + 100, yPos);
+    doc.text("C/Custo:", marginLeft + 115, yPos);
+    doc.text("Dpto:", marginLeft + 130, yPos);
+    doc.text("Setor:", marginLeft + 143, yPos);
+    doc.text("Seção:", marginLeft + 156, yPos);
+    doc.text("Admissão:", pageWidth - marginRight - 25, yPos);
+    yPos += 4;
+
     doc.setFont("helvetica", "normal");
-    doc.text("-", col1, yPos);
-    doc.text(employee.nome_completo.toUpperCase(), col2, yPos);
-    doc.text(employee.setor || "-", col3, yPos);
-    doc.text(formatDate(employee.data_admissao), col4, yPos);
+    doc.text(`- / -   ${employee.nome_completo.toUpperCase()}`, marginLeft, yPos);
+    doc.text("-", marginLeft + 85, yPos);
+    doc.text("-", marginLeft + 100, yPos);
+    doc.text("", marginLeft + 115, yPos);
+    doc.text("", marginLeft + 130, yPos);
+    doc.text("", marginLeft + 143, yPos);
+    doc.text("", marginLeft + 156, yPos);
+    doc.text(formatDate(employee.data_admissao), pageWidth - marginRight - 25, yPos);
+    yPos += 4;
+
+    // Função
+    doc.setFont("helvetica", "bold");
+    doc.text("Função:", marginLeft + 85, yPos);
+    doc.setFont("helvetica", "normal");
+    doc.text(employee.cargo?.toUpperCase() || "-", marginLeft + 100, yPos);
+    yPos += 6;
+
+    // Título centralizado com fundo
+    doc.setFillColor(230, 230, 230);
+    doc.rect(marginLeft, yPos - 3, contentWidth, 7, "F");
+    doc.setDrawColor(0);
+    doc.rect(marginLeft, yPos - 3, contentWidth, 7, "S");
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "bold");
+    doc.text("Recibo de Pagamento de Salário", marginLeft + contentWidth / 2, yPos + 1, { align: "center" });
     yPos += 8;
 
-    // Tabela de itens
-    const proventos = pagamento.folha_pagamento_itens?.filter(i => i.variaveis_folha?.tipo === "provento") || [];
-    const descontos = pagamento.folha_pagamento_itens?.filter(i => i.variaveis_folha?.tipo === "desconto") || [];
+    // Tabela de itens - Header
+    const colCod = marginLeft;
+    const colDesc = marginLeft + 15;
+    const colRef = marginLeft + 85;
+    const colVenc = marginLeft + 115;
+    const colDesc2 = marginLeft + 145;
 
-    // Header da tabela de itens
-    doc.setFillColor(240, 240, 240);
-    doc.rect(tableStartX, yPos - 3, tableWidth, 6, "F");
-    doc.rect(tableStartX, yPos - 3, tableWidth, 6, "S");
+    doc.setFillColor(245, 245, 245);
+    doc.rect(marginLeft, yPos - 3, contentWidth, 6, "F");
+    doc.rect(marginLeft, yPos - 3, contentWidth, 6, "S");
     
+    doc.setFontSize(8);
     doc.setFont("helvetica", "bold");
-    doc.text("Cód.", tableStartX + 3, yPos);
-    doc.text("Descrição", tableStartX + 20, yPos);
-    doc.text("Referência", tableStartX + 90, yPos);
-    doc.text("Vencimentos", tableStartX + 125, yPos);
-    doc.text("Descontos", tableStartX + 160, yPos);
+    doc.text("Cod.", colCod + 2, yPos);
+    doc.text("Descrição", colDesc, yPos);
+    doc.text("Referência", colRef, yPos);
+    doc.text("Vencimentos", colVenc, yPos);
+    doc.text("Descontos", colDesc2, yPos);
     yPos += 6;
 
     doc.setFont("helvetica", "normal");
     const rowHeight = 5;
-    
+    const proventos = pagamento.folha_pagamento_itens?.filter(i => i.variaveis_folha?.tipo === "provento") || [];
+    const descontos = pagamento.folha_pagamento_itens?.filter(i => i.variaveis_folha?.tipo === "desconto") || [];
+
     // Salário base
-    doc.rect(tableStartX, yPos - 3, tableWidth, rowHeight, "S");
-    doc.text("001", tableStartX + 3, yPos);
-    doc.text("Salário Base", tableStartX + 20, yPos);
-    doc.text("-", tableStartX + 90, yPos);
-    doc.text(pagamento.valor_bruto.toLocaleString("pt-BR", { minimumFractionDigits: 2 }), tableStartX + 125, yPos);
-    doc.text("", tableStartX + 160, yPos);
+    doc.rect(marginLeft, yPos - 3, contentWidth, rowHeight, "S");
+    doc.text("1", colCod + 2, yPos);
+    doc.text("Dias Salário Normal", colDesc, yPos);
+    const salarioBase = getSalarioBase();
+    doc.text(`30,00 ${salarioBase.sufixo === "/D" ? "D" : salarioBase.sufixo === "/H" ? "H" : ""}`.trim(), colRef, yPos);
+    doc.text(pagamento.valor_bruto.toLocaleString("pt-BR", { minimumFractionDigits: 2 }), colVenc, yPos);
     yPos += rowHeight;
 
     // Proventos
-    proventos.forEach((item, index) => {
-      doc.rect(tableStartX, yPos - 3, tableWidth, rowHeight, "S");
-      doc.text(item.variaveis_folha?.codigo || String(index + 2).padStart(3, "0"), tableStartX + 3, yPos);
-      doc.text(item.variaveis_folha?.nome || "-", tableStartX + 20, yPos);
-      doc.text("-", tableStartX + 90, yPos);
-      doc.text(item.valor.toLocaleString("pt-BR", { minimumFractionDigits: 2 }), tableStartX + 125, yPos);
-      doc.text("", tableStartX + 160, yPos);
+    proventos.forEach((item) => {
+      doc.rect(marginLeft, yPos - 3, contentWidth, rowHeight, "S");
+      doc.text(item.variaveis_folha?.codigo || "-", colCod + 2, yPos);
+      doc.text(item.variaveis_folha?.nome || "-", colDesc, yPos);
+      doc.text("", colRef, yPos);
+      doc.text(item.valor.toLocaleString("pt-BR", { minimumFractionDigits: 2 }), colVenc, yPos);
       yPos += rowHeight;
     });
 
     // Descontos
-    descontos.forEach((item, index) => {
-      doc.rect(tableStartX, yPos - 3, tableWidth, rowHeight, "S");
-      doc.text(item.variaveis_folha?.codigo || String(proventos.length + index + 2).padStart(3, "0"), tableStartX + 3, yPos);
-      doc.text(item.variaveis_folha?.nome || "-", tableStartX + 20, yPos);
-      doc.text("-", tableStartX + 90, yPos);
-      doc.text("", tableStartX + 125, yPos);
-      doc.text(item.valor.toLocaleString("pt-BR", { minimumFractionDigits: 2 }), tableStartX + 160, yPos);
+    descontos.forEach((item) => {
+      doc.rect(marginLeft, yPos - 3, contentWidth, rowHeight, "S");
+      doc.text(item.variaveis_folha?.codigo || "-", colCod + 2, yPos);
+      doc.text(item.variaveis_folha?.nome || "-", colDesc, yPos);
+      doc.text("", colRef, yPos);
+      doc.text("", colVenc, yPos);
+      doc.text(item.valor.toLocaleString("pt-BR", { minimumFractionDigits: 2 }), colDesc2, yPos);
       yPos += rowHeight;
     });
 
-    // Linhas vazias para preencher
-    for (let i = 0; i < Math.max(0, 3 - proventos.length - descontos.length); i++) {
-      doc.rect(tableStartX, yPos - 3, tableWidth, rowHeight, "S");
+    // Linhas vazias
+    const totalLinhas = 1 + proventos.length + descontos.length;
+    const linhasVazias = Math.max(0, 15 - totalLinhas);
+    for (let i = 0; i < linhasVazias; i++) {
+      doc.rect(marginLeft, yPos - 3, contentWidth, rowHeight, "S");
       yPos += rowHeight;
     }
 
-    yPos += 3;
-
     // Totais
     const totalProventos = pagamento.valor_bruto + proventos.reduce((sum, p) => sum + p.valor, 0);
-    // Total de descontos: somar apenas os itens de desconto do holerite
     const totalDescontos = descontos.reduce((sum, d) => sum + d.valor, 0);
 
-    doc.setFillColor(240, 240, 240);
-    doc.rect(tableStartX, yPos - 3, tableWidth, 6, "F");
-    doc.rect(tableStartX, yPos - 3, tableWidth, 6, "S");
+    doc.setFillColor(245, 245, 245);
+    doc.rect(marginLeft, yPos - 3, contentWidth, 6, "F");
+    doc.rect(marginLeft, yPos - 3, contentWidth, 6, "S");
     doc.setFont("helvetica", "bold");
-    doc.text("Total dos Vencimentos", tableStartX + 3, yPos);
-    doc.text(totalProventos.toLocaleString("pt-BR", { minimumFractionDigits: 2 }), tableStartX + 90, yPos);
-    doc.text("Total dos Descontos", tableStartX + 120, yPos);
-    doc.text(totalDescontos.toLocaleString("pt-BR", { minimumFractionDigits: 2 }), tableStartX + 170, yPos);
+    doc.text("Total dos Vencimentos", colVenc - 30, yPos);
+    doc.text(totalProventos.toLocaleString("pt-BR", { minimumFractionDigits: 2 }), colVenc, yPos);
+    doc.text("Total dos Descontos", colDesc2 - 10, yPos);
+    doc.text(totalDescontos.toLocaleString("pt-BR", { minimumFractionDigits: 2 }), colDesc2 + 25, yPos);
     yPos += 8;
 
     // Valor Líquido
-    doc.setFillColor(220, 220, 220);
-    doc.rect(tableStartX, yPos - 3, tableWidth, 8, "F");
-    doc.rect(tableStartX, yPos - 3, tableWidth, 8, "S");
-    doc.setFontSize(11);
-    doc.text("Valor Líquido ->", tableStartX + 3, yPos + 1);
-    doc.text(`R$ ${pagamento.valor_liquido.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`, tableStartX + 90, yPos + 1);
+    doc.setFillColor(230, 230, 230);
+    doc.rect(marginLeft, yPos - 3, contentWidth, 7, "F");
+    doc.rect(marginLeft, yPos - 3, contentWidth, 7, "S");
+    doc.setFontSize(10);
+    doc.text("Valor Líquido ->", colVenc - 30, yPos + 1);
+    doc.text(pagamento.valor_liquido.toLocaleString("pt-BR", { minimumFractionDigits: 2 }), colDesc2 + 25, yPos + 1);
     yPos += 12;
 
     // Base de cálculos
-    doc.setFontSize(8);
+    doc.setFontSize(7);
     doc.setFont("helvetica", "bold");
-    doc.setFillColor(240, 240, 240);
-    doc.rect(tableStartX, yPos - 3, tableWidth, 5, "F");
-    doc.rect(tableStartX, yPos - 3, tableWidth, 5, "S");
-    doc.text("Salário Base", tableStartX + 3, yPos);
-    doc.text("Base INSS", tableStartX + 40, yPos);
-    doc.text("Base Cálc. FGTS", tableStartX + 75, yPos);
-    doc.text("FGTS do Mês", tableStartX + 115, yPos);
-    doc.text("Base Cálc. IRRF", tableStartX + 155, yPos);
+    const baseColWidth = contentWidth / 5;
+    
+    doc.setFillColor(245, 245, 245);
+    doc.rect(marginLeft, yPos - 3, contentWidth, 5, "F");
+    doc.rect(marginLeft, yPos - 3, contentWidth, 5, "S");
+    doc.text("Salário Base", marginLeft + 2, yPos);
+    doc.text("Base INSS", marginLeft + baseColWidth + 2, yPos);
+    doc.text("Base Cálc. FGTS", marginLeft + baseColWidth * 2 + 2, yPos);
+    doc.text("FGTS do Mês", marginLeft + baseColWidth * 3 + 2, yPos);
+    doc.text("Base Cálc. IRRF", marginLeft + baseColWidth * 4 + 2, yPos);
     yPos += 5;
 
     doc.setFont("helvetica", "normal");
-    doc.rect(tableStartX, yPos - 3, tableWidth, 5, "S");
-    doc.text(getSalarioBaseFormatado(), tableStartX + 3, yPos);
-    doc.text("0,00", tableStartX + 40, yPos);
-    doc.text("0,00", tableStartX + 75, yPos);
-    doc.text("0,00", tableStartX + 115, yPos);
-    doc.text("0,00", tableStartX + 155, yPos);
-    yPos += 10;
-
-    // Assinaturas
-    yPos = Math.max(yPos + 15, 220);
-    doc.setLineWidth(0.3);
-    doc.line(25, yPos, 95, yPos);
-    doc.line(pageWidth - 95, yPos, pageWidth - 25, yPos);
-    yPos += 4;
-    doc.setFontSize(8);
-    doc.text("Assinatura do Empregador", 60, yPos, { align: "center" });
-    doc.text("Assinatura do Funcionário", pageWidth - 60, yPos, { align: "center" });
+    doc.rect(marginLeft, yPos - 3, contentWidth, 5, "S");
+    doc.text(`${salarioBase.valor.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} ${salarioBase.sufixo}`, marginLeft + 2, yPos);
+    doc.text("0,00", marginLeft + baseColWidth + 2, yPos);
+    doc.text(salarioBase.valor.toLocaleString("pt-BR", { minimumFractionDigits: 2 }), marginLeft + baseColWidth * 2 + 2, yPos);
+    const fgts = salarioBase.valor * 0.08;
+    doc.text(fgts.toLocaleString("pt-BR", { minimumFractionDigits: 2 }), marginLeft + baseColWidth * 3 + 2, yPos);
+    doc.text("0,00", marginLeft + baseColWidth * 4 + 2, yPos);
+    yPos += 8;
 
     // Rodapé
-    yPos = 280;
     doc.setFontSize(7);
-    doc.setTextColor(128);
-    doc.text("Processado por: Sistema RH", tableStartX, yPos);
-    doc.text(`Gerado em ${new Date().toLocaleDateString("pt-BR")}`, pageWidth - 10, yPos, { align: "right" });
+    doc.text("Processado por: Registrado", marginLeft, yPos);
+
+    // Linha tracejada para corte
+    yPos += 5;
+    doc.setLineDashPattern([2, 2], 0);
+    doc.line(marginLeft, yPos, pageWidth - marginRight, yPos);
+
+    // Barra lateral direita (assinatura)
+    const barraX = pageWidth - marginRight + 2;
+    const barraY = 10;
+    const barraHeight = yPos - barraY;
+    
+    doc.setLineDashPattern([], 0);
+    doc.setDrawColor(0);
+    doc.rect(barraX, barraY, 20, barraHeight, "S");
+    
+    // Texto vertical na barra
+    doc.setFontSize(6);
+    doc.setFont("helvetica", "normal");
+    
+    // Texto "Declaro ter recebido..."
+    const textoDeclaracao = "Declaro ter recebido a importância líquida discriminada neste recibo:";
+    doc.text(textoDeclaracao, barraX + 5, barraY + 10, { angle: 90, maxWidth: barraHeight - 40 });
+    
+    // Linha para assinatura
+    doc.line(barraX + 10, barraY + barraHeight - 30, barraX + 10, barraY + barraHeight - 10);
+    doc.text("Assinatura", barraX + 12, barraY + barraHeight - 20, { angle: 90 });
+    
+    // Data
+    doc.text("___/___/___", barraX + 16, barraY + barraHeight - 30, { angle: 90 });
+    doc.text("Data", barraX + 18, barraY + barraHeight - 20, { angle: 90 });
 
     // Save
     const nomeArquivo = `recibo-${employee.nome_completo.replace(/\s+/g, "-").toLowerCase()}-${pagamento.mes}-${pagamento.ano}.pdf`;
@@ -368,12 +383,12 @@ const HoleriteDialog = ({ open, onOpenChange, pagamento, empresaId }: HoleriteDi
   const proventos = pagamento.folha_pagamento_itens?.filter(i => i.variaveis_folha?.tipo === "provento") || [];
   const descontos = pagamento.folha_pagamento_itens?.filter(i => i.variaveis_folha?.tipo === "desconto") || [];
   const totalProventos = pagamento.valor_bruto + proventos.reduce((sum, p) => sum + p.valor, 0);
-  // Total de descontos: somar apenas os itens de desconto do holerite
   const totalDescontos = descontos.reduce((sum, d) => sum + d.valor, 0);
+  const salarioBase = getSalarioBase();
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Recibo de Pagamento</DialogTitle>
         </DialogHeader>
@@ -384,118 +399,184 @@ const HoleriteDialog = ({ open, onOpenChange, pagamento, empresaId }: HoleriteDi
           </div>
         ) : (
           <div className="space-y-4">
-            {/* Preview estilo recibo */}
-            <div className="border rounded-lg bg-white dark:bg-card text-foreground font-mono text-sm">
-              {/* Cabeçalho da empresa */}
-              <div className="text-center border-b p-4">
-                <h2 className="text-lg font-bold">{empresa?.nome}</h2>
-                {empresa?.endereco && (
-                  <p className="text-xs text-muted-foreground">{empresa.endereco}</p>
-                )}
-                {empresa?.cnpj && (
-                  <p className="text-xs text-muted-foreground">{formatCNPJ(empresa.cnpj)}</p>
-                )}
-                <p className="text-xs mt-2">Período: {getPeriodoStr()}</p>
-              </div>
-
-              {/* Título */}
-              <div className="text-center py-2 border-b bg-muted/30">
-                <h3 className="font-bold">{getTipoFolhaLabel(pagamento.tipo_folha || "salario")}</h3>
-              </div>
-
-              {/* Dados do funcionário */}
-              <div className="border-b">
-                <div className="grid grid-cols-4 text-xs bg-muted/50 border-b">
-                  <div className="p-2 border-r font-semibold">Código:</div>
-                  <div className="p-2 border-r font-semibold">Nome:</div>
-                  <div className="p-2 border-r font-semibold">Setor:</div>
-                  <div className="p-2 font-semibold">Admissão:</div>
+            {/* Preview estilo recibo original */}
+            <div className="border border-black bg-white text-black font-mono text-xs relative">
+              {/* Barra lateral direita */}
+              <div className="absolute right-0 top-0 bottom-0 w-24 border-l border-black flex flex-col items-center justify-between py-4 bg-white">
+                <div className="writing-vertical text-[8px] leading-tight px-2 text-center" style={{ writingMode: "vertical-rl", transform: "rotate(180deg)" }}>
+                  Declaro ter recebido a importância líquida discriminada neste recibo:
                 </div>
-                <div className="grid grid-cols-4 text-xs">
-                  <div className="p-2 border-r">-</div>
-                  <div className="p-2 border-r font-medium">{employee?.nome_completo?.toUpperCase()}</div>
-                  <div className="p-2 border-r">{employee?.setor || "-"}</div>
-                  <div className="p-2">{formatDate(employee?.data_admissao || null)}</div>
+                <div className="flex flex-col items-center gap-2 mt-4">
+                  <div className="border-b border-black w-16"></div>
+                  <span className="text-[8px]">Assinatura</span>
+                </div>
+                <div className="flex flex-col items-center gap-1 mb-2">
+                  <span className="text-[8px]">___/___/___</span>
+                  <span className="text-[8px]">Data</span>
                 </div>
               </div>
 
-              {/* Tabela de itens */}
-              <div className="border-b">
-                <div className="grid grid-cols-5 text-xs bg-muted/50 border-b font-semibold">
-                  <div className="p-2 border-r">Cód.</div>
-                  <div className="p-2 border-r col-span-2">Descrição</div>
-                  <div className="p-2 border-r text-right">Vencimentos</div>
-                  <div className="p-2 text-right">Descontos</div>
+              {/* Conteúdo principal */}
+              <div className="pr-28">
+                {/* Cabeçalho */}
+                <div className="p-2 border-b border-black">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <p className="font-bold text-sm">3&nbsp;&nbsp;&nbsp;&nbsp;{empresa?.nome}</p>
+                      <p className="text-[10px]">{empresa?.endereco} {formatCNPJ(empresa?.cnpj)}</p>
+                    </div>
+                    <div className="text-right text-[10px]">
+                      <p>Período: {getPeriodoStr()}</p>
+                    </div>
+                  </div>
                 </div>
-                
-                {/* Salário Base */}
-                <div className="grid grid-cols-5 text-xs border-b">
-                  <div className="p-2 border-r">001</div>
-                  <div className="p-2 border-r col-span-2">Salário Base</div>
-                  <div className="p-2 border-r text-right">{pagamento.valor_bruto.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</div>
-                  <div className="p-2 text-right"></div>
+
+                {/* Dados do funcionário */}
+                <div className="border-b border-black">
+                  <div className="grid grid-cols-12 text-[9px] border-b border-black">
+                    <div className="col-span-4 p-1 border-r border-black">
+                      <span className="font-bold">Cód/Contr: Nome:</span>
+                    </div>
+                    <div className="col-span-1 p-1 border-r border-black">
+                      <span className="font-bold">PIS:</span>
+                    </div>
+                    <div className="col-span-1 p-1 border-r border-black">
+                      <span className="font-bold">CBO:</span>
+                    </div>
+                    <div className="col-span-1 p-1 border-r border-black">
+                      <span className="font-bold">C/Custo:</span>
+                    </div>
+                    <div className="col-span-1 p-1 border-r border-black">
+                      <span className="font-bold">Dpto:</span>
+                    </div>
+                    <div className="col-span-1 p-1 border-r border-black">
+                      <span className="font-bold">Setor:</span>
+                    </div>
+                    <div className="col-span-1 p-1 border-r border-black">
+                      <span className="font-bold">Seção:</span>
+                    </div>
+                    <div className="col-span-2 p-1">
+                      <span className="font-bold">Admissão:</span>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-12 text-[9px]">
+                    <div className="col-span-4 p-1 border-r border-black">
+                      - / -&nbsp;&nbsp;{employee?.nome_completo?.toUpperCase()}
+                    </div>
+                    <div className="col-span-1 p-1 border-r border-black">-</div>
+                    <div className="col-span-1 p-1 border-r border-black">-</div>
+                    <div className="col-span-1 p-1 border-r border-black"></div>
+                    <div className="col-span-1 p-1 border-r border-black"></div>
+                    <div className="col-span-1 p-1 border-r border-black"></div>
+                    <div className="col-span-1 p-1 border-r border-black"></div>
+                    <div className="col-span-2 p-1">{formatDate(employee?.data_admissao || null)}</div>
+                  </div>
+                  <div className="grid grid-cols-12 text-[9px] border-t border-black">
+                    <div className="col-span-4 p-1 border-r border-black"></div>
+                    <div className="col-span-2 p-1 border-r border-black">
+                      <span className="font-bold">Função:</span> {employee?.cargo?.toUpperCase()}
+                    </div>
+                    <div className="col-span-6 p-1"></div>
+                  </div>
+                </div>
+
+                {/* Título do recibo */}
+                <div className="bg-gray-200 border-b border-black p-1 text-center">
+                  <span className="font-bold text-sm">Recibo de Pagamento de Salário</span>
+                </div>
+
+                {/* Header da tabela */}
+                <div className="grid grid-cols-12 text-[9px] border-b border-black bg-gray-100 font-bold">
+                  <div className="col-span-1 p-1 border-r border-black">Cod.</div>
+                  <div className="col-span-4 p-1 border-r border-black">Descrição</div>
+                  <div className="col-span-2 p-1 border-r border-black text-center">Referência</div>
+                  <div className="col-span-2 p-1 border-r border-black text-right">Vencimentos</div>
+                  <div className="col-span-3 p-1 text-right">Descontos</div>
+                </div>
+
+                {/* Salário base */}
+                <div className="grid grid-cols-12 text-[9px] border-b border-black">
+                  <div className="col-span-1 p-1 border-r border-black">1</div>
+                  <div className="col-span-4 p-1 border-r border-black">Dias Salário Normal</div>
+                  <div className="col-span-2 p-1 border-r border-black text-center">30,00 {salarioBase.sufixo === "/D" ? "D" : ""}</div>
+                  <div className="col-span-2 p-1 border-r border-black text-right">{pagamento.valor_bruto.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</div>
+                  <div className="col-span-3 p-1 text-right"></div>
                 </div>
 
                 {/* Proventos */}
-                {proventos.map((item, index) => (
-                  <div key={item.id} className="grid grid-cols-5 text-xs border-b">
-                    <div className="p-2 border-r">{item.variaveis_folha?.codigo || String(index + 2).padStart(3, "0")}</div>
-                    <div className="p-2 border-r col-span-2">{item.variaveis_folha?.nome}</div>
-                    <div className="p-2 border-r text-right">{item.valor.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</div>
-                    <div className="p-2 text-right"></div>
+                {proventos.map((item) => (
+                  <div key={item.id} className="grid grid-cols-12 text-[9px] border-b border-black">
+                    <div className="col-span-1 p-1 border-r border-black">{item.variaveis_folha?.codigo || "-"}</div>
+                    <div className="col-span-4 p-1 border-r border-black">{item.variaveis_folha?.nome}</div>
+                    <div className="col-span-2 p-1 border-r border-black text-center"></div>
+                    <div className="col-span-2 p-1 border-r border-black text-right">{item.valor.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</div>
+                    <div className="col-span-3 p-1 text-right"></div>
                   </div>
                 ))}
 
                 {/* Descontos */}
-                {descontos.map((item, index) => (
-                  <div key={item.id} className="grid grid-cols-5 text-xs border-b">
-                    <div className="p-2 border-r">{item.variaveis_folha?.codigo || String(proventos.length + index + 2).padStart(3, "0")}</div>
-                    <div className="p-2 border-r col-span-2">{item.variaveis_folha?.nome}</div>
-                    <div className="p-2 border-r text-right"></div>
-                    <div className="p-2 text-right">{item.valor.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</div>
+                {descontos.map((item) => (
+                  <div key={item.id} className="grid grid-cols-12 text-[9px] border-b border-black">
+                    <div className="col-span-1 p-1 border-r border-black">{item.variaveis_folha?.codigo || "-"}</div>
+                    <div className="col-span-4 p-1 border-r border-black">{item.variaveis_folha?.nome}</div>
+                    <div className="col-span-2 p-1 border-r border-black text-center"></div>
+                    <div className="col-span-2 p-1 border-r border-black text-right"></div>
+                    <div className="col-span-3 p-1 text-right">{item.valor.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</div>
                   </div>
                 ))}
-              </div>
 
-              {/* Totais */}
-              <div className="grid grid-cols-2 text-xs border-b bg-muted/30">
-                <div className="p-2 border-r flex justify-between">
-                  <span className="font-semibold">Total dos Vencimentos</span>
-                  <span className="text-green-600 dark:text-green-400 font-bold">{totalProventos.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
-                </div>
-                <div className="p-2 flex justify-between">
-                  <span className="font-semibold">Total dos Descontos</span>
-                  <span className="text-red-600 dark:text-red-400 font-bold">{totalDescontos.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
-                </div>
-              </div>
+                {/* Linhas vazias */}
+                {Array.from({ length: Math.max(0, 10 - proventos.length - descontos.length) }).map((_, i) => (
+                  <div key={`empty-${i}`} className="grid grid-cols-12 text-[9px] border-b border-black">
+                    <div className="col-span-1 p-1 border-r border-black">&nbsp;</div>
+                    <div className="col-span-4 p-1 border-r border-black"></div>
+                    <div className="col-span-2 p-1 border-r border-black"></div>
+                    <div className="col-span-2 p-1 border-r border-black"></div>
+                    <div className="col-span-3 p-1"></div>
+                  </div>
+                ))}
 
-              {/* Valor Líquido */}
-              <div className="p-3 bg-primary/10 border-b flex justify-between items-center">
-                <span className="font-bold text-base">Valor Líquido →</span>
-                <span className="font-bold text-lg">R$ {pagamento.valor_liquido.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
-              </div>
-
-              {/* Base de cálculos */}
-              <div className="text-xs">
-                <div className="grid grid-cols-5 bg-muted/50 border-b font-semibold">
-                  <div className="p-2 border-r">Salário Base</div>
-                  <div className="p-2 border-r">Base INSS</div>
-                  <div className="p-2 border-r">Base Cálc. FGTS</div>
-                  <div className="p-2 border-r">FGTS do Mês</div>
-                  <div className="p-2">Base Cálc. IRRF</div>
+                {/* Totais */}
+                <div className="grid grid-cols-2 text-[9px] border-b border-black bg-gray-100">
+                  <div className="p-1 border-r border-black flex justify-between">
+                    <span className="font-bold">Total dos Vencimentos</span>
+                    <span className="font-bold">{totalProventos.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
+                  </div>
+                  <div className="p-1 flex justify-between">
+                    <span className="font-bold">Total dos Descontos</span>
+                    <span className="font-bold">{totalDescontos.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
+                  </div>
                 </div>
-                <div className="grid grid-cols-5">
-                  <div className="p-2 border-r">{getSalarioBaseFormatado()}</div>
-                  <div className="p-2 border-r">0,00</div>
-                  <div className="p-2 border-r">0,00</div>
-                  <div className="p-2 border-r">0,00</div>
-                  <div className="p-2">0,00</div>
-                </div>
-              </div>
 
-              {/* Rodapé */}
-              <div className="p-2 text-xs text-muted-foreground border-t flex justify-between">
-                <span>Processado por: Sistema RH</span>
+                {/* Valor Líquido */}
+                <div className="grid grid-cols-2 text-[9px] border-b border-black bg-gray-200">
+                  <div className="p-1 border-r border-black"></div>
+                  <div className="p-1 flex justify-between">
+                    <span className="font-bold">Valor Líquido -&gt;</span>
+                    <span className="font-bold text-sm">{pagamento.valor_liquido.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
+                  </div>
+                </div>
+
+                {/* Base de cálculos */}
+                <div className="grid grid-cols-5 text-[8px] border-b border-black bg-gray-100 font-bold">
+                  <div className="p-1 border-r border-black">Salário Base</div>
+                  <div className="p-1 border-r border-black">Base INSS</div>
+                  <div className="p-1 border-r border-black">Base Cálc. FGTS</div>
+                  <div className="p-1 border-r border-black">FGTS do Mês</div>
+                  <div className="p-1">Base Cálc. IRRF</div>
+                </div>
+                <div className="grid grid-cols-5 text-[8px] border-b border-black">
+                  <div className="p-1 border-r border-black">{salarioBase.valor.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} {salarioBase.sufixo}</div>
+                  <div className="p-1 border-r border-black">0,00</div>
+                  <div className="p-1 border-r border-black">{salarioBase.valor.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</div>
+                  <div className="p-1 border-r border-black">{(salarioBase.valor * 0.08).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</div>
+                  <div className="p-1">0,00</div>
+                </div>
+
+                {/* Rodapé */}
+                <div className="p-1 text-[8px] border-b border-dashed border-black">
+                  Processado por: Registrado
+                </div>
               </div>
             </div>
 
