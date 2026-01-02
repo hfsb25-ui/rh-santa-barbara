@@ -226,6 +226,7 @@ const Payroll = () => {
           variaveis_folha (
             id,
             nome,
+            codigo,
             tipo
           )
         )
@@ -301,6 +302,7 @@ const Payroll = () => {
           variaveis_folha (
             id,
             nome,
+            codigo,
             tipo
           )
         )
