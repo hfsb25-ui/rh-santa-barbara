@@ -225,7 +225,9 @@ const Adiantamentos = () => {
       setSaving(true);
 
       // Filtrar apenas adiantamentos com valor preenchido
-      const adiantamentosComValor = adiantamentos.filter(a => a.valor && parseFloat(a.valor) > 0);
+      const adiantamentosComValor = adiantamentos.filter(
+        (a) => a.valor && parseFloat(a.valor) > 0
+      );
 
       if (adiantamentosComValor.length === 0) {
         toast.error("Preencha pelo menos um valor de adiantamento");
@@ -235,36 +237,65 @@ const Adiantamentos = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Usuário não autenticado");
 
+      // Validar empresa vinculada (empresa_id é obrigatório na tabela)
+      const funcionariosSemEmpresa = adiantamentosComValor
+        .map((a) => {
+          const employee = employees.find((e) => e.id === a.employee_id);
+          return {
+            nome: employee?.nome_completo ?? a.nome_completo,
+            empresa_id: employee?.empresa_id ?? null,
+          };
+        })
+        .filter((x) => !x.empresa_id)
+        .map((x) => x.nome);
+
+      if (funcionariosSemEmpresa.length > 0) {
+        toast.error(
+          `Não foi possível salvar: funcionário(s) sem empresa vinculada: ${funcionariosSemEmpresa.join(
+            ", "
+          )}`
+        );
+        return;
+      }
+
       // Preparar dados para inserção
-      const inserts = adiantamentosComValor.map(a => {
-        const employee = employees.find(e => e.id === a.employee_id);
+      const inserts = adiantamentosComValor.map((a) => {
+        const employee = employees.find((e) => e.id === a.employee_id);
+
         return {
           employee_id: a.employee_id,
-          empresa_id: employee?.empresa_id,
+          empresa_id: employee!.empresa_id as string,
           valor: parseFloat(a.valor),
           forma_pagamento: a.forma_pagamento,
           mes,
           ano,
-          created_by: user.id
+          created_by: user.id,
         };
       });
 
-      const { error } = await supabase
-        .from("adiantamentos")
-        .insert(inserts);
+      const { error } = await supabase.from("adiantamentos").insert(inserts);
 
       if (error) throw error;
 
-      toast.success(`${adiantamentosComValor.length} adiantamento(s) lançado(s) com sucesso!`);
-      
+      toast.success(
+        `${adiantamentosComValor.length} adiantamento(s) lançado(s) com sucesso!`
+      );
+
       // Limpar valores
-      setAdiantamentos(prev => prev.map(a => ({ ...a, valor: "" })));
-      
+      setAdiantamentos((prev) => prev.map((a) => ({ ...a, valor: "" })));
+
       // Recarregar histórico
       fetchHistorico();
     } catch (error: any) {
-      console.error("Erro ao salvar adiantamentos:", error);
-      toast.error("Erro ao salvar adiantamentos");
+      console.error(
+        "Erro ao salvar adiantamentos:",
+        error,
+        error?.message,
+        error?.details,
+        error?.hint,
+        error?.code
+      );
+      toast.error(error?.message || "Erro ao salvar adiantamentos");
     } finally {
       setSaving(false);
     }
