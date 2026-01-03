@@ -23,11 +23,24 @@ interface Employee {
   tipo_contrato: string | null;
 }
 
+type FormaPagamento = "em_conta" | "em_maos" | "emprestimo" | "consumo";
+
+const FORMAS_PAGAMENTO: { value: FormaPagamento; label: string }[] = [
+  { value: "em_conta", label: "Em conta" },
+  { value: "em_maos", label: "Em mãos" },
+  { value: "emprestimo", label: "Empréstimo" },
+  { value: "consumo", label: "Consumo" },
+];
+
+const getFormaPagamentoLabel = (forma: string): string => {
+  return FORMAS_PAGAMENTO.find(f => f.value === forma)?.label || forma;
+};
+
 interface AdiantamentoEntry {
   employee_id: string;
   nome_completo: string;
   valor: string;
-  forma_pagamento: "em_conta" | "em_maos";
+  forma_pagamento: FormaPagamento;
 }
 
 interface AdiantamentoHistorico {
@@ -82,7 +95,7 @@ const Adiantamentos = () => {
   // Edição
   const [editingAdiantamento, setEditingAdiantamento] = useState<AdiantamentoHistorico | null>(null);
   const [editingValor, setEditingValor] = useState<string>("");
-  const [editingFormaPagamento, setEditingFormaPagamento] = useState<"em_conta" | "em_maos">("em_conta");
+  const [editingFormaPagamento, setEditingFormaPagamento] = useState<FormaPagamento>("em_conta");
   const [savingEdit, setSavingEdit] = useState(false);
   const [deletingAll, setDeletingAll] = useState(false);
   
@@ -197,7 +210,7 @@ const Adiantamentos = () => {
     );
   };
 
-  const handleFormaPagamentoChange = (employeeId: string, forma: "em_conta" | "em_maos") => {
+  const handleFormaPagamentoChange = (employeeId: string, forma: FormaPagamento) => {
     setAdiantamentos(prev => 
       prev.map(adiant => 
         adiant.employee_id === employeeId 
@@ -289,7 +302,7 @@ const Adiantamentos = () => {
         a.employees.setor || "-",
         a.empresas.nome,
         `R$ ${a.valor.toFixed(2)}`,
-        a.forma_pagamento === "em_conta" ? "Em conta" : "Em mãos",
+        getFormaPagamentoLabel(a.forma_pagamento),
         new Date(a.created_at).toLocaleDateString("pt-BR")
       ]);
 
@@ -320,7 +333,7 @@ const Adiantamentos = () => {
   const handleOpenEdit = (adiantamento: AdiantamentoHistorico) => {
     setEditingAdiantamento(adiantamento);
     setEditingValor(adiantamento.valor.toString());
-    setEditingFormaPagamento(adiantamento.forma_pagamento as "em_conta" | "em_maos");
+    setEditingFormaPagamento(adiantamento.forma_pagamento as FormaPagamento);
   };
 
   const handleSaveEdit = async () => {
@@ -412,7 +425,7 @@ const Adiantamentos = () => {
       const tableData = adiantamentosComValor.map(a => [
         a.nome_completo,
         `R$ ${parseFloat(a.valor).toFixed(2)}`,
-        a.forma_pagamento === "em_conta" ? "Em conta" : "Em mãos"
+        getFormaPagamentoLabel(a.forma_pagamento)
       ]);
 
       autoTable(doc, {
@@ -581,16 +594,17 @@ const Adiantamentos = () => {
                         />
                       </TableCell>
                       <TableCell>
-                        <Select
+                      <Select
                           value={adiant.forma_pagamento}
-                          onValueChange={(v) => handleFormaPagamentoChange(adiant.employee_id, v as "em_conta" | "em_maos")}
+                          onValueChange={(v) => handleFormaPagamentoChange(adiant.employee_id, v as FormaPagamento)}
                         >
                           <SelectTrigger className="w-40">
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="em_conta">Em conta</SelectItem>
-                            <SelectItem value="em_maos">Em mãos</SelectItem>
+                            {FORMAS_PAGAMENTO.map(f => (
+                              <SelectItem key={f.value} value={f.value}>{f.label}</SelectItem>
+                            ))}
                           </SelectContent>
                         </Select>
                       </TableCell>
@@ -677,8 +691,9 @@ const Adiantamentos = () => {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Todos</SelectItem>
-                    <SelectItem value="em_conta">Em conta</SelectItem>
-                    <SelectItem value="em_maos">Em mãos</SelectItem>
+                    {FORMAS_PAGAMENTO.map(f => (
+                      <SelectItem key={f.value} value={f.value}>{f.label}</SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -762,7 +777,7 @@ const Adiantamentos = () => {
                             <TableCell>{adiant.empresas.nome}</TableCell>
                             <TableCell className="font-semibold">R$ {adiant.valor.toFixed(2)}</TableCell>
                             <TableCell>
-                              {adiant.forma_pagamento === "em_conta" ? "Em conta" : "Em mãos"}
+                              {getFormaPagamentoLabel(adiant.forma_pagamento)}
                             </TableCell>
                             <TableCell>
                               {new Date(adiant.created_at).toLocaleDateString("pt-BR")}
@@ -815,19 +830,15 @@ const Adiantamentos = () => {
                         R$ {historico.reduce((sum, a) => sum + a.valor, 0).toFixed(2)}
                       </span>
                     </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="flex justify-between items-center p-3 bg-muted/50 rounded-lg">
-                        <span className="text-sm font-medium">Total em Conta:</span>
-                        <span className="font-semibold">
-                          R$ {historico.filter(a => a.forma_pagamento === "em_conta").reduce((sum, a) => sum + a.valor, 0).toFixed(2)}
-                        </span>
-                      </div>
-                      <div className="flex justify-between items-center p-3 bg-muted/50 rounded-lg">
-                        <span className="text-sm font-medium">Total em Mãos:</span>
-                        <span className="font-semibold">
-                          R$ {historico.filter(a => a.forma_pagamento === "em_maos").reduce((sum, a) => sum + a.valor, 0).toFixed(2)}
-                        </span>
-                      </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                      {FORMAS_PAGAMENTO.map(f => (
+                        <div key={f.value} className="flex justify-between items-center p-3 bg-muted/50 rounded-lg">
+                          <span className="text-sm font-medium">Total {f.label}:</span>
+                          <span className="font-semibold">
+                            R$ {historico.filter(a => a.forma_pagamento === f.value).reduce((sum, a) => sum + a.valor, 0).toFixed(2)}
+                          </span>
+                        </div>
+                      ))}
                     </div>
                   </div>
                 )}
@@ -861,13 +872,14 @@ const Adiantamentos = () => {
               </div>
               <div>
                 <Label>Forma de Pagamento</Label>
-                <Select value={editingFormaPagamento} onValueChange={(v) => setEditingFormaPagamento(v as "em_conta" | "em_maos")}>
+                <Select value={editingFormaPagamento} onValueChange={(v) => setEditingFormaPagamento(v as FormaPagamento)}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="em_conta">Em conta</SelectItem>
-                    <SelectItem value="em_maos">Em mãos</SelectItem>
+                    {FORMAS_PAGAMENTO.map(f => (
+                      <SelectItem key={f.value} value={f.value}>{f.label}</SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
