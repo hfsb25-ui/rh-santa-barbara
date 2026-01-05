@@ -3,12 +3,13 @@ import { useNavigate } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Calendar, Clock, Users, Wallet, ArrowLeft } from "lucide-react";
+import { Calendar, Clock, Users, Wallet, ArrowLeft, Tag } from "lucide-react";
 import { LancamentoPonto } from "@/components/ponto/LancamentoPonto";
 import { LancamentoPontoLote } from "@/components/ponto/LancamentoPontoLote";
 import { ConfiguracaoHoras } from "@/components/ponto/ConfiguracaoHoras";
 import { RelatoriosPonto } from "@/components/ponto/RelatoriosPonto";
 import { BancoHoras } from "@/components/ponto/BancoHoras";
+import { EtiquetasPonto } from "@/components/ponto/EtiquetasPonto";
 
 export default function ControlePonto() {
   const navigate = useNavigate();
@@ -39,7 +40,7 @@ export default function ControlePonto() {
         </div>
 
         <Tabs defaultValue="individual" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5">
+          <TabsList className="grid w-full grid-cols-6">
             <TabsTrigger value="individual" className="flex items-center gap-2">
               <Calendar className="h-4 w-4" />
               Lançamento Individual
@@ -59,6 +60,10 @@ export default function ControlePonto() {
             <TabsTrigger value="banco" className="flex items-center gap-2">
               <Wallet className="h-4 w-4" />
               Banco de Horas
+            </TabsTrigger>
+            <TabsTrigger value="etiquetas" className="flex items-center gap-2">
+              <Tag className="h-4 w-4" />
+              Etiquetas
             </TabsTrigger>
           </TabsList>
 
@@ -89,6 +94,12 @@ export default function ControlePonto() {
           <TabsContent value="banco">
             <Card className="p-6">
               <BancoHoras />
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="etiquetas">
+            <Card className="p-6">
+              <EtiquetasPonto />
             </Card>
           </TabsContent>
         </Tabs>
