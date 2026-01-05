@@ -59,26 +59,17 @@ export function generateEtiquetasPontoPDF(etiquetas: EtiquetaData[]): void {
 }
 
 function desenharEtiqueta(doc: jsPDF, data: EtiquetaData, x: number, y: number): void {
-  const padding = 2;
+  const padding = 3;
   const innerX = x + padding;
   const innerY = y + padding;
   const innerWidth = ETIQUETA_LARGURA - padding * 2;
   const innerHeight = ETIQUETA_ALTURA - padding * 2;
 
-  // Borda da etiqueta (opcional - para visualização)
-  // doc.setDrawColor(200, 200, 200);
-  // doc.rect(x, y, ETIQUETA_LARGURA, ETIQUETA_ALTURA);
-
-  // Título "CARTÃO DE PONTO"
-  doc.setFontSize(8);
-  doc.setFont("helvetica", "bold");
-  doc.text("CARTÃO DE PONTO", innerX + innerWidth / 2, innerY + 3, { align: "center" });
-
-  // Mês/Ano
-  doc.setFontSize(7);
+  // Mês/Ano (centralizado no topo)
+  doc.setFontSize(10);
   doc.setFont("helvetica", "bold");
   const mesAno = `${data.mes.toUpperCase()} / ${data.ano}`;
-  doc.text(mesAno, innerX + innerWidth / 2, innerY + 7, { align: "center" });
+  doc.text(mesAno, innerX + innerWidth / 2, innerY + 6, { align: "center" });
 
   // Linha separadora
   doc.setDrawColor(0);
@@ -86,60 +77,18 @@ function desenharEtiqueta(doc: jsPDF, data: EtiquetaData, x: number, y: number):
   doc.line(innerX, innerY + 9, innerX + innerWidth, innerY + 9);
 
   // Nome do funcionário
-  doc.setFontSize(7);
+  doc.setFontSize(9);
   doc.setFont("helvetica", "bold");
-  const nomeLabel = "Nome:";
-  doc.text(nomeLabel, innerX, innerY + 13);
-  
-  doc.setFont("helvetica", "normal");
-  const nomeWidth = doc.getTextWidth(nomeLabel) + 1;
-  const nomeMaxWidth = innerWidth - nomeWidth - 2;
+  const nomeMaxWidth = innerWidth - 4;
   const nomeTruncado = truncateText(doc, data.nomeCompleto, nomeMaxWidth);
-  doc.text(nomeTruncado, innerX + nomeWidth, innerY + 13);
-
-  // Cargo
-  doc.setFont("helvetica", "bold");
-  const cargoLabel = "Cargo:";
-  doc.text(cargoLabel, innerX, innerY + 17);
-  
-  doc.setFont("helvetica", "normal");
-  const cargoWidth = doc.getTextWidth(cargoLabel) + 1;
-  const cargoMaxWidth = innerWidth - cargoWidth - 2;
-  const cargoTruncado = truncateText(doc, data.cargo, cargoMaxWidth);
-  doc.text(cargoTruncado, innerX + cargoWidth, innerY + 17);
+  doc.text(nomeTruncado, innerX + innerWidth / 2, innerY + 16, { align: "center" });
 
   // Empresa
-  doc.setFont("helvetica", "bold");
-  const empresaLabel = "Empresa:";
-  doc.text(empresaLabel, innerX, innerY + 21);
-  
+  doc.setFontSize(8);
   doc.setFont("helvetica", "normal");
-  const empresaWidth = doc.getTextWidth(empresaLabel) + 1;
-  const empresaMaxWidth = innerWidth - empresaWidth - 2;
+  const empresaMaxWidth = innerWidth - 4;
   const empresaTruncada = truncateText(doc, data.empresa, empresaMaxWidth);
-  doc.text(empresaTruncada, innerX + empresaWidth, innerY + 21);
-
-  // Setor (se existir)
-  if (data.setor) {
-    doc.setFont("helvetica", "bold");
-    const setorLabel = "Setor:";
-    doc.text(setorLabel, innerX, innerY + 25);
-    
-    doc.setFont("helvetica", "normal");
-    const setorWidth = doc.getTextWidth(setorLabel) + 1;
-    const setorMaxWidth = innerWidth - setorWidth - 2;
-    const setorTruncado = truncateText(doc, data.setor, setorMaxWidth);
-    doc.text(setorTruncado, innerX + setorWidth, innerY + 25);
-  }
-
-  // Linha para assinatura
-  doc.setDrawColor(0);
-  doc.setLineWidth(0.1);
-  const assinaturaY = innerY + 29;
-  doc.line(innerX + innerWidth * 0.3, assinaturaY, innerX + innerWidth - 2, assinaturaY);
-  
-  doc.setFontSize(5);
-  doc.text("Assinatura", innerX + innerWidth * 0.6, assinaturaY + 2, { align: "center" });
+  doc.text(empresaTruncada, innerX + innerWidth / 2, innerY + 23, { align: "center" });
 }
 
 function truncateText(doc: jsPDF, text: string, maxWidth: number): string {
