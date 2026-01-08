@@ -1,71 +1,22 @@
 import { useState, useEffect } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, Plus, Calendar as CalendarIcon, List, Settings } from "lucide-react";
+import { ArrowLeft, Plus, Calendar as CalendarIcon, List, Download, Loader2 } from "lucide-react";
 import EventoCalendar from "@/components/eventos/EventoCalendar";
 import EventoList from "@/components/eventos/EventoList";
 import EventoForm from "@/components/eventos/EventoForm";
-import { GoogleCalendarSettings } from "@/components/eventos/GoogleCalendarSettings";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { downloadMultipleEventsAsICS } from "@/lib/icsGenerator";
 
 const Eventos = () => {
   const navigate = useNavigate();
-  const [searchParams, setSearchParams] = useSearchParams();
   const [showForm, setShowForm] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
-  const [showSettings, setShowSettings] = useState(false);
-
-  // Handle Google OAuth callback
-  useEffect(() => {
-    const handleGoogleCallback = async () => {
-      const isGoogleCallback = searchParams.get("google_callback");
-      const code = searchParams.get("code");
-      const error = searchParams.get("error");
-
-      if (code) {
-        try {
-          const { data: { session } } = await supabase.auth.getSession();
-
-          const response = await fetch(
-            `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/google-calendar-auth?action=callback`,
-            {
-              method: "POST",
-              headers: {
-                Authorization: `Bearer ${session?.access_token}`,
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({ code }),
-            }
-          );
-
-          const data = await response.json();
-
-          if (data.success) {
-            toast.success("Conectado ao Google Calendar com sucesso!");
-            setShowSettings(true);
-          } else {
-            toast.error(data.error || "Erro ao conectar com Google Calendar");
-          }
-        } catch (err) {
-          console.error("Callback error:", err);
-          toast.error("Erro ao processar autorização do Google");
-        }
-
-        // Clear URL params
-        sessionStorage.removeItem("google_redirect_uri");
-        setSearchParams({});
-      } else if (isGoogleCallback && error) {
-        toast.error("Autorização do Google foi cancelada");
-        setSearchParams({});
-      }
-    };
-
-    handleGoogleCallback();
-  }, [searchParams, setSearchParams]);
+  const [exporting, setExporting] = useState(false);
 
   const handleRefresh = () => {
     setRefreshKey(prev => prev + 1);
@@ -75,6 +26,31 @@ const Eventos = () => {
   const handleAddEvent = (date?: Date) => {
     setSelectedDate(date || null);
     setShowForm(true);
+  };
+
+  const handleExportAll = async () => {
+    setExporting(true);
+    try {
+      const { data: eventos, error } = await supabase
+        .from("eventos")
+        .select("id, titulo, descricao, data_inicio, data_fim, local")
+        .order("data_inicio", { ascending: true });
+
+      if (error) throw error;
+
+      if (!eventos || eventos.length === 0) {
+        toast.info("Nenhum evento para exportar");
+        return;
+      }
+
+      downloadMultipleEventsAsICS(eventos, "todos-eventos");
+      toast.success(`Exportados ${eventos.length} eventos`);
+    } catch (error) {
+      console.error("Export error:", error);
+      toast.error("Erro ao exportar eventos");
+    } finally {
+      setExporting(false);
+    }
   };
 
   return (
@@ -89,20 +65,14 @@ const Eventos = () => {
             <h1 className="text-3xl font-bold">Calendário de Eventos</h1>
           </div>
           <div className="flex gap-2">
-            <Dialog open={showSettings} onOpenChange={setShowSettings}>
-              <DialogTrigger asChild>
-                <Button variant="outline">
-                  <Settings className="w-4 h-4 mr-2" />
-                  Google Calendar
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-md">
-                <DialogHeader>
-                  <DialogTitle>Configurações do Google Calendar</DialogTitle>
-                </DialogHeader>
-                <GoogleCalendarSettings onRefresh={handleRefresh} />
-              </DialogContent>
-            </Dialog>
+            <Button variant="outline" onClick={handleExportAll} disabled={exporting}>
+              {exporting ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <Download className="w-4 h-4 mr-2" />
+              )}
+              Exportar .ICS
+            </Button>
             
             <Dialog open={showForm} onOpenChange={setShowForm}>
               <DialogTrigger asChild>
