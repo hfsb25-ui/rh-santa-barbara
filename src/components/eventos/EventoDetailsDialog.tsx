@@ -2,11 +2,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, Clock, MapPin, Download, Trash2 } from "lucide-react";
+import { Calendar, Clock, MapPin, Download, Trash2, Cloud, CloudOff } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
 import { downloadEventAsICS } from "@/lib/icsGenerator";
+import { useGoogleCalendar } from "@/hooks/useGoogleCalendar";
 
 interface Evento {
   id: string;
@@ -17,6 +18,7 @@ interface Evento {
   local: string | null;
   tipo: string;
   cor: string;
+  google_event_id?: string | null;
 }
 
 interface EventoDetailsDialogProps {
@@ -34,10 +36,17 @@ const tipoLabels: Record<string, string> = {
 };
 
 const EventoDetailsDialog = ({ evento, onClose, onDelete }: EventoDetailsDialogProps) => {
+  const { connected: googleConnected, deleteFromGoogle, syncToGoogle } = useGoogleCalendar();
+
   if (!evento) return null;
 
   const handleDelete = async () => {
     if (!confirm("Tem certeza que deseja excluir este evento?")) return;
+
+    // Delete from Google Calendar if synced
+    if (evento.google_event_id && googleConnected) {
+      await deleteFromGoogle(evento.google_event_id);
+    }
 
     const { error } = await supabase.from("eventos").delete().eq("id", evento.id);
     if (error) {
@@ -51,6 +60,27 @@ const EventoDetailsDialog = ({ evento, onClose, onDelete }: EventoDetailsDialogP
   const handleDownloadICS = () => {
     downloadEventAsICS(evento);
     toast.success("Arquivo .ics baixado! Importe no seu calendário.");
+  };
+
+  const handleSyncToGoogle = async () => {
+    if (!googleConnected) {
+      toast.error("Conecte-se ao Google Calendar primeiro");
+      return;
+    }
+
+    const googleEventId = await syncToGoogle({
+      id: evento.id,
+      titulo: evento.titulo,
+      descricao: evento.descricao,
+      data_inicio: evento.data_inicio,
+      data_fim: evento.data_fim,
+      local: evento.local,
+      google_event_id: evento.google_event_id,
+    });
+
+    if (googleEventId && !evento.google_event_id) {
+      await supabase.from("eventos").update({ google_event_id: googleEventId }).eq("id", evento.id);
+    }
   };
 
   return (
@@ -67,9 +97,22 @@ const EventoDetailsDialog = ({ evento, onClose, onDelete }: EventoDetailsDialogP
         </DialogHeader>
 
         <div className="space-y-4">
-          <Badge variant="secondary">
-            {tipoLabels[evento.tipo] || evento.tipo}
-          </Badge>
+          <div className="flex items-center gap-2 flex-wrap">
+            <Badge variant="secondary">
+              {tipoLabels[evento.tipo] || evento.tipo}
+            </Badge>
+            {evento.google_event_id ? (
+              <Badge variant="outline" className="text-green-600 border-green-600">
+                <Cloud className="w-3 h-3 mr-1" />
+                Sincronizado
+              </Badge>
+            ) : googleConnected ? (
+              <Badge variant="outline" className="text-muted-foreground">
+                <CloudOff className="w-3 h-3 mr-1" />
+                Não sincronizado
+              </Badge>
+            ) : null}
+          </div>
 
           {evento.descricao && (
             <p className="text-muted-foreground">{evento.descricao}</p>
@@ -92,17 +135,30 @@ const EventoDetailsDialog = ({ evento, onClose, onDelete }: EventoDetailsDialogP
             )}
           </div>
 
-          <div className="flex gap-2 pt-4">
+          <div className="flex flex-wrap gap-2 pt-4">
             <Button
               variant="outline"
-              className="flex-1"
+              size="sm"
               onClick={handleDownloadICS}
             >
               <Download className="w-4 h-4 mr-2" />
               Baixar .ics
             </Button>
-            <Button variant="destructive" size="icon" onClick={handleDelete}>
-              <Trash2 className="w-4 h-4" />
+            
+            {googleConnected && !evento.google_event_id && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleSyncToGoogle}
+              >
+                <Cloud className="w-4 h-4 mr-2" />
+                Sincronizar
+              </Button>
+            )}
+            
+            <Button variant="destructive" size="sm" onClick={handleDelete}>
+              <Trash2 className="w-4 h-4 mr-2" />
+              Excluir
             </Button>
           </div>
         </div>
