@@ -35,7 +35,13 @@ serve(async (req) => {
     if (action === "init") {
       // Generate OAuth URL
       const body = await req.json();
-      const redirectUri = body.redirectUri;
+      const appRedirectUri = body.redirectUri;
+
+      // Store the app redirect URI in state parameter
+      const state = encodeURIComponent(JSON.stringify({ appRedirectUri }));
+      
+      // Use edge function URL as the actual OAuth redirect (Google requires this)
+      const oauthRedirectUri = `${SUPABASE_URL}/functions/v1/google-calendar-auth?action=oauth_callback`;
 
       const scope = encodeURIComponent(
         "https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/calendar.readonly"
@@ -43,21 +49,58 @@ serve(async (req) => {
 
       const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
         `client_id=${GOOGLE_CLIENT_ID}` +
-        `&redirect_uri=${encodeURIComponent(redirectUri)}` +
+        `&redirect_uri=${encodeURIComponent(oauthRedirectUri)}` +
         `&response_type=code` +
         `&scope=${scope}` +
         `&access_type=offline` +
-        `&prompt=consent`;
+        `&prompt=consent` +
+        `&state=${state}`;
 
       return new Response(JSON.stringify({ authUrl }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    
+    // Handle OAuth callback from Google (browser redirect)
+    if (action === "oauth_callback") {
+      const code = url.searchParams.get("code");
+      const stateParam = url.searchParams.get("state");
+      const error = url.searchParams.get("error");
+      
+      if (error) {
+        return new Response(`<html><body><script>window.location.href = "/eventos?error=${encodeURIComponent(error)}";</script></body></html>`, {
+          headers: { "Content-Type": "text/html" },
+        });
+      }
+      
+      if (!code || !stateParam) {
+        return new Response(`<html><body><script>window.location.href = "/eventos?error=missing_params";</script></body></html>`, {
+          headers: { "Content-Type": "text/html" },
+        });
+      }
+      
+      // Parse state to get app redirect URI
+      let appRedirectUri: string;
+      try {
+        const state = JSON.parse(decodeURIComponent(stateParam));
+        appRedirectUri = state.appRedirectUri;
+      } catch {
+        appRedirectUri = "/eventos?google_callback=true";
+      }
+      
+      // Redirect to app with code
+      const redirectUrl = new URL(appRedirectUri.startsWith("http") ? appRedirectUri : `https://${url.host}${appRedirectUri}`);
+      redirectUrl.searchParams.set("code", code);
+      
+      return new Response(`<html><body><script>window.location.href = "${redirectUrl.toString()}";</script></body></html>`, {
+        headers: { "Content-Type": "text/html" },
       });
     }
 
     if (action === "callback") {
       // Exchange code for tokens
       const body = await req.json();
-      const { code, redirectUri } = body;
+      const { code } = body;
 
       if (!userId) {
         return new Response(JSON.stringify({ error: "Unauthorized" }), {
@@ -66,6 +109,9 @@ serve(async (req) => {
         });
       }
 
+      // Use the edge function URL as redirect_uri (must match what was used in auth URL)
+      const oauthRedirectUri = `${SUPABASE_URL}/functions/v1/google-calendar-auth?action=oauth_callback`;
+
       const tokenResponse = await fetch("https://oauth2.googleapis.com/token", {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -73,7 +119,7 @@ serve(async (req) => {
           code,
           client_id: GOOGLE_CLIENT_ID!,
           client_secret: GOOGLE_CLIENT_SECRET!,
-          redirect_uri: redirectUri,
+          redirect_uri: oauthRedirectUri,
           grant_type: "authorization_code",
         }),
       });
