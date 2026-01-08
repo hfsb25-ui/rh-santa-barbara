@@ -26,10 +26,9 @@ const Eventos = () => {
       const code = searchParams.get("code");
       const error = searchParams.get("error");
 
-      if (isGoogleCallback && code) {
+      if (code) {
         try {
           const { data: { session } } = await supabase.auth.getSession();
-          const redirectUri = sessionStorage.getItem("google_redirect_uri") || `${window.location.origin}/eventos?google_callback=true`;
 
           const response = await fetch(
             `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/google-calendar-auth?action=callback`,
@@ -39,7 +38,7 @@ const Eventos = () => {
                 Authorization: `Bearer ${session?.access_token}`,
                 "Content-Type": "application/json",
               },
-              body: JSON.stringify({ code, redirectUri }),
+              body: JSON.stringify({ code }),
             }
           );
 
