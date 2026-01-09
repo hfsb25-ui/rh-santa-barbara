@@ -66,6 +66,11 @@ interface HoleriteDialogProps {
   empresaId: string;
 }
 
+const MESES = [
+  "", "janeiro", "fevereiro", "março", "abril", "maio", "junho",
+  "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"
+];
+
 const HoleriteDialog = ({ open, onOpenChange, pagamento, empresaId }: HoleriteDialogProps) => {
   const [empresa, setEmpresa] = useState<Empresa | null>(null);
   const [employee, setEmployee] = useState<Employee | null>(null);
@@ -128,13 +133,9 @@ const HoleriteDialog = ({ open, onOpenChange, pagamento, empresaId }: HoleriteDi
     return new Date(date).toLocaleDateString("pt-BR");
   };
 
-  const getPeriodoStr = () => {
+  const getMesAnoStr = () => {
     if (!pagamento) return "";
-    const ano = pagamento.ano;
-    const mes = pagamento.mes;
-    const primeiroDia = new Date(ano, mes - 1, 1);
-    const ultimoDia = new Date(ano, mes, 0);
-    return `${primeiroDia.toLocaleDateString("pt-BR")} Até ${ultimoDia.toLocaleDateString("pt-BR")}`;
+    return `${MESES[pagamento.mes]}/${pagamento.ano}`;
   };
 
   const getSalarioBase = () => {
@@ -144,125 +145,112 @@ const HoleriteDialog = ({ open, onOpenChange, pagamento, empresaId }: HoleriteDi
     return { valor: employee.salario, sufixo };
   };
 
-  const generatePDF = () => {
+  const generatePDF = async () => {
     if (!pagamento || !empresa || !employee) {
       console.error("Dados insuficientes para gerar PDF");
       return;
     }
 
-    // A4 metade: altura ~148.5mm
-    const doc = new jsPDF({ format: [210, 148.5] });
+    const doc = new jsPDF({ format: "a4", orientation: "portrait" });
     const pageWidth = doc.internal.pageSize.getWidth();
-    const marginLeft = 8;
-    const marginRight = 22; // Espaço para barra de assinatura
+    const marginLeft = 10;
+    const signatureBarWidth = 25;
+    const marginRight = signatureBarWidth + 5;
     const contentWidth = pageWidth - marginLeft - marginRight;
     
-    let yPos = 8;
+    let yPos = 15;
 
-    // Número + Nome da empresa no topo esquerdo
-    doc.setFontSize(10);
+    // Título principal
+    doc.setFontSize(14);
     doc.setFont("helvetica", "bold");
-    doc.text(`3       ${empresa.nome}`, marginLeft, yPos);
-    yPos += 4;
+    doc.text("Recibo de Pagamento de Salário", pageWidth / 2, yPos, { align: "center" });
+    yPos += 6;
 
-    // Endereço e CNPJ
-    doc.setFontSize(8);
+    // CNPJ e período
+    doc.setFontSize(10);
     doc.setFont("helvetica", "normal");
-    if (empresa.endereco) {
-      const enderecoParts = empresa.endereco.split(",");
-      doc.text(`${enderecoParts[0] || ""} ${formatCNPJ(empresa.cnpj)}`, marginLeft, yPos);
-      yPos += 3;
-      if (enderecoParts.length > 1) {
-        doc.text(enderecoParts.slice(1).join(",").trim(), marginLeft, yPos);
-        yPos += 3;
-      }
-    }
-
-    // Período no canto direito
-    doc.text(`Período: ${getPeriodoStr()}`, pageWidth - marginRight - 5, yPos - 6, { align: "right" });
-    yPos += 2;
+    doc.text(`CNPJ: ${formatCNPJ(empresa.cnpj)}`, marginLeft, yPos);
+    doc.text(getMesAnoStr(), pageWidth - marginRight, yPos, { align: "right" });
+    yPos += 8;
 
     // Linha horizontal
     doc.setDrawColor(0);
-    doc.setLineWidth(0.3);
+    doc.setLineWidth(0.5);
     doc.line(marginLeft, yPos, pageWidth - marginRight, yPos);
-    yPos += 4;
-
-    // Dados do funcionário - Primeira linha
-    doc.setFontSize(7);
-    doc.setFont("helvetica", "bold");
-    doc.text("Cód/Contr: Nome:", marginLeft, yPos);
-    doc.text("PIS:", marginLeft + 85, yPos);
-    doc.text("CBO:", marginLeft + 100, yPos);
-    doc.text("C/Custo:", marginLeft + 115, yPos);
-    doc.text("Dpto:", marginLeft + 130, yPos);
-    doc.text("Setor:", marginLeft + 143, yPos);
-    doc.text("Seção:", marginLeft + 156, yPos);
-    doc.text("Admissão:", pageWidth - marginRight - 25, yPos);
-    yPos += 4;
-
-    doc.setFont("helvetica", "normal");
-    doc.text(`- / -   ${employee.nome_completo.toUpperCase()}`, marginLeft, yPos);
-    doc.text("-", marginLeft + 85, yPos);
-    doc.text("-", marginLeft + 100, yPos);
-    doc.text("", marginLeft + 115, yPos);
-    doc.text("", marginLeft + 130, yPos);
-    doc.text("", marginLeft + 143, yPos);
-    doc.text("", marginLeft + 156, yPos);
-    doc.text(formatDate(employee.data_admissao), pageWidth - marginRight - 25, yPos);
-    yPos += 4;
-
-    // Função
-    doc.setFont("helvetica", "bold");
-    doc.text("Função:", marginLeft + 85, yPos);
-    doc.setFont("helvetica", "normal");
-    doc.text(employee.cargo?.toUpperCase() || "-", marginLeft + 100, yPos);
     yPos += 6;
 
-    // Título centralizado com fundo
-    doc.setFillColor(230, 230, 230);
-    doc.rect(marginLeft, yPos - 3, contentWidth, 7, "F");
-    doc.setDrawColor(0);
-    doc.rect(marginLeft, yPos - 3, contentWidth, 7, "S");
-    doc.setFontSize(10);
+    // Dados do funcionário - Linha 1
+    doc.setFontSize(8);
     doc.setFont("helvetica", "bold");
-    doc.text("Recibo de Pagamento de Salário", marginLeft + contentWidth / 2, yPos + 1, { align: "center" });
+    doc.text("Código:", marginLeft, yPos);
+    doc.text("Nome do Funcionário:", marginLeft + 25, yPos);
+    doc.text("CBO:", marginLeft + 100, yPos);
+    yPos += 4;
+
+    doc.setFont("helvetica", "normal");
+    doc.text("-", marginLeft + 12, yPos);
+    doc.text(employee.nome_completo.toUpperCase(), marginLeft + 55, yPos);
+    doc.text(employee.cargo || "-", marginLeft + 110, yPos);
+    yPos += 6;
+
+    // Dados do funcionário - Linha 2
+    doc.setFont("helvetica", "bold");
+    doc.text("Admissão:", marginLeft, yPos);
+    doc.text("Emp.:", marginLeft + 35, yPos);
+    doc.text("Local:", marginLeft + 55, yPos);
+    doc.text("Depto.:", marginLeft + 75, yPos);
+    doc.text("Setor:", marginLeft + 95, yPos);
+    doc.text("Seção:", marginLeft + 115, yPos);
+    doc.text("Fl.:", marginLeft + 135, yPos);
+    doc.text("Dependentes:", marginLeft + 150, yPos);
+    yPos += 4;
+
+    doc.setFont("helvetica", "normal");
+    doc.text(formatDate(employee.data_admissao), marginLeft + 15, yPos);
+    doc.text("-", marginLeft + 42, yPos);
+    doc.text("-", marginLeft + 62, yPos);
+    doc.text("-", marginLeft + 85, yPos);
+    doc.text(employee.setor || "-", marginLeft + 102, yPos);
+    doc.text("-", marginLeft + 122, yPos);
+    doc.text("-", marginLeft + 140, yPos);
+    doc.text("0", marginLeft + 168, yPos);
     yPos += 8;
 
     // Tabela de itens - Header
     const colCod = marginLeft;
-    const colDesc = marginLeft + 12;
-    const colRef = marginLeft + 70;
-    const colVenc = marginLeft + 95;
-    const colDesc2 = marginLeft + 125;
+    const colDesc = marginLeft + 15;
+    const colRef = marginLeft + 75;
+    const colVenc = marginLeft + 105;
+    const colDesconto = marginLeft + 140;
 
-    doc.setFillColor(245, 245, 245);
-    doc.rect(marginLeft, yPos - 3, contentWidth, 5, "F");
-    doc.rect(marginLeft, yPos - 3, contentWidth, 5, "S");
+    doc.setFillColor(240, 240, 240);
+    doc.rect(marginLeft, yPos - 3, contentWidth, 6, "F");
+    doc.setDrawColor(0);
+    doc.rect(marginLeft, yPos - 3, contentWidth, 6, "S");
     
-    doc.setFontSize(7);
+    doc.setFontSize(8);
     doc.setFont("helvetica", "bold");
-    doc.text("Cod.", colCod + 2, yPos);
+    doc.text("Cód.", colCod + 2, yPos);
     doc.text("Descrição", colDesc, yPos);
     doc.text("Referência", colRef, yPos);
     doc.text("Vencimentos", colVenc, yPos);
-    doc.text("Descontos", colDesc2, yPos);
-    yPos += 5;
+    doc.text("Descontos", colDesconto, yPos);
+    yPos += 6;
 
+    // Área de itens
+    const itemsStartY = yPos - 3;
+    const rowHeight = 5;
+    
     doc.setFont("helvetica", "normal");
-    const rowHeight = 4;
     const proventos = pagamento.folha_pagamento_itens?.filter(i => i.variaveis_folha?.tipo === "provento") || [];
     const descontos = pagamento.folha_pagamento_itens?.filter(i => i.variaveis_folha?.tipo === "desconto") || [];
-
-    // Início da área com borda externa
-    const itemsStartY = yPos - 3;
-    
-    // Salário base
-    doc.text("1", colCod + 2, yPos);
-    doc.text("Dias Salário Normal", colDesc, yPos);
     const salarioBase = getSalarioBase();
-    doc.text(`30,00 ${salarioBase.sufixo === "/D" ? "D" : salarioBase.sufixo === "/H" ? "H" : ""}`.trim(), colRef, yPos);
-    doc.text(pagamento.valor_bruto.toLocaleString("pt-BR", { minimumFractionDigits: 2 }), colVenc, yPos);
+
+    // Salário base
+    doc.text("101", colCod + 2, yPos);
+    doc.text("Salário Base", colDesc, yPos);
+    doc.text("", colRef, yPos);
+    doc.text(salarioBase.valor.toLocaleString("pt-BR", { minimumFractionDigits: 2 }), colVenc, yPos);
     yPos += rowHeight;
 
     // Proventos
@@ -280,100 +268,110 @@ const HoleriteDialog = ({ open, onOpenChange, pagamento, empresaId }: HoleriteDi
       doc.text(item.variaveis_folha?.nome || "-", colDesc, yPos);
       doc.text("", colRef, yPos);
       doc.text("", colVenc, yPos);
-      doc.text(item.valor.toLocaleString("pt-BR", { minimumFractionDigits: 2 }), colDesc2, yPos);
+      doc.text(item.valor.toLocaleString("pt-BR", { minimumFractionDigits: 2 }), colDesconto, yPos);
       yPos += rowHeight;
     });
 
-    // Linhas vazias
+    // Linhas vazias para preencher
     const totalLinhas = 1 + proventos.length + descontos.length;
-    const linhasVazias = Math.max(0, 8 - totalLinhas);
+    const linhasVazias = Math.max(0, 10 - totalLinhas);
     for (let i = 0; i < linhasVazias; i++) {
       yPos += rowHeight;
     }
 
-    // Desenha apenas a borda externa da área de itens
+    // Borda da área de itens
     const itemsEndY = yPos - 3;
     doc.rect(marginLeft, itemsStartY, contentWidth, itemsEndY - itemsStartY, "S");
 
     // Totais
-    const totalProventos = pagamento.valor_bruto + proventos.reduce((sum, p) => sum + p.valor, 0);
+    const totalProventos = salarioBase.valor + proventos.reduce((sum, p) => sum + p.valor, 0);
     const totalDescontos = descontos.reduce((sum, d) => sum + d.valor, 0);
 
-    doc.setFillColor(245, 245, 245);
-    doc.rect(marginLeft, yPos - 3, contentWidth, 5, "F");
-    doc.rect(marginLeft, yPos - 3, contentWidth, 5, "S");
-    doc.setFontSize(7);
-    doc.setFont("helvetica", "bold");
-    doc.text("Total dos Vencimentos", colVenc - 25, yPos);
-    doc.text(totalProventos.toLocaleString("pt-BR", { minimumFractionDigits: 2 }), colVenc, yPos);
-    doc.text("Total dos Descontos", colDesc2 - 8, yPos);
-    doc.text(totalDescontos.toLocaleString("pt-BR", { minimumFractionDigits: 2 }), colDesc2 + 20, yPos);
-    yPos += 6;
-
-    // Valor Líquido
-    doc.setFillColor(230, 230, 230);
+    doc.setFillColor(240, 240, 240);
     doc.rect(marginLeft, yPos - 3, contentWidth, 6, "F");
     doc.rect(marginLeft, yPos - 3, contentWidth, 6, "S");
-    doc.setFontSize(8);
-    doc.text("Valor Líquido ->", colVenc - 25, yPos + 1);
-    doc.text(pagamento.valor_liquido.toLocaleString("pt-BR", { minimumFractionDigits: 2 }), colDesc2 + 20, yPos + 1);
+    doc.setFont("helvetica", "bold");
+    doc.text("Total de Vencimentos", colVenc - 28, yPos);
+    doc.text(totalProventos.toLocaleString("pt-BR", { minimumFractionDigits: 2 }), colVenc, yPos);
+    doc.text("Total de Descontos", colDesconto - 5, yPos);
+    doc.text(totalDescontos.toLocaleString("pt-BR", { minimumFractionDigits: 2 }), colDesconto + 28, yPos);
     yPos += 8;
 
+    // Valor Líquido
+    doc.setFillColor(220, 220, 220);
+    doc.rect(marginLeft, yPos - 3, contentWidth, 7, "F");
+    doc.rect(marginLeft, yPos - 3, contentWidth, 7, "S");
+    doc.setFontSize(10);
+    doc.text("Valor Líquido:", colVenc - 20, yPos + 1);
+    doc.text(pagamento.valor_liquido.toLocaleString("pt-BR", { minimumFractionDigits: 2 }), colDesconto + 28, yPos + 1);
+    yPos += 12;
+
     // Base de cálculos
-    doc.setFontSize(6);
-    doc.setFont("helvetica", "bold");
-    const baseColWidth = contentWidth / 5;
+    const baseColWidth = contentWidth / 7;
     
-    doc.setFillColor(245, 245, 245);
-    const basesStartY = yPos - 3;
-    doc.rect(marginLeft, basesStartY, contentWidth, 8, "F");
-    doc.rect(marginLeft, basesStartY, contentWidth, 8, "S");
-    doc.text("Salário Base", marginLeft + 2, yPos);
-    doc.text("Base INSS", marginLeft + baseColWidth + 2, yPos);
-    doc.text("Base Cálc. FGTS", marginLeft + baseColWidth * 2 + 2, yPos);
-    doc.text("FGTS do Mês", marginLeft + baseColWidth * 3 + 2, yPos);
-    doc.text("Base Cálc. IRRF", marginLeft + baseColWidth * 4 + 2, yPos);
+    doc.setFontSize(7);
+    doc.setFont("helvetica", "bold");
+    doc.setFillColor(240, 240, 240);
+    doc.rect(marginLeft, yPos - 3, contentWidth, 10, "F");
+    doc.rect(marginLeft, yPos - 3, contentWidth, 10, "S");
+
+    const baseLabels = ["Salário Base", "Sal. Contr.", "INSS", "Base Cálc. FGTS", "FGTS do Mês", "Base Cálc. IRRF", "Faixa IRRF"];
+    baseLabels.forEach((label, i) => {
+      doc.text(label, marginLeft + i * baseColWidth + 2, yPos);
+    });
     yPos += 4;
 
     doc.setFont("helvetica", "normal");
-    doc.text(`${salarioBase.valor.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} ${salarioBase.sufixo}`, marginLeft + 2, yPos);
-    doc.text("0,00", marginLeft + baseColWidth + 2, yPos);
-    doc.text(salarioBase.valor.toLocaleString("pt-BR", { minimumFractionDigits: 2 }), marginLeft + baseColWidth * 2 + 2, yPos);
     const fgts = salarioBase.valor * 0.08;
-    doc.text(fgts.toLocaleString("pt-BR", { minimumFractionDigits: 2 }), marginLeft + baseColWidth * 3 + 2, yPos);
-    doc.text("0,00", marginLeft + baseColWidth * 4 + 2, yPos);
-    yPos += 6;
+    const baseValues = [
+      `${salarioBase.valor.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`,
+      salarioBase.valor.toLocaleString("pt-BR", { minimumFractionDigits: 2 }),
+      "0,00",
+      salarioBase.valor.toLocaleString("pt-BR", { minimumFractionDigits: 2 }),
+      fgts.toLocaleString("pt-BR", { minimumFractionDigits: 2 }),
+      "0,00",
+      "-"
+    ];
+    baseValues.forEach((val, i) => {
+      doc.text(val, marginLeft + i * baseColWidth + 2, yPos);
+    });
+    yPos += 10;
 
-    // Rodapé
+    // Linha tracejada de corte
+    doc.setLineDashPattern([2, 2], 0);
+    doc.line(marginLeft, yPos, pageWidth - marginRight, yPos);
     doc.setFontSize(6);
-    doc.text("Processado por: Registrado", marginLeft, yPos);
+    doc.text("- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - corte aqui - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -", pageWidth / 2, yPos + 3, { align: "center" });
+    doc.setLineDashPattern([], 0);
 
-    // Barra lateral direita (assinatura)
-    const barraX = pageWidth - marginRight + 2;
-    const barraY = 6;
-    const barraHeight = yPos - barraY + 2;
+    // Barra lateral de assinatura
+    const barraX = pageWidth - signatureBarWidth;
+    const barraY = 12;
+    const barraHeight = yPos - barraY - 5;
     
     doc.setDrawColor(0);
-    doc.rect(barraX, barraY, 18, barraHeight, "S");
-    
-    // Texto vertical na barra
-    doc.setFontSize(5);
+    doc.setLineWidth(0.5);
+    doc.rect(barraX, barraY, signatureBarWidth - 5, barraHeight, "S");
+
+    // Texto vertical
+    doc.setFontSize(6);
     doc.setFont("helvetica", "normal");
     
-    // Texto "Declaro ter recebido..."
-    const textoDeclaracao = "Declaro ter recebido a importância líquida discriminada neste recibo:";
-    doc.text(textoDeclaracao, barraX + 4, barraY + 8, { angle: 90, maxWidth: barraHeight - 30 });
-    
-    // Linha para assinatura
-    doc.line(barraX + 9, barraY + barraHeight - 25, barraX + 9, barraY + barraHeight - 10);
-    doc.text("Assinatura", barraX + 11, barraY + barraHeight - 18, { angle: 90 });
-    
+    // Texto da declaração (vertical)
+    const textoDeclaracao = "DECLARO TER RECEBIDO A IMPORTÂNCIA LÍQUIDA DISCRIMINADA NESTE RECIBO";
+    doc.text(textoDeclaracao, barraX + 6, barraY + 10, { angle: 90, maxWidth: barraHeight - 40 });
+
+    // Assinatura do funcionário
+    doc.setFontSize(5);
+    doc.text("ASSINATURA DO FUNCIONÁRIO", barraX + 12, barraY + 10, { angle: 90 });
+    doc.line(barraX + 14, barraY + barraHeight - 40, barraX + 14, barraY + barraHeight - 15);
+
     // Data
-    doc.text("___/___/___", barraX + 14, barraY + barraHeight - 25, { angle: 90 });
-    doc.text("Data", barraX + 16, barraY + barraHeight - 18, { angle: 90 });
+    doc.text("_____/_____/_____", barraX + 18, barraY + barraHeight - 35, { angle: 90 });
+    doc.text("DATA", barraX + 18, barraY + barraHeight - 15, { angle: 90 });
 
     // Save
-    const nomeArquivo = `recibo-${employee.nome_completo.replace(/\s+/g, "-").toLowerCase()}-${pagamento.mes}-${pagamento.ano}.pdf`;
+    const nomeArquivo = `holerite-${employee.nome_completo.replace(/\s+/g, "-").toLowerCase()}-${MESES[pagamento.mes]}-${pagamento.ano}.pdf`;
     doc.save(nomeArquivo);
   };
 
@@ -381,13 +379,13 @@ const HoleriteDialog = ({ open, onOpenChange, pagamento, empresaId }: HoleriteDi
 
   const proventos = pagamento.folha_pagamento_itens?.filter(i => i.variaveis_folha?.tipo === "provento") || [];
   const descontos = pagamento.folha_pagamento_itens?.filter(i => i.variaveis_folha?.tipo === "desconto") || [];
-  const totalProventos = pagamento.valor_bruto + proventos.reduce((sum, p) => sum + p.valor, 0);
-  const totalDescontos = descontos.reduce((sum, d) => sum + d.valor, 0);
   const salarioBase = getSalarioBase();
+  const totalProventos = salarioBase.valor + proventos.reduce((sum, p) => sum + p.valor, 0);
+  const totalDescontos = descontos.reduce((sum, d) => sum + d.valor, 0);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Recibo de Pagamento</DialogTitle>
         </DialogHeader>
@@ -398,188 +396,210 @@ const HoleriteDialog = ({ open, onOpenChange, pagamento, empresaId }: HoleriteDi
           </div>
         ) : (
           <div className="space-y-4">
-            {/* Preview estilo recibo original */}
-            <div className="border border-black bg-white text-black font-mono text-xs relative">
-              {/* Barra lateral direita */}
-              <div className="absolute right-0 top-0 bottom-0 w-24 border-l border-black flex flex-col items-center justify-between py-4 bg-white">
-                <div className="writing-vertical text-[8px] leading-tight px-2 text-center" style={{ writingMode: "vertical-rl", transform: "rotate(180deg)" }}>
-                  Declaro ter recebido a importância líquida discriminada neste recibo:
-                </div>
-                <div className="flex flex-col items-center gap-2 mt-4">
-                  <div className="border-b border-black w-16"></div>
-                  <span className="text-[8px]">Assinatura</span>
-                </div>
-                <div className="flex flex-col items-center gap-1 mb-2">
-                  <span className="text-[8px]">___/___/___</span>
-                  <span className="text-[8px]">Data</span>
-                </div>
-              </div>
-
-              {/* Conteúdo principal */}
-              <div className="pr-28">
-                {/* Cabeçalho */}
-                <div className="p-2 border-b border-black">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <p className="font-bold text-sm">3&nbsp;&nbsp;&nbsp;&nbsp;{empresa?.nome}</p>
-                      <p className="text-[10px]">{empresa?.endereco} {formatCNPJ(empresa?.cnpj)}</p>
-                    </div>
-                    <div className="text-right text-[10px]">
-                      <p>Período: {getPeriodoStr()}</p>
-                    </div>
+            {/* Preview do holerite */}
+            <div className="border border-border bg-white text-black font-mono text-xs relative p-4">
+              <div className="flex">
+                {/* Conteúdo principal */}
+                <div className="flex-1 pr-20">
+                  {/* Título */}
+                  <div className="text-center border-b-2 border-black pb-2 mb-3">
+                    <h2 className="text-lg font-bold">Recibo de Pagamento de Salário</h2>
                   </div>
-                </div>
 
-                {/* Dados do funcionário */}
-                <div className="border-b border-black">
-                  <div className="grid grid-cols-12 text-[9px] border-b border-black">
-                    <div className="col-span-4 p-1 border-r border-black">
-                      <span className="font-bold">Cód/Contr: Nome:</span>
+                  {/* CNPJ e Período */}
+                  <div className="flex justify-between mb-3 border-b border-black pb-2">
+                    <span className="text-[10px]">CNPJ: {formatCNPJ(empresa?.cnpj)}</span>
+                    <span className="text-[10px] font-semibold">{getMesAnoStr()}</span>
+                  </div>
+
+                  {/* Dados do funcionário - Primeira linha */}
+                  <div className="grid grid-cols-12 gap-1 text-[9px] border-b border-gray-300 pb-1 mb-1">
+                    <div className="col-span-2">
+                      <span className="font-bold">Código:</span>
+                      <br />
+                      <span>-</span>
                     </div>
-                    <div className="col-span-1 p-1 border-r border-black">
-                      <span className="font-bold">PIS:</span>
+                    <div className="col-span-6">
+                      <span className="font-bold">Nome do Funcionário:</span>
+                      <br />
+                      <span>{employee?.nome_completo?.toUpperCase()}</span>
                     </div>
-                    <div className="col-span-1 p-1 border-r border-black">
+                    <div className="col-span-4">
                       <span className="font-bold">CBO:</span>
-                    </div>
-                    <div className="col-span-1 p-1 border-r border-black">
-                      <span className="font-bold">C/Custo:</span>
-                    </div>
-                    <div className="col-span-1 p-1 border-r border-black">
-                      <span className="font-bold">Dpto:</span>
-                    </div>
-                    <div className="col-span-1 p-1 border-r border-black">
-                      <span className="font-bold">Setor:</span>
-                    </div>
-                    <div className="col-span-1 p-1 border-r border-black">
-                      <span className="font-bold">Seção:</span>
-                    </div>
-                    <div className="col-span-2 p-1">
-                      <span className="font-bold">Admissão:</span>
+                      <br />
+                      <span>{employee?.cargo || "-"}</span>
                     </div>
                   </div>
-                  <div className="grid grid-cols-12 text-[9px]">
-                    <div className="col-span-4 p-1 border-r border-black">
-                      - / -&nbsp;&nbsp;{employee?.nome_completo?.toUpperCase()}
+
+                  {/* Dados do funcionário - Segunda linha */}
+                  <div className="grid grid-cols-12 gap-1 text-[8px] border-b border-gray-300 pb-1 mb-2">
+                    <div className="col-span-2">
+                      <span className="font-bold">Admissão</span>
+                      <br />
+                      <span>{formatDate(employee?.data_admissao || null)}</span>
                     </div>
-                    <div className="col-span-1 p-1 border-r border-black">-</div>
-                    <div className="col-span-1 p-1 border-r border-black">-</div>
-                    <div className="col-span-1 p-1 border-r border-black"></div>
-                    <div className="col-span-1 p-1 border-r border-black"></div>
-                    <div className="col-span-1 p-1 border-r border-black"></div>
-                    <div className="col-span-1 p-1 border-r border-black"></div>
-                    <div className="col-span-2 p-1">{formatDate(employee?.data_admissao || null)}</div>
-                  </div>
-                  <div className="grid grid-cols-12 text-[9px] border-t border-black">
-                    <div className="col-span-4 p-1 border-r border-black"></div>
-                    <div className="col-span-2 p-1 border-r border-black">
-                      <span className="font-bold">Função:</span> {employee?.cargo?.toUpperCase()}
+                    <div className="col-span-1">
+                      <span className="font-bold">Emp.</span>
+                      <br />
+                      <span>-</span>
                     </div>
-                    <div className="col-span-6 p-1"></div>
+                    <div className="col-span-1">
+                      <span className="font-bold">Local</span>
+                      <br />
+                      <span>-</span>
+                    </div>
+                    <div className="col-span-1">
+                      <span className="font-bold">Depto.</span>
+                      <br />
+                      <span>-</span>
+                    </div>
+                    <div className="col-span-2">
+                      <span className="font-bold">Setor</span>
+                      <br />
+                      <span>{employee?.setor || "-"}</span>
+                    </div>
+                    <div className="col-span-1">
+                      <span className="font-bold">Seção</span>
+                      <br />
+                      <span>-</span>
+                    </div>
+                    <div className="col-span-1">
+                      <span className="font-bold">Fl.</span>
+                      <br />
+                      <span>-</span>
+                    </div>
+                    <div className="col-span-3">
+                      <span className="font-bold">Dependentes</span>
+                      <br />
+                      <span>0</span>
+                    </div>
                   </div>
-                </div>
 
-                {/* Título do recibo */}
-                <div className="bg-gray-200 border-b border-black p-1 text-center">
-                  <span className="font-bold text-sm">Recibo de Pagamento de Salário</span>
-                </div>
-
-                {/* Header da tabela */}
-                <div className="grid grid-cols-12 text-[9px] bg-gray-100 font-bold">
-                  <div className="col-span-1 p-1">Cod.</div>
-                  <div className="col-span-4 p-1">Descrição</div>
-                  <div className="col-span-2 p-1 text-center">Referência</div>
-                  <div className="col-span-2 p-1 text-right">Vencimentos</div>
-                  <div className="col-span-3 p-1 text-right">Descontos</div>
-                </div>
-
-                {/* Container com borda externa para todas as linhas de variáveis */}
-                <div className="border border-black">
-                  {/* Salário base */}
-                  <div className="grid grid-cols-12 text-[9px]">
-                    <div className="col-span-1 p-1">1</div>
-                    <div className="col-span-4 p-1">Dias Salário Normal</div>
-                    <div className="col-span-2 p-1 text-center">30,00 {salarioBase.sufixo === "/D" ? "D" : ""}</div>
-                    <div className="col-span-2 p-1 text-right">{pagamento.valor_bruto.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</div>
-                    <div className="col-span-3 p-1 text-right"></div>
+                  {/* Tabela de itens - Header */}
+                  <div className="grid grid-cols-12 text-[9px] bg-gray-200 font-bold border border-black">
+                    <div className="col-span-1 p-1 border-r border-gray-400">Cód.</div>
+                    <div className="col-span-4 p-1 border-r border-gray-400">Descrição</div>
+                    <div className="col-span-2 p-1 text-center border-r border-gray-400">Referência</div>
+                    <div className="col-span-2 p-1 text-right border-r border-gray-400">Vencimentos</div>
+                    <div className="col-span-3 p-1 text-right">Descontos</div>
                   </div>
 
-                  {/* Proventos */}
-                  {proventos.map((item) => (
-                    <div key={item.id} className="grid grid-cols-12 text-[9px]">
-                      <div className="col-span-1 p-1">{item.variaveis_folha?.codigo || "-"}</div>
-                      <div className="col-span-4 p-1">{item.variaveis_folha?.nome}</div>
+                  {/* Tabela de itens - Conteúdo */}
+                  <div className="border-l border-r border-b border-black">
+                    {/* Salário base */}
+                    <div className="grid grid-cols-12 text-[9px] border-b border-gray-200">
+                      <div className="col-span-1 p-1">101</div>
+                      <div className="col-span-4 p-1">Salário Base</div>
                       <div className="col-span-2 p-1 text-center"></div>
-                      <div className="col-span-2 p-1 text-right">{item.valor.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</div>
+                      <div className="col-span-2 p-1 text-right">{salarioBase.valor.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</div>
                       <div className="col-span-3 p-1 text-right"></div>
                     </div>
-                  ))}
 
-                  {/* Descontos */}
-                  {descontos.map((item) => (
-                    <div key={item.id} className="grid grid-cols-12 text-[9px]">
-                      <div className="col-span-1 p-1">{item.variaveis_folha?.codigo || "-"}</div>
-                      <div className="col-span-4 p-1">{item.variaveis_folha?.nome}</div>
-                      <div className="col-span-2 p-1 text-center"></div>
-                      <div className="col-span-2 p-1 text-right"></div>
-                      <div className="col-span-3 p-1 text-right">{item.valor.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</div>
-                    </div>
-                  ))}
+                    {/* Proventos */}
+                    {proventos.map((item) => (
+                      <div key={item.id} className="grid grid-cols-12 text-[9px] border-b border-gray-200">
+                        <div className="col-span-1 p-1">{item.variaveis_folha?.codigo || "-"}</div>
+                        <div className="col-span-4 p-1">{item.variaveis_folha?.nome}</div>
+                        <div className="col-span-2 p-1 text-center"></div>
+                        <div className="col-span-2 p-1 text-right">{item.valor.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</div>
+                        <div className="col-span-3 p-1 text-right"></div>
+                      </div>
+                    ))}
 
-                  {/* Linhas vazias */}
-                  {Array.from({ length: Math.max(0, 6 - proventos.length - descontos.length) }).map((_, i) => (
-                    <div key={`empty-${i}`} className="grid grid-cols-12 text-[9px]">
-                      <div className="col-span-1 p-1">&nbsp;</div>
-                      <div className="col-span-4 p-1"></div>
-                      <div className="col-span-2 p-1"></div>
-                      <div className="col-span-2 p-1"></div>
-                      <div className="col-span-3 p-1"></div>
-                    </div>
-                  ))}
-                </div>
+                    {/* Descontos */}
+                    {descontos.map((item) => (
+                      <div key={item.id} className="grid grid-cols-12 text-[9px] border-b border-gray-200">
+                        <div className="col-span-1 p-1">{item.variaveis_folha?.codigo || "-"}</div>
+                        <div className="col-span-4 p-1">{item.variaveis_folha?.nome}</div>
+                        <div className="col-span-2 p-1 text-center"></div>
+                        <div className="col-span-2 p-1 text-right"></div>
+                        <div className="col-span-3 p-1 text-right">{item.valor.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</div>
+                      </div>
+                    ))}
 
-                {/* Totais */}
-                <div className="grid grid-cols-2 text-[9px] border border-black bg-gray-100">
-                  <div className="p-1 flex justify-between">
-                    <span className="font-bold">Total dos Vencimentos</span>
-                    <span className="font-bold">{totalProventos.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
+                    {/* Linhas vazias */}
+                    {Array.from({ length: Math.max(0, 8 - proventos.length - descontos.length - 1) }).map((_, i) => (
+                      <div key={`empty-${i}`} className="grid grid-cols-12 text-[9px] border-b border-gray-200 h-5">
+                        <div className="col-span-1 p-1"></div>
+                        <div className="col-span-4 p-1"></div>
+                        <div className="col-span-2 p-1"></div>
+                        <div className="col-span-2 p-1"></div>
+                        <div className="col-span-3 p-1"></div>
+                      </div>
+                    ))}
                   </div>
-                  <div className="p-1 flex justify-between">
-                    <span className="font-bold">Total dos Descontos</span>
-                    <span className="font-bold">{totalDescontos.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
-                  </div>
-                </div>
 
-                {/* Valor Líquido */}
-                <div className="grid grid-cols-2 text-[9px] border border-black bg-gray-200">
-                  <div className="p-1"></div>
-                  <div className="p-1 flex justify-between">
-                    <span className="font-bold">Valor Líquido -&gt;</span>
+                  {/* Totais */}
+                  <div className="grid grid-cols-2 text-[9px] border border-black bg-gray-100">
+                    <div className="p-1 flex justify-between border-r border-gray-400">
+                      <span className="font-bold">Total de Vencimentos</span>
+                      <span className="font-bold">{totalProventos.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
+                    </div>
+                    <div className="p-1 flex justify-between">
+                      <span className="font-bold">Total de Descontos</span>
+                      <span className="font-bold">{totalDescontos.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
+                    </div>
+                  </div>
+
+                  {/* Valor Líquido */}
+                  <div className="flex justify-between text-[10px] border border-black bg-gray-200 p-1">
+                    <span className="font-bold">Valor Líquido:</span>
                     <span className="font-bold text-sm">{pagamento.valor_liquido.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
                   </div>
+
+                  {/* Base de cálculos */}
+                  <div className="mt-3 border border-black">
+                    <div className="grid grid-cols-7 text-[7px] bg-gray-100 font-bold">
+                      <div className="p-1 border-r border-gray-300">Salário Base</div>
+                      <div className="p-1 border-r border-gray-300">Sal. Contr.</div>
+                      <div className="p-1 border-r border-gray-300">INSS</div>
+                      <div className="p-1 border-r border-gray-300">Base Cálc. FGTS</div>
+                      <div className="p-1 border-r border-gray-300">FGTS do Mês</div>
+                      <div className="p-1 border-r border-gray-300">Base Cálc. IRRF</div>
+                      <div className="p-1">Faixa IRRF</div>
+                    </div>
+                    <div className="grid grid-cols-7 text-[7px] border-t border-gray-300">
+                      <div className="p-1 border-r border-gray-300">{salarioBase.valor.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</div>
+                      <div className="p-1 border-r border-gray-300">{salarioBase.valor.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</div>
+                      <div className="p-1 border-r border-gray-300">0,00</div>
+                      <div className="p-1 border-r border-gray-300">{salarioBase.valor.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</div>
+                      <div className="p-1 border-r border-gray-300">{(salarioBase.valor * 0.08).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</div>
+                      <div className="p-1 border-r border-gray-300">0,00</div>
+                      <div className="p-1">-</div>
+                    </div>
+                  </div>
+
+                  {/* Linha de corte */}
+                  <div className="mt-4 border-t-2 border-dashed border-gray-400 pt-1 text-center text-[8px] text-gray-500">
+                    - - - - - - - - - - - - - - - - - - corte aqui - - - - - - - - - - - - - - - - - -
+                  </div>
                 </div>
 
-                {/* Base de cálculos */}
-                <div className="border border-black">
-                  <div className="grid grid-cols-5 text-[8px] bg-gray-100 font-bold">
-                    <div className="p-1">Salário Base</div>
-                    <div className="p-1">Base INSS</div>
-                    <div className="p-1">Base Cálc. FGTS</div>
-                    <div className="p-1">FGTS do Mês</div>
-                    <div className="p-1">Base Cálc. IRRF</div>
+                {/* Barra lateral de assinatura */}
+                <div className="absolute right-4 top-4 bottom-16 w-16 border-l border-t border-r border-b border-black flex flex-col items-center justify-between py-4 bg-white">
+                  <div 
+                    className="text-[7px] leading-tight px-1 text-center font-bold" 
+                    style={{ writingMode: "vertical-rl", transform: "rotate(180deg)" }}
+                  >
+                    DECLARO TER RECEBIDO A IMPORTÂNCIA LÍQUIDA DISCRIMINADA NESTE RECIBO
                   </div>
-                  <div className="grid grid-cols-5 text-[8px]">
-                    <div className="p-1">{salarioBase.valor.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} {salarioBase.sufixo}</div>
-                    <div className="p-1">0,00</div>
-                    <div className="p-1">{salarioBase.valor.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</div>
-                    <div className="p-1">{(salarioBase.valor * 0.08).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</div>
-                    <div className="p-1">0,00</div>
+                  <div 
+                    className="text-[6px] leading-tight px-1 text-center" 
+                    style={{ writingMode: "vertical-rl", transform: "rotate(180deg)" }}
+                  >
+                    ASSINATURA DO FUNCIONÁRIO
                   </div>
-                </div>
-
-                {/* Rodapé */}
-                <div className="p-1 text-[8px] border-b border-dashed border-black">
-                  Processado por: Registrado
+                  <div className="flex flex-col items-center gap-2 mt-2">
+                    <div className="border-b border-black w-12 transform -rotate-90"></div>
+                  </div>
+                  <div 
+                    className="text-[7px] leading-tight px-1 text-center" 
+                    style={{ writingMode: "vertical-rl", transform: "rotate(180deg)" }}
+                  >
+                    _____/_____/_____
+                    <br />
+                    DATA
+                  </div>
                 </div>
               </div>
             </div>
