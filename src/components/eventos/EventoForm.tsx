@@ -8,9 +8,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
-import { format } from "date-fns";
+import { format, addDays, addWeeks, addMonths, addYears } from "date-fns";
 import { useGoogleCalendar } from "@/hooks/useGoogleCalendar";
-import { Loader2 } from "lucide-react";
+import { Loader2, Repeat } from "lucide-react";
 
 interface Employee {
   id: string;
@@ -28,6 +28,8 @@ interface EventoFormProps {
     tipo: string;
     cor: string;
     google_event_id?: string | null;
+    recorrente?: boolean | null;
+    recorrencia_tipo?: string | null;
   };
   onSaved: () => void;
   onCancel: () => void;
@@ -52,12 +54,22 @@ const tipos = [
   { value: "evento_empresa", label: "Evento da Empresa" },
 ];
 
+const recorrenciaOpcoes = [
+  { value: "diario", label: "Diariamente" },
+  { value: "semanal", label: "Semanalmente" },
+  { value: "mensal", label: "Mensalmente" },
+  { value: "anual", label: "Anualmente" },
+];
+
 const EventoForm = ({ evento, onSaved, onCancel, initialDate }: EventoFormProps) => {
   const [loading, setLoading] = useState(false);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [selectedParticipants, setSelectedParticipants] = useState<string[]>([]);
   const [searchEmployee, setSearchEmployee] = useState("");
   const [syncWithGoogle, setSyncWithGoogle] = useState(!!evento?.google_event_id);
+  const [isRecorrente, setIsRecorrente] = useState(evento?.recorrente || false);
+  const [recorrenciaTipo, setRecorrenciaTipo] = useState(evento?.recorrencia_tipo || "semanal");
+  const [quantidadeRecorrencias, setQuantidadeRecorrencias] = useState(4);
   
   const { connected: googleConnected, syncToGoogle, loading: googleLoading } = useGoogleCalendar();
 
@@ -78,6 +90,21 @@ const EventoForm = ({ evento, onSaved, onCancel, initialDate }: EventoFormProps)
     setEmployees(data || []);
   };
 
+  const getNextDate = (date: Date, tipo: string): Date => {
+    switch (tipo) {
+      case "diario":
+        return addDays(date, 1);
+      case "semanal":
+        return addWeeks(date, 1);
+      case "mensal":
+        return addMonths(date, 1);
+      case "anual":
+        return addYears(date, 1);
+      default:
+        return addWeeks(date, 1);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setLoading(true);
@@ -85,31 +112,67 @@ const EventoForm = ({ evento, onSaved, onCancel, initialDate }: EventoFormProps)
     const formData = new FormData(e.currentTarget);
     const { data: { user } } = await supabase.auth.getUser();
 
-    const dataInicio = `${formData.get("data")}T${formData.get("hora_inicio")}:00`;
-    const dataFim = `${formData.get("data")}T${formData.get("hora_fim")}:00`;
+    const baseDate = formData.get("data") as string;
+    const horaInicio = formData.get("hora_inicio") as string;
+    const horaFim = formData.get("hora_fim") as string;
 
-    const eventoData = {
+    const baseEventoData = {
       titulo: formData.get("titulo") as string,
       descricao: (formData.get("descricao") as string) || null,
-      data_inicio: dataInicio,
-      data_fim: dataFim,
       local: (formData.get("local") as string) || null,
       tipo: formData.get("tipo") as string,
       cor: formData.get("cor") as string,
       participantes: selectedParticipants.length > 0 ? selectedParticipants : null,
       criado_por: user?.id,
+      recorrente: isRecorrente,
+      recorrencia_tipo: isRecorrente ? recorrenciaTipo : null,
     };
 
     let error;
-    let newEventoId: string | null = null;
+    let totalCriados = 0;
     
     if (evento) {
-      ({ error } = await supabase.from("eventos").update(eventoData).eq("id", evento.id));
-      newEventoId = evento.id;
-    } else {
-      const { data, error: insertError } = await supabase.from("eventos").insert(eventoData).select("id").single();
+      // Update existing event
+      const dataInicio = `${baseDate}T${horaInicio}:00`;
+      const dataFim = `${baseDate}T${horaFim}:00`;
+      
+      ({ error } = await supabase.from("eventos").update({
+        ...baseEventoData,
+        data_inicio: dataInicio,
+        data_fim: dataFim,
+      }).eq("id", evento.id));
+      
+      totalCriados = 1;
+    } else if (isRecorrente && quantidadeRecorrencias > 1) {
+      // Create recurring events
+      const eventosParaInserir = [];
+      let currentDate = new Date(baseDate);
+      
+      for (let i = 0; i < quantidadeRecorrencias; i++) {
+        const dateStr = format(currentDate, "yyyy-MM-dd");
+        eventosParaInserir.push({
+          ...baseEventoData,
+          data_inicio: `${dateStr}T${horaInicio}:00`,
+          data_fim: `${dateStr}T${horaFim}:00`,
+        });
+        currentDate = getNextDate(currentDate, recorrenciaTipo);
+      }
+      
+      const { error: insertError, data } = await supabase.from("eventos").insert(eventosParaInserir).select("id");
       error = insertError;
-      newEventoId = data?.id || null;
+      totalCriados = data?.length || 0;
+    } else {
+      // Create single event
+      const dataInicio = `${baseDate}T${horaInicio}:00`;
+      const dataFim = `${baseDate}T${horaFim}:00`;
+      
+      const { error: insertError } = await supabase.from("eventos").insert({
+        ...baseEventoData,
+        data_inicio: dataInicio,
+        data_fim: dataFim,
+      });
+      error = insertError;
+      totalCriados = 1;
     }
 
     if (error) {
@@ -119,26 +182,12 @@ const EventoForm = ({ evento, onSaved, onCancel, initialDate }: EventoFormProps)
       return;
     }
 
-    // Sync with Google Calendar if enabled
-    if (syncWithGoogle && googleConnected && newEventoId) {
-      const googleEventId = await syncToGoogle({
-        id: newEventoId,
-        titulo: eventoData.titulo,
-        descricao: eventoData.descricao,
-        data_inicio: eventoData.data_inicio,
-        data_fim: eventoData.data_fim,
-        local: eventoData.local,
-        google_event_id: evento?.google_event_id,
-      });
-
-      if (googleEventId && !evento?.google_event_id) {
-        // Update the event with the google_event_id
-        await supabase.from("eventos").update({ google_event_id: googleEventId }).eq("id", newEventoId);
-      }
-    }
-
     setLoading(false);
-    toast.success(evento ? "Evento atualizado!" : "Evento criado!");
+    if (isRecorrente && !evento && quantidadeRecorrencias > 1) {
+      toast.success(`${totalCriados} eventos recorrentes criados!`);
+    } else {
+      toast.success(evento ? "Evento atualizado!" : "Evento criado!");
+    }
     onSaved();
   };
 
@@ -254,6 +303,55 @@ const EventoForm = ({ evento, onSaved, onCancel, initialDate }: EventoFormProps)
             rows={3}
           />
         </div>
+
+        {/* Recorrência */}
+        {!evento && (
+          <div className="col-span-2 space-y-3 p-4 border rounded-lg bg-muted/30">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Repeat className="w-4 h-4 text-muted-foreground" />
+                <Label className="font-medium">Evento Recorrente</Label>
+              </div>
+              <Switch
+                checked={isRecorrente}
+                onCheckedChange={setIsRecorrente}
+              />
+            </div>
+
+            {isRecorrente && (
+              <div className="grid grid-cols-2 gap-4 pt-2">
+                <div>
+                  <Label className="text-sm">Frequência</Label>
+                  <Select value={recorrenciaTipo} onValueChange={setRecorrenciaTipo}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {recorrenciaOpcoes.map((opcao) => (
+                        <SelectItem key={opcao.value} value={opcao.value}>
+                          {opcao.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label className="text-sm">Repetições</Label>
+                  <Input
+                    type="number"
+                    min={2}
+                    max={52}
+                    value={quantidadeRecorrencias}
+                    onChange={(e) => setQuantidadeRecorrencias(Number(e.target.value))}
+                  />
+                </div>
+                <p className="col-span-2 text-xs text-muted-foreground">
+                  Serão criados {quantidadeRecorrencias} eventos {recorrenciaOpcoes.find(r => r.value === recorrenciaTipo)?.label.toLowerCase()}
+                </p>
+              </div>
+            )}
+          </div>
+        )}
 
         <div className="col-span-2">
           <Label>Participantes</Label>
