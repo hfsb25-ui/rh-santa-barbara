@@ -1329,6 +1329,8 @@ export type Database = {
       }
       eventos: {
         Row: {
+          concluido: boolean | null
+          concluido_em: string | null
           cor: string | null
           created_at: string | null
           criado_por: string | null
@@ -1348,6 +1350,8 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          concluido?: boolean | null
+          concluido_em?: string | null
           cor?: string | null
           created_at?: string | null
           criado_por?: string | null
@@ -1367,6 +1371,8 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          concluido?: boolean | null
+          concluido_em?: string | null
           cor?: string | null
           created_at?: string | null
           criado_por?: string | null

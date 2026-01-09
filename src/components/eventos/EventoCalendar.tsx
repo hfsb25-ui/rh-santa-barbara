@@ -16,6 +16,7 @@ interface Evento {
   local: string | null;
   tipo: string;
   cor: string;
+  concluido: boolean | null;
 }
 
 interface EventoCalendarProps {
@@ -127,8 +128,13 @@ const EventoCalendar = ({ onAddEvent, onRefresh }: EventoCalendarProps) => {
                     {dayEvents.slice(0, 3).map((evento) => (
                       <div
                         key={evento.id}
-                        className="text-xs p-1 rounded truncate cursor-pointer"
-                        style={{ backgroundColor: evento.cor, color: "#fff" }}
+                        className={`text-xs p-1 rounded truncate cursor-pointer ${
+                          evento.concluido ? "line-through opacity-60" : ""
+                        }`}
+                        style={{ 
+                          backgroundColor: evento.concluido ? "#9CA3AF" : evento.cor, 
+                          color: "#fff" 
+                        }}
                         onClick={(e) => {
                           e.stopPropagation();
                           setSelectedEvento(evento);
