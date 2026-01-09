@@ -1,8 +1,9 @@
+import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, Clock, MapPin, Download, Trash2, Cloud, CloudOff } from "lucide-react";
+import { Calendar, Clock, MapPin, Download, Trash2, Cloud, CloudOff, CheckCircle2, Circle } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
@@ -19,6 +20,7 @@ interface Evento {
   tipo: string;
   cor: string;
   google_event_id?: string | null;
+  concluido?: boolean | null;
 }
 
 interface EventoDetailsDialogProps {
@@ -37,6 +39,7 @@ const tipoLabels: Record<string, string> = {
 
 const EventoDetailsDialog = ({ evento, onClose, onDelete }: EventoDetailsDialogProps) => {
   const { connected: googleConnected, deleteFromGoogle, syncToGoogle } = useGoogleCalendar();
+  const [toggling, setToggling] = useState(false);
 
   if (!evento) return null;
 
@@ -55,6 +58,29 @@ const EventoDetailsDialog = ({ evento, onClose, onDelete }: EventoDetailsDialogP
     }
     toast.success("Evento excluído");
     onDelete();
+  };
+
+  const handleToggleConcluido = async () => {
+    setToggling(true);
+    const novoConcluido = !evento.concluido;
+    
+    const { error } = await supabase
+      .from("eventos")
+      .update({ 
+        concluido: novoConcluido,
+        concluido_em: novoConcluido ? new Date().toISOString() : null
+      })
+      .eq("id", evento.id);
+
+    if (error) {
+      toast.error("Erro ao atualizar evento");
+      setToggling(false);
+      return;
+    }
+    
+    toast.success(novoConcluido ? "Evento marcado como concluído!" : "Evento reaberto!");
+    setToggling(false);
+    onDelete(); // This triggers refresh
   };
 
   const handleDownloadICS = () => {
@@ -90,9 +116,11 @@ const EventoDetailsDialog = ({ evento, onClose, onDelete }: EventoDetailsDialogP
           <DialogTitle className="flex items-center gap-2">
             <div
               className="w-3 h-3 rounded-full"
-              style={{ backgroundColor: evento.cor }}
+              style={{ backgroundColor: evento.concluido ? "#9CA3AF" : evento.cor }}
             />
-            {evento.titulo}
+            <span className={evento.concluido ? "line-through text-muted-foreground" : ""}>
+              {evento.titulo}
+            </span>
           </DialogTitle>
         </DialogHeader>
 
@@ -101,8 +129,14 @@ const EventoDetailsDialog = ({ evento, onClose, onDelete }: EventoDetailsDialogP
             <Badge variant="secondary">
               {tipoLabels[evento.tipo] || evento.tipo}
             </Badge>
-            {evento.google_event_id ? (
+            {evento.concluido && (
               <Badge variant="outline" className="text-green-600 border-green-600">
+                <CheckCircle2 className="w-3 h-3 mr-1" />
+                Concluído
+              </Badge>
+            )}
+            {evento.google_event_id ? (
+              <Badge variant="outline" className="text-blue-600 border-blue-600">
                 <Cloud className="w-3 h-3 mr-1" />
                 Sincronizado
               </Badge>
@@ -136,6 +170,25 @@ const EventoDetailsDialog = ({ evento, onClose, onDelete }: EventoDetailsDialogP
           </div>
 
           <div className="flex flex-wrap gap-2 pt-4">
+            <Button
+              variant={evento.concluido ? "outline" : "default"}
+              size="sm"
+              onClick={handleToggleConcluido}
+              disabled={toggling}
+            >
+              {evento.concluido ? (
+                <>
+                  <Circle className="w-4 h-4 mr-2" />
+                  Reabrir
+                </>
+              ) : (
+                <>
+                  <CheckCircle2 className="w-4 h-4 mr-2" />
+                  Concluir
+                </>
+              )}
+            </Button>
+
             <Button
               variant="outline"
               size="sm"

@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, Clock, MapPin, Edit, Trash2, Download, FileDown } from "lucide-react";
+import { Calendar, Clock, MapPin, Edit, Trash2, Download, FileDown, CheckCircle2, Circle } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
@@ -20,6 +20,7 @@ interface Evento {
   local: string | null;
   tipo: string;
   cor: string;
+  concluido: boolean | null;
 }
 
 interface EventoListProps {
@@ -62,6 +63,27 @@ const EventoList = ({ onRefresh }: EventoListProps) => {
       return;
     }
     toast.success("Evento excluído");
+    fetchEventos();
+    onRefresh();
+  };
+
+  const handleToggleConcluido = async (evento: Evento) => {
+    const novoConcluido = !evento.concluido;
+    
+    const { error } = await supabase
+      .from("eventos")
+      .update({ 
+        concluido: novoConcluido,
+        concluido_em: novoConcluido ? new Date().toISOString() : null
+      })
+      .eq("id", evento.id);
+
+    if (error) {
+      toast.error("Erro ao atualizar evento");
+      return;
+    }
+    
+    toast.success(novoConcluido ? "Evento concluído!" : "Evento reaberto!");
     fetchEventos();
     onRefresh();
   };
@@ -157,21 +179,45 @@ const EventoList = ({ onRefresh }: EventoListProps) => {
               {eventos.map((evento) => (
                 <div
                   key={evento.id}
-                  className="flex items-start gap-4 p-4 border rounded-lg hover:bg-accent/50 transition-colors"
+                  className={`flex items-start gap-4 p-4 border rounded-lg hover:bg-accent/50 transition-colors ${
+                    evento.concluido ? "opacity-60" : ""
+                  }`}
                 >
                   <div
                     className="w-2 h-full min-h-16 rounded-full"
-                    style={{ backgroundColor: evento.cor }}
+                    style={{ backgroundColor: evento.concluido ? "#9CA3AF" : evento.cor }}
                   />
                   <div className="flex-1">
                     <div className="flex items-start justify-between">
                       <div>
-                        <h3 className="font-medium">{evento.titulo}</h3>
-                        <Badge variant="secondary" className="mt-1">
-                          {tipoLabels[evento.tipo] || evento.tipo}
-                        </Badge>
+                        <h3 className={`font-medium ${evento.concluido ? "line-through text-muted-foreground" : ""}`}>
+                          {evento.titulo}
+                        </h3>
+                        <div className="flex flex-wrap gap-1 mt-1">
+                          <Badge variant="secondary">
+                            {tipoLabels[evento.tipo] || evento.tipo}
+                          </Badge>
+                          {evento.concluido && (
+                            <Badge variant="outline" className="text-green-600 border-green-600">
+                              <CheckCircle2 className="w-3 h-3 mr-1" />
+                              Concluído
+                            </Badge>
+                          )}
+                        </div>
                       </div>
-                      <div className="flex gap-2">
+                      <div className="flex gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleToggleConcluido(evento)}
+                          title={evento.concluido ? "Reabrir evento" : "Marcar como concluído"}
+                        >
+                          {evento.concluido ? (
+                            <Circle className="w-4 h-4 text-muted-foreground" />
+                          ) : (
+                            <CheckCircle2 className="w-4 h-4 text-green-600" />
+                          )}
+                        </Button>
                         <Button
                           variant="ghost"
                           size="icon"
