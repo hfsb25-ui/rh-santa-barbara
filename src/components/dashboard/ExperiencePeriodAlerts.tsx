@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { AlertTriangle, Clock, User, Calendar, CheckCircle } from "lucide-react";
+import { AlertTriangle, Clock, User, Calendar, X, Eye } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { differenceInDays, addDays, format } from "date-fns";
+import { differenceInDays, format } from "date-fns";
 import { Progress } from "@/components/ui/progress";
+import { Button } from "@/components/ui/button";
 
 interface ExperienceEmployee {
   id: string;
@@ -29,7 +30,12 @@ interface ExperiencePeriodAlertsProps {
   selectedEmpresa?: string;
 }
 
+const STORAGE_KEY = "experience_alerts_hidden";
+
 export const ExperiencePeriodAlerts = ({ selectedEmpresa }: ExperiencePeriodAlertsProps) => {
+  const [isHidden, setIsHidden] = useState(() => {
+    return localStorage.getItem(STORAGE_KEY) === "true";
+  });
   const [employees, setEmployees] = useState<ExperienceEmployee[]>([]);
   const [loading, setLoading] = useState(true);
   const [config, setConfig] = useState<Config | null>(null);
@@ -143,12 +149,37 @@ export const ExperiencePeriodAlerts = ({ selectedEmpresa }: ExperiencePeriodAler
     }
   };
 
+  const handleHide = () => {
+    localStorage.setItem(STORAGE_KEY, "true");
+    setIsHidden(true);
+  };
+
+  const handleShow = () => {
+    localStorage.setItem(STORAGE_KEY, "false");
+    setIsHidden(false);
+  };
+
   if (loading) {
     return null;
   }
 
   if (!config?.ativo || employees.length === 0) {
     return null;
+  }
+
+  // Show collapsed state when hidden
+  if (isHidden) {
+    return (
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={handleShow}
+        className="gap-2 border-warning/50 text-warning hover:bg-warning/10"
+      >
+        <Eye className="h-4 w-4" />
+        Mostrar Período de Experiência ({employees.length})
+      </Button>
+    );
   }
 
   const getUrgencyColor = (daysRemaining: number, daysUntilMilestone: number | null) => {
@@ -167,9 +198,18 @@ export const ExperiencePeriodAlerts = ({ selectedEmpresa }: ExperiencePeriodAler
         <CardTitle className="flex items-center gap-2 text-base">
           <Clock className="h-5 w-5 text-warning" />
           Período de Experiência
-          <Badge variant="secondary" className="ml-auto">
+          <Badge variant="secondary" className="ml-auto mr-2">
             {employees.length} {employees.length === 1 ? "funcionário" : "funcionários"}
           </Badge>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-6 w-6 text-muted-foreground hover:text-foreground"
+            onClick={handleHide}
+            title="Esconder"
+          >
+            <X className="h-4 w-4" />
+          </Button>
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
