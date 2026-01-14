@@ -30,11 +30,12 @@ interface ExperiencePeriodAlertsProps {
   selectedEmpresa?: string;
 }
 
-const STORAGE_KEY = "experience_alerts_hidden";
+const STORAGE_KEY = "experience_alerts_expanded";
 
 export const ExperiencePeriodAlerts = ({ selectedEmpresa }: ExperiencePeriodAlertsProps) => {
   const [isHidden, setIsHidden] = useState(() => {
-    return localStorage.getItem(STORAGE_KEY) === "true";
+    // Default to hidden (minimized), only show if explicitly set to expanded
+    return localStorage.getItem(STORAGE_KEY) !== "true";
   });
   const [employees, setEmployees] = useState<ExperienceEmployee[]>([]);
   const [loading, setLoading] = useState(true);
@@ -150,12 +151,12 @@ export const ExperiencePeriodAlerts = ({ selectedEmpresa }: ExperiencePeriodAler
   };
 
   const handleHide = () => {
-    localStorage.setItem(STORAGE_KEY, "true");
+    localStorage.setItem(STORAGE_KEY, "false");
     setIsHidden(true);
   };
 
   const handleShow = () => {
-    localStorage.setItem(STORAGE_KEY, "false");
+    localStorage.setItem(STORAGE_KEY, "true");
     setIsHidden(false);
   };
 
