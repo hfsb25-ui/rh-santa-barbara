@@ -1,19 +1,22 @@
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { AlertTriangle, Clock, User } from "lucide-react";
+import { AlertTriangle, Clock, User, Calendar, CheckCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { differenceInDays, addDays, format } from "date-fns";
+import { Progress } from "@/components/ui/progress";
 
-interface ExperienceAlert {
+interface ExperienceEmployee {
   id: string;
   nome_completo: string;
   cargo: string;
   setor: string | null;
   data_admissao: string;
-  daysUntilMilestone: number;
-  milestone: number;
-  milestoneDate: Date;
+  daysWorked: number;
+  daysRemaining: number;
+  progress: number;
+  nextMilestone: number | null;
+  daysUntilMilestone: number | null;
 }
 
 interface Config {
@@ -27,7 +30,7 @@ interface ExperiencePeriodAlertsProps {
 }
 
 export const ExperiencePeriodAlerts = ({ selectedEmpresa }: ExperiencePeriodAlertsProps) => {
-  const [alerts, setAlerts] = useState<ExperienceAlert[]>([]);
+  const [employees, setEmployees] = useState<ExperienceEmployee[]>([]);
   const [loading, setLoading] = useState(true);
   const [config, setConfig] = useState<Config | null>(null);
 
@@ -37,7 +40,7 @@ export const ExperiencePeriodAlerts = ({ selectedEmpresa }: ExperiencePeriodAler
 
   useEffect(() => {
     if (config?.ativo) {
-      fetchExperienceAlerts();
+      fetchExperienceEmployees();
     } else if (config !== null) {
       setLoading(false);
     }
@@ -63,7 +66,7 @@ export const ExperiencePeriodAlerts = ({ selectedEmpresa }: ExperiencePeriodAler
     }
   };
 
-  const fetchExperienceAlerts = async () => {
+  const fetchExperienceEmployees = async () => {
     if (!config) return;
 
     try {
@@ -77,7 +80,7 @@ export const ExperiencePeriodAlerts = ({ selectedEmpresa }: ExperiencePeriodAler
         query = query.eq("empresa_id", selectedEmpresa);
       }
 
-      const { data: employees, error } = await query;
+      const { data: employeesData, error } = await query;
 
       if (error) {
         console.error("Error fetching employees:", error);
@@ -87,40 +90,52 @@ export const ExperiencePeriodAlerts = ({ selectedEmpresa }: ExperiencePeriodAler
       const today = new Date();
       today.setHours(0, 0, 0, 0);
 
-      const experienceAlerts: ExperienceAlert[] = [];
+      const maxExperienceDays = Math.max(...config.marcos_dias);
       const sortedMarcos = [...config.marcos_dias].sort((a, b) => a - b);
 
-      employees?.forEach((emp) => {
+      const experienceEmployees: ExperienceEmployee[] = [];
+
+      employeesData?.forEach((emp) => {
         if (!emp.data_admissao) return;
 
         const admissionDate = new Date(emp.data_admissao);
-        const daysSinceAdmission = differenceInDays(today, admissionDate);
+        const daysWorked = differenceInDays(today, admissionDate);
 
-        sortedMarcos.forEach((marco, index) => {
-          const milestoneDate = addDays(admissionDate, marco);
-          const daysUntilMilestone = differenceInDays(milestoneDate, today);
-          
-          // Check if within alert window and hasn't passed the previous milestone recently
-          const previousMarco = index > 0 ? sortedMarcos[index - 1] : 0;
-          
-          if (daysUntilMilestone >= 0 && daysUntilMilestone <= config.dias_antecedencia && daysSinceAdmission >= previousMarco) {
-            experienceAlerts.push({
-              id: emp.id,
-              nome_completo: emp.nome_completo,
-              cargo: emp.cargo,
-              setor: emp.setor,
-              data_admissao: emp.data_admissao,
-              daysUntilMilestone,
-              milestone: marco,
-              milestoneDate,
-            });
+        // Only show employees still in experience period (up to max milestone)
+        if (daysWorked >= 0 && daysWorked < maxExperienceDays) {
+          const daysRemaining = maxExperienceDays - daysWorked;
+          const progress = Math.min((daysWorked / maxExperienceDays) * 100, 100);
+
+          // Find next milestone
+          let nextMilestone: number | null = null;
+          let daysUntilMilestone: number | null = null;
+
+          for (const marco of sortedMarcos) {
+            if (daysWorked < marco) {
+              nextMilestone = marco;
+              daysUntilMilestone = marco - daysWorked;
+              break;
+            }
           }
-        });
+
+          experienceEmployees.push({
+            id: emp.id,
+            nome_completo: emp.nome_completo,
+            cargo: emp.cargo,
+            setor: emp.setor,
+            data_admissao: emp.data_admissao,
+            daysWorked,
+            daysRemaining,
+            progress,
+            nextMilestone,
+            daysUntilMilestone,
+          });
+        }
       });
 
-      // Sort by days until milestone (most urgent first)
-      experienceAlerts.sort((a, b) => a.daysUntilMilestone - b.daysUntilMilestone);
-      setAlerts(experienceAlerts);
+      // Sort by days remaining (most urgent first)
+      experienceEmployees.sort((a, b) => a.daysRemaining - b.daysRemaining);
+      setEmployees(experienceEmployees);
     } catch (error) {
       console.error("Error:", error);
     } finally {
@@ -132,25 +147,35 @@ export const ExperiencePeriodAlerts = ({ selectedEmpresa }: ExperiencePeriodAler
     return null;
   }
 
-  if (!config?.ativo || alerts.length === 0) {
+  if (!config?.ativo || employees.length === 0) {
     return null;
   }
+
+  const getUrgencyColor = (daysRemaining: number, daysUntilMilestone: number | null) => {
+    if (daysUntilMilestone !== null && daysUntilMilestone <= 7) {
+      return "text-destructive";
+    }
+    if (daysRemaining <= 15) {
+      return "text-warning";
+    }
+    return "text-muted-foreground";
+  };
 
   return (
     <Card className="border-warning/50 bg-warning/5">
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2 text-base">
-          <AlertTriangle className="h-5 w-5 text-warning" />
+          <Clock className="h-5 w-5 text-warning" />
           Período de Experiência
           <Badge variant="secondary" className="ml-auto">
-            {alerts.length} {alerts.length === 1 ? "alerta" : "alertas"}
+            {employees.length} {employees.length === 1 ? "funcionário" : "funcionários"}
           </Badge>
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
-        {alerts.map((alert) => (
+        {employees.map((emp) => (
           <div
-            key={`${alert.id}-${alert.milestone}`}
+            key={emp.id}
             className="flex items-start gap-3 p-3 rounded-lg bg-background border"
           >
             <div className="flex-shrink-0">
@@ -158,36 +183,49 @@ export const ExperiencePeriodAlerts = ({ selectedEmpresa }: ExperiencePeriodAler
                 <User className="h-5 w-5 text-warning" />
               </div>
             </div>
-            <div className="flex-1 min-w-0">
-              <p className="font-medium truncate">{alert.nome_completo}</p>
+            <div className="flex-1 min-w-0 space-y-2">
+              <div className="flex items-center justify-between">
+                <p className="font-medium truncate">{emp.nome_completo}</p>
+                <Badge
+                  variant={emp.daysUntilMilestone && emp.daysUntilMilestone <= 7 ? "destructive" : "secondary"}
+                >
+                  {emp.daysRemaining} dias restantes
+                </Badge>
+              </div>
               <p className="text-sm text-muted-foreground">
-                {alert.cargo} {alert.setor && `• ${alert.setor}`}
+                {emp.cargo} {emp.setor && `• ${emp.setor}`}
               </p>
-              <div className="flex items-center gap-2 mt-1">
-                <Clock className="h-3.5 w-3.5 text-muted-foreground" />
-                <span className="text-sm">
-                  {alert.daysUntilMilestone === 0 ? (
-                    <span className="text-destructive font-medium">
-                      Vence hoje - {alert.milestone} dias
-                    </span>
-                  ) : (
+              
+              <div className="space-y-1">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-muted-foreground">
+                    {emp.daysWorked} dias trabalhados
+                  </span>
+                  <span className="text-muted-foreground">
+                    {Math.round(emp.progress)}%
+                  </span>
+                </div>
+                <Progress value={emp.progress} className="h-2" />
+              </div>
+
+              <div className="flex items-center gap-4 text-xs">
+                <div className="flex items-center gap-1 text-muted-foreground">
+                  <Calendar className="h-3 w-3" />
+                  <span>Admissão: {format(new Date(emp.data_admissao), "dd/MM/yyyy")}</span>
+                </div>
+                {emp.nextMilestone && emp.daysUntilMilestone !== null && (
+                  <div className={`flex items-center gap-1 ${getUrgencyColor(emp.daysRemaining, emp.daysUntilMilestone)}`}>
+                    <AlertTriangle className="h-3 w-3" />
                     <span>
-                      Vence em{" "}
-                      <span className="font-medium text-warning">
-                        {alert.daysUntilMilestone} {alert.daysUntilMilestone === 1 ? "dia" : "dias"}
-                      </span>
-                      {" "}({alert.milestone} dias - {format(alert.milestoneDate, "dd/MM/yyyy")})
+                      {emp.daysUntilMilestone === 0 
+                        ? `Vence hoje (${emp.nextMilestone} dias)`
+                        : `${emp.daysUntilMilestone}d para ${emp.nextMilestone} dias`
+                      }
                     </span>
-                  )}
-                </span>
+                  </div>
+                )}
               </div>
             </div>
-            <Badge
-              variant={alert.milestone === 45 ? "secondary" : "default"}
-              className={alert.milestone === 90 ? "bg-warning text-warning-foreground" : ""}
-            >
-              {alert.milestone} dias
-            </Badge>
           </div>
         ))}
       </CardContent>
