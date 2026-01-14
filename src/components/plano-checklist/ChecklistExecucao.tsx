@@ -132,9 +132,26 @@ export function ChecklistExecucao({ checklistId, onUpdate }: ChecklistExecucaoPr
 
       if (error) throw error;
 
+      // Se for um plano de desligamento, atualizar o status do funcionário para inativo
+      if (checklist?.tipo === "desligamento" && checklist?.employee_id) {
+        const { error: employeeError } = await supabase
+          .from("employees")
+          .update({
+            status: "demitido",
+            data_desligamento: new Date().toISOString().split("T")[0],
+          })
+          .eq("id", checklist.employee_id);
+
+        if (employeeError) {
+          console.error("Erro ao atualizar status do funcionário:", employeeError);
+        }
+      }
+
       toast({
         title: "Checklist concluído",
-        description: "O processo foi finalizado com sucesso.",
+        description: checklist?.tipo === "desligamento" 
+          ? "O processo de desligamento foi finalizado e o funcionário foi marcado como inativo."
+          : "O processo foi finalizado com sucesso.",
       });
       onUpdate();
     } catch (error: any) {
