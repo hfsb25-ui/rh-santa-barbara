@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,21 +26,22 @@ const EditVacationDialog = ({
   onUpdated,
 }: EditVacationDialogProps) => {
   const [loading, setLoading] = useState(false);
-  const [periodoAquisitivoInicio, setPeriodoAquisitivoInicio] = useState(
-    vacation?.periodo_aquisitivo_inicio ?? ""
-  );
-  const [periodoAquisitivoFim, setPeriodoAquisitivoFim] = useState(
-    vacation?.periodo_aquisitivo_fim ?? ""
-  );
-  const [periodoGozoInicio, setPeriodoGozoInicio] = useState(
-    vacation?.periodo_gozo_inicio ?? ""
-  );
-  const [periodoGozoFim, setPeriodoGozoFim] = useState(
-    vacation?.periodo_gozo_fim ?? ""
-  );
-  const [diasCalculados, setDiasCalculados] = useState(
-    vacation?.dias_totais ?? 0
-  );
+  const [periodoAquisitivoInicio, setPeriodoAquisitivoInicio] = useState("");
+  const [periodoAquisitivoFim, setPeriodoAquisitivoFim] = useState("");
+  const [periodoGozoInicio, setPeriodoGozoInicio] = useState("");
+  const [periodoGozoFim, setPeriodoGozoFim] = useState("");
+  const [diasCalculados, setDiasCalculados] = useState(0);
+
+  // Sincroniza os estados quando o vacation prop mudar ou o dialog abrir
+  useEffect(() => {
+    if (vacation && open) {
+      setPeriodoAquisitivoInicio(vacation.periodo_aquisitivo_inicio ?? "");
+      setPeriodoAquisitivoFim(vacation.periodo_aquisitivo_fim ?? "");
+      setPeriodoGozoInicio(vacation.periodo_gozo_inicio ?? "");
+      setPeriodoGozoFim(vacation.periodo_gozo_fim ?? "");
+      setDiasCalculados(vacation.dias_totais ?? 0);
+    }
+  }, [vacation, open]);
 
   const handlePeriodoAquisitivoInicioChange = (dateString: string) => {
     setPeriodoAquisitivoInicio(dateString);

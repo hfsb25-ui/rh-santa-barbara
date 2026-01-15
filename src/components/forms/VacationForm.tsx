@@ -204,8 +204,19 @@ const VacationForm = ({ employeeId, onSaved, onCancel, initialData }: VacationFo
                     type="date"
                     value={periodoGozoInicio}
                     onChange={(e) => {
-                      setPeriodoGozoInicio(e.target.value);
-                      handlePeriodoGozoChange(e.target.value, undefined);
+                      const novaDataInicio = e.target.value;
+                      setPeriodoGozoInicio(novaDataInicio);
+                      
+                      // Auto-preencher data final 30 dias depois
+                      if (novaDataInicio) {
+                        const dataInicio = new Date(novaDataInicio);
+                        const dataFim = addDays(dataInicio, 29); // 30 dias incluindo o primeiro
+                        const dataFimFormatada = format(dataFim, 'yyyy-MM-dd');
+                        setPeriodoGozoFim(dataFimFormatada);
+                        handlePeriodoGozoChange(novaDataInicio, dataFimFormatada);
+                      } else {
+                        handlePeriodoGozoChange(novaDataInicio, undefined);
+                      }
                     }}
                     required
                   />
