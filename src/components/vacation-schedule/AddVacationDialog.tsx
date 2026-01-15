@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   Dialog,
   DialogContent,
@@ -18,7 +18,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { format } from "date-fns";
+import { format, differenceInDays, addDays } from "date-fns";
 
 interface AddVacationDialogProps {
   open: boolean;
@@ -40,11 +40,26 @@ export function AddVacationDialog({
   const [observations, setObservations] = useState("");
   const [loading, setLoading] = useState(false);
 
+  // Calcular dias totais
+  const diasTotais = useMemo(() => {
+    if (startDate && endDate) {
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+      const days = differenceInDays(end, start) + 1;
+      return days > 0 ? days : 0;
+    }
+    return 0;
+  }, [startDate, endDate]);
+
   useEffect(() => {
     if (open) {
       fetchEmployees();
       if (selectedDate) {
-        setStartDate(format(selectedDate, "yyyy-MM-dd"));
+        const formattedStart = format(selectedDate, "yyyy-MM-dd");
+        setStartDate(formattedStart);
+        // Auto-preencher data final 30 dias depois
+        const endDateValue = addDays(selectedDate, 29);
+        setEndDate(format(endDateValue, "yyyy-MM-dd"));
       }
     }
   }, [open, selectedDate]);
@@ -59,6 +74,15 @@ export function AddVacationDialog({
     if (data) setEmployees(data);
   };
 
+  const handleStartDateChange = (newStartDate: string) => {
+    setStartDate(newStartDate);
+    if (newStartDate) {
+      const start = new Date(newStartDate);
+      const end = addDays(start, 29); // 30 dias incluindo o primeiro
+      setEndDate(format(end, "yyyy-MM-dd"));
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedEmployee || !startDate || !endDate) {
@@ -67,10 +91,6 @@ export function AddVacationDialog({
     }
 
     setLoading(true);
-
-    const start = new Date(startDate);
-    const end = new Date(endDate);
-    const diasTotais = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
 
     const { error } = await supabase.from("ferias_planejadas").insert({
       employee_id: selectedEmployee,
@@ -131,15 +151,7 @@ export function AddVacationDialog({
                 id="startDate"
                 type="date"
                 value={startDate}
-                onChange={(e) => {
-                  const newStartDate = e.target.value;
-                  setStartDate(newStartDate);
-                  if (newStartDate) {
-                    const start = new Date(newStartDate);
-                    start.setDate(start.getDate() + 29); // 30 dias incluindo o primeiro
-                    setEndDate(format(start, "yyyy-MM-dd"));
-                  }
-                }}
+                onChange={(e) => handleStartDateChange(e.target.value)}
                 required
               />
             </div>
@@ -155,6 +167,15 @@ export function AddVacationDialog({
               />
             </div>
           </div>
+
+          {diasTotais > 0 && (
+            <div className="p-3 bg-primary/10 rounded-md">
+              <p className="text-sm font-medium">
+                Total de dias: <span className="text-lg">{diasTotais}</span>{" "}
+                {diasTotais === 1 ? "dia" : "dias"}
+              </p>
+            </div>
+          )}
 
           <div className="space-y-2">
             <Label htmlFor="observations">Observações</Label>
@@ -174,7 +195,7 @@ export function AddVacationDialog({
             >
               Cancelar
             </Button>
-            <Button type="submit" disabled={loading}>
+            <Button type="submit" disabled={loading || diasTotais === 0}>
               {loading ? "Salvando..." : "Salvar"}
             </Button>
           </div>
