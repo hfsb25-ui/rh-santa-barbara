@@ -9,9 +9,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { Search, X } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Search, X, Filter } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import type { VacationFiltersType } from "@/components/vacation-schedule/types";
+import { Badge } from "@/components/ui/badge";
 
 interface VacationFiltersProps {
   filters: VacationFiltersType;
@@ -21,6 +23,9 @@ interface VacationFiltersProps {
 export function VacationFilters({ filters, onFiltersChange }: VacationFiltersProps) {
   const [empresas, setEmpresas] = useState<any[]>([]);
   const [setores, setSetores] = useState<any[]>([]);
+
+  const currentYear = new Date().getFullYear();
+  const years = [currentYear - 1, currentYear, currentYear + 1, currentYear + 2];
 
   useEffect(() => {
     fetchEmpresas();
@@ -44,20 +49,41 @@ export function VacationFilters({ filters, onFiltersChange }: VacationFiltersPro
       periodo: { start: null, end: null },
       status: "all",
       search: "",
+      ano: undefined,
+      feriasVencidas: false,
     });
   };
+
+  const activeFiltersCount = [
+    filters.empresa !== "all",
+    filters.setor !== "all",
+    filters.status !== "all",
+    filters.periodo.start !== null,
+    filters.periodo.end !== null,
+    filters.search !== "",
+    filters.ano !== undefined,
+    filters.feriasVencidas === true,
+  ].filter(Boolean).length;
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold">Filtros</h3>
+        <div className="flex items-center gap-2">
+          <Filter className="h-5 w-5 text-muted-foreground" />
+          <h3 className="text-lg font-semibold">Filtros</h3>
+          {activeFiltersCount > 0 && (
+            <Badge variant="secondary" className="ml-2">
+              {activeFiltersCount} ativo{activeFiltersCount > 1 ? "s" : ""}
+            </Badge>
+          )}
+        </div>
         <Button variant="ghost" size="sm" onClick={handleReset}>
           <X className="h-4 w-4 mr-2" />
           Limpar Filtros
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="space-y-2">
           <Label htmlFor="search">Buscar Funcionário</Label>
           <div className="relative">
@@ -138,6 +164,33 @@ export function VacationFilters({ filters, onFiltersChange }: VacationFiltersPro
             </SelectContent>
           </Select>
         </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="ano">Ano</Label>
+          <Select
+            value={filters.ano?.toString() || "all"}
+            onValueChange={(value) =>
+              onFiltersChange({ 
+                ...filters, 
+                ano: value === "all" ? undefined : parseInt(value) 
+              })
+            }
+          >
+            <SelectTrigger id="ano">
+              <SelectValue placeholder="Todos os anos" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos os anos</SelectItem>
+              {years.map((year) => (
+                <SelectItem key={year} value={year.toString()}>
+                  {year}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
 
         <div className="space-y-2">
           <Label htmlFor="periodo-inicio">Período (Início)</Label>
@@ -155,6 +208,42 @@ export function VacationFilters({ filters, onFiltersChange }: VacationFiltersPro
               })
             }
           />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="periodo-fim">Período (Fim)</Label>
+          <Input
+            id="periodo-fim"
+            type="date"
+            value={filters.periodo.end?.toISOString().split("T")[0] || ""}
+            onChange={(e) =>
+              onFiltersChange({
+                ...filters,
+                periodo: {
+                  ...filters.periodo,
+                  end: e.target.value ? new Date(e.target.value) : null,
+                },
+              })
+            }
+          />
+        </div>
+
+        <div className="flex items-end pb-2">
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="ferias-vencidas"
+              checked={filters.feriasVencidas || false}
+              onCheckedChange={(checked) =>
+                onFiltersChange({ ...filters, feriasVencidas: checked === true })
+              }
+            />
+            <Label 
+              htmlFor="ferias-vencidas" 
+              className="text-sm font-normal cursor-pointer"
+            >
+              Apenas férias vencidas
+            </Label>
+          </div>
         </div>
       </div>
     </div>
