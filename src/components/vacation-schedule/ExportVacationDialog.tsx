@@ -26,6 +26,7 @@ import * as XLSX from "xlsx";
 interface ExportVacationDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  filters?: any;
 }
 
 interface Empresa {
@@ -50,7 +51,7 @@ interface VacationExportItem {
   status: string;
 }
 
-export function ExportVacationDialog({ open, onOpenChange }: ExportVacationDialogProps) {
+export function ExportVacationDialog({ open, onOpenChange, filters }: ExportVacationDialogProps) {
   const [ano, setAno] = useState<string>(new Date().getFullYear().toString());
   const [empresaId, setEmpresaId] = useState<string>("all");
   const [setorId, setSetorId] = useState<string>("all");
