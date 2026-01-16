@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
@@ -10,11 +10,11 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Edit, Trash2, AlertCircle, CheckCircle, FileDown } from "lucide-react";
+import { Edit, Trash2, AlertCircle, CheckCircle, FileDown, Calendar } from "lucide-react";
 import { ExportVacationDialog } from "./ExportVacationDialog";
 import { supabase } from "@/integrations/supabase/client";
 import type { VacationFiltersType } from "@/components/vacation-schedule/types";
-import { format, isValid } from "date-fns";
+import { format, isValid, getMonth, getYear } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
 import { ApproveVacationDialog } from "./ApproveVacationDialog";
@@ -29,6 +29,29 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
+const MESES = [
+  { value: "all", label: "Todos os Meses" },
+  { value: "1", label: "Janeiro" },
+  { value: "2", label: "Fevereiro" },
+  { value: "3", label: "Março" },
+  { value: "4", label: "Abril" },
+  { value: "5", label: "Maio" },
+  { value: "6", label: "Junho" },
+  { value: "7", label: "Julho" },
+  { value: "8", label: "Agosto" },
+  { value: "9", label: "Setembro" },
+  { value: "10", label: "Outubro" },
+  { value: "11", label: "Novembro" },
+  { value: "12", label: "Dezembro" },
+];
 
 interface VacationListProps {
   filters: VacationFiltersType;
@@ -72,6 +95,10 @@ export function VacationList({ filters, onRefresh }: VacationListProps) {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [vacationToDelete, setVacationToDelete] = useState<VacationItem | null>(null);
   const [showExportDialog, setShowExportDialog] = useState(false);
+  const [selectedMonth, setSelectedMonth] = useState<string>("all");
+
+  // Ano selecionado nos filtros ou ano atual
+  const selectedYear = filters.ano || new Date().getFullYear();
 
   useEffect(() => {
     fetchVacations();
@@ -211,6 +238,26 @@ export function VacationList({ filters, onRefresh }: VacationListProps) {
     console.log("✨ VacationList - Busca finalizada. Total exibido:", filteredVacations.length);
   };
 
+  // Filtrar férias pelo mês selecionado
+  const filteredByMonth = useMemo(() => {
+    if (selectedMonth === "all") {
+      return vacations;
+    }
+    
+    const monthNumber = parseInt(selectedMonth, 10);
+    
+    return vacations.filter((vacation) => {
+      const startDate = new Date(vacation.periodo_inicio);
+      // Verifica se o mês de início das férias corresponde ao mês selecionado
+      // getMonth retorna 0-11, então somamos 1
+      const vacationMonth = getMonth(startDate) + 1;
+      const vacationYear = getYear(startDate);
+      
+      // Filtra pelo mês E pelo ano selecionado
+      return vacationMonth === monthNumber && vacationYear === selectedYear;
+    });
+  }, [vacations, selectedMonth, selectedYear]);
+
   const handleApprove = (vacation: VacationItem) => {
     setSelectedVacation(vacation);
     setShowApproveDialog(true);
@@ -265,19 +312,49 @@ export function VacationList({ filters, onRefresh }: VacationListProps) {
   return (
     <>
     <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
+      <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <CardTitle>Lista de Férias</CardTitle>
-        <Button variant="outline" onClick={() => setShowExportDialog(true)}>
-          <FileDown className="w-4 h-4 mr-2" />
-          Exportar
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-2">
+            <Calendar className="h-4 w-4 text-muted-foreground" />
+            <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Selecione o mês" />
+              </SelectTrigger>
+              <SelectContent>
+                {MESES.map((mes) => (
+                  <SelectItem key={mes.value} value={mes.value}>
+                    {mes.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <Button variant="outline" onClick={() => setShowExportDialog(true)}>
+            <FileDown className="w-4 h-4 mr-2" />
+            Exportar
+          </Button>
+        </div>
       </CardHeader>
       <CardContent>
+        {selectedMonth !== "all" && (
+          <div className="mb-4 flex items-center gap-2">
+            <Badge variant="secondary" className="text-sm">
+              Mostrando férias de {MESES.find(m => m.value === selectedMonth)?.label} de {selectedYear}
+            </Badge>
+            <span className="text-sm text-muted-foreground">
+              ({filteredByMonth.length} {filteredByMonth.length === 1 ? "registro" : "registros"})
+            </span>
+          </div>
+        )}
         {loading ? (
           <div className="text-center py-12 text-muted-foreground">Carregando...</div>
-        ) : vacations.length === 0 ? (
+        ) : filteredByMonth.length === 0 ? (
           <div className="text-center py-12 text-muted-foreground">
-            Nenhuma féria encontrada
+            {selectedMonth !== "all" 
+              ? `Nenhum funcionário entrará de férias em ${MESES.find(m => m.value === selectedMonth)?.label} de ${selectedYear}`
+              : "Nenhuma féria encontrada"
+            }
           </div>
         ) : (
           <Table>
@@ -293,7 +370,7 @@ export function VacationList({ filters, onRefresh }: VacationListProps) {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {vacations.map((vacation) => (
+              {filteredByMonth.map((vacation) => (
                 <TableRow key={vacation.id}>
                   <TableCell className="font-medium">
                     <div className="flex items-center gap-2">
