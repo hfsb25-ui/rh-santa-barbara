@@ -6,6 +6,7 @@ export interface VacationFiltersType {
   search: string;
   ano?: number;
   feriasVencidas?: boolean;
+  mesLista?: number; // Filtro de mês específico para a lista (1-12)
 }
 
 export interface VacationEvent {
