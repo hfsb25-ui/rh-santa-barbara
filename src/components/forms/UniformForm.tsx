@@ -11,6 +11,7 @@ import { FileDown } from "lucide-react";
 import { generateUniformReceipt } from "@/lib/pdfGenerator";
 import SignatureCanvas from "./SignatureCanvas";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Badge } from "@/components/ui/badge";
 
 interface UniformFormProps {
   employeeId: string;
@@ -18,14 +19,29 @@ interface UniformFormProps {
   onCancel: () => void;
 }
 
+interface InsertedItem {
+  id: string;
+  tipo_uniforme: string;
+  tamanho: string;
+  cor?: string;
+  data_entrega: string;
+  observacoes: string | null;
+  quantidade: number;
+}
+
 const UniformForm = ({ employeeId, onSaved, onCancel }: UniformFormProps) => {
   const [loading, setLoading] = useState(false);
-  const [lastInsertedData, setLastInsertedData] = useState<any>(null);
+  const [lastInsertedData, setLastInsertedData] = useState<{
+    items: InsertedItem[];
+    employeeName: string;
+    employeeCpf: string;
+    employeeRole: string;
+  } | null>(null);
   const [stockItems, setStockItems] = useState<any[]>([]);
-  const [selectedItem, setSelectedItem] = useState<string | null>(null);
+  const [selectedItems, setSelectedItems] = useState<string[]>([]);
   const [showSignatureDialog, setShowSignatureDialog] = useState(false);
   const [signature, setSignature] = useState<string | null>(null);
-  const [lastInsertedId, setLastInsertedId] = useState<string | null>(null);
+  const [insertedIds, setInsertedIds] = useState<string[]>([]);
 
   useEffect(() => {
     fetchStockItems();
@@ -43,33 +59,27 @@ const UniformForm = ({ employeeId, onSaved, onCancel }: UniformFormProps) => {
     }
   };
 
+  const handleToggleItem = (itemId: string) => {
+    setSelectedItems(prev => 
+      prev.includes(itemId) 
+        ? prev.filter(id => id !== itemId)
+        : [...prev, itemId]
+    );
+  };
+
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setLoading(true);
 
-    if (!selectedItem) {
-      toast.error("Selecione um uniforme do estoque");
+    if (selectedItems.length === 0) {
+      toast.error("Selecione pelo menos um uniforme do estoque");
       setLoading(false);
       return;
     }
 
     const formData = new FormData(e.currentTarget);
-    const selectedStock = stockItems.find(item => item.id === selectedItem);
-    
-    if (!selectedStock) {
-      toast.error("Item não encontrado no estoque");
-      setLoading(false);
-      return;
-    }
-
-    const uniformData = {
-      employee_id: employeeId,
-      tipo_uniforme: selectedStock.tipo_uniforme,
-      tamanho: selectedStock.tamanho,
-      quantidade: 1,
-      data_entrega: formData.get("data_entrega") as string,
-      observacoes: formData.get("observacoes") as string || null,
-    };
+    const dataEntrega = formData.get("data_entrega") as string;
+    const observacoes = formData.get("observacoes") as string || null;
 
     // Get employee data for PDF
     const { data: employee } = await supabase
@@ -78,73 +88,100 @@ const UniformForm = ({ employeeId, onSaved, onCancel }: UniformFormProps) => {
       .eq("id", employeeId)
       .single();
 
-    // Insert uniform record
-    const { data: insertedUniform, error } = await supabase.from("uniformes").insert(uniformData).select().single();
-
-    if (error) {
-      toast.error("Erro ao salvar");
-      setLoading(false);
-      return;
-    }
-
-    // Decrease stock
-    const { error: stockError } = await supabase
-      .from("estoque_uniformes")
-      .update({ quantidade_estoque: selectedStock.quantidade_estoque - 1 })
-      .eq("id", selectedItem);
-
     // Get current user
     const { data: { user } } = await supabase.auth.getUser();
 
-    // Register stock movement
-    if (!stockError) {
-      await supabase.from("historico_estoque_uniformes").insert({
-        estoque_uniforme_id: selectedItem,
-        tipo_movimentacao: "saida",
-        quantidade: 1,
-        quantidade_anterior: selectedStock.quantidade_estoque,
-        quantidade_nova: selectedStock.quantidade_estoque - 1,
-        motivo: "Distribuição para funcionário",
+    const insertedItems: InsertedItem[] = [];
+    const newInsertedIds: string[] = [];
+
+    for (const itemId of selectedItems) {
+      const selectedStock = stockItems.find(item => item.id === itemId);
+      if (!selectedStock) continue;
+
+      const uniformData = {
         employee_id: employeeId,
-        created_by: user?.id,
+        tipo_uniforme: selectedStock.tipo_uniforme,
+        tamanho: selectedStock.tamanho,
+        quantidade: 1,
+        data_entrega: dataEntrega,
+        observacoes: observacoes,
+      };
+
+      // Insert uniform record
+      const { data: insertedUniform, error } = await supabase.from("uniformes").insert(uniformData).select().single();
+
+      if (error) {
+        toast.error(`Erro ao salvar ${selectedStock.tipo_uniforme}`);
+        continue;
+      }
+
+      // Decrease stock
+      const { error: stockError } = await supabase
+        .from("estoque_uniformes")
+        .update({ quantidade_estoque: selectedStock.quantidade_estoque - 1 })
+        .eq("id", itemId);
+
+      // Register stock movement
+      if (!stockError) {
+        await supabase.from("historico_estoque_uniformes").insert({
+          estoque_uniforme_id: itemId,
+          tipo_movimentacao: "saida",
+          quantidade: 1,
+          quantidade_anterior: selectedStock.quantidade_estoque,
+          quantidade_nova: selectedStock.quantidade_estoque - 1,
+          motivo: "Distribuição para funcionário",
+          employee_id: employeeId,
+          created_by: user?.id,
+        });
+      }
+
+      newInsertedIds.push(insertedUniform.id);
+      insertedItems.push({
+        id: insertedUniform.id,
+        tipo_uniforme: selectedStock.tipo_uniforme,
+        tamanho: selectedStock.tamanho,
+        cor: selectedStock.cor,
+        data_entrega: dataEntrega,
+        observacoes: observacoes,
+        quantidade: 1,
       });
     }
 
     setLoading(false);
-    if (stockError) {
-      toast.error("Erro ao atualizar estoque");
-    } else {
-      toast.success("Uniforme registrado e estoque atualizado!");
-      setLastInsertedId(insertedUniform.id);
-      setLastInsertedData({
-        ...uniformData,
-        employeeName: employee?.nome_completo || "",
-        employeeCpf: employee?.cpf || "",
-        employeeRole: employee?.cargo || "",
-      });
-      setShowSignatureDialog(true);
+
+    if (insertedItems.length === 0) {
+      toast.error("Nenhum uniforme foi registrado");
+      return;
     }
+
+    toast.success(`${insertedItems.length} uniforme(s) registrado(s) com sucesso!`);
+    setInsertedIds(newInsertedIds);
+    setLastInsertedData({
+      items: insertedItems,
+      employeeName: employee?.nome_completo || "",
+      employeeCpf: employee?.cpf || "",
+      employeeRole: employee?.cargo || "",
+    });
+    setShowSignatureDialog(true);
   };
 
   const handleSaveSignature = async (signatureData: string) => {
-    if (!lastInsertedId) return;
+    if (insertedIds.length === 0) return;
 
-    const { error } = await supabase
-      .from("uniformes")
-      .update({
-        assinatura_funcionario: signatureData,
-        data_assinatura: new Date().toISOString(),
-      })
-      .eq("id", lastInsertedId);
-
-    if (error) {
-      toast.error("Erro ao salvar assinatura");
-      return;
+    // Update all inserted records with the signature
+    for (const id of insertedIds) {
+      await supabase
+        .from("uniformes")
+        .update({
+          assinatura_funcionario: signatureData,
+          data_assinatura: new Date().toISOString(),
+        })
+        .eq("id", id);
     }
 
     setSignature(signatureData);
     setShowSignatureDialog(false);
-    toast.success("Assinatura salva com sucesso!");
+    toast.success("Assinatura salva em todos os registros!");
   };
 
   const handleSkipSignature = () => {
@@ -153,30 +190,35 @@ const UniformForm = ({ employeeId, onSaved, onCancel }: UniformFormProps) => {
   };
 
   const handleDownloadReceipt = async () => {
-    if (lastInsertedData && lastInsertedId) {
-      // Buscar assinatura do banco de dados
+    if (lastInsertedData && insertedIds.length > 0) {
+      // Buscar assinatura do banco de dados (do primeiro item)
       const { data: uniformeData } = await supabase
         .from("uniformes")
         .select("assinatura_funcionario")
-        .eq("id", lastInsertedId)
+        .eq("id", insertedIds[0])
         .single();
 
-      generateUniformReceipt({
-        employeeName: lastInsertedData.employeeName,
-        employeeCpf: lastInsertedData.employeeCpf,
-        employeeRole: lastInsertedData.employeeRole,
-        tipoUniforme: lastInsertedData.tipo_uniforme,
-        tamanho: lastInsertedData.tamanho,
-        quantidade: lastInsertedData.quantidade,
-        dataEntrega: lastInsertedData.data_entrega,
-        observacoes: lastInsertedData.observacoes,
-        assinatura: uniformeData?.assinatura_funcionario || signature,
-      });
-      toast.success("Recibo baixado!");
+      // Gerar recibo para cada item
+      for (const item of lastInsertedData.items) {
+        generateUniformReceipt({
+          employeeName: lastInsertedData.employeeName,
+          employeeCpf: lastInsertedData.employeeCpf,
+          employeeRole: lastInsertedData.employeeRole,
+          tipoUniforme: item.tipo_uniforme,
+          tamanho: item.tamanho,
+          quantidade: item.quantidade,
+          dataEntrega: item.data_entrega,
+          observacoes: item.observacoes,
+          assinatura: uniformeData?.assinatura_funcionario || signature,
+        });
+      }
+      
+      toast.success(`${lastInsertedData.items.length} recibo(s) baixado(s)!`);
       onSaved();
       setLastInsertedData(null);
       setSignature(null);
-      setLastInsertedId(null);
+      setInsertedIds([]);
+      setSelectedItems([]);
     }
   };
 
@@ -201,12 +243,17 @@ const UniformForm = ({ employeeId, onSaved, onCancel }: UniformFormProps) => {
 
       <Card>
         <CardHeader>
-          <CardTitle>Registrar Uniforme</CardTitle>
+          <CardTitle className="flex items-center justify-between">
+            <span>Registrar Uniforme</span>
+            {selectedItems.length > 0 && (
+              <Badge variant="secondary">{selectedItems.length} selecionado(s)</Badge>
+            )}
+          </CardTitle>
         </CardHeader>
         <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <Label>Selecione o Uniforme do Estoque</Label>
+            <Label>Selecione os Uniformes do Estoque (múltipla seleção)</Label>
             <div className="space-y-2 max-h-60 overflow-y-auto border rounded-md p-4">
               {stockItems.length === 0 ? (
                 <p className="text-sm text-muted-foreground">Nenhum uniforme disponível no estoque</p>
@@ -215,10 +262,8 @@ const UniformForm = ({ employeeId, onSaved, onCancel }: UniformFormProps) => {
                   <div key={item.id} className="flex items-center space-x-2">
                     <Checkbox
                       id={item.id}
-                      checked={selectedItem === item.id}
-                      onCheckedChange={(checked) => {
-                        setSelectedItem(checked ? item.id : null);
-                      }}
+                      checked={selectedItems.includes(item.id)}
+                      onCheckedChange={() => handleToggleItem(item.id)}
                     />
                     <label
                       htmlFor={item.id}
@@ -242,16 +287,18 @@ const UniformForm = ({ employeeId, onSaved, onCancel }: UniformFormProps) => {
           <div className="flex gap-2">
             {!lastInsertedData ? (
               <>
-                <Button type="submit" disabled={loading}>Salvar</Button>
+                <Button type="submit" disabled={loading || selectedItems.length === 0}>
+                  {loading ? "Salvando..." : `Salvar ${selectedItems.length > 0 ? `(${selectedItems.length})` : ""}`}
+                </Button>
                 <Button type="button" variant="outline" onClick={onCancel}>Cancelar</Button>
               </>
             ) : (
               <>
                 <Button type="button" onClick={handleDownloadReceipt}>
                   <FileDown className="w-4 h-4 mr-2" />
-                  Baixar Recibo
+                  Baixar Recibos ({lastInsertedData.items.length})
                 </Button>
-                <Button type="button" variant="outline" onClick={() => { onSaved(); setLastInsertedData(null); }}>
+                <Button type="button" variant="outline" onClick={() => { onSaved(); setLastInsertedData(null); setSelectedItems([]); }}>
                   Fechar
                 </Button>
               </>
