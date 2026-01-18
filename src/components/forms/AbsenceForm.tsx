@@ -41,10 +41,14 @@ const AbsenceForm = ({ employeeId, onSaved, onCancel }: any) => {
         documentoUrl = publicUrl;
       }
 
+      // Adiciona horário meio-dia para evitar problemas de timezone
+      const dataInicio = formData.get("data_inicio") as string;
+      const dataFim = formData.get("data_fim") as string;
+
       const { error } = await supabase.from("afastamentos").insert({
         employee_id: employeeId,
-        data_inicio: formData.get("data_inicio") as string,
-        data_fim: formData.get("data_fim") as string,
+        data_inicio: `${dataInicio}T12:00:00`,
+        data_fim: `${dataFim}T12:00:00`,
         motivo: formData.get("motivo") as string,
         cid: formData.get("cid") as string || null,
         documento_url: documentoUrl,
