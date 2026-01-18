@@ -181,7 +181,8 @@ const GestorDashboard = ({ user }: GestorDashboardProps) => {
 
       let employeeQuery = supabase
         .from("employees")
-        .select("id, nome_completo, cargo, empresa_id");
+        .select("id, nome_completo, cargo, empresa_id, status")
+        .eq("status", "ativo"); // Apenas funcionários ativos
 
       employeeQuery = employeeQuery.in("id", employeeIds);
 
