@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Bell, Calendar, Clock, MapPin, ChevronRight, X } from "lucide-react";
-import { format, parseISO, isToday, isTomorrow, differenceInHours } from "date-fns";
+import { format, parseISO, isToday, isTomorrow, isPast, differenceInHours } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useNavigate } from "react-router-dom";
 
@@ -17,6 +17,7 @@ interface Evento {
   local: string | null;
   tipo: string;
   cor: string;
+  concluido: boolean | null;
 }
 
 const EventoNotifications = () => {
@@ -47,16 +48,34 @@ const EventoNotifications = () => {
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const dayAfterTomorrow = new Date(today);
     dayAfterTomorrow.setDate(dayAfterTomorrow.getDate() + 2);
+    
+    // Buscar eventos passados não concluídos (últimos 7 dias) + eventos dos próximos 2 dias
+    const sevenDaysAgo = new Date(today);
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
     const { data, error } = await supabase
       .from("eventos")
       .select("*")
-      .gte("data_inicio", today.toISOString())
+      .gte("data_inicio", sevenDaysAgo.toISOString())
       .lt("data_inicio", dayAfterTomorrow.toISOString())
       .order("data_inicio");
 
     if (!error && data) {
-      setEventos(data);
+      // Filtrar: eventos futuros OU eventos passados não concluídos
+      const filteredEvents = data.filter(evento => {
+        const eventDate = parseISO(evento.data_inicio);
+        const isEventPast = isPast(eventDate);
+        
+        // Se o evento já passou, só mostrar se NÃO estiver concluído
+        if (isEventPast) {
+          return evento.concluido !== true;
+        }
+        
+        // Eventos futuros sempre aparecem
+        return true;
+      });
+      
+      setEventos(filteredEvents);
     }
     setLoading(false);
   };
@@ -82,7 +101,16 @@ const EventoNotifications = () => {
     const eventDate = parseISO(evento.data_inicio);
     const hoursUntil = differenceInHours(eventDate, new Date());
     
+    // Evento atrasado (passado e não concluído)
+    if (isPast(eventDate) && !isToday(eventDate)) {
+      return { label: "Atrasado", variant: "destructive" as const, priority: 0 };
+    }
+    
     if (isToday(eventDate)) {
+      if (hoursUntil <= 0) {
+        // Evento de hoje que já passou a hora
+        return { label: "Atrasado", variant: "destructive" as const, priority: 0 };
+      }
       if (hoursUntil <= 1) {
         return { label: "Agora!", variant: "destructive" as const, priority: 1 };
       }
