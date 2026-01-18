@@ -11,6 +11,7 @@ import { FileDown, PenTool } from "lucide-react";
 import { generateEpiReceipt } from "@/lib/pdfGenerator";
 import SignatureCanvas from "./SignatureCanvas";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Badge } from "@/components/ui/badge";
 
 interface EpiFormProps {
   employeeId: string;
@@ -18,14 +19,31 @@ interface EpiFormProps {
   onCancel: () => void;
 }
 
+interface InsertedItem {
+  id: string;
+  tipo_epi: string;
+  marca: string;
+  ca: string;
+  finalidade: string;
+  tamanho: string;
+  data_entrega: string;
+  observacoes: string | null;
+  quantidade: number;
+}
+
 const EpiForm = ({ employeeId, onSaved, onCancel }: EpiFormProps) => {
   const [loading, setLoading] = useState(false);
-  const [lastInsertedData, setLastInsertedData] = useState<any>(null);
+  const [lastInsertedData, setLastInsertedData] = useState<{
+    items: InsertedItem[];
+    employeeName: string;
+    employeeCpf: string;
+    employeeRole: string;
+  } | null>(null);
   const [stockItems, setStockItems] = useState<any[]>([]);
-  const [selectedItem, setSelectedItem] = useState<string | null>(null);
+  const [selectedItems, setSelectedItems] = useState<string[]>([]);
   const [showSignatureDialog, setShowSignatureDialog] = useState(false);
   const [signature, setSignature] = useState<string | null>(null);
-  const [lastInsertedId, setLastInsertedId] = useState<string | null>(null);
+  const [insertedIds, setInsertedIds] = useState<string[]>([]);
 
   useEffect(() => {
     fetchStockItems();
@@ -43,32 +61,27 @@ const EpiForm = ({ employeeId, onSaved, onCancel }: EpiFormProps) => {
     }
   };
 
+  const handleToggleItem = (itemId: string) => {
+    setSelectedItems(prev => 
+      prev.includes(itemId) 
+        ? prev.filter(id => id !== itemId)
+        : [...prev, itemId]
+    );
+  };
+
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setLoading(true);
 
-    if (!selectedItem) {
-      toast.error("Selecione um EPI do estoque");
+    if (selectedItems.length === 0) {
+      toast.error("Selecione pelo menos um EPI do estoque");
       setLoading(false);
       return;
     }
 
     const formData = new FormData(e.currentTarget);
-    const selectedStock = stockItems.find(item => item.id === selectedItem);
-    
-    if (!selectedStock) {
-      toast.error("Item não encontrado no estoque");
-      setLoading(false);
-      return;
-    }
-
-    const epiData = {
-      employee_id: employeeId,
-      tipo_epi: selectedStock.tipo_epi,
-      quantidade: 1,
-      data_entrega: formData.get("data_entrega") as string,
-      observacoes: formData.get("observacoes") as string || null,
-    };
+    const dataEntrega = formData.get("data_entrega") as string;
+    const observacoes = formData.get("observacoes") as string || null;
 
     // Get employee data for PDF
     const { data: employee } = await supabase
@@ -77,77 +90,101 @@ const EpiForm = ({ employeeId, onSaved, onCancel }: EpiFormProps) => {
       .eq("id", employeeId)
       .single();
 
-    // Insert EPI record
-    const { data: insertedEpi, error } = await supabase.from("epis").insert(epiData).select().single();
-
-    if (error) {
-      toast.error("Erro ao salvar");
-      setLoading(false);
-      return;
-    }
-
-    // Decrease stock
-    const { error: stockError } = await supabase
-      .from("estoque_epis")
-      .update({ quantidade_estoque: selectedStock.quantidade_estoque - 1 })
-      .eq("id", selectedItem);
-
     // Get current user
     const { data: { user } } = await supabase.auth.getUser();
 
-    // Register stock movement
-    if (!stockError) {
-      await supabase.from("historico_estoque_epis").insert({
-        estoque_epi_id: selectedItem,
-        tipo_movimentacao: "saida",
-        quantidade: 1,
-        quantidade_anterior: selectedStock.quantidade_estoque,
-        quantidade_nova: selectedStock.quantidade_estoque - 1,
-        motivo: "Distribuição para funcionário",
-        employee_id: employeeId,
-        created_by: user?.id,
-      });
-    }
+    const insertedItems: InsertedItem[] = [];
+    const newInsertedIds: string[] = [];
 
-    setLoading(false);
-    if (stockError) {
-      toast.error("Erro ao atualizar estoque");
-    } else {
-      toast.success("EPI registrado e estoque atualizado!");
-      setLastInsertedId(insertedEpi.id);
-      setLastInsertedData({
-        ...epiData,
-        employeeName: employee?.nome_completo || "",
-        employeeCpf: employee?.cpf || "",
-        employeeRole: employee?.cargo || "",
+    for (const itemId of selectedItems) {
+      const selectedStock = stockItems.find(item => item.id === itemId);
+      if (!selectedStock) continue;
+
+      const epiData = {
+        employee_id: employeeId,
+        tipo_epi: selectedStock.tipo_epi,
+        quantidade: 1,
+        data_entrega: dataEntrega,
+        observacoes: observacoes,
+      };
+
+      // Insert EPI record
+      const { data: insertedEpi, error } = await supabase.from("epis").insert(epiData).select().single();
+
+      if (error) {
+        toast.error(`Erro ao salvar ${selectedStock.tipo_epi}`);
+        continue;
+      }
+
+      // Decrease stock
+      const { error: stockError } = await supabase
+        .from("estoque_epis")
+        .update({ quantidade_estoque: selectedStock.quantidade_estoque - 1 })
+        .eq("id", itemId);
+
+      // Register stock movement
+      if (!stockError) {
+        await supabase.from("historico_estoque_epis").insert({
+          estoque_epi_id: itemId,
+          tipo_movimentacao: "saida",
+          quantidade: 1,
+          quantidade_anterior: selectedStock.quantidade_estoque,
+          quantidade_nova: selectedStock.quantidade_estoque - 1,
+          motivo: "Distribuição para funcionário",
+          employee_id: employeeId,
+          created_by: user?.id,
+        });
+      }
+
+      newInsertedIds.push(insertedEpi.id);
+      insertedItems.push({
+        id: insertedEpi.id,
+        tipo_epi: selectedStock.tipo_epi,
         marca: selectedStock.marca_modelo || "",
         ca: selectedStock.ca || "",
         finalidade: selectedStock.finalidade || "",
         tamanho: selectedStock.tamanho || "",
+        data_entrega: dataEntrega,
+        observacoes: observacoes,
+        quantidade: 1,
       });
-      setShowSignatureDialog(true);
     }
+
+    setLoading(false);
+
+    if (insertedItems.length === 0) {
+      toast.error("Nenhum EPI foi registrado");
+      return;
+    }
+
+    toast.success(`${insertedItems.length} EPI(s) registrado(s) com sucesso!`);
+    setInsertedIds(newInsertedIds);
+    setLastInsertedData({
+      items: insertedItems,
+      employeeName: employee?.nome_completo || "",
+      employeeCpf: employee?.cpf || "",
+      employeeRole: employee?.cargo || "",
+    });
+    setShowSignatureDialog(true);
   };
 
   const handleSaveSignature = async (signatureData: string) => {
-    if (!lastInsertedId) return;
+    if (insertedIds.length === 0) return;
 
-    const { error } = await supabase
-      .from("epis")
-      .update({
-        assinatura_funcionario: signatureData,
-        data_assinatura: new Date().toISOString(),
-      })
-      .eq("id", lastInsertedId);
-
-    if (error) {
-      toast.error("Erro ao salvar assinatura");
-      return;
+    // Update all inserted records with the signature
+    for (const id of insertedIds) {
+      await supabase
+        .from("epis")
+        .update({
+          assinatura_funcionario: signatureData,
+          data_assinatura: new Date().toISOString(),
+        })
+        .eq("id", id);
     }
 
     setSignature(signatureData);
     setShowSignatureDialog(false);
-    toast.success("Assinatura salva com sucesso!");
+    toast.success("Assinatura salva em todos os registros!");
   };
 
   const handleSkipSignature = () => {
@@ -156,33 +193,38 @@ const EpiForm = ({ employeeId, onSaved, onCancel }: EpiFormProps) => {
   };
 
   const handleDownloadReceipt = async () => {
-    if (lastInsertedData && lastInsertedId) {
-      // Buscar assinatura do banco de dados
+    if (lastInsertedData && insertedIds.length > 0) {
+      // Buscar assinatura do banco de dados (do primeiro item)
       const { data: epiData } = await supabase
         .from("epis")
         .select("assinatura_funcionario")
-        .eq("id", lastInsertedId)
+        .eq("id", insertedIds[0])
         .single();
 
-      generateEpiReceipt({
-        employeeName: lastInsertedData.employeeName,
-        employeeCpf: lastInsertedData.employeeCpf,
-        employeeRole: lastInsertedData.employeeRole,
-        tipoEpi: lastInsertedData.tipo_epi,
-        marcaModelo: lastInsertedData.marca,
-        ca: lastInsertedData.ca,
-        quantidade: lastInsertedData.quantidade,
-        tamanho: lastInsertedData.tamanho,
-        finalidade: lastInsertedData.finalidade,
-        dataEntrega: lastInsertedData.data_entrega,
-        observacoes: lastInsertedData.observacoes,
-        assinatura: epiData?.assinatura_funcionario || signature,
-      });
-      toast.success("Recibo baixado!");
+      // Gerar recibo para cada item
+      for (const item of lastInsertedData.items) {
+        generateEpiReceipt({
+          employeeName: lastInsertedData.employeeName,
+          employeeCpf: lastInsertedData.employeeCpf,
+          employeeRole: lastInsertedData.employeeRole,
+          tipoEpi: item.tipo_epi,
+          marcaModelo: item.marca,
+          ca: item.ca,
+          quantidade: item.quantidade,
+          tamanho: item.tamanho,
+          finalidade: item.finalidade,
+          dataEntrega: item.data_entrega,
+          observacoes: item.observacoes,
+          assinatura: epiData?.assinatura_funcionario || signature,
+        });
+      }
+      
+      toast.success(`${lastInsertedData.items.length} recibo(s) baixado(s)!`);
       onSaved();
       setLastInsertedData(null);
       setSignature(null);
-      setLastInsertedId(null);
+      setInsertedIds([]);
+      setSelectedItems([]);
     }
   };
 
@@ -207,12 +249,17 @@ const EpiForm = ({ employeeId, onSaved, onCancel }: EpiFormProps) => {
 
       <Card>
         <CardHeader>
-          <CardTitle>Registrar EPI</CardTitle>
+          <CardTitle className="flex items-center justify-between">
+            <span>Registrar EPI</span>
+            {selectedItems.length > 0 && (
+              <Badge variant="secondary">{selectedItems.length} selecionado(s)</Badge>
+            )}
+          </CardTitle>
         </CardHeader>
         <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <Label>Selecione o EPI do Estoque</Label>
+            <Label>Selecione os EPIs do Estoque (múltipla seleção)</Label>
             <div className="space-y-2 max-h-60 overflow-y-auto border rounded-md p-4">
               {stockItems.length === 0 ? (
                 <p className="text-sm text-muted-foreground">Nenhum EPI disponível no estoque</p>
@@ -221,10 +268,8 @@ const EpiForm = ({ employeeId, onSaved, onCancel }: EpiFormProps) => {
                   <div key={item.id} className="flex items-center space-x-2">
                     <Checkbox
                       id={item.id}
-                      checked={selectedItem === item.id}
-                      onCheckedChange={(checked) => {
-                        setSelectedItem(checked ? item.id : null);
-                      }}
+                      checked={selectedItems.includes(item.id)}
+                      onCheckedChange={() => handleToggleItem(item.id)}
                     />
                     <label
                       htmlFor={item.id}
@@ -248,16 +293,18 @@ const EpiForm = ({ employeeId, onSaved, onCancel }: EpiFormProps) => {
           <div className="flex gap-2">
             {!lastInsertedData ? (
               <>
-                <Button type="submit" disabled={loading}>Salvar</Button>
+                <Button type="submit" disabled={loading || selectedItems.length === 0}>
+                  {loading ? "Salvando..." : `Salvar ${selectedItems.length > 0 ? `(${selectedItems.length})` : ""}`}
+                </Button>
                 <Button type="button" variant="outline" onClick={onCancel}>Cancelar</Button>
               </>
             ) : (
               <>
                 <Button type="button" onClick={handleDownloadReceipt}>
                   <FileDown className="w-4 h-4 mr-2" />
-                  Baixar Recibo
+                  Baixar Recibos ({lastInsertedData.items.length})
                 </Button>
-                <Button type="button" variant="outline" onClick={() => { onSaved(); setLastInsertedData(null); }}>
+                <Button type="button" variant="outline" onClick={() => { onSaved(); setLastInsertedData(null); setSelectedItems([]); }}>
                   Fechar
                 </Button>
               </>
