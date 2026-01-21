@@ -525,11 +525,11 @@ export default function AvaliacaoCard({ avaliacao, onEdit, onDelete, onRefresh }
                   )}
                 </div>
                 <div className="space-y-2">
-                  <Label>Nota (1-5)</Label>
+                  <Label>Nota (1-10)</Label>
                   <Input
                     type="number"
                     min="1"
-                    max="5"
+                    max="10"
                     placeholder="Digite a nota"
                     value={notas[criterio.id]?.nota || ""}
                     onChange={(e) => setNotas({

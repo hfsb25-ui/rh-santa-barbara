@@ -156,11 +156,11 @@ export default function AvaliacoesTab({ employeeId }: AvaliacoesTabProps) {
                         )}
                       </div>
                       <div className="space-y-2">
-                        <Label>Sua Nota (1-5)</Label>
+                        <Label>Sua Nota (1-10)</Label>
                         <Input
                           type="number"
                           min="1"
-                          max="5"
+                          max="10"
                           placeholder="Digite sua nota"
                           value={autoAvaliacaoNotas[criterio.id]?.nota || ""}
                           onChange={(e) => setAutoAvaliacaoNotas({
