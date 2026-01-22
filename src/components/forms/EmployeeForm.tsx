@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -8,7 +8,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { toast } from "sonner";
-import { Upload, X } from "lucide-react";
+import { Upload, X, ClipboardCheck } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 
 interface EmployeeFormProps {
   employeeId?: string;
@@ -22,6 +23,8 @@ const EmployeeForm = ({ employeeId, initialData, onSaved, onCancel }: EmployeeFo
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(initialData?.foto_url || null);
   const [selectedStatus, setSelectedStatus] = useState<string>(initialData?.status || "ativo");
+  const [createChecklist, setCreateChecklist] = useState(true);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
 
   const { data: setores } = useQuery({
     queryKey: ["setores"],
@@ -62,6 +65,28 @@ const EmployeeForm = ({ employeeId, initialData, onSaved, onCancel }: EmployeeFo
     },
   });
 
+  // Buscar templates de admissão
+  const { data: admissionTemplates } = useQuery({
+    queryKey: ["admission-templates"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("plano_checklist_templates")
+        .select("id, nome")
+        .eq("tipo", "admissao")
+        .eq("ativo", true)
+        .order("nome");
+      
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  // Selecionar primeiro template automaticamente
+  useEffect(() => {
+    if (admissionTemplates && admissionTemplates.length > 0 && !selectedTemplateId) {
+      setSelectedTemplateId(admissionTemplates[0].id);
+    }
+  }, [admissionTemplates, selectedTemplateId]);
   const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -109,6 +134,59 @@ const EmployeeForm = ({ employeeId, initialData, onSaved, onCancel }: EmployeeFo
     }
   };
 
+  const createAdmissionChecklist = async (employeeId: string, templateId: string) => {
+    try {
+      // Buscar itens do template
+      const { data: templateItems, error: itemsError } = await supabase
+        .from("plano_checklist_itens")
+        .select("*")
+        .eq("template_id", templateId)
+        .order("ordem");
+
+      if (itemsError) throw itemsError;
+
+      const { data: { user } } = await supabase.auth.getUser();
+
+      // Criar checklist
+      const { data: checklist, error: checklistError } = await supabase
+        .from("plano_checklist_funcionario")
+        .insert({
+          employee_id: employeeId,
+          template_id: templateId,
+          tipo: "admissao",
+          created_by: user?.id,
+        })
+        .select()
+        .single();
+
+      if (checklistError) throw checklistError;
+
+      // Criar itens do checklist
+      const checklistItems = templateItems?.map((item) => ({
+        checklist_funcionario_id: checklist.id,
+        item_id: item.id,
+        titulo: item.titulo,
+        descricao: item.descricao,
+        ordem: item.ordem,
+        obrigatorio: item.obrigatorio,
+        prazo_dias: item.prazo_dias,
+      }));
+
+      if (checklistItems && checklistItems.length > 0) {
+        const { error: insertError } = await supabase
+          .from("plano_checklist_funcionario_itens")
+          .insert(checklistItems);
+
+        if (insertError) throw insertError;
+      }
+
+      console.log("Checklist de admissão criado automaticamente");
+    } catch (error: any) {
+      console.error("Erro ao criar checklist de admissão:", error);
+      toast.error("Erro ao criar checklist de admissão: " + error.message);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setLoading(true);
@@ -119,7 +197,7 @@ const EmployeeForm = ({ employeeId, initialData, onSaved, onCancel }: EmployeeFo
     const cpf = formData.get("cpf") as string || null;
     const senha = formData.get("senha") as string || null;
     const salario = formData.get("salario") as string;
-    const status = formData.get("status") as "ativo" | "ferias" | "afastado" | "demitido" || "ativo";
+    const status = formData.get("status") as "em_admissao" | "ativo" | "ferias" | "afastado" | "demitido" || "ativo";
     const data = {
       nome_completo: formData.get("nome_completo") as string,
       cargo: formData.get("cargo") as string,
@@ -227,9 +305,17 @@ const EmployeeForm = ({ employeeId, initialData, onSaved, onCancel }: EmployeeFo
           }
         }
 
+        // Criar checklist de admissão automaticamente se status for em_admissao
+        if (data.status === "em_admissao" && createChecklist && selectedTemplateId) {
+          await createAdmissionChecklist(newEmployee.id, selectedTemplateId);
+        }
+
         // A role já é criada automaticamente pelo trigger handle_new_user
 
-        toast.success("Funcionário cadastrado! Login: CPF " + cpf);
+        const successMessage = data.status === "em_admissao" && createChecklist
+          ? "Funcionário cadastrado com processo de admissão iniciado! Login: CPF " + cpf
+          : "Funcionário cadastrado! Login: CPF " + cpf;
+        toast.success(successMessage);
       }
       
       onSaved();
@@ -445,6 +531,46 @@ const EmployeeForm = ({ employeeId, initialData, onSaved, onCancel }: EmployeeFo
                 </SelectContent>
               </Select>
             </div>
+            {selectedStatus === "em_admissao" && !employeeId && (
+              <div className="col-span-2 p-4 bg-amber-50 dark:bg-amber-950/20 rounded-lg border border-amber-200 dark:border-amber-800 space-y-3">
+                <div className="flex items-center gap-2">
+                  <ClipboardCheck className="h-5 w-5 text-amber-600" />
+                  <span className="font-medium text-amber-800 dark:text-amber-200">Processo de Admissão</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Checkbox 
+                    id="create-checklist"
+                    checked={createChecklist}
+                    onCheckedChange={(checked) => setCreateChecklist(!!checked)}
+                  />
+                  <Label htmlFor="create-checklist" className="text-sm cursor-pointer">
+                    Criar checklist de admissão automaticamente
+                  </Label>
+                </div>
+                {createChecklist && admissionTemplates && admissionTemplates.length > 0 && (
+                  <div className="space-y-2">
+                    <Label className="text-sm">Template do Checklist</Label>
+                    <Select value={selectedTemplateId} onValueChange={setSelectedTemplateId}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione um template" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {admissionTemplates.map((template) => (
+                          <SelectItem key={template.id} value={template.id}>
+                            {template.nome}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+                {createChecklist && (!admissionTemplates || admissionTemplates.length === 0) && (
+                  <p className="text-sm text-amber-700 dark:text-amber-300">
+                    Nenhum template de admissão configurado. Configure um template em Plano de Admissão/Desligamento.
+                  </p>
+                )}
+              </div>
+            )}
             {selectedStatus === "demitido" && (
               <div>
                 <Label>Data de Desligamento</Label>
