@@ -204,6 +204,18 @@ export function NovoChecklistDialog({
         if (insertError) throw insertError;
       }
 
+      // Se for admissão, atualizar status do funcionário para "em_admissao"
+      if (tipo === "admissao") {
+        const { error: employeeError } = await supabase
+          .from("employees")
+          .update({ status: "em_admissao" })
+          .eq("id", selectedEmployee);
+
+        if (employeeError) {
+          console.error("Erro ao atualizar status do funcionário:", employeeError);
+        }
+      }
+
       toast({
         title: "Checklist criado",
         description: `Processo de ${tipo === "admissao" ? "admissão" : "desligamento"} iniciado com sucesso.`,

@@ -3130,7 +3130,12 @@ export type Database = {
         | "aprovada"
         | "reprovada"
         | "contratada"
-      employee_status: "ativo" | "ferias" | "afastado" | "demitido"
+      employee_status:
+        | "em_admissao"
+        | "ativo"
+        | "ferias"
+        | "afastado"
+        | "demitido"
       status_checklist: "em_andamento" | "concluido" | "cancelado"
       status_encaminhamento: "pendente" | "agendado" | "realizado" | "cancelado"
       status_tac: "pendente" | "visualizado" | "confirmado"
@@ -3286,7 +3291,13 @@ export const Constants = {
         "reprovada",
         "contratada",
       ],
-      employee_status: ["ativo", "ferias", "afastado", "demitido"],
+      employee_status: [
+        "em_admissao",
+        "ativo",
+        "ferias",
+        "afastado",
+        "demitido",
+      ],
       status_checklist: ["em_andamento", "concluido", "cancelado"],
       status_encaminhamento: ["pendente", "agendado", "realizado", "cancelado"],
       status_tac: ["pendente", "visualizado", "confirmado"],

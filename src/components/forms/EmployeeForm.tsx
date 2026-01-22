@@ -437,6 +437,7 @@ const EmployeeForm = ({ employeeId, initialData, onSaved, onCancel }: EmployeeFo
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="em_admissao">Em Admissão</SelectItem>
                   <SelectItem value="ativo">Ativo</SelectItem>
                   <SelectItem value="ferias">Férias</SelectItem>
                   <SelectItem value="afastado">Afastado</SelectItem>

@@ -12,19 +12,21 @@ interface EmployeeInfoProps {
 const EmployeeInfo = ({ employee }: EmployeeInfoProps) => {
   const getStatusBadge = (status: string) => {
     const variants: any = {
+      em_admissao: "outline",
       ativo: "default",
       ferias: "secondary",
       afastado: "destructive",
       demitido: "outline",
     };
     const labels: any = {
+      em_admissao: "Em Admissão",
       ativo: "Ativo",
       ferias: "Férias",
       afastado: "Afastado",
       demitido: "Demitido",
     };
     return (
-      <Badge variant={variants[status] || "default"}>
+      <Badge variant={variants[status] || "default"} className={status === "em_admissao" ? "bg-amber-50 text-amber-700 border-amber-200" : ""}>
         {labels[status] || status}
       </Badge>
     );
