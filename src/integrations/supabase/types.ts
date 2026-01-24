@@ -971,7 +971,11 @@ export type Database = {
       }
       employees: {
         Row: {
+          bairro: string | null
           cargo: string
+          carteira_trabalho: string | null
+          cep: string | null
+          cidade: string | null
           cpf: string | null
           created_at: string | null
           data_admissao: string | null
@@ -979,11 +983,23 @@ export type Database = {
           data_nascimento: string | null
           empresa_id: string | null
           endereco: string | null
+          endereco_complemento: string | null
+          endereco_numero: string | null
           foto_url: string | null
           id: string
+          nacionalidade: string | null
+          naturalidade_estado: string | null
+          naturalidade_municipio: string | null
           nome_completo: string
+          nome_mae: string | null
+          nome_pai: string | null
+          pis: string | null
           quantidade_folgas: number | null
+          raca_cor: string | null
           rg: string | null
+          rg_data_emissao: string | null
+          rg_orgao_expedidor: string | null
+          rg_uf: string | null
           salario: number | null
           setor: string | null
           sexo: string | null
@@ -991,12 +1007,17 @@ export type Database = {
           telefone: string | null
           tipo_contrato: Database["public"]["Enums"]["tipo_contrato"] | null
           tipo_salario: Database["public"]["Enums"]["tipo_salario"] | null
+          uf: string | null
           ultima_alteracao_folgas: string | null
           updated_at: string | null
           user_id: string | null
         }
         Insert: {
+          bairro?: string | null
           cargo: string
+          carteira_trabalho?: string | null
+          cep?: string | null
+          cidade?: string | null
           cpf?: string | null
           created_at?: string | null
           data_admissao?: string | null
@@ -1004,11 +1025,23 @@ export type Database = {
           data_nascimento?: string | null
           empresa_id?: string | null
           endereco?: string | null
+          endereco_complemento?: string | null
+          endereco_numero?: string | null
           foto_url?: string | null
           id?: string
+          nacionalidade?: string | null
+          naturalidade_estado?: string | null
+          naturalidade_municipio?: string | null
           nome_completo: string
+          nome_mae?: string | null
+          nome_pai?: string | null
+          pis?: string | null
           quantidade_folgas?: number | null
+          raca_cor?: string | null
           rg?: string | null
+          rg_data_emissao?: string | null
+          rg_orgao_expedidor?: string | null
+          rg_uf?: string | null
           salario?: number | null
           setor?: string | null
           sexo?: string | null
@@ -1016,12 +1049,17 @@ export type Database = {
           telefone?: string | null
           tipo_contrato?: Database["public"]["Enums"]["tipo_contrato"] | null
           tipo_salario?: Database["public"]["Enums"]["tipo_salario"] | null
+          uf?: string | null
           ultima_alteracao_folgas?: string | null
           updated_at?: string | null
           user_id?: string | null
         }
         Update: {
+          bairro?: string | null
           cargo?: string
+          carteira_trabalho?: string | null
+          cep?: string | null
+          cidade?: string | null
           cpf?: string | null
           created_at?: string | null
           data_admissao?: string | null
@@ -1029,11 +1067,23 @@ export type Database = {
           data_nascimento?: string | null
           empresa_id?: string | null
           endereco?: string | null
+          endereco_complemento?: string | null
+          endereco_numero?: string | null
           foto_url?: string | null
           id?: string
+          nacionalidade?: string | null
+          naturalidade_estado?: string | null
+          naturalidade_municipio?: string | null
           nome_completo?: string
+          nome_mae?: string | null
+          nome_pai?: string | null
+          pis?: string | null
           quantidade_folgas?: number | null
+          raca_cor?: string | null
           rg?: string | null
+          rg_data_emissao?: string | null
+          rg_orgao_expedidor?: string | null
+          rg_uf?: string | null
           salario?: number | null
           setor?: string | null
           sexo?: string | null
@@ -1041,6 +1091,7 @@ export type Database = {
           telefone?: string | null
           tipo_contrato?: Database["public"]["Enums"]["tipo_contrato"] | null
           tipo_salario?: Database["public"]["Enums"]["tipo_salario"] | null
+          uf?: string | null
           ultima_alteracao_folgas?: string | null
           updated_at?: string | null
           user_id?: string | null
