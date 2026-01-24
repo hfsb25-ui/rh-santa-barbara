@@ -2,14 +2,15 @@ import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { Upload, X, ClipboardCheck } from "lucide-react";
-import { Checkbox } from "@/components/ui/checkbox";
+import { User, FileText, MapPin, Briefcase } from "lucide-react";
+
+import DadosPessoaisTab from "./employee-tabs/DadosPessoaisTab";
+import DocumentacaoTab from "./employee-tabs/DocumentacaoTab";
+import EnderecoTab from "./employee-tabs/EnderecoTab";
+import MovimentacoesTab from "./employee-tabs/MovimentacoesTab";
 
 interface EmployeeFormProps {
   employeeId?: string;
@@ -25,6 +26,7 @@ const EmployeeForm = ({ employeeId, initialData, onSaved, onCancel }: EmployeeFo
   const [selectedStatus, setSelectedStatus] = useState<string>(initialData?.status || "ativo");
   const [createChecklist, setCreateChecklist] = useState(true);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
+  const [activeTab, setActiveTab] = useState("dados-pessoais");
 
   const { data: setores } = useQuery({
     queryKey: ["setores"],
@@ -65,7 +67,6 @@ const EmployeeForm = ({ employeeId, initialData, onSaved, onCancel }: EmployeeFo
     },
   });
 
-  // Buscar templates de admissão
   const { data: admissionTemplates } = useQuery({
     queryKey: ["admission-templates"],
     queryFn: async () => {
@@ -81,12 +82,12 @@ const EmployeeForm = ({ employeeId, initialData, onSaved, onCancel }: EmployeeFo
     },
   });
 
-  // Selecionar primeiro template automaticamente
   useEffect(() => {
     if (admissionTemplates && admissionTemplates.length > 0 && !selectedTemplateId) {
       setSelectedTemplateId(admissionTemplates[0].id);
     }
   }, [admissionTemplates, selectedTemplateId]);
+
   const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -134,9 +135,8 @@ const EmployeeForm = ({ employeeId, initialData, onSaved, onCancel }: EmployeeFo
     }
   };
 
-  const createAdmissionChecklist = async (employeeId: string, templateId: string) => {
+  const createAdmissionChecklist = async (newEmployeeId: string, templateId: string) => {
     try {
-      // Buscar itens do template
       const { data: templateItems, error: itemsError } = await supabase
         .from("plano_checklist_itens")
         .select("*")
@@ -147,11 +147,10 @@ const EmployeeForm = ({ employeeId, initialData, onSaved, onCancel }: EmployeeFo
 
       const { data: { user } } = await supabase.auth.getUser();
 
-      // Criar checklist
       const { data: checklist, error: checklistError } = await supabase
         .from("plano_checklist_funcionario")
         .insert({
-          employee_id: employeeId,
+          employee_id: newEmployeeId,
           template_id: templateId,
           tipo: "admissao",
           created_by: user?.id,
@@ -161,7 +160,6 @@ const EmployeeForm = ({ employeeId, initialData, onSaved, onCancel }: EmployeeFo
 
       if (checklistError) throw checklistError;
 
-      // Criar itens do checklist
       const checklistItems = templateItems?.map((item) => ({
         checklist_funcionario_id: checklist.id,
         item_id: item.id,
@@ -193,11 +191,12 @@ const EmployeeForm = ({ employeeId, initialData, onSaved, onCancel }: EmployeeFo
     
     console.log("=== INICIANDO CADASTRO DE FUNCIONÁRIO ===");
     const formData = new FormData(e.currentTarget);
-    console.log("FormData capturado");
+    
     const cpf = formData.get("cpf") as string || null;
     const senha = formData.get("senha") as string || null;
     const salario = formData.get("salario") as string;
     const status = formData.get("status") as "em_admissao" | "ativo" | "ferias" | "afastado" | "demitido" || "ativo";
+    
     const data = {
       nome_completo: formData.get("nome_completo") as string,
       cargo: formData.get("cargo") as string,
@@ -215,18 +214,36 @@ const EmployeeForm = ({ employeeId, initialData, onSaved, onCancel }: EmployeeFo
       status: status,
       data_desligamento: status === "demitido" ? (formData.get("data_desligamento") as string || null) : null,
       sexo: formData.get("sexo") as string || null,
+      // Novos campos - Dados Pessoais
+      nacionalidade: formData.get("nacionalidade") as string || null,
+      naturalidade_estado: formData.get("naturalidade_estado") as string || null,
+      naturalidade_municipio: formData.get("naturalidade_municipio") as string || null,
+      nome_pai: formData.get("nome_pai") as string || null,
+      nome_mae: formData.get("nome_mae") as string || null,
+      raca_cor: formData.get("raca_cor") as string || null,
+      // Novos campos - Documentação
+      carteira_trabalho: formData.get("carteira_trabalho") as string || null,
+      pis: formData.get("pis") as string || null,
+      rg_orgao_expedidor: formData.get("rg_orgao_expedidor") as string || null,
+      rg_data_emissao: formData.get("rg_data_emissao") as string || null,
+      rg_uf: formData.get("rg_uf") as string || null,
+      // Novos campos - Endereço
+      cep: formData.get("cep") as string || null,
+      endereco_numero: formData.get("endereco_numero") as string || null,
+      endereco_complemento: formData.get("endereco_complemento") as string || null,
+      bairro: formData.get("bairro") as string || null,
+      uf: formData.get("uf") as string || null,
+      cidade: formData.get("cidade") as string || null,
     };
 
     try {
       if (employeeId) {
-        // Upload da foto se houver
         let fotoUrl = initialData?.foto_url;
         if (photoFile) {
           const uploadedUrl = await uploadPhoto(employeeId);
           if (uploadedUrl) fotoUrl = uploadedUrl;
         }
 
-        // Apenas atualizar funcionário existente
         const { error } = await supabase
           .from("employees")
           .update({ ...data, foto_url: fotoUrl })
@@ -235,20 +252,20 @@ const EmployeeForm = ({ employeeId, initialData, onSaved, onCancel }: EmployeeFo
         if (error) throw error;
         toast.success("Funcionário atualizado!");
       } else {
-        // Criar novo funcionário
         if (!cpf) {
           toast.error("CPF é obrigatório para criar novo funcionário");
+          setActiveTab("documentacao");
           setLoading(false);
           return;
         }
         
         if (!senha) {
           toast.error("Senha é obrigatória para criar novo funcionário");
+          setActiveTab("dados-pessoais");
           setLoading(false);
           return;
         }
 
-        // Criar usuário via edge function (mais seguro e evita rate limiting)
         console.log("Criando usuário via edge function");
         
         const { data: functionData, error: functionError } = await supabase.functions.invoke('create-employee-user', {
@@ -276,9 +293,6 @@ const EmployeeForm = ({ employeeId, initialData, onSaved, onCancel }: EmployeeFo
         const userId = functionData.user.id;
         console.log("Usuário criado com sucesso:", userId);
 
-        // Criar funcionário vinculado ao user_id
-        console.log("Tentando criar funcionário com user_id:", userId);
-        
         const { data: newEmployee, error: employeeError } = await supabase
           .from("employees")
           .insert([{ ...data, user_id: userId }])
@@ -294,7 +308,6 @@ const EmployeeForm = ({ employeeId, initialData, onSaved, onCancel }: EmployeeFo
 
         console.log("Funcionário criado:", newEmployee.id);
 
-        // Upload da foto se houver
         if (photoFile && newEmployee) {
           const uploadedUrl = await uploadPhoto(newEmployee.id);
           if (uploadedUrl) {
@@ -305,12 +318,9 @@ const EmployeeForm = ({ employeeId, initialData, onSaved, onCancel }: EmployeeFo
           }
         }
 
-        // Criar checklist de admissão automaticamente se status for em_admissao
         if (data.status === "em_admissao" && createChecklist && selectedTemplateId) {
           await createAdmissionChecklist(newEmployee.id, selectedTemplateId);
         }
-
-        // A role já é criada automaticamente pelo trigger handle_new_user
 
         const successMessage = data.status === "em_admissao" && createChecklist
           ? "Funcionário cadastrado com processo de admissão iniciado! Login: CPF " + cpf
@@ -333,258 +343,73 @@ const EmployeeForm = ({ employeeId, initialData, onSaved, onCancel }: EmployeeFo
         <CardTitle>{employeeId ? "Editar Funcionário" : "Novo Funcionário"}</CardTitle>
       </CardHeader>
       <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="flex flex-col items-center gap-4 mb-6">
-            <Avatar className="w-24 h-24">
-              <AvatarImage src={photoPreview || undefined} />
-              <AvatarFallback>
-                <Upload className="w-8 h-8 text-muted-foreground" />
-              </AvatarFallback>
-            </Avatar>
-            <div className="flex gap-2">
-              <Label htmlFor="photo-upload" className="cursor-pointer">
-                <Button type="button" variant="outline" size="sm" asChild>
-                  <span>
-                    <Upload className="w-4 h-4 mr-2" />
-                    {photoPreview ? "Trocar Foto" : "Upload Foto"}
-                  </span>
-                </Button>
-              </Label>
-              <Input
-                id="photo-upload"
-                type="file"
-                accept="image/*"
-                onChange={handlePhotoChange}
-                className="hidden"
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <TabsList className="grid w-full grid-cols-4">
+              <TabsTrigger value="dados-pessoais" className="flex items-center gap-2">
+                <User className="h-4 w-4" />
+                <span className="hidden sm:inline">Dados Pessoais</span>
+              </TabsTrigger>
+              <TabsTrigger value="documentacao" className="flex items-center gap-2">
+                <FileText className="h-4 w-4" />
+                <span className="hidden sm:inline">Documentação</span>
+              </TabsTrigger>
+              <TabsTrigger value="endereco" className="flex items-center gap-2">
+                <MapPin className="h-4 w-4" />
+                <span className="hidden sm:inline">Endereço</span>
+              </TabsTrigger>
+              <TabsTrigger value="movimentacoes" className="flex items-center gap-2">
+                <Briefcase className="h-4 w-4" />
+                <span className="hidden sm:inline">Movimentações</span>
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="dados-pessoais" className="mt-6">
+              <DadosPessoaisTab
+                initialData={initialData}
+                isEditing={!!employeeId}
+                photoPreview={photoPreview}
+                onPhotoChange={handlePhotoChange}
+                onRemovePhoto={handleRemovePhoto}
               />
-              {photoPreview && (
-                <Button type="button" variant="ghost" size="sm" onClick={handleRemovePhoto}>
-                  <X className="w-4 h-4 mr-2" />
-                  Remover
-                </Button>
-              )}
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="col-span-2">
-              <Label>Nome Completo</Label>
-              <Input name="nome_completo" defaultValue={initialData?.nome_completo} required />
-            </div>
-            <div>
-              <Label>Função</Label>
-              <Select name="cargo" defaultValue={initialData?.cargo || undefined} required>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione a função" />
-                </SelectTrigger>
-                <SelectContent>
-                  {funcoes?.map((funcao) => (
-                    <SelectItem key={funcao.id} value={funcao.nome}>
-                      {funcao.nome} {funcao.cbo ? `(CBO: ${funcao.cbo})` : ''}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label>Setor</Label>
-              <Select name="setor" defaultValue={initialData?.setor || undefined}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione o setor" />
-                </SelectTrigger>
-                <SelectContent>
-                  {setores?.map((setor) => (
-                    <SelectItem key={setor.id} value={setor.nome}>
-                      {setor.nome}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label>Empresa</Label>
-              <Select name="empresa_id" defaultValue={initialData?.empresa_id || undefined}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione a empresa" />
-                </SelectTrigger>
-                <SelectContent>
-                  {empresas?.map((empresa) => (
-                    <SelectItem key={empresa.id} value={empresa.id}>
-                      {empresa.nome}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label>Tipo de Contrato</Label>
-              <Select name="tipo_contrato" defaultValue={initialData?.tipo_contrato || "fixo"}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione o tipo" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="fixo">Fixo</SelectItem>
-                  <SelectItem value="intermitente">Intermitente</SelectItem>
-                  <SelectItem value="prestador_servico">Prestador de Serviço</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label>Salário</Label>
-              <Input 
-                name="salario" 
-                type="number" 
-                step="0.01" 
-                min="0"
-                placeholder="0.00"
-                defaultValue={initialData?.salario} 
+            </TabsContent>
+
+            <TabsContent value="documentacao" className="mt-6">
+              <DocumentacaoTab
+                initialData={initialData}
+                isEditing={!!employeeId}
               />
-            </div>
-            <div>
-              <Label>Tipo de Salário</Label>
-              <Select name="tipo_salario" defaultValue={initialData?.tipo_salario || "mensal"}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione o tipo" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="mensal">Mensal</SelectItem>
-                  <SelectItem value="diario">Diário</SelectItem>
-                  <SelectItem value="por_hora">Por Hora</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label>Sexo</Label>
-              <Select name="sexo" defaultValue={initialData?.sexo || undefined}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione o sexo" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Masculino">Masculino</SelectItem>
-                  <SelectItem value="Feminino">Feminino</SelectItem>
-                  <SelectItem value="Outro">Outro</SelectItem>
-                  <SelectItem value="Prefiro não informar">Prefiro não informar</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label>CPF</Label>
-              <Input 
-                name="cpf" 
-                defaultValue={initialData?.cpf} 
-                required={!employeeId}
+            </TabsContent>
+
+            <TabsContent value="endereco" className="mt-6">
+              <EnderecoTab initialData={initialData} />
+            </TabsContent>
+
+            <TabsContent value="movimentacoes" className="mt-6">
+              <MovimentacoesTab
+                initialData={initialData}
+                isEditing={!!employeeId}
+                selectedStatus={selectedStatus}
+                setSelectedStatus={setSelectedStatus}
+                createChecklist={createChecklist}
+                setCreateChecklist={setCreateChecklist}
+                selectedTemplateId={selectedTemplateId}
+                setSelectedTemplateId={setSelectedTemplateId}
+                setores={setores}
+                empresas={empresas}
+                funcoes={funcoes}
+                admissionTemplates={admissionTemplates}
               />
-            </div>
-            <div>
-              <Label>RG</Label>
-              <Input 
-                name="rg" 
-                defaultValue={initialData?.rg}
-              />
-            </div>
-            <div>
-              <Label>Data de Nascimento</Label>
-              <Input 
-                name="data_nascimento" 
-                type="date" 
-                defaultValue={initialData?.data_nascimento}
-              />
-            </div>
-            {!employeeId && (
-              <div>
-                <Label>Senha</Label>
-                <Input 
-                  name="senha" 
-                  type="password"
-                  placeholder="Defina a senha do funcionário"
-                  required
-                />
-              </div>
-            )}
-            <div>
-              <Label>Telefone</Label>
-              <Input name="telefone" defaultValue={initialData?.telefone} />
-            </div>
-            <div className="col-span-2">
-              <Label>Endereço</Label>
-              <Input name="endereco" defaultValue={initialData?.endereco} />
-            </div>
-            <div>
-              <Label>Data de Admissão</Label>
-              <Input name="data_admissao" type="date" defaultValue={initialData?.data_admissao} />
-            </div>
-            <div>
-              <Label>Status</Label>
-              <Select 
-                name="status" 
-                defaultValue={initialData?.status || "ativo"}
-                onValueChange={(value) => setSelectedStatus(value)}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="em_admissao">Em Admissão</SelectItem>
-                  <SelectItem value="ativo">Ativo</SelectItem>
-                  <SelectItem value="ferias">Férias</SelectItem>
-                  <SelectItem value="afastado">Afastado</SelectItem>
-                  <SelectItem value="demitido">Demitido</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            {selectedStatus === "em_admissao" && !employeeId && (
-              <div className="col-span-2 p-4 bg-amber-50 dark:bg-amber-950/20 rounded-lg border border-amber-200 dark:border-amber-800 space-y-3">
-                <div className="flex items-center gap-2">
-                  <ClipboardCheck className="h-5 w-5 text-amber-600" />
-                  <span className="font-medium text-amber-800 dark:text-amber-200">Processo de Admissão</span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Checkbox 
-                    id="create-checklist"
-                    checked={createChecklist}
-                    onCheckedChange={(checked) => setCreateChecklist(!!checked)}
-                  />
-                  <Label htmlFor="create-checklist" className="text-sm cursor-pointer">
-                    Criar checklist de admissão automaticamente
-                  </Label>
-                </div>
-                {createChecklist && admissionTemplates && admissionTemplates.length > 0 && (
-                  <div className="space-y-2">
-                    <Label className="text-sm">Template do Checklist</Label>
-                    <Select value={selectedTemplateId} onValueChange={setSelectedTemplateId}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione um template" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {admissionTemplates.map((template) => (
-                          <SelectItem key={template.id} value={template.id}>
-                            {template.nome}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
-                {createChecklist && (!admissionTemplates || admissionTemplates.length === 0) && (
-                  <p className="text-sm text-amber-700 dark:text-amber-300">
-                    Nenhum template de admissão configurado. Configure um template em Plano de Admissão/Desligamento.
-                  </p>
-                )}
-              </div>
-            )}
-            {selectedStatus === "demitido" && (
-              <div>
-                <Label>Data de Desligamento</Label>
-                <Input 
-                  name="data_desligamento" 
-                  type="date" 
-                  defaultValue={initialData?.data_desligamento}
-                />
-              </div>
-            )}
-          </div>
-          <div className="flex gap-2">
-            <Button type="submit" disabled={loading}>Salvar</Button>
-            <Button type="button" variant="outline" onClick={onCancel}>Cancelar</Button>
+            </TabsContent>
+          </Tabs>
+
+          <div className="flex gap-2 pt-4 border-t">
+            <Button type="submit" disabled={loading}>
+              {loading ? "Salvando..." : "Salvar"}
+            </Button>
+            <Button type="button" variant="outline" onClick={onCancel}>
+              Cancelar
+            </Button>
           </div>
         </form>
       </CardContent>
