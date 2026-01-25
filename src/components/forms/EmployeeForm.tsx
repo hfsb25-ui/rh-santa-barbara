@@ -27,6 +27,48 @@ const EmployeeForm = ({ employeeId, initialData, onSaved, onCancel }: EmployeeFo
   const [createChecklist, setCreateChecklist] = useState(true);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
   const [activeTab, setActiveTab] = useState("dados-pessoais");
+  
+  // Estado controlado para todos os campos do formulário
+  const [formValues, setFormValues] = useState<Record<string, string>>({
+    nome_completo: initialData?.nome_completo || "",
+    data_nascimento: initialData?.data_nascimento || "",
+    nacionalidade: initialData?.nacionalidade || "",
+    naturalidade_estado: initialData?.naturalidade_estado || "",
+    naturalidade_municipio: initialData?.naturalidade_municipio || "",
+    nome_pai: initialData?.nome_pai || "",
+    nome_mae: initialData?.nome_mae || "",
+    raca_cor: initialData?.raca_cor || "",
+    sexo: initialData?.sexo || "",
+    senha: "",
+    carteira_trabalho: initialData?.carteira_trabalho || "",
+    cpf: initialData?.cpf || "",
+    pis: initialData?.pis || "",
+    rg: initialData?.rg || "",
+    rg_orgao_expedidor: initialData?.rg_orgao_expedidor || "",
+    rg_data_emissao: initialData?.rg_data_emissao || "",
+    rg_uf: initialData?.rg_uf || "",
+    telefone: initialData?.telefone || "",
+    cep: initialData?.cep || "",
+    endereco: initialData?.endereco || "",
+    endereco_numero: initialData?.endereco_numero || "",
+    endereco_complemento: initialData?.endereco_complemento || "",
+    bairro: initialData?.bairro || "",
+    uf: initialData?.uf || "",
+    cidade: initialData?.cidade || "",
+    cargo: initialData?.cargo || "",
+    setor: initialData?.setor || "",
+    empresa_id: initialData?.empresa_id || "",
+    tipo_contrato: initialData?.tipo_contrato || "fixo",
+    salario: initialData?.salario?.toString() || "",
+    tipo_salario: initialData?.tipo_salario || "mensal",
+    data_admissao: initialData?.data_admissao || "",
+    status: initialData?.status || "ativo",
+    data_desligamento: initialData?.data_desligamento || "",
+  });
+
+  const handleFormChange = (field: string, value: string) => {
+    setFormValues(prev => ({ ...prev, [field]: value }));
+  };
 
   const { data: setores } = useQuery({
     queryKey: ["setores"],
@@ -190,50 +232,53 @@ const EmployeeForm = ({ employeeId, initialData, onSaved, onCancel }: EmployeeFo
     setLoading(true);
     
     console.log("=== INICIANDO CADASTRO DE FUNCIONÁRIO ===");
-    const formData = new FormData(e.currentTarget);
+    console.log("Form Values:", formValues);
     
-    const cpf = formData.get("cpf") as string || null;
-    const senha = formData.get("senha") as string || null;
-    const salario = formData.get("salario") as string;
-    const status = formData.get("status") as "em_admissao" | "ativo" | "ferias" | "afastado" | "demitido" || "ativo";
+    // Validação do campo obrigatório cargo
+    if (!formValues.cargo) {
+      toast.error("Função é obrigatória");
+      setActiveTab("movimentacoes");
+      setLoading(false);
+      return;
+    }
+
+    const salario = formValues.salario;
+    const status = formValues.status as "em_admissao" | "ativo" | "ferias" | "afastado" | "demitido" || "ativo";
     
     const data = {
-      nome_completo: formData.get("nome_completo") as string,
-      cargo: formData.get("cargo") as string,
-      setor: formData.get("setor") as string || null,
-      empresa_id: formData.get("empresa_id") as string || null,
+      nome_completo: formValues.nome_completo,
+      cargo: formValues.cargo,
+      setor: formValues.setor || null,
+      empresa_id: formValues.empresa_id || null,
       salario: salario ? parseFloat(salario) : null,
-      tipo_salario: formData.get("tipo_salario") as "mensal" | "diario" | "por_hora" || "mensal",
-      tipo_contrato: formData.get("tipo_contrato") as "fixo" | "intermitente" | "prestador_servico" || "fixo",
-      cpf: cpf,
-      rg: formData.get("rg") as string || null,
-      telefone: formData.get("telefone") as string || null,
-      endereco: formData.get("endereco") as string || null,
-      data_nascimento: formData.get("data_nascimento") as string || null,
-      data_admissao: formData.get("data_admissao") as string || null,
+      tipo_salario: formValues.tipo_salario as "mensal" | "diario" | "por_hora" || "mensal",
+      tipo_contrato: formValues.tipo_contrato as "fixo" | "intermitente" | "prestador_servico" || "fixo",
+      cpf: formValues.cpf || null,
+      rg: formValues.rg || null,
+      telefone: formValues.telefone || null,
+      endereco: formValues.endereco || null,
+      data_nascimento: formValues.data_nascimento || null,
+      data_admissao: formValues.data_admissao || null,
       status: status,
-      data_desligamento: status === "demitido" ? (formData.get("data_desligamento") as string || null) : null,
-      sexo: formData.get("sexo") as string || null,
-      // Novos campos - Dados Pessoais
-      nacionalidade: formData.get("nacionalidade") as string || null,
-      naturalidade_estado: formData.get("naturalidade_estado") as string || null,
-      naturalidade_municipio: formData.get("naturalidade_municipio") as string || null,
-      nome_pai: formData.get("nome_pai") as string || null,
-      nome_mae: formData.get("nome_mae") as string || null,
-      raca_cor: formData.get("raca_cor") as string || null,
-      // Novos campos - Documentação
-      carteira_trabalho: formData.get("carteira_trabalho") as string || null,
-      pis: formData.get("pis") as string || null,
-      rg_orgao_expedidor: formData.get("rg_orgao_expedidor") as string || null,
-      rg_data_emissao: formData.get("rg_data_emissao") as string || null,
-      rg_uf: formData.get("rg_uf") as string || null,
-      // Novos campos - Endereço
-      cep: formData.get("cep") as string || null,
-      endereco_numero: formData.get("endereco_numero") as string || null,
-      endereco_complemento: formData.get("endereco_complemento") as string || null,
-      bairro: formData.get("bairro") as string || null,
-      uf: formData.get("uf") as string || null,
-      cidade: formData.get("cidade") as string || null,
+      data_desligamento: status === "demitido" ? (formValues.data_desligamento || null) : null,
+      sexo: formValues.sexo || null,
+      nacionalidade: formValues.nacionalidade || null,
+      naturalidade_estado: formValues.naturalidade_estado || null,
+      naturalidade_municipio: formValues.naturalidade_municipio || null,
+      nome_pai: formValues.nome_pai || null,
+      nome_mae: formValues.nome_mae || null,
+      raca_cor: formValues.raca_cor || null,
+      carteira_trabalho: formValues.carteira_trabalho || null,
+      pis: formValues.pis || null,
+      rg_orgao_expedidor: formValues.rg_orgao_expedidor || null,
+      rg_data_emissao: formValues.rg_data_emissao || null,
+      rg_uf: formValues.rg_uf || null,
+      cep: formValues.cep || null,
+      endereco_numero: formValues.endereco_numero || null,
+      endereco_complemento: formValues.endereco_complemento || null,
+      bairro: formValues.bairro || null,
+      uf: formValues.uf || null,
+      cidade: formValues.cidade || null,
     };
 
     try {
@@ -252,14 +297,14 @@ const EmployeeForm = ({ employeeId, initialData, onSaved, onCancel }: EmployeeFo
         if (error) throw error;
         toast.success("Funcionário atualizado!");
       } else {
-        if (!cpf) {
+        if (!formValues.cpf) {
           toast.error("CPF é obrigatório para criar novo funcionário");
           setActiveTab("documentacao");
           setLoading(false);
           return;
         }
         
-        if (!senha) {
+        if (!formValues.senha) {
           toast.error("Senha é obrigatória para criar novo funcionário");
           setActiveTab("dados-pessoais");
           setLoading(false);
@@ -270,8 +315,8 @@ const EmployeeForm = ({ employeeId, initialData, onSaved, onCancel }: EmployeeFo
         
         const { data: functionData, error: functionError } = await supabase.functions.invoke('create-employee-user', {
           body: {
-            cpf: cpf,
-            senha: senha,
+            cpf: formValues.cpf,
+            senha: formValues.senha,
             nome_completo: data.nome_completo
           }
         });
@@ -323,8 +368,8 @@ const EmployeeForm = ({ employeeId, initialData, onSaved, onCancel }: EmployeeFo
         }
 
         const successMessage = data.status === "em_admissao" && createChecklist
-          ? "Funcionário cadastrado com processo de admissão iniciado! Login: CPF " + cpf
-          : "Funcionário cadastrado! Login: CPF " + cpf;
+          ? "Funcionário cadastrado com processo de admissão iniciado! Login: CPF " + formValues.cpf
+          : "Funcionário cadastrado! Login: CPF " + formValues.cpf;
         toast.success(successMessage);
       }
       
@@ -371,6 +416,8 @@ const EmployeeForm = ({ employeeId, initialData, onSaved, onCancel }: EmployeeFo
                 photoPreview={photoPreview}
                 onPhotoChange={handlePhotoChange}
                 onRemovePhoto={handleRemovePhoto}
+                formValues={formValues}
+                onFormChange={handleFormChange}
               />
             </TabsContent>
 
@@ -378,11 +425,17 @@ const EmployeeForm = ({ employeeId, initialData, onSaved, onCancel }: EmployeeFo
               <DocumentacaoTab
                 initialData={initialData}
                 isEditing={!!employeeId}
+                formValues={formValues}
+                onFormChange={handleFormChange}
               />
             </TabsContent>
 
             <TabsContent value="endereco" className="mt-6">
-              <EnderecoTab initialData={initialData} />
+              <EnderecoTab 
+                initialData={initialData}
+                formValues={formValues}
+                onFormChange={handleFormChange}
+              />
             </TabsContent>
 
             <TabsContent value="movimentacoes" className="mt-6">
@@ -399,6 +452,8 @@ const EmployeeForm = ({ employeeId, initialData, onSaved, onCancel }: EmployeeFo
                 empresas={empresas}
                 funcoes={funcoes}
                 admissionTemplates={admissionTemplates}
+                formValues={formValues}
+                onFormChange={handleFormChange}
               />
             </TabsContent>
           </Tabs>

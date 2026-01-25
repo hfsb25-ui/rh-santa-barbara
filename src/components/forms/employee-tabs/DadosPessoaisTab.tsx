@@ -50,6 +50,8 @@ interface DadosPessoaisTabProps {
   photoPreview: string | null;
   onPhotoChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onRemovePhoto: () => void;
+  formValues: Record<string, string>;
+  onFormChange: (field: string, value: string) => void;
 }
 
 const DadosPessoaisTab = ({ 
@@ -57,7 +59,9 @@ const DadosPessoaisTab = ({
   isEditing, 
   photoPreview, 
   onPhotoChange, 
-  onRemovePhoto 
+  onRemovePhoto,
+  formValues,
+  onFormChange,
 }: DadosPessoaisTabProps) => {
   return (
     <div className="space-y-6">
@@ -97,7 +101,12 @@ const DadosPessoaisTab = ({
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="md:col-span-2">
           <Label>Nome Completo *</Label>
-          <Input name="nome_completo" defaultValue={initialData?.nome_completo} required />
+          <Input 
+            name="nome_completo" 
+            value={formValues.nome_completo || ""}
+            onChange={(e) => onFormChange("nome_completo", e.target.value)}
+            required 
+          />
         </div>
 
         <div>
@@ -105,13 +114,17 @@ const DadosPessoaisTab = ({
           <Input 
             name="data_nascimento" 
             type="date" 
-            defaultValue={initialData?.data_nascimento}
+            value={formValues.data_nascimento || ""}
+            onChange={(e) => onFormChange("data_nascimento", e.target.value)}
           />
         </div>
 
         <div>
           <Label>Nacionalidade</Label>
-          <Select name="nacionalidade" defaultValue={initialData?.nacionalidade || undefined}>
+          <Select 
+            value={formValues.nacionalidade || ""} 
+            onValueChange={(value) => onFormChange("nacionalidade", value)}
+          >
             <SelectTrigger>
               <SelectValue placeholder="Selecione" />
             </SelectTrigger>
@@ -124,7 +137,10 @@ const DadosPessoaisTab = ({
 
         <div>
           <Label>Naturalidade - Estado</Label>
-          <Select name="naturalidade_estado" defaultValue={initialData?.naturalidade_estado || undefined}>
+          <Select 
+            value={formValues.naturalidade_estado || ""} 
+            onValueChange={(value) => onFormChange("naturalidade_estado", value)}
+          >
             <SelectTrigger>
               <SelectValue placeholder="Selecione o estado" />
             </SelectTrigger>
@@ -142,7 +158,8 @@ const DadosPessoaisTab = ({
           <Label>Naturalidade - Município</Label>
           <Input 
             name="naturalidade_municipio" 
-            defaultValue={initialData?.naturalidade_municipio}
+            value={formValues.naturalidade_municipio || ""}
+            onChange={(e) => onFormChange("naturalidade_municipio", e.target.value)}
             placeholder="Digite o município"
           />
         </div>
@@ -151,7 +168,8 @@ const DadosPessoaisTab = ({
           <Label>Nome do Pai</Label>
           <Input 
             name="nome_pai" 
-            defaultValue={initialData?.nome_pai}
+            value={formValues.nome_pai || ""}
+            onChange={(e) => onFormChange("nome_pai", e.target.value)}
             placeholder="Nome completo do pai"
           />
         </div>
@@ -160,14 +178,18 @@ const DadosPessoaisTab = ({
           <Label>Nome da Mãe</Label>
           <Input 
             name="nome_mae" 
-            defaultValue={initialData?.nome_mae}
+            value={formValues.nome_mae || ""}
+            onChange={(e) => onFormChange("nome_mae", e.target.value)}
             placeholder="Nome completo da mãe"
           />
         </div>
 
         <div>
           <Label>Raça/Cor</Label>
-          <Select name="raca_cor" defaultValue={initialData?.raca_cor || undefined}>
+          <Select 
+            value={formValues.raca_cor || ""} 
+            onValueChange={(value) => onFormChange("raca_cor", value)}
+          >
             <SelectTrigger>
               <SelectValue placeholder="Selecione" />
             </SelectTrigger>
@@ -183,7 +205,10 @@ const DadosPessoaisTab = ({
 
         <div>
           <Label>Sexo</Label>
-          <Select name="sexo" defaultValue={initialData?.sexo || undefined}>
+          <Select 
+            value={formValues.sexo || ""} 
+            onValueChange={(value) => onFormChange("sexo", value)}
+          >
             <SelectTrigger>
               <SelectValue placeholder="Selecione o sexo" />
             </SelectTrigger>
@@ -202,6 +227,8 @@ const DadosPessoaisTab = ({
             <Input 
               name="senha" 
               type="password"
+              value={formValues.senha || ""}
+              onChange={(e) => onFormChange("senha", e.target.value)}
               placeholder="Defina a senha do funcionário"
               required
             />
