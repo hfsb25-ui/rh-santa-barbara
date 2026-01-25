@@ -6,16 +6,19 @@ import { ESTADOS_BRASILEIROS } from "./DadosPessoaisTab";
 interface DocumentacaoTabProps {
   initialData?: any;
   isEditing: boolean;
+  formValues: Record<string, string>;
+  onFormChange: (field: string, value: string) => void;
 }
 
-const DocumentacaoTab = ({ initialData, isEditing }: DocumentacaoTabProps) => {
+const DocumentacaoTab = ({ initialData, isEditing, formValues, onFormChange }: DocumentacaoTabProps) => {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
       <div>
         <Label>Carteira de Trabalho</Label>
         <Input 
           name="carteira_trabalho" 
-          defaultValue={initialData?.carteira_trabalho}
+          value={formValues.carteira_trabalho || ""}
+          onChange={(e) => onFormChange("carteira_trabalho", e.target.value)}
           placeholder="Número da CTPS"
         />
       </div>
@@ -24,7 +27,8 @@ const DocumentacaoTab = ({ initialData, isEditing }: DocumentacaoTabProps) => {
         <Label>CPF {!isEditing && "*"}</Label>
         <Input 
           name="cpf" 
-          defaultValue={initialData?.cpf} 
+          value={formValues.cpf || ""}
+          onChange={(e) => onFormChange("cpf", e.target.value)}
           required={!isEditing}
           placeholder="000.000.000-00"
         />
@@ -34,7 +38,8 @@ const DocumentacaoTab = ({ initialData, isEditing }: DocumentacaoTabProps) => {
         <Label>PIS</Label>
         <Input 
           name="pis" 
-          defaultValue={initialData?.pis}
+          value={formValues.pis || ""}
+          onChange={(e) => onFormChange("pis", e.target.value)}
           placeholder="Número do PIS"
         />
       </div>
@@ -43,7 +48,8 @@ const DocumentacaoTab = ({ initialData, isEditing }: DocumentacaoTabProps) => {
         <Label>RG</Label>
         <Input 
           name="rg" 
-          defaultValue={initialData?.rg}
+          value={formValues.rg || ""}
+          onChange={(e) => onFormChange("rg", e.target.value)}
           placeholder="Número do RG"
         />
       </div>
@@ -52,7 +58,8 @@ const DocumentacaoTab = ({ initialData, isEditing }: DocumentacaoTabProps) => {
         <Label>RG - Órgão Expedidor</Label>
         <Input 
           name="rg_orgao_expedidor" 
-          defaultValue={initialData?.rg_orgao_expedidor}
+          value={formValues.rg_orgao_expedidor || ""}
+          onChange={(e) => onFormChange("rg_orgao_expedidor", e.target.value)}
           placeholder="Ex: SSP"
         />
       </div>
@@ -62,13 +69,17 @@ const DocumentacaoTab = ({ initialData, isEditing }: DocumentacaoTabProps) => {
         <Input 
           name="rg_data_emissao" 
           type="date" 
-          defaultValue={initialData?.rg_data_emissao}
+          value={formValues.rg_data_emissao || ""}
+          onChange={(e) => onFormChange("rg_data_emissao", e.target.value)}
         />
       </div>
 
       <div>
         <Label>RG - UF de Emissão</Label>
-        <Select name="rg_uf" defaultValue={initialData?.rg_uf || undefined}>
+        <Select 
+          value={formValues.rg_uf || ""} 
+          onValueChange={(value) => onFormChange("rg_uf", value)}
+        >
           <SelectTrigger>
             <SelectValue placeholder="Selecione o estado" />
           </SelectTrigger>
@@ -86,7 +97,8 @@ const DocumentacaoTab = ({ initialData, isEditing }: DocumentacaoTabProps) => {
         <Label>Telefone</Label>
         <Input 
           name="telefone" 
-          defaultValue={initialData?.telefone}
+          value={formValues.telefone || ""}
+          onChange={(e) => onFormChange("telefone", e.target.value)}
           placeholder="(00) 00000-0000"
         />
       </div>

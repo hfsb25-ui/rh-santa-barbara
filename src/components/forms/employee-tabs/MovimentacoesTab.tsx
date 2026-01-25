@@ -17,6 +17,8 @@ interface MovimentacoesTabProps {
   empresas: any[] | undefined;
   funcoes: any[] | undefined;
   admissionTemplates: any[] | undefined;
+  formValues: Record<string, string>;
+  onFormChange: (field: string, value: string) => void;
 }
 
 const MovimentacoesTab = ({
@@ -32,13 +34,18 @@ const MovimentacoesTab = ({
   empresas,
   funcoes,
   admissionTemplates,
+  formValues,
+  onFormChange,
 }: MovimentacoesTabProps) => {
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
           <Label>Função *</Label>
-          <Select name="cargo" defaultValue={initialData?.cargo || undefined} required>
+          <Select 
+            value={formValues.cargo || ""} 
+            onValueChange={(value) => onFormChange("cargo", value)}
+          >
             <SelectTrigger>
               <SelectValue placeholder="Selecione a função" />
             </SelectTrigger>
@@ -54,7 +61,10 @@ const MovimentacoesTab = ({
 
         <div>
           <Label>Setor</Label>
-          <Select name="setor" defaultValue={initialData?.setor || undefined}>
+          <Select 
+            value={formValues.setor || ""} 
+            onValueChange={(value) => onFormChange("setor", value)}
+          >
             <SelectTrigger>
               <SelectValue placeholder="Selecione o setor" />
             </SelectTrigger>
@@ -70,7 +80,10 @@ const MovimentacoesTab = ({
 
         <div>
           <Label>Empresa</Label>
-          <Select name="empresa_id" defaultValue={initialData?.empresa_id || undefined}>
+          <Select 
+            value={formValues.empresa_id || ""} 
+            onValueChange={(value) => onFormChange("empresa_id", value)}
+          >
             <SelectTrigger>
               <SelectValue placeholder="Selecione a empresa" />
             </SelectTrigger>
@@ -86,7 +99,10 @@ const MovimentacoesTab = ({
 
         <div>
           <Label>Tipo de Contrato</Label>
-          <Select name="tipo_contrato" defaultValue={initialData?.tipo_contrato || "fixo"}>
+          <Select 
+            value={formValues.tipo_contrato || "fixo"} 
+            onValueChange={(value) => onFormChange("tipo_contrato", value)}
+          >
             <SelectTrigger>
               <SelectValue placeholder="Selecione o tipo" />
             </SelectTrigger>
@@ -106,13 +122,17 @@ const MovimentacoesTab = ({
             step="0.01" 
             min="0"
             placeholder="0.00"
-            defaultValue={initialData?.salario} 
+            value={formValues.salario || ""}
+            onChange={(e) => onFormChange("salario", e.target.value)}
           />
         </div>
 
         <div>
           <Label>Tipo de Salário</Label>
-          <Select name="tipo_salario" defaultValue={initialData?.tipo_salario || "mensal"}>
+          <Select 
+            value={formValues.tipo_salario || "mensal"} 
+            onValueChange={(value) => onFormChange("tipo_salario", value)}
+          >
             <SelectTrigger>
               <SelectValue placeholder="Selecione o tipo" />
             </SelectTrigger>
@@ -126,15 +146,22 @@ const MovimentacoesTab = ({
 
         <div>
           <Label>Data de Admissão</Label>
-          <Input name="data_admissao" type="date" defaultValue={initialData?.data_admissao} />
+          <Input 
+            name="data_admissao" 
+            type="date" 
+            value={formValues.data_admissao || ""}
+            onChange={(e) => onFormChange("data_admissao", e.target.value)}
+          />
         </div>
 
         <div>
           <Label>Status</Label>
           <Select 
-            name="status" 
-            defaultValue={initialData?.status || "ativo"}
-            onValueChange={(value) => setSelectedStatus(value)}
+            value={formValues.status || "ativo"}
+            onValueChange={(value) => {
+              onFormChange("status", value);
+              setSelectedStatus(value);
+            }}
           >
             <SelectTrigger>
               <SelectValue />
@@ -155,7 +182,8 @@ const MovimentacoesTab = ({
             <Input 
               name="data_desligamento" 
               type="date" 
-              defaultValue={initialData?.data_desligamento}
+              value={formValues.data_desligamento || ""}
+              onChange={(e) => onFormChange("data_desligamento", e.target.value)}
             />
           </div>
         )}
