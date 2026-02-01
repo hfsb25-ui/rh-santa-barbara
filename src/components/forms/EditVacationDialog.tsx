@@ -71,13 +71,14 @@ const EditVacationDialog = ({
     e.preventDefault();
     setLoading(true);
 
+    // Adiciona horário meio-dia para evitar problemas de timezone
     const { error } = await supabase
       .from("ferias")
       .update({
-        periodo_aquisitivo_inicio: periodoAquisitivoInicio,
-        periodo_aquisitivo_fim: periodoAquisitivoFim,
-        periodo_gozo_inicio: periodoGozoInicio,
-        periodo_gozo_fim: periodoGozoFim,
+        periodo_aquisitivo_inicio: `${periodoAquisitivoInicio}T12:00:00`,
+        periodo_aquisitivo_fim: `${periodoAquisitivoFim}T12:00:00`,
+        periodo_gozo_inicio: `${periodoGozoInicio}T12:00:00`,
+        periodo_gozo_fim: `${periodoGozoFim}T12:00:00`,
         dias_totais: diasCalculados,
       })
       .eq("id", vacation.id);
