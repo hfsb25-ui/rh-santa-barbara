@@ -58,8 +58,6 @@ export function VacationFilters({ filters, onFiltersChange }: VacationFiltersPro
     filters.empresa !== "all",
     filters.setor !== "all",
     filters.status !== "all",
-    filters.periodo.start !== null,
-    filters.periodo.end !== null,
     filters.search !== "",
     filters.ano !== undefined,
     filters.feriasVencidas === true,
@@ -190,42 +188,6 @@ export function VacationFilters({ filters, onFiltersChange }: VacationFiltersPro
               ))}
             </SelectContent>
           </Select>
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="periodo-inicio">Período (Início)</Label>
-          <Input
-            id="periodo-inicio"
-            type="date"
-            value={filters.periodo.start?.toISOString().split("T")[0] || ""}
-            onChange={(e) =>
-              onFiltersChange({
-                ...filters,
-                periodo: {
-                  ...filters.periodo,
-                  start: e.target.value ? new Date(e.target.value) : null,
-                },
-              })
-            }
-          />
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="periodo-fim">Período (Fim)</Label>
-          <Input
-            id="periodo-fim"
-            type="date"
-            value={filters.periodo.end?.toISOString().split("T")[0] || ""}
-            onChange={(e) =>
-              onFiltersChange({
-                ...filters,
-                periodo: {
-                  ...filters.periodo,
-                  end: e.target.value ? new Date(e.target.value) : null,
-                },
-              })
-            }
-          />
         </div>
 
         <div className="flex items-end pb-2">
