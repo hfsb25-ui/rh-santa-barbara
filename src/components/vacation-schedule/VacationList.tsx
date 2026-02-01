@@ -238,7 +238,7 @@ export function VacationList({ filters, onRefresh }: VacationListProps) {
     console.log("✨ VacationList - Busca finalizada. Total exibido:", filteredVacations.length);
   };
 
-  // Filtrar férias pelo mês selecionado
+  // Filtrar férias pelo mês selecionado - verifica se o período de férias se sobrepõe ao mês
   const filteredByMonth = useMemo(() => {
     if (selectedMonth === "all") {
       return vacations;
@@ -246,15 +246,18 @@ export function VacationList({ filters, onRefresh }: VacationListProps) {
     
     const monthNumber = parseInt(selectedMonth, 10);
     
+    // Calcular primeiro e último dia do mês selecionado
+    const monthStart = new Date(selectedYear, monthNumber - 1, 1);
+    const monthEnd = new Date(selectedYear, monthNumber, 0); // Último dia do mês
+    monthEnd.setHours(23, 59, 59, 999);
+    
     return vacations.filter((vacation) => {
-      const startDate = new Date(vacation.periodo_inicio);
-      // Verifica se o mês de início das férias corresponde ao mês selecionado
-      // getMonth retorna 0-11, então somamos 1
-      const vacationMonth = getMonth(startDate) + 1;
-      const vacationYear = getYear(startDate);
+      const vacationStart = new Date(vacation.periodo_inicio);
+      const vacationEnd = new Date(vacation.periodo_fim);
       
-      // Filtra pelo mês E pelo ano selecionado
-      return vacationMonth === monthNumber && vacationYear === selectedYear;
+      // Verifica se há sobreposição entre o período de férias e o mês selecionado
+      // Sobreposição existe se: início das férias <= fim do mês E fim das férias >= início do mês
+      return vacationStart <= monthEnd && vacationEnd >= monthStart;
     });
   }, [vacations, selectedMonth, selectedYear]);
 
@@ -352,7 +355,7 @@ export function VacationList({ filters, onRefresh }: VacationListProps) {
         ) : filteredByMonth.length === 0 ? (
           <div className="text-center py-12 text-muted-foreground">
             {selectedMonth !== "all" 
-              ? `Nenhum funcionário entrará de férias em ${MESES.find(m => m.value === selectedMonth)?.label} de ${selectedYear}`
+              ? `Nenhuma férias com dias em ${MESES.find(m => m.value === selectedMonth)?.label} de ${selectedYear}`
               : "Nenhuma féria encontrada"
             }
           </div>
