@@ -189,9 +189,8 @@ const GestorDashboard = ({ user }: GestorDashboardProps) => {
       let employeeQuery = supabase
         .from("employees")
         .select("id, nome_completo, cargo, empresa_id, status")
-        .eq("status", "ativo"); // Apenas funcionários ativos
-
-      employeeQuery = employeeQuery.in("id", employeeIds);
+        .in("status", ["ativo", "ferias"]) // Funcionários ativos ou em férias
+        .in("id", employeeIds);
 
       if (selectedEmpresa && selectedEmpresa !== "all") {
         employeeQuery = employeeQuery.eq("empresa_id", selectedEmpresa);
