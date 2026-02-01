@@ -92,10 +92,11 @@ export function AddVacationDialog({
 
     setLoading(true);
 
+    // Adiciona horário meio-dia para evitar problemas de timezone
     const { error } = await supabase.from("ferias_planejadas").insert({
       employee_id: selectedEmployee,
-      periodo_inicio: startDate,
-      periodo_fim: endDate,
+      periodo_inicio: `${startDate}T12:00:00`,
+      periodo_fim: `${endDate}T12:00:00`,
       dias_totais: diasTotais,
       status: "planejado",
       observacoes: observations,

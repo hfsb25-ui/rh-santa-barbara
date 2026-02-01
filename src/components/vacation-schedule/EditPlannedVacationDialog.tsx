@@ -72,17 +72,18 @@ const EditPlannedVacationDialog = ({
     
     let updateData: any;
     
+    // Adiciona horário meio-dia para evitar problemas de timezone
     if (isPlanned) {
       updateData = {
-        periodo_inicio: periodoInicio,
-        periodo_fim: periodoFim,
+        periodo_inicio: `${periodoInicio}T12:00:00`,
+        periodo_fim: `${periodoFim}T12:00:00`,
         dias_totais: diasCalculados,
         observacoes: observacoes,
       };
     } else {
       updateData = {
-        periodo_gozo_inicio: periodoInicio,
-        periodo_gozo_fim: periodoFim,
+        periodo_gozo_inicio: `${periodoInicio}T12:00:00`,
+        periodo_gozo_fim: `${periodoFim}T12:00:00`,
         dias_totais: diasCalculados,
       };
     }
