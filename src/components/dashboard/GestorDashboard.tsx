@@ -130,22 +130,29 @@ const GestorDashboard = ({ user }: GestorDashboardProps) => {
       const { data: employees } = await query;
 
       if (employees && employees.length > 0) {
-        const employeeIds = employees.map((e: any) => e.id);
-        const todayStr = new Date().toISOString().split("T")[0];
+        // Filtrar funcionários não demitidos para o total
+        const nonDismissedEmployees = employees.filter((e: any) => e.status !== "demitido");
+        const employeeIds = nonDismissedEmployees.map((e: any) => e.id);
+        
+        // Calcular primeiro e último dia do mês atual
+        const now = new Date();
+        const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split("T")[0];
+        const lastDayOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split("T")[0];
+        const todayStr = now.toISOString().split("T")[0];
 
+        // Contar apenas férias em gozo no mês atual (que estejam ativas hoje)
         const { count: onVacationCount } = await supabase
           .from("ferias")
           .select("*", { count: "exact", head: true })
           .in("employee_id", employeeIds)
-          .eq("data_retorno_confirmada", false)
           .lte("periodo_gozo_inicio", todayStr)
           .gte("periodo_gozo_fim", todayStr);
 
         setStats({
-          totalEmployees: employees.length,
-          activeEmployees: employees.filter((e: any) => e.status === "ativo").length,
+          totalEmployees: nonDismissedEmployees.length,
+          activeEmployees: nonDismissedEmployees.filter((e: any) => e.status === "ativo").length,
           onVacation: onVacationCount || 0,
-          onLeave: employees.filter((e: any) => e.status === "afastado").length,
+          onLeave: nonDismissedEmployees.filter((e: any) => e.status === "afastado").length,
         });
       } else {
         setStats({
@@ -616,11 +623,11 @@ const GestorDashboard = ({ user }: GestorDashboardProps) => {
 
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Em Férias</CardTitle>
+                  <CardTitle className="text-sm font-medium">Férias</CardTitle>
                   <Calendar className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold text-primary">
+                  <div className="text-2xl font-bold text-secondary">
                     {stats.onVacation}
                   </div>
                 </CardContent>
