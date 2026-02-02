@@ -18,11 +18,11 @@ const FaultForm = ({ employeeId, onSaved, onCancel }: any) => {
 
     const formData = new FormData(e.currentTarget);
     const dataFalta = formData.get("data") as string;
-    
-    // Adiciona horário meio-dia para evitar problemas de timezone
+
+    // Coluna no banco é DATE: enviar apenas YYYY-MM-DD (evita salvar dia anterior)
     const { error } = await supabase.from("faltas").insert({
       employee_id: employeeId,
-      data: `${dataFalta}T12:00:00`,
+      data: dataFalta,
       justificada,
       motivo: formData.get("motivo") as string || null,
     });

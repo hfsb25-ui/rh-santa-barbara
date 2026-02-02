@@ -47,8 +47,9 @@ const AbsenceForm = ({ employeeId, onSaved, onCancel }: any) => {
 
       const { error } = await supabase.from("afastamentos").insert({
         employee_id: employeeId,
-        data_inicio: `${dataInicio}T12:00:00`,
-        data_fim: `${dataFim}T12:00:00`,
+        // Colunas no banco são DATE: enviar apenas YYYY-MM-DD (evita salvar dia anterior)
+        data_inicio: dataInicio,
+        data_fim: dataFim,
         motivo: formData.get("motivo") as string,
         cid: formData.get("cid") as string || null,
         documento_url: documentoUrl,
