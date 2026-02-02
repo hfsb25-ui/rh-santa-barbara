@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Plus, FileText, Download, Eye } from "lucide-react";
 import AbsenceForm from "@/components/forms/AbsenceForm";
+import { formatDateOnlyPtBR } from "@/lib/date";
 
 interface AbsenceTabProps {
   employeeId: string;
@@ -72,13 +73,13 @@ const AbsenceTab = ({ employeeId }: AbsenceTabProps) => {
                     <div>
                       <p className="text-muted-foreground">Data Início</p>
                       <p className="font-medium">
-                        {new Date(afastamento.data_inicio).toLocaleDateString("pt-BR")}
+                        {formatDateOnlyPtBR(afastamento.data_inicio)}
                       </p>
                     </div>
                     <div>
                       <p className="text-muted-foreground">Data Fim</p>
                       <p className="font-medium">
-                        {new Date(afastamento.data_fim).toLocaleDateString("pt-BR")}
+                        {formatDateOnlyPtBR(afastamento.data_fim)}
                       </p>
                     </div>
                   </div>

@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import FaultForm from "@/components/forms/FaultForm";
+import { formatDateOnlyPtBR } from "@/lib/date";
 
 interface FaultTabProps {
   employeeId: string;
@@ -108,7 +109,7 @@ const FaultTab = ({ employeeId }: FaultTabProps) => {
                   <CardTitle className="text-base flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <AlertCircle className="w-4 h-4" />
-                      {new Date(falta.data).toLocaleDateString("pt-BR")}
+                        {formatDateOnlyPtBR(falta.data)}
                     </div>
                     <div className="flex items-center gap-2">
                       <Badge variant={falta.justificada ? "default" : "destructive"}>
@@ -142,7 +143,7 @@ const FaultTab = ({ employeeId }: FaultTabProps) => {
                 <AlertDialogDescription>
                   Tem certeza que deseja excluir a falta de{" "}
                   <strong>
-                    {faultToDelete && new Date(faultToDelete.data).toLocaleDateString("pt-BR")}
+                    {faultToDelete && formatDateOnlyPtBR(faultToDelete.data)}
                   </strong>
                   ? Esta ação não pode ser desfeita.
                 </AlertDialogDescription>
