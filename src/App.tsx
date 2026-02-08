@@ -36,6 +36,7 @@ import PeopleManager from "./pages/PeopleManager";
 import Tacs from "./pages/Tacs";
 import Crachas from "./pages/Crachas";
 import Eventos from "./pages/Eventos";
+import AIInsights from "./pages/AIInsights";
 const queryClient = new QueryClient();
 
 const App = () => {
@@ -81,6 +82,7 @@ const App = () => {
             <Route path="/crachas" element={<Crachas />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="/eventos" element={<Eventos />} />
+            <Route path="/ai-insights" element={<AIInsights />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
         </BrowserRouter>

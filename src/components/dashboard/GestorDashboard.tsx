@@ -37,6 +37,7 @@ import {
   UsersRound,
   FileWarning,
   IdCard,
+  Bot,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -919,6 +920,10 @@ const GestorDashboard = ({ user }: GestorDashboardProps) => {
                 <Button variant="outline" onClick={() => navigate("/eventos")} className="w-full">
                   <Calendar className="w-4 h-4 mr-2" />
                   Calendário de Eventos
+                </Button>
+                <Button variant="default" onClick={() => navigate("/ai-insights")} className="w-full bg-primary hover:bg-primary/90">
+                  <Bot className="w-4 h-4 mr-2" />
+                  Inteligência Artificial
                 </Button>
               </div>
             </div>
