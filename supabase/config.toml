@@ -17,3 +17,12 @@ verify_jwt = false
 
 [functions.import-database]
 verify_jwt = false
+
+[functions.ai-assistant]
+verify_jwt = false
+
+[functions.ai-predictions]
+verify_jwt = false
+
+[functions.ai-reports]
+verify_jwt = false
