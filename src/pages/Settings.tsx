@@ -6,6 +6,7 @@ import { ArrowLeft } from "lucide-react";
 import { SiteSettings } from "@/components/settings/SiteSettings";
 import { DashboardVisibilitySettings } from "@/components/settings/DashboardVisibilitySettings";
 import { ExperienceAlertSettings } from "@/components/settings/ExperienceAlertSettings";
+import { DatabaseBackupSettings } from "@/components/settings/DatabaseBackupSettings";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const Settings = () => {
@@ -48,10 +49,11 @@ const Settings = () => {
           </Button>
           
           <Tabs defaultValue="site" className="space-y-6">
-            <TabsList>
+            <TabsList className="flex-wrap">
               <TabsTrigger value="site">Site</TabsTrigger>
               <TabsTrigger value="dashboard">Dashboard Funcionário</TabsTrigger>
               <TabsTrigger value="alertas">Alertas</TabsTrigger>
+              <TabsTrigger value="backup">Backup</TabsTrigger>
             </TabsList>
             
             <TabsContent value="site">
@@ -64,6 +66,10 @@ const Settings = () => {
             
             <TabsContent value="alertas">
               <ExperienceAlertSettings />
+            </TabsContent>
+
+            <TabsContent value="backup">
+              <DatabaseBackupSettings />
             </TabsContent>
           </Tabs>
         </div>

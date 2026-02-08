@@ -11,3 +11,9 @@ verify_jwt = false
 
 [functions.google-calendar-sync]
 verify_jwt = false
+
+[functions.export-database]
+verify_jwt = false
+
+[functions.import-database]
+verify_jwt = false
