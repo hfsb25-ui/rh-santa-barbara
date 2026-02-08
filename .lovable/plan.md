@@ -1,107 +1,251 @@
 
+# Plano: Módulo de Inteligência Artificial para RH
 
-# Plano: Melhorias no Calendário de Férias
-
-## Situação Atual
-O calendário de férias atual permite visualizar funcionários de férias em cada dia, mas ao clicar em um dia, ele abre diretamente o formulário para adicionar novas férias. Não existe uma forma de ver detalhes completos de quem está de férias naquele dia específico.
-
-## Objetivo
-Criar uma experiência mais interativa e informativa ao clicar em um dia do calendário, permitindo:
-1. Ver lista completa de funcionários de férias naquele dia
-2. Visualizar detalhes de cada férias
-3. Opção de adicionar novas férias a partir da visualização do dia
+## Visão Geral
+Implementar um conjunto de funcionalidades de IA que utilizam os modelos disponíveis via Lovable AI para análise preditiva, geração automática de insights e assistência inteligente para gestores de RH.
 
 ---
 
-## Melhorias Propostas
+## Funcionalidades Propostas
 
-### 1. Dialog de Detalhes do Dia
-Ao clicar em um dia, abrirá um modal mostrando:
-- Data selecionada em destaque
-- Lista de todos os funcionários de férias naquele dia
-- Para cada funcionário:
-  - Nome completo e setor
-  - Período das férias (início e fim)
-  - Dias restantes de férias
-  - Status (Planejado, Aprovado, Em Andamento, Concluído)
-- Estatísticas do dia (ex: "3 funcionários de férias")
-- Botão para adicionar novas férias para aquele dia
+### 1. Assistente de RH com IA (Chat)
+Um chatbot inteligente que responde perguntas sobre:
+- Consultas sobre funcionários ("Quem está de férias em março?")
+- Análise de dados ("Qual o setor com maior turnover?")
+- Sugestões ("Quem deveria receber promoção?")
+- Relatórios rápidos ("Resumo das contratações deste ano")
 
-### 2. Indicadores Visuais Melhorados
-- Mostrar fins de semana com cor diferente (cinza claro)
-- Barra de progresso visual quando há muitos funcionários de férias
-- Ícone de alerta quando mais de X funcionários estão ausentes no mesmo setor
+### 2. Predição de Risco de Turnover
+Análise preditiva usando dados históricos:
+- Combina: avaliações, faltas, TACs, engajamento (logins), treinamentos
+- Gera score de risco de 0-100
+- Lista funcionários com maior probabilidade de saída
+- Sugere ações preventivas específicas
 
-### 3. Navegação Rápida
-- Botão para ir para "Hoje" já existe
-- Adicionar mini-calendário para selecionar mês/ano rapidamente
+### 3. Sugestões Automáticas de Promoção
+Baseado em:
+- Notas de avaliação >= 8
+- Tempo de empresa
+- Cursos concluídos
+- Ausência de TACs recentes
+- Histórico de faltas
 
-### 4. Resumo Mensal
-- Card no topo mostrando estatísticas do mês:
-  - Total de dias com férias
-  - Funcionários diferentes de férias
-  - Dia com mais ausências
+### 4. Geração Automática de Relatórios
+- Relatório mensal resumido em texto natural
+- Insights sobre tendências
+- Alertas importantes destacados
+- Comparativo com mês anterior
+
+### 5. Análise de Sentimento de Avaliações
+- Processa comentários das avaliações
+- Identifica padrões positivos/negativos
+- Agrupa por setor/função
 
 ---
 
-## Implementação Técnica
-
-### Novo Componente: `DayDetailsDialog.tsx`
+## Arquitetura Técnica
 
 ```text
-+----------------------------------------+
-|         Sexta-feira, 14/02/2025        |
-+----------------------------------------+
-|  3 funcionários de férias neste dia    |
-+----------------------------------------+
-|                                        |
-|  [João Silva]                          |
-|   Setor: Administrativo                |
-|   01/02 - 15/02 (15 dias)              |
-|   [Badge: Em Andamento]                |
-|                                        |
-|  [Maria Santos]                        |
-|   Setor: Comercial                     |
-|   10/02 - 25/02 (16 dias)              |
-|   [Badge: Em Andamento]                |
-|                                        |
-|  [Pedro Costa]                         |
-|   Setor: Administrativo                |
-|   14/02 - 28/02 (15 dias - Planejado)  |
-|   [Badge: Planejado]                   |
-|                                        |
-+----------------------------------------+
-|  [+ Adicionar Férias]  [Fechar]        |
-+----------------------------------------+
+┌─────────────────────────────────────────────────────────────┐
+│                     Frontend (React)                        │
+│                                                             │
+│  ┌───────────────┐  ┌───────────────┐  ┌───────────────┐   │
+│  │ AI Assistant  │  │ Predictions   │  │ Auto Reports  │   │
+│  │    (Chat)     │  │   Dashboard   │  │   Generator   │   │
+│  └───────────────┘  └───────────────┘  └───────────────┘   │
+└─────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────┐
+│                  Edge Functions (Deno)                      │
+│                                                             │
+│  ┌───────────────┐  ┌───────────────┐  ┌───────────────┐   │
+│  │  ai-assistant │  │ ai-predictions│  │  ai-reports   │   │
+│  └───────────────┘  └───────────────┘  └───────────────┘   │
+└─────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────┐
+│                    Lovable AI Models                        │
+│         (google/gemini-2.5-flash - sem API key)            │
+└─────────────────────────────────────────────────────────────┘
 ```
 
-### Alterações no `VacationCalendar.tsx`
-1. Adicionar estado para controlar qual dialog abrir (detalhes vs adicionar)
-2. Modificar `handleDayClick` para abrir primeiro o dialog de detalhes
-3. Adicionar cores para fins de semana
-4. Melhorar a visualização de conflitos
+---
 
-### Arquivos a Criar/Modificar
+## Componentes a Criar
+
+### Nova Página: `/ai-insights`
+
+| Componente | Descrição |
+|------------|-----------|
+| `src/pages/AIInsights.tsx` | Página principal do módulo de IA |
+| `src/components/ai/AIAssistant.tsx` | Chat interativo com IA |
+| `src/components/ai/TurnoverPrediction.tsx` | Dashboard de predição de turnover |
+| `src/components/ai/PromotionSuggestions.tsx` | Lista de sugestões de promoção |
+| `src/components/ai/AIReportGenerator.tsx` | Gerador de relatórios com IA |
+| `src/components/ai/SentimentAnalysis.tsx` | Análise de sentimento |
+
+### Edge Functions
+
+| Função | Propósito |
+|--------|-----------|
+| `supabase/functions/ai-assistant/index.ts` | Processa perguntas do chat |
+| `supabase/functions/ai-predictions/index.ts` | Gera predições de turnover |
+| `supabase/functions/ai-reports/index.ts` | Gera relatórios automáticos |
+
+---
+
+## Interface do Usuário
+
+### Layout da Página AI Insights
+
+```text
+┌─────────────────────────────────────────────────────────────┐
+│  ← Voltar                                                   │
+│                                                             │
+│  🤖 Inteligência Artificial                                 │
+│  Análises preditivas e assistência inteligente              │
+│                                                             │
+├─────────────────────────────────────────────────────────────┤
+│  [Assistente] [Turnover] [Promoções] [Relatórios] [Sentim.] │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  ┌─────────────────────────────────────────────────────┐   │
+│  │                    CONTEÚDO DA ABA                   │   │
+│  │                                                      │   │
+│  │  (Chat / Predições / Sugestões / etc.)              │   │
+│  │                                                      │   │
+│  └─────────────────────────────────────────────────────┘   │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Chat do Assistente
+
+```text
+┌─────────────────────────────────────────────────────────────┐
+│  💬 Assistente de RH                                        │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  ┌──────────────────────────────────────────────────────┐  │
+│  │  🤖 Olá! Sou seu assistente de RH. Como posso ajudar?│  │
+│  └──────────────────────────────────────────────────────┘  │
+│                                                             │
+│  ┌──────────────────────────────────────────────────────┐  │
+│  │  👤 Quantos funcionários temos de férias este mês?   │  │
+│  └──────────────────────────────────────────────────────┘  │
+│                                                             │
+│  ┌──────────────────────────────────────────────────────┐  │
+│  │  🤖 Atualmente há 5 funcionários de férias em        │  │
+│  │  fevereiro de 2026:                                   │  │
+│  │  - João Silva (01/02 - 15/02)                        │  │
+│  │  - Maria Santos (10/02 - 25/02)                      │  │
+│  │  ...                                                  │  │
+│  └──────────────────────────────────────────────────────┘  │
+│                                                             │
+├─────────────────────────────────────────────────────────────┤
+│  ┌────────────────────────────────────────────────┐ [Enviar]│
+│  │ Digite sua pergunta...                          │        │
+│  └────────────────────────────────────────────────┘        │
+│                                                             │
+│  Sugestões: [Férias] [Turnover] [Contratações] [Avaliações] │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Dashboard de Predição de Turnover
+
+```text
+┌─────────────────────────────────────────────────────────────┐
+│  🎯 Predição de Risco de Turnover                           │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  ┌─────────────┐ ┌─────────────┐ ┌─────────────┐           │
+│  │ Alto Risco  │ │ Médio Risco │ │ Baixo Risco │           │
+│  │     3       │ │      7      │ │     12      │           │
+│  │  🔴         │ │  🟡         │ │  🟢         │           │
+│  └─────────────┘ └─────────────┘ └─────────────┘           │
+│                                                             │
+│  ┌─────────────────────────────────────────────────────┐   │
+│  │  Funcionários em Atenção                             │   │
+│  │                                                      │   │
+│  │  1. Pedro Costa - Score: 85/100 (Alto)              │   │
+│  │     ├─ Avaliação baixa: 4.2                         │   │
+│  │     ├─ 5 faltas não justificadas                    │   │
+│  │     └─ 2 TACs pendentes                             │   │
+│  │     💡 Sugestão: Agendar reunião de feedback        │   │
+│  │                                                      │   │
+│  │  2. Ana Lima - Score: 72/100 (Alto)                 │   │
+│  │     ├─ Sem login há 25 dias                         │   │
+│  │     └─ 3 cursos obrigatórios pendentes              │   │
+│  │     💡 Sugestão: Verificar engajamento              │   │
+│  │                                                      │   │
+│  └─────────────────────────────────────────────────────┘   │
+│                                                             │
+│  [Gerar Análise Detalhada com IA]                          │
+└─────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Fluxo de Dados
+
+### Assistente de IA
+
+1. Usuário digita pergunta no chat
+2. Frontend envia para edge function `ai-assistant`
+3. Edge function:
+   - Busca dados relevantes do banco (funcionários, férias, etc.)
+   - Monta contexto com os dados
+   - Envia para Lovable AI (gemini-2.5-flash)
+   - Retorna resposta processada
+4. Frontend exibe resposta formatada
+
+### Predição de Turnover
+
+1. Coleta dados: avaliações, faltas, TACs, logins, treinamentos
+2. Calcula score de risco baseado em pesos:
+   - Avaliação baixa: 30%
+   - Faltas frequentes: 20%
+   - TACs pendentes: 20%
+   - Baixo engajamento: 15%
+   - Treinamentos pendentes: 15%
+3. IA gera sugestões personalizadas para cada funcionário de risco
+
+---
+
+## Arquivos a Criar/Modificar
 
 | Arquivo | Ação |
 |---------|------|
-| `src/components/vacation-schedule/DayDetailsDialog.tsx` | Criar |
-| `src/components/vacation-schedule/VacationCalendar.tsx` | Modificar |
-| `src/components/vacation-schedule/types.ts` | Adicionar interface se necessário |
+| `src/pages/AIInsights.tsx` | Criar |
+| `src/components/ai/AIAssistant.tsx` | Criar |
+| `src/components/ai/TurnoverPrediction.tsx` | Criar |
+| `src/components/ai/PromotionSuggestions.tsx` | Criar |
+| `src/components/ai/AIReportGenerator.tsx` | Criar |
+| `src/components/ai/SentimentAnalysis.tsx` | Criar |
+| `supabase/functions/ai-assistant/index.ts` | Criar |
+| `supabase/functions/ai-predictions/index.ts` | Criar |
+| `supabase/functions/ai-reports/index.ts` | Criar |
+| `supabase/config.toml` | Modificar |
+| `src/App.tsx` | Modificar (adicionar rota) |
+| `src/components/dashboard/GestorDashboard.tsx` | Modificar (adicionar acesso) |
 
 ---
 
-## Resumo Visual das Mudanças
+## Modelo de IA
 
-**Antes:** Clicar no dia → Abre formulário de adicionar férias
-
-**Depois:** Clicar no dia → Abre modal com lista de férias do dia → Opção de adicionar novas férias
+Utilizaremos o **google/gemini-2.5-flash** via Lovable AI:
+- Sem necessidade de API key externa
+- Bom equilíbrio entre velocidade e qualidade
+- Suporta análise de texto e raciocínio
 
 ---
 
 ## Benefícios
-- Visão clara de quem está de férias em cada dia
-- Navegação mais intuitiva
-- Identificação rápida de conflitos de ausência
-- Melhora na tomada de decisão para planejamento de férias
 
+- **Tomada de decisão baseada em dados**: Insights acionáveis sobre a equipe
+- **Prevenção proativa**: Identificar riscos antes que se tornem problemas
+- **Economia de tempo**: Relatórios automáticos e respostas instantâneas
+- **Melhoria contínua**: Análise de sentimento para entender a equipe
+- **Interface amigável**: Chat natural para consultas rápidas
