@@ -16,9 +16,9 @@ interface Message {
 const SUGGESTIONS = [
   "Quem está de férias este mês?",
   "Qual o setor com mais faltas?",
-  "Quantas contratações tivemos este ano?",
   "Quais avaliações estão pendentes?",
   "Resumo dos TACs pendentes",
+  "Quais EPIs estão em falta?",
 ];
 
 export function AIAssistant() {
