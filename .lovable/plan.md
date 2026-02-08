@@ -1,251 +1,229 @@
 
-# Plano: Módulo de Inteligência Artificial para RH
+# Plano: Expandir Acesso da IA a Todos os Dados do Sistema
 
-## Visão Geral
-Implementar um conjunto de funcionalidades de IA que utilizam os modelos disponíveis via Lovable AI para análise preditiva, geração automática de insights e assistência inteligente para gestores de RH.
+## Situacao Atual
 
----
+A edge function `ai-assistant` atualmente acessa apenas **7 tabelas**:
+- `employees` (funcionarios)
+- `ferias` (ferias)
+- `faltas` (faltas)
+- `tacs` (termos de ajuste de conduta)
+- `avaliacoes_desempenho` (avaliacoes)
+- `setores` (setores)
+- `empresas` (empresas)
 
-## Funcionalidades Propostas
+## Tabelas Disponiveis no Sistema (Total: ~45 tabelas)
 
-### 1. Assistente de RH com IA (Chat)
-Um chatbot inteligente que responde perguntas sobre:
-- Consultas sobre funcionários ("Quem está de férias em março?")
-- Análise de dados ("Qual o setor com maior turnover?")
-- Sugestões ("Quem deveria receber promoção?")
-- Relatórios rápidos ("Resumo das contratações deste ano")
+O sistema possui muito mais dados que a IA poderia acessar:
 
-### 2. Predição de Risco de Turnover
-Análise preditiva usando dados históricos:
-- Combina: avaliações, faltas, TACs, engajamento (logins), treinamentos
-- Gera score de risco de 0-100
-- Lista funcionários com maior probabilidade de saída
-- Sugere ações preventivas específicas
-
-### 3. Sugestões Automáticas de Promoção
-Baseado em:
-- Notas de avaliação >= 8
-- Tempo de empresa
-- Cursos concluídos
-- Ausência de TACs recentes
-- Histórico de faltas
-
-### 4. Geração Automática de Relatórios
-- Relatório mensal resumido em texto natural
-- Insights sobre tendências
-- Alertas importantes destacados
-- Comparativo com mês anterior
-
-### 5. Análise de Sentimento de Avaliações
-- Processa comentários das avaliações
-- Identifica padrões positivos/negativos
-- Agrupa por setor/função
+| Categoria | Tabelas |
+|-----------|---------|
+| **Folha de Pagamento** | `folha_pagamento`, `folha_pagamento_itens`, `variaveis_folha`, `adiantamentos`, `historico_reajustes_salariais` |
+| **Ponto e Horas** | `registros_ponto`, `banco_horas`, `historico_banco_horas`, `configuracao_horas_trabalho` |
+| **Ferias e Folgas** | `ferias_planejadas`, `folgas`, `historico_folgas`, `configuracoes_ferias` |
+| **Estoque** | `estoque_epis`, `estoque_uniformes`, `epis`, `uniformes`, `historico_estoque_epis`, `historico_estoque_uniformes` |
+| **Recrutamento** | `vagas`, `candidaturas`, `historico_status_candidatura` |
+| **Treinamentos** | `cursos`, `modulos`, `aulas`, `progresso_aulas`, `certificados_liberados` |
+| **Avaliacoes** | `ciclos_avaliacao`, `criterios_avaliacao`, `notas_avaliacao`, `metas_funcionario` |
+| **Checklists** | `plano_checklist_templates`, `plano_checklist_funcionario`, `plano_checklist_funcionario_itens` |
+| **Eventos** | `eventos`, `avisos`, `avisos_leituras` |
+| **Saude Ocupacional** | `encaminhamentos_medicos`, `afastamentos` |
+| **Configuracoes** | `funcoes`, `configuracao_setor`, `site_settings` |
 
 ---
 
-## Arquitetura Técnica
+## Objetivo
+
+Modificar a edge function `ai-assistant` para:
+1. Buscar dados de **todas as tabelas relevantes** do sistema
+2. Organizar o contexto de forma clara e estruturada
+3. Adicionar mais sugestoes de perguntas no frontend
+4. Permitir que a IA responda perguntas sobre qualquer aspecto do sistema
+
+---
+
+## Implementacao Tecnica
+
+### Dados a Serem Adicionados ao Contexto
 
 ```text
-┌─────────────────────────────────────────────────────────────┐
-│                     Frontend (React)                        │
-│                                                             │
-│  ┌───────────────┐  ┌───────────────┐  ┌───────────────┐   │
-│  │ AI Assistant  │  │ Predictions   │  │ Auto Reports  │   │
-│  │    (Chat)     │  │   Dashboard   │  │   Generator   │   │
-│  └───────────────┘  └───────────────┘  └───────────────┘   │
-└─────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────┐
-│                  Edge Functions (Deno)                      │
-│                                                             │
-│  ┌───────────────┐  ┌───────────────┐  ┌───────────────┐   │
-│  │  ai-assistant │  │ ai-predictions│  │  ai-reports   │   │
-│  └───────────────┘  └───────────────┘  └───────────────┘   │
-└─────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────┐
-│                    Lovable AI Models                        │
-│         (google/gemini-2.5-flash - sem API key)            │
-└─────────────────────────────────────────────────────────────┘
+FOLHA DE PAGAMENTO:
+- Folhas processadas por mes/ano
+- Total de proventos e descontos
+- Adiantamentos do mes
+- Historico de reajustes salariais
+
+CONTROLE DE PONTO:
+- Registros de ponto recentes
+- Saldo de banco de horas por funcionario
+- Horas extras e faltas de ponto
+
+FERIAS PLANEJADAS:
+- Ferias aguardando aprovacao
+- Calendario de ferias futuras
+
+ESTOQUE:
+- Quantidade atual de EPIs e Uniformes
+- Itens abaixo do estoque minimo
+- Historico de entregas
+
+RECRUTAMENTO:
+- Vagas abertas e quantidade de candidatos
+- Candidaturas por status
+- Taxa de aprovacao
+
+TREINAMENTOS:
+- Cursos disponiveis e obrigatorios
+- Progresso dos funcionarios
+- Certificados emitidos
+
+EVENTOS E AVISOS:
+- Proximos eventos agendados
+- Avisos ativos
+
+SAUDE OCUPACIONAL:
+- Exames pendentes/agendados
+- Funcionarios afastados
+
+CHECKLISTS:
+- Admissoes/desligamentos em andamento
+- Itens pendentes
 ```
 
 ---
 
-## Componentes a Criar
+## Alteracoes no Codigo
 
-### Nova Página: `/ai-insights`
+### 1. Edge Function `ai-assistant/index.ts`
 
-| Componente | Descrição |
-|------------|-----------|
-| `src/pages/AIInsights.tsx` | Página principal do módulo de IA |
-| `src/components/ai/AIAssistant.tsx` | Chat interativo com IA |
-| `src/components/ai/TurnoverPrediction.tsx` | Dashboard de predição de turnover |
-| `src/components/ai/PromotionSuggestions.tsx` | Lista de sugestões de promoção |
-| `src/components/ai/AIReportGenerator.tsx` | Gerador de relatórios com IA |
-| `src/components/ai/SentimentAnalysis.tsx` | Análise de sentimento |
-
-### Edge Functions
-
-| Função | Propósito |
-|--------|-----------|
-| `supabase/functions/ai-assistant/index.ts` | Processa perguntas do chat |
-| `supabase/functions/ai-predictions/index.ts` | Gera predições de turnover |
-| `supabase/functions/ai-reports/index.ts` | Gera relatórios automáticos |
-
----
-
-## Interface do Usuário
-
-### Layout da Página AI Insights
+Adicionar consultas para todas as tabelas:
 
 ```text
-┌─────────────────────────────────────────────────────────────┐
-│  ← Voltar                                                   │
-│                                                             │
-│  🤖 Inteligência Artificial                                 │
-│  Análises preditivas e assistência inteligente              │
-│                                                             │
-├─────────────────────────────────────────────────────────────┤
-│  [Assistente] [Turnover] [Promoções] [Relatórios] [Sentim.] │
-├─────────────────────────────────────────────────────────────┤
-│                                                             │
-│  ┌─────────────────────────────────────────────────────┐   │
-│  │                    CONTEÚDO DA ABA                   │   │
-│  │                                                      │   │
-│  │  (Chat / Predições / Sugestões / etc.)              │   │
-│  │                                                      │   │
-│  └─────────────────────────────────────────────────────┘   │
-│                                                             │
-└─────────────────────────────────────────────────────────────┘
+// Consultas adicionais
+const [
+  folhaPagamentoRes,
+  registrosPontoRes,
+  bancoHorasRes,
+  feriasPlanejadasRes,
+  folgasRes,
+  estoqueEpisRes,
+  estoqueUniformesRes,
+  vagasRes,
+  candidaturasRes,
+  cursosRes,
+  progressoAulasRes,
+  eventosRes,
+  avisosRes,
+  encaminhamentosMedicosRes,
+  afastamentosRes,
+  checklistsFuncionarioRes,
+  adiantamentosRes,
+  funcoesRes,
+  ...
+] = await Promise.all([...]);
 ```
 
-### Chat do Assistente
+### 2. Contexto Organizado por Categoria
+
+O prompt do sistema sera expandido com secoes claras:
 
 ```text
-┌─────────────────────────────────────────────────────────────┐
-│  💬 Assistente de RH                                        │
-├─────────────────────────────────────────────────────────────┤
-│                                                             │
-│  ┌──────────────────────────────────────────────────────┐  │
-│  │  🤖 Olá! Sou seu assistente de RH. Como posso ajudar?│  │
-│  └──────────────────────────────────────────────────────┘  │
-│                                                             │
-│  ┌──────────────────────────────────────────────────────┐  │
-│  │  👤 Quantos funcionários temos de férias este mês?   │  │
-│  └──────────────────────────────────────────────────────┘  │
-│                                                             │
-│  ┌──────────────────────────────────────────────────────┐  │
-│  │  🤖 Atualmente há 5 funcionários de férias em        │  │
-│  │  fevereiro de 2026:                                   │  │
-│  │  - João Silva (01/02 - 15/02)                        │  │
-│  │  - Maria Santos (10/02 - 25/02)                      │  │
-│  │  ...                                                  │  │
-│  └──────────────────────────────────────────────────────┘  │
-│                                                             │
-├─────────────────────────────────────────────────────────────┤
-│  ┌────────────────────────────────────────────────┐ [Enviar]│
-│  │ Digite sua pergunta...                          │        │
-│  └────────────────────────────────────────────────┘        │
-│                                                             │
-│  Sugestões: [Férias] [Turnover] [Contratações] [Avaliações] │
-└─────────────────────────────────────────────────────────────┘
+DADOS DO SISTEMA DE RH (DATA):
+
+=== FUNCIONARIOS ===
+[dados de employees]
+
+=== FOLHA DE PAGAMENTO ===
+[dados de folha_pagamento, adiantamentos]
+
+=== CONTROLE DE PONTO ===
+[dados de registros_ponto, banco_horas]
+
+=== FERIAS E FOLGAS ===
+[dados de ferias, ferias_planejadas, folgas]
+
+=== ESTOQUE (EPIs e UNIFORMES) ===
+[dados de estoque_epis, estoque_uniformes]
+
+=== RECRUTAMENTO ===
+[dados de vagas, candidaturas]
+
+... e assim por diante
 ```
 
-### Dashboard de Predição de Turnover
+### 3. Novas Sugestoes no Frontend
 
-```text
-┌─────────────────────────────────────────────────────────────┐
-│  🎯 Predição de Risco de Turnover                           │
-├─────────────────────────────────────────────────────────────┤
-│                                                             │
-│  ┌─────────────┐ ┌─────────────┐ ┌─────────────┐           │
-│  │ Alto Risco  │ │ Médio Risco │ │ Baixo Risco │           │
-│  │     3       │ │      7      │ │     12      │           │
-│  │  🔴         │ │  🟡         │ │  🟢         │           │
-│  └─────────────┘ └─────────────┘ └─────────────┘           │
-│                                                             │
-│  ┌─────────────────────────────────────────────────────┐   │
-│  │  Funcionários em Atenção                             │   │
-│  │                                                      │   │
-│  │  1. Pedro Costa - Score: 85/100 (Alto)              │   │
-│  │     ├─ Avaliação baixa: 4.2                         │   │
-│  │     ├─ 5 faltas não justificadas                    │   │
-│  │     └─ 2 TACs pendentes                             │   │
-│  │     💡 Sugestão: Agendar reunião de feedback        │   │
-│  │                                                      │   │
-│  │  2. Ana Lima - Score: 72/100 (Alto)                 │   │
-│  │     ├─ Sem login há 25 dias                         │   │
-│  │     └─ 3 cursos obrigatórios pendentes              │   │
-│  │     💡 Sugestão: Verificar engajamento              │   │
-│  │                                                      │   │
-│  └─────────────────────────────────────────────────────┘   │
-│                                                             │
-│  [Gerar Análise Detalhada com IA]                          │
-└─────────────────────────────────────────────────────────────┘
+Adicionar mais opcoes de perguntas rapidas:
+
+```typescript
+const SUGGESTIONS = [
+  // Funcionarios
+  "Quem esta de ferias este mes?",
+  "Quantos funcionarios ativos temos?",
+  // Folha
+  "Resumo da folha de pagamento do mes",
+  "Quais adiantamentos foram pagos?",
+  // Ponto
+  "Quem tem banco de horas positivo?",
+  "Funcionarios com faltas de ponto",
+  // Estoque
+  "Quais EPIs estao em falta?",
+  "Uniformes abaixo do estoque minimo",
+  // Recrutamento
+  "Quantas vagas abertas temos?",
+  "Candidatos aguardando entrevista",
+  // Treinamentos
+  "Quais cursos sao obrigatorios?",
+  "Funcionarios com treinamentos pendentes",
+  // Eventos
+  "Proximos eventos agendados",
+  "Avisos ativos",
+  // Saude
+  "Exames medicos pendentes",
+  "Funcionarios afastados",
+];
 ```
 
 ---
 
-## Fluxo de Dados
+## Estrutura do Contexto Expandido
 
-### Assistente de IA
+Para manter o contexto organizado e dentro dos limites do modelo, usaremos:
 
-1. Usuário digita pergunta no chat
-2. Frontend envia para edge function `ai-assistant`
-3. Edge function:
-   - Busca dados relevantes do banco (funcionários, férias, etc.)
-   - Monta contexto com os dados
-   - Envia para Lovable AI (gemini-2.5-flash)
-   - Retorna resposta processada
-4. Frontend exibe resposta formatada
-
-### Predição de Turnover
-
-1. Coleta dados: avaliações, faltas, TACs, logins, treinamentos
-2. Calcula score de risco baseado em pesos:
-   - Avaliação baixa: 30%
-   - Faltas frequentes: 20%
-   - TACs pendentes: 20%
-   - Baixo engajamento: 15%
-   - Treinamentos pendentes: 15%
-3. IA gera sugestões personalizadas para cada funcionário de risco
+1. **Resumos estatisticos** em vez de listar todos os registros
+2. **Dados recentes** (ultimos 90 dias para historicos)
+3. **Limites de registros** (ex: top 30 funcionarios por categoria)
+4. **Agrupamentos** (ex: faltas por setor, nao por funcionario individual)
 
 ---
 
-## Arquivos a Criar/Modificar
+## Arquivos a Modificar
 
-| Arquivo | Ação |
-|---------|------|
-| `src/pages/AIInsights.tsx` | Criar |
-| `src/components/ai/AIAssistant.tsx` | Criar |
-| `src/components/ai/TurnoverPrediction.tsx` | Criar |
-| `src/components/ai/PromotionSuggestions.tsx` | Criar |
-| `src/components/ai/AIReportGenerator.tsx` | Criar |
-| `src/components/ai/SentimentAnalysis.tsx` | Criar |
-| `supabase/functions/ai-assistant/index.ts` | Criar |
-| `supabase/functions/ai-predictions/index.ts` | Criar |
-| `supabase/functions/ai-reports/index.ts` | Criar |
-| `supabase/config.toml` | Modificar |
-| `src/App.tsx` | Modificar (adicionar rota) |
-| `src/components/dashboard/GestorDashboard.tsx` | Modificar (adicionar acesso) |
+| Arquivo | Alteracao |
+|---------|-----------|
+| `supabase/functions/ai-assistant/index.ts` | Adicionar consultas para todas as tabelas e expandir contexto |
+| `src/components/ai/AIAssistant.tsx` | Adicionar mais sugestoes de perguntas |
 
 ---
 
-## Modelo de IA
+## Exemplos de Perguntas que a IA Podera Responder
 
-Utilizaremos o **google/gemini-2.5-flash** via Lovable AI:
-- Sem necessidade de API key externa
-- Bom equilíbrio entre velocidade e qualidade
-- Suporta análise de texto e raciocínio
+Apos a implementacao, a IA podera responder:
+
+- "Quanto gastamos em folha de pagamento no ultimo mes?"
+- "Quais funcionarios tem mais de 10 horas de banco de horas?"
+- "Quais EPIs precisam ser repostos?"
+- "Quantas candidaturas recebemos para a vaga de Vendedor?"
+- "Quais funcionarios tem exames medicos pendentes?"
+- "Qual o progresso dos treinamentos obrigatorios?"
+- "Quais admissoes estao em andamento?"
+- "Resumo financeiro do mes"
 
 ---
 
-## Benefícios
+## Beneficios
 
-- **Tomada de decisão baseada em dados**: Insights acionáveis sobre a equipe
-- **Prevenção proativa**: Identificar riscos antes que se tornem problemas
-- **Economia de tempo**: Relatórios automáticos e respostas instantâneas
-- **Melhoria contínua**: Análise de sentimento para entender a equipe
-- **Interface amigável**: Chat natural para consultas rápidas
+- **Visao completa**: IA tera acesso a todos os dados do sistema
+- **Respostas precisas**: Informacoes atualizadas e contextualizadas
+- **Produtividade**: Gestores podem obter qualquer informacao rapidamente
+- **Insights**: IA pode cruzar dados de diferentes modulos
