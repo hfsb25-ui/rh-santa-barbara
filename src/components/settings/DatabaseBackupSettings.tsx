@@ -1,0 +1,370 @@
+import { useState } from "react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Download, Upload, Database, AlertTriangle, CheckCircle, XCircle } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
+
+interface ImportResult {
+  success: boolean;
+  results: Record<string, { inserted: number; errors: string[] }>;
+}
+
+export function DatabaseBackupSettings() {
+  const [isExporting, setIsExporting] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
+  const [importMode, setImportMode] = useState<"merge" | "replace">("merge");
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [importResult, setImportResult] = useState<ImportResult | null>(null);
+  const [progress, setProgress] = useState(0);
+
+  const handleExport = async () => {
+    setIsExporting(true);
+    setProgress(10);
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast.error("Você precisa estar logado para exportar");
+        return;
+      }
+
+      setProgress(30);
+
+      const response = await supabase.functions.invoke("export-database", {
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      });
+
+      setProgress(80);
+
+      if (response.error) {
+        throw new Error(response.error.message);
+      }
+
+      const data = response.data;
+      
+      // Criar e baixar o arquivo
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `backup-rh-${format(new Date(), "yyyy-MM-dd-HHmm")}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      setProgress(100);
+      toast.success("Backup exportado com sucesso!");
+
+    } catch (error: any) {
+      console.error("Erro ao exportar:", error);
+      toast.error(`Erro ao exportar: ${error.message}`);
+    } finally {
+      setIsExporting(false);
+      setProgress(0);
+    }
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (!file.name.endsWith(".json")) {
+        toast.error("Por favor, selecione um arquivo .json");
+        return;
+      }
+      setSelectedFile(file);
+      setImportResult(null);
+    }
+  };
+
+  const handleImportClick = () => {
+    if (!selectedFile) {
+      toast.error("Selecione um arquivo para importar");
+      return;
+    }
+    setShowConfirmDialog(true);
+  };
+
+  const handleImport = async () => {
+    setShowConfirmDialog(false);
+    if (!selectedFile) return;
+
+    setIsImporting(true);
+    setProgress(10);
+    setImportResult(null);
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast.error("Você precisa estar logado para importar");
+        return;
+      }
+
+      setProgress(20);
+
+      // Ler o arquivo
+      const fileContent = await selectedFile.text();
+      const jsonData = JSON.parse(fileContent);
+
+      if (!jsonData.tables) {
+        throw new Error("Arquivo de backup inválido. Não contém 'tables'.");
+      }
+
+      setProgress(40);
+
+      const response = await supabase.functions.invoke("import-database", {
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: {
+          tables: jsonData.tables,
+          mode: importMode,
+        },
+      });
+
+      setProgress(90);
+
+      if (response.error) {
+        throw new Error(response.error.message);
+      }
+
+      setImportResult(response.data);
+      setProgress(100);
+      toast.success("Importação concluída!");
+
+    } catch (error: any) {
+      console.error("Erro ao importar:", error);
+      toast.error(`Erro ao importar: ${error.message}`);
+    } finally {
+      setIsImporting(false);
+      setProgress(0);
+    }
+  };
+
+  const getTotalImported = () => {
+    if (!importResult?.results) return 0;
+    return Object.values(importResult.results).reduce((acc, r) => acc + r.inserted, 0);
+  };
+
+  const getTotalErrors = () => {
+    if (!importResult?.results) return 0;
+    return Object.values(importResult.results).reduce((acc, r) => acc + r.errors.length, 0);
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Exportar */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Download className="w-5 h-5" />
+            Exportar Banco de Dados
+          </CardTitle>
+          <CardDescription>
+            Exporte todos os dados do sistema em um arquivo JSON para backup ou migração.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="text-sm text-muted-foreground">
+            O arquivo exportado incluirá:
+            <ul className="list-disc ml-6 mt-2 space-y-1">
+              <li>Empresas, setores e funções</li>
+              <li>Funcionários e seus dados</li>
+              <li>Férias, folgas, faltas e afastamentos</li>
+              <li>EPIs e uniformes</li>
+              <li>Treinamentos e avaliações</li>
+              <li>E todos os demais registros do sistema</li>
+            </ul>
+          </div>
+
+          {isExporting && (
+            <div className="space-y-2">
+              <Progress value={progress} />
+              <p className="text-sm text-muted-foreground text-center">
+                Exportando dados... {progress}%
+              </p>
+            </div>
+          )}
+
+          <Button 
+            onClick={handleExport} 
+            disabled={isExporting}
+            className="w-full"
+          >
+            <Download className="w-4 h-4 mr-2" />
+            {isExporting ? "Exportando..." : "Exportar Backup"}
+          </Button>
+        </CardContent>
+      </Card>
+
+      {/* Importar */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Upload className="w-5 h-5" />
+            Importar Banco de Dados
+          </CardTitle>
+          <CardDescription>
+            Importe dados de um arquivo de backup JSON previamente exportado.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="backup-file">Arquivo de Backup</Label>
+            <Input
+              id="backup-file"
+              type="file"
+              accept=".json"
+              onChange={handleFileSelect}
+              disabled={isImporting}
+            />
+            {selectedFile && (
+              <p className="text-sm text-muted-foreground">
+                Arquivo selecionado: {selectedFile.name}
+              </p>
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <Label>Modo de Importação</Label>
+            <RadioGroup
+              value={importMode}
+              onValueChange={(value) => setImportMode(value as "merge" | "replace")}
+              className="space-y-2"
+            >
+              <div className="flex items-start space-x-2">
+                <RadioGroupItem value="merge" id="merge" />
+                <div>
+                  <Label htmlFor="merge" className="font-normal cursor-pointer">
+                    Mesclar (Merge)
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    Adiciona novos registros e atualiza existentes pelo ID
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-start space-x-2">
+                <RadioGroupItem value="replace" id="replace" />
+                <div>
+                  <Label htmlFor="replace" className="font-normal cursor-pointer">
+                    Substituir (Replace)
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    <span className="text-destructive font-medium">ATENÇÃO:</span> Remove todos os dados atuais e importa os do arquivo
+                  </p>
+                </div>
+              </div>
+            </RadioGroup>
+          </div>
+
+          {isImporting && (
+            <div className="space-y-2">
+              <Progress value={progress} />
+              <p className="text-sm text-muted-foreground text-center">
+                Importando dados... {progress}%
+              </p>
+            </div>
+          )}
+
+          {importResult && (
+            <Card className={importResult.success ? "border-primary" : "border-destructive"}>
+              <CardContent className="pt-4">
+                <div className="flex items-center gap-2 mb-3">
+                  {importResult.success ? (
+                    <CheckCircle className="w-5 h-5 text-primary" />
+                  ) : (
+                    <XCircle className="w-5 h-5 text-destructive" />
+                  )}
+                  <span className="font-medium">
+                    Resultado da Importação
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <p className="text-muted-foreground">Registros importados</p>
+                    <p className="text-2xl font-bold text-primary">{getTotalImported()}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Erros</p>
+                    <p className={`text-2xl font-bold ${getTotalErrors() > 0 ? "text-destructive" : "text-muted-foreground"}`}>
+                      {getTotalErrors()}
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          <Button 
+            onClick={handleImportClick}
+            disabled={isImporting || !selectedFile}
+            variant={importMode === "replace" ? "destructive" : "default"}
+            className="w-full"
+          >
+            <Upload className="w-4 h-4 mr-2" />
+            {isImporting ? "Importando..." : "Importar Backup"}
+          </Button>
+        </CardContent>
+      </Card>
+
+      {/* Dialog de Confirmação */}
+      <AlertDialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className={importMode === "replace" ? "text-destructive" : "text-yellow-500"} />
+              Confirmar Importação
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-3">
+                <p>
+                  Você está prestes a importar dados no modo <strong>{importMode === "merge" ? "Mesclar" : "Substituir"}</strong>.
+                </p>
+                {importMode === "replace" && (
+                  <div className="bg-destructive/10 p-3 rounded-md border border-destructive/20">
+                    <p className="text-destructive font-medium">
+                      ⚠️ ATENÇÃO: O modo Substituir irá APAGAR todos os dados atuais antes de importar!
+                    </p>
+                    <p className="text-sm mt-1">
+                      Esta ação não pode ser desfeita. Certifique-se de ter um backup antes de continuar.
+                    </p>
+                  </div>
+                )}
+                <p>Deseja continuar?</p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <Button
+              onClick={handleImport}
+              variant={importMode === "replace" ? "destructive" : "default"}
+            >
+              Confirmar Importação
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  );
+}
