@@ -37,6 +37,7 @@ import Tacs from "./pages/Tacs";
 import Crachas from "./pages/Crachas";
 import Eventos from "./pages/Eventos";
 import AIInsights from "./pages/AIInsights";
+import { FloatingAIChat } from "./components/ai/FloatingAIChat";
 const queryClient = new QueryClient();
 
 const App = () => {
@@ -50,6 +51,7 @@ const App = () => {
         <Toaster />
         <Sonner />
         <BrowserRouter>
+          <FloatingAIChat />
         <Routes>
           <Route path="/" element={<Auth />} />
           <Route path="/auth" element={<Auth />} />
