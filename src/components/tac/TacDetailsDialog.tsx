@@ -1,7 +1,9 @@
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { FileWarning, User, Calendar, Clock, CheckCircle2, Eye } from "lucide-react";
+import { FileWarning, User, Calendar, Clock, CheckCircle2, Eye, Printer } from "lucide-react";
+import { generateTacPDF } from "@/lib/pdfGeneratorTac";
 
 interface TacDetailsDialogProps {
   tac: any;
@@ -157,6 +159,13 @@ const TacDetailsDialog = ({ tac, open, onOpenChange }: TacDetailsDialogProps) =>
             </div>
           </div>
         </div>
+
+        <DialogFooter>
+          <Button onClick={() => generateTacPDF(tac)} className="w-full sm:w-auto">
+            <Printer className="w-4 h-4 mr-2" />
+            Imprimir TAC
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

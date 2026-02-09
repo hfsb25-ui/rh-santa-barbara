@@ -7,9 +7,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { Search, Eye, Trash2, Filter } from "lucide-react";
+import { Search, Eye, Trash2, Filter, Printer } from "lucide-react";
 import { toast } from "sonner";
 import TacDetailsDialog from "./TacDetailsDialog";
+import { generateTacPDF } from "@/lib/pdfGeneratorTac";
 
 const tipoLabels: Record<string, string> = {
   advertencia_verbal: "Advertência Verbal",
@@ -241,8 +242,17 @@ const TacList = () => {
                               setSelectedTac(tac);
                               setShowDetailsDialog(true);
                             }}
+                            title="Ver detalhes"
                           >
                             <Eye className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => generateTacPDF(tac)}
+                            title="Imprimir TAC"
+                          >
+                            <Printer className="w-4 h-4" />
                           </Button>
                           <Button
                             variant="ghost"
@@ -252,6 +262,7 @@ const TacList = () => {
                               setTacToDelete(tac.id);
                               setShowDeleteDialog(true);
                             }}
+                            title="Excluir"
                           >
                             <Trash2 className="w-4 h-4" />
                           </Button>
