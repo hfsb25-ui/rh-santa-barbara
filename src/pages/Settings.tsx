@@ -7,6 +7,7 @@ import { SiteSettings } from "@/components/settings/SiteSettings";
 import { DashboardVisibilitySettings } from "@/components/settings/DashboardVisibilitySettings";
 import { ExperienceAlertSettings } from "@/components/settings/ExperienceAlertSettings";
 import { DatabaseBackupSettings } from "@/components/settings/DatabaseBackupSettings";
+import { WhatsAppSettings } from "@/components/settings/WhatsAppSettings";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const Settings = () => {
