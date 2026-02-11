@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { MessageSquare, Copy, CheckCircle2, AlertCircle } from "lucide-react";
+import { MessageSquare, Copy } from "lucide-react";
 
 interface WhatsAppConfig {
   evolution_api_url: string;
@@ -34,17 +34,18 @@ export function WhatsAppSettings() {
 
   const loadConfig = async () => {
     const { data } = await supabase
-      .from("configuracoes_whatsapp")
+      .from("configuracoes_whatsapp" as any)
       .select("*")
       .limit(1)
       .maybeSingle();
 
     if (data) {
+      const d = data as any;
       setConfig({
-        evolution_api_url: data.evolution_api_url || "",
-        evolution_api_key: data.evolution_api_key || "",
-        evolution_instance_name: data.evolution_instance_name || "",
-        whatsapp_allowed_numbers: data.whatsapp_allowed_numbers || "",
+        evolution_api_url: d.evolution_api_url || "",
+        evolution_api_key: d.evolution_api_key || "",
+        evolution_instance_name: d.evolution_instance_name || "",
+        whatsapp_allowed_numbers: d.whatsapp_allowed_numbers || "",
       });
     }
     setLoaded(true);
@@ -53,41 +54,30 @@ export function WhatsAppSettings() {
   const handleSave = async () => {
     setSaving(true);
     try {
-      // Upsert config
       const { data: existing } = await supabase
-        .from("configuracoes_whatsapp")
+        .from("configuracoes_whatsapp" as any)
         .select("id")
         .limit(1)
         .maybeSingle();
 
       if (existing) {
         await supabase
-          .from("configuracoes_whatsapp")
+          .from("configuracoes_whatsapp" as any)
           .update({
             evolution_api_url: config.evolution_api_url,
             evolution_api_key: config.evolution_api_key,
             evolution_instance_name: config.evolution_instance_name,
             whatsapp_allowed_numbers: config.whatsapp_allowed_numbers,
-          })
-          .eq("id", existing.id);
+          } as any)
+          .eq("id", (existing as any).id);
       } else {
-        await supabase.from("configuracoes_whatsapp").insert({
+        await supabase.from("configuracoes_whatsapp" as any).insert({
           evolution_api_url: config.evolution_api_url,
           evolution_api_key: config.evolution_api_key,
           evolution_instance_name: config.evolution_instance_name,
           whatsapp_allowed_numbers: config.whatsapp_allowed_numbers,
-        });
+        } as any);
       }
-
-      // Update secrets via edge function
-      await supabase.functions.invoke("update-whatsapp-secrets", {
-        body: {
-          evolution_api_url: config.evolution_api_url,
-          evolution_api_key: config.evolution_api_key,
-          evolution_instance_name: config.evolution_instance_name,
-          whatsapp_allowed_numbers: config.whatsapp_allowed_numbers,
-        },
-      });
 
       toast.success("Configurações do WhatsApp salvas com sucesso!");
     } catch (error) {
@@ -119,7 +109,7 @@ export function WhatsAppSettings() {
       });
 
       if (response.ok) {
-        toast.success("Webhook está funcionando! (mensagem de teste ignorada por ser fromMe)");
+        toast.success("Webhook está funcionando!");
       } else {
         toast.error("Erro ao testar webhook");
       }
@@ -142,11 +132,9 @@ export function WhatsAppSettings() {
           </CardTitle>
           <CardDescription>
             Configure a integração do assistente de IA com o WhatsApp via Evolution API.
-            O admin pode enviar perguntas sobre o sistema diretamente pelo WhatsApp.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          {/* Webhook URL */}
           <div className="space-y-2">
             <Label>URL do Webhook (configure na Evolution API)</Label>
             <div className="flex gap-2">
@@ -160,7 +148,6 @@ export function WhatsAppSettings() {
             </p>
           </div>
 
-          {/* Evolution API URL */}
           <div className="space-y-2">
             <Label htmlFor="evolution_url">URL da Evolution API</Label>
             <Input
@@ -171,7 +158,6 @@ export function WhatsAppSettings() {
             />
           </div>
 
-          {/* API Key */}
           <div className="space-y-2">
             <Label htmlFor="evolution_key">Chave da API (apikey)</Label>
             <Input
@@ -183,7 +169,6 @@ export function WhatsAppSettings() {
             />
           </div>
 
-          {/* Instance Name */}
           <div className="space-y-2">
             <Label htmlFor="instance_name">Nome da Instância</Label>
             <Input
@@ -194,7 +179,6 @@ export function WhatsAppSettings() {
             />
           </div>
 
-          {/* Allowed Numbers */}
           <div className="space-y-2">
             <Label htmlFor="allowed_numbers">Números Autorizados</Label>
             <Input
@@ -219,7 +203,6 @@ export function WhatsAppSettings() {
         </CardContent>
       </Card>
 
-      {/* Instructions */}
       <Card>
         <CardHeader>
           <CardTitle className="text-lg">Como Configurar</CardTitle>

@@ -746,6 +746,36 @@ export type Database = {
         }
         Relationships: []
       }
+      configuracoes_whatsapp: {
+        Row: {
+          created_at: string
+          evolution_api_key: string | null
+          evolution_api_url: string | null
+          evolution_instance_name: string | null
+          id: string
+          updated_at: string
+          whatsapp_allowed_numbers: string | null
+        }
+        Insert: {
+          created_at?: string
+          evolution_api_key?: string | null
+          evolution_api_url?: string | null
+          evolution_instance_name?: string | null
+          id?: string
+          updated_at?: string
+          whatsapp_allowed_numbers?: string | null
+        }
+        Update: {
+          created_at?: string
+          evolution_api_key?: string | null
+          evolution_api_url?: string | null
+          evolution_instance_name?: string | null
+          id?: string
+          updated_at?: string
+          whatsapp_allowed_numbers?: string | null
+        }
+        Relationships: []
+      }
       cracha_templates: {
         Row: {
           altura: number
