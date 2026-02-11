@@ -90,13 +90,37 @@ serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-    const EVOLUTION_API_URL = Deno.env.get("EVOLUTION_API_URL");
-    const EVOLUTION_API_KEY = Deno.env.get("EVOLUTION_API_KEY");
-    const EVOLUTION_INSTANCE_NAME = Deno.env.get("EVOLUTION_INSTANCE_NAME");
 
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
+
+    const supabase = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!);
+
+    // Read Evolution API credentials from database
+    const { data: whatsappConfig } = await supabase
+      .from("configuracoes_whatsapp")
+      .select("*")
+      .limit(1)
+      .maybeSingle();
+
+    if (!whatsappConfig) throw new Error("WhatsApp config not found in database");
+
+    const EVOLUTION_API_URL = whatsappConfig.evolution_api_url;
+    const EVOLUTION_API_KEY = whatsappConfig.evolution_api_key;
+    const EVOLUTION_INSTANCE_NAME = whatsappConfig.evolution_instance_name;
+    const configAllowedNumbers = whatsappConfig.whatsapp_allowed_numbers || "";
+
     if (!EVOLUTION_API_URL || !EVOLUTION_API_KEY || !EVOLUTION_INSTANCE_NAME) {
-      throw new Error("Evolution API credentials not configured");
+      throw new Error("Evolution API credentials not configured in settings");
+    }
+
+    // Re-check allowed numbers from config (override env-based check above)
+    const configAllowed = configAllowedNumbers.split(",").map((n: string) => n.trim()).filter(Boolean);
+    if (configAllowed.length > 0 && !configAllowed.includes(phoneNumber)) {
+      console.log(`Blocked by config: ${phoneNumber}`);
+      return new Response(JSON.stringify({ status: "ignored", reason: "unauthorized by config" }), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     const supabase = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!);

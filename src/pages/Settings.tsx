@@ -55,6 +55,7 @@ const Settings = () => {
               <TabsTrigger value="dashboard">Dashboard Funcionário</TabsTrigger>
               <TabsTrigger value="alertas">Alertas</TabsTrigger>
               <TabsTrigger value="backup">Backup</TabsTrigger>
+              <TabsTrigger value="whatsapp">WhatsApp</TabsTrigger>
             </TabsList>
             
             <TabsContent value="site">
@@ -71,6 +72,10 @@ const Settings = () => {
 
             <TabsContent value="backup">
               <DatabaseBackupSettings />
+            </TabsContent>
+
+            <TabsContent value="whatsapp">
+              <WhatsAppSettings />
             </TabsContent>
           </Tabs>
         </div>
