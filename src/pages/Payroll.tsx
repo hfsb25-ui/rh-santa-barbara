@@ -24,6 +24,7 @@ const TIPO_FOLHA_OPTIONS = [
   { value: "complementar", label: "Folha Complementar" },
   { value: "adiantamento", label: "Folha de Adiantamento" },
   { value: "decimo_terceiro", label: "13º Salário" },
+  { value: "rescisao", label: "Rescisão" },
 ];
 
 interface Empresa {
@@ -122,6 +123,7 @@ const Payroll = () => {
   const [selectedPagamentoForHolerite, setSelectedPagamentoForHolerite] = useState<Pagamento | null>(null);
   const [selectedEmployeeForLancamento, setSelectedEmployeeForLancamento] = useState<string>("all");
   const [selectedTipoFolhaLancamento, setSelectedTipoFolhaLancamento] = useState<string>("salario");
+  const [employeesDemitidos, setEmployeesDemitidos] = useState<Employee[]>([]);
 
   useEffect(() => {
     fetchEmpresas();
@@ -132,6 +134,7 @@ const Payroll = () => {
     fetchEmployees();
     fetchPagamentos();
     fetchTodosPagamentos();
+    fetchEmployeesDemitidos();
   }, [selectedEmpresa, mes, ano, tipoContrato, selectedSetor, tipoFolha]);
 
   const fetchEmpresas = async () => {
@@ -193,6 +196,31 @@ const Payroll = () => {
     } catch (err) {
       console.error("Erro inesperado ao carregar funcionários:", err);
       setEmployees([]);
+    }
+  };
+
+  const fetchEmployeesDemitidos = async () => {
+    try {
+      let query = supabase
+        .from("employees")
+        .select("id, nome_completo, cargo, setor, salario, tipo_contrato")
+        .eq("status", "demitido" as any);
+
+      if (selectedEmpresa && selectedEmpresa !== "all") {
+        query = query.eq("empresa_id", selectedEmpresa);
+      }
+
+      const { data, error } = await query.order("nome_completo");
+
+      if (error) {
+        console.error("Erro ao carregar funcionários demitidos:", error);
+        setEmployeesDemitidos([]);
+        return;
+      }
+      setEmployeesDemitidos(data || []);
+    } catch (err) {
+      console.error("Erro inesperado:", err);
+      setEmployeesDemitidos([]);
     }
   };
 
@@ -423,8 +451,12 @@ const Payroll = () => {
       toast.error("Selecione uma empresa específica para lançar pagamentos");
       return;
     }
-    if (employees.length === 0) {
-      toast.error("Não há funcionários ativos nesta empresa");
+    const isRescisao = selectedTipoFolhaLancamento === "rescisao";
+    const targetEmployees = isRescisao ? employeesDemitidos : employees;
+    if (targetEmployees.length === 0) {
+      toast.error(isRescisao 
+        ? "Não há funcionários demitidos nesta empresa" 
+        : "Não há funcionários ativos nesta empresa");
       return;
     }
     setShowLancamentoForm(true);
@@ -897,7 +929,7 @@ const Payroll = () => {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="all">Todos os funcionários</SelectItem>
-                        {employees.map((emp) => (
+                        {(selectedTipoFolhaLancamento === "rescisao" ? employeesDemitidos : employees).map((emp) => (
                           <SelectItem key={emp.id} value={emp.id}>
                             {emp.nome_completo}
                           </SelectItem>
@@ -935,10 +967,12 @@ const Payroll = () => {
                     </DialogTitle>
                   </DialogHeader>
                   <LancamentoFolhaForm
-                    employees={selectedEmployeeForLancamento === "all" 
-                      ? employees 
-                      : employees.filter(e => e.id === selectedEmployeeForLancamento)
-                    }
+                    employees={(() => {
+                      const base = selectedTipoFolhaLancamento === "rescisao" ? employeesDemitidos : employees;
+                      return selectedEmployeeForLancamento === "all" 
+                        ? base 
+                        : base.filter(e => e.id === selectedEmployeeForLancamento);
+                    })()}
                     empresaId={selectedEmpresa}
                     mes={mes}
                     ano={ano}

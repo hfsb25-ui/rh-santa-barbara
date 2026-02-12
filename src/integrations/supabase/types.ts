@@ -1738,8 +1738,10 @@ export type Database = {
       folha_pagamento: {
         Row: {
           ano: number
+          aviso_previo_cumprido: boolean | null
           created_at: string | null
           created_by: string | null
+          data_desligamento: string | null
           desconto: number | null
           descontos: number | null
           employee_id: string
@@ -1748,14 +1750,17 @@ export type Database = {
           mes: number
           observacoes: string | null
           tipo_folha: string
+          tipo_rescisao: string | null
           updated_at: string | null
           valor_bruto: number
           valor_liquido: number
         }
         Insert: {
           ano: number
+          aviso_previo_cumprido?: boolean | null
           created_at?: string | null
           created_by?: string | null
+          data_desligamento?: string | null
           desconto?: number | null
           descontos?: number | null
           employee_id: string
@@ -1764,14 +1769,17 @@ export type Database = {
           mes: number
           observacoes?: string | null
           tipo_folha?: string
+          tipo_rescisao?: string | null
           updated_at?: string | null
           valor_bruto?: number
           valor_liquido?: number
         }
         Update: {
           ano?: number
+          aviso_previo_cumprido?: boolean | null
           created_at?: string | null
           created_by?: string | null
+          data_desligamento?: string | null
           desconto?: number | null
           descontos?: number | null
           employee_id?: string
@@ -1780,6 +1788,7 @@ export type Database = {
           mes?: number
           observacoes?: string | null
           tipo_folha?: string
+          tipo_rescisao?: string | null
           updated_at?: string | null
           valor_bruto?: number
           valor_liquido?: number

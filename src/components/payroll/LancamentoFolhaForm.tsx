@@ -51,6 +51,15 @@ interface LancamentoFolhaFormProps {
 
 const STORAGE_KEY_PREFIX = "folha_lancamento_draft_";
 
+const TIPO_RESCISAO_OPTIONS = [
+  { value: "sem_justa_causa", label: "Sem justa causa" },
+  { value: "com_justa_causa", label: "Com justa causa" },
+  { value: "pedido_demissao", label: "Pedido de demissão" },
+  { value: "acordo_mutuo", label: "Acordo mútuo (Art. 484-A CLT)" },
+  { value: "termino_contrato", label: "Término de contrato" },
+  { value: "termino_antecipado", label: "Término antecipado de contrato" },
+];
+
 const LancamentoFolhaForm = ({ employees, empresaId, mes, ano, tipoFolha, onSuccess, onCancel }: LancamentoFolhaFormProps) => {
   const [variaveis, setVariaveis] = useState<Variavel[]>([]);
   const [lancamentos, setLancamentos] = useState<Record<string, LancamentoData>>({});
@@ -64,6 +73,12 @@ const LancamentoFolhaForm = ({ employees, empresaId, mes, ano, tipoFolha, onSucc
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isInitializedRef = useRef(false);
+
+  // Rescisão state
+  const [rescisaoData, setRescisaoData] = useState<Record<string, {
+    tipo_rescisao: string;
+    aviso_previo_cumprido: boolean;
+  }>>({});
 
   const getStorageKey = useCallback(() => {
     return `${STORAGE_KEY_PREFIX}${empresaId}_${mes}_${ano}_${tipoFolha}`;
@@ -348,6 +363,23 @@ const LancamentoFolhaForm = ({ employees, empresaId, mes, ano, tipoFolha, onSucc
         ? employees 
         : employees.filter(e => e.id === selectedEmployee);
 
+      // Validar dados de rescisão
+      if (tipoFolha === "rescisao") {
+        const semTipo = employeesToProcess.filter(emp => {
+          const lancamento = lancamentos[emp.id];
+          if (!lancamento) return false;
+          const totais = calcularTotais(emp.id);
+          if (totais.proventos === 0 && totais.descontos === 0) return false;
+          return !rescisaoData[emp.id]?.tipo_rescisao;
+        });
+        if (semTipo.length > 0) {
+          toast.error(`Preencha o tipo de rescisão para: ${semTipo.map(e => e.nome_completo).join(", ")}`);
+          setLoading(false);
+          setShowConfirmDialog(false);
+          return;
+        }
+      }
+
       for (const emp of employeesToProcess) {
         const lancamento = lancamentos[emp.id];
         if (!lancamento) continue;
@@ -367,17 +399,25 @@ const LancamentoFolhaForm = ({ employees, empresaId, mes, ano, tipoFolha, onSucc
             .maybeSingle();
 
           let pagamentoId: string;
+          const rescisaoInfo = tipoFolha === "rescisao" ? rescisaoData[emp.id] : null;
 
           if (existingPag) {
-            const { data: updatedPag, error: updateError } = await supabase
-              .from("folha_pagamento")
-              .update({
+
+              const updateData: any = {
                 valor_bruto: totais.proventos,
                 desconto: totais.descontos,
                 descontos: 0,
                 valor_liquido: totais.liquido,
                 observacoes: lancamento.observacoes || null,
-              })
+              };
+              if (rescisaoInfo) {
+                updateData.tipo_rescisao = rescisaoInfo.tipo_rescisao || null;
+                updateData.aviso_previo_cumprido = rescisaoInfo.aviso_previo_cumprido;
+              }
+
+              const { data: updatedPag, error: updateError } = await supabase
+              .from("folha_pagamento")
+              .update(updateData)
               .eq("id", existingPag.id)
               .select()
               .single();
@@ -398,7 +438,11 @@ const LancamentoFolhaForm = ({ employees, empresaId, mes, ano, tipoFolha, onSucc
                 descontos: 0,
                 valor_liquido: totais.liquido,
                 observacoes: lancamento.observacoes || null,
-              })
+                ...(rescisaoInfo ? {
+                  tipo_rescisao: rescisaoInfo.tipo_rescisao || null,
+                  aviso_previo_cumprido: rescisaoInfo.aviso_previo_cumprido,
+                } : {}),
+              } as any)
               .select()
               .single();
 
@@ -615,6 +659,54 @@ const LancamentoFolhaForm = ({ employees, empresaId, mes, ano, tipoFolha, onSucc
                   </p>
                 </div>
               </div>
+
+              {/* Campos de Rescisão */}
+              {tipoFolha === "rescisao" && (
+                <div className="p-3 bg-muted/40 rounded-lg space-y-3 border border-dashed">
+                  <p className="font-semibold text-sm">Dados da Rescisão</p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <Label className="text-sm">Tipo de Rescisão</Label>
+                      <Select
+                        value={rescisaoData[emp.id]?.tipo_rescisao || ""}
+                        onValueChange={(v) => setRescisaoData(prev => ({
+                          ...prev,
+                          [emp.id]: { ...prev[emp.id], tipo_rescisao: v, aviso_previo_cumprido: prev[emp.id]?.aviso_previo_cumprido ?? false }
+                        }))}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione o tipo" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {TIPO_RESCISAO_OPTIONS.map(opt => (
+                            <SelectItem key={opt.value} value={opt.value}>
+                              {opt.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-sm">Aviso Prévio</Label>
+                      <Select
+                        value={rescisaoData[emp.id]?.aviso_previo_cumprido ? "sim" : "nao"}
+                        onValueChange={(v) => setRescisaoData(prev => ({
+                          ...prev,
+                          [emp.id]: { ...prev[emp.id], tipo_rescisao: prev[emp.id]?.tipo_rescisao || "", aviso_previo_cumprido: v === "sim" }
+                        }))}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="sim">Cumprido</SelectItem>
+                          <SelectItem value="nao">Não cumprido / Indenizado</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Grid de proventos e descontos */}
               <div className="grid md:grid-cols-2 gap-4">
