@@ -104,16 +104,16 @@ export default function AppLayout({ children }: AppLayoutProps) {
         <AppSidebar />
         <div className="flex-1 flex flex-col min-w-0">
           {/* Header */}
-          <header className="h-14 border-b bg-card flex items-center justify-between px-4 shrink-0">
-            <div className="flex items-center gap-3">
+          <header className="h-14 border-b bg-card flex items-center justify-between px-2 sm:px-4 shrink-0 z-20">
+            <div className="flex items-center gap-2">
               <SidebarTrigger />
               {companyLogo && (
-                <img src={companyLogo} alt="Logo" className="w-8 h-8 object-contain" />
+                <img src={companyLogo} alt="Logo" className="w-7 h-7 object-contain hidden sm:block" />
               )}
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
               <Select value={selectedEmpresa} onValueChange={setSelectedEmpresa}>
-                <SelectTrigger className="w-[220px]">
+                <SelectTrigger className="w-[140px] sm:w-[220px] text-xs sm:text-sm">
                   <SelectValue placeholder="Empresa" />
                 </SelectTrigger>
                 <SelectContent>
