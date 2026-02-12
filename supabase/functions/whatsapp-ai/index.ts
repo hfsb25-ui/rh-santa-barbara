@@ -16,6 +16,34 @@ function formatForWhatsApp(text: string): string {
     .trim();
 }
 
+async function createEvento(supabase: any, params: any) {
+  const { titulo, data_inicio, data_fim, descricao, local, tipo } = params;
+
+  if (!titulo || !data_inicio) {
+    return { success: false, error: "Título e data/hora de início são obrigatórios." };
+  }
+
+  const finalDataFim = data_fim || data_inicio;
+  const finalTipo = tipo || "compromisso";
+
+  const { data, error } = await supabase.from("eventos").insert({
+    titulo,
+    data_inicio,
+    data_fim: finalDataFim,
+    descricao: descricao || null,
+    local: local || null,
+    tipo: finalTipo,
+    cor: "#3B82F6",
+  }).select().single();
+
+  if (error) {
+    console.error("Error creating evento:", error);
+    return { success: false, error: error.message };
+  }
+
+  return { success: true, evento: data };
+}
+
 async function fetchSystemData(supabase: any) {
   const today = new Date().toISOString().split("T")[0];
   const threeMonthsAgo = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
@@ -104,7 +132,6 @@ async function fetchSystemData(supabase: any) {
   const afastamentos = afastamentosRes.data || [];
   const checklists = checklistsFuncionarioRes.data || [];
 
-  // Statistics
   const feriasAtuais = ferias.filter((f: any) => f.periodo_gozo_inicio <= today && f.periodo_gozo_fim >= today);
   const feriasFuturas = ferias.filter((f: any) => f.periodo_gozo_inicio > today);
   const faltasNaoJustificadas = faltas.filter((f: any) => !f.justificada);
@@ -127,7 +154,6 @@ async function fetchSystemData(supabase: any) {
   const totalLiquido = folhaMesAtual.reduce((acc: number, f: any) => acc + (f.valor_liquido || 0), 0);
   const totalAdiantamentos = adiantamentos.filter((a: any) => a.mes === currentMonthNum).reduce((acc: number, a: any) => acc + (a.valor || 0), 0);
 
-  // Employees by sector
   const employeesBySector: Record<string, number> = {};
   employees.forEach((e: any) => {
     const s = e.setor || "Sem setor";
@@ -254,6 +280,47 @@ ${checklistsPendentes.slice(0, 15).map((c: any) => {
 `;
 }
 
+const toolDefinitions = [
+  {
+    type: "function",
+    function: {
+      name: "criar_evento",
+      description: "Cria um novo evento/compromisso no calendário do sistema de RH. Use quando o usuário pedir para agendar, marcar ou criar um evento, reunião, compromisso, etc.",
+      parameters: {
+        type: "object",
+        properties: {
+          titulo: {
+            type: "string",
+            description: "Título do evento ou compromisso",
+          },
+          data_inicio: {
+            type: "string",
+            description: "Data e hora de início no formato ISO 8601 (ex: 2026-02-15T14:00:00)",
+          },
+          data_fim: {
+            type: "string",
+            description: "Data e hora de fim no formato ISO 8601 (ex: 2026-02-15T15:00:00). Se não informado, será igual ao início.",
+          },
+          descricao: {
+            type: "string",
+            description: "Descrição ou detalhes adicionais do evento",
+          },
+          local: {
+            type: "string",
+            description: "Local onde o evento acontecerá",
+          },
+          tipo: {
+            type: "string",
+            description: "Tipo do evento: reuniao, treinamento, entrevista, compromisso, geral",
+            enum: ["reuniao", "treinamento", "entrevista", "compromisso", "geral"],
+          },
+        },
+        required: ["titulo", "data_inicio"],
+      },
+    },
+  },
+];
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -325,7 +392,6 @@ serve(async (req) => {
 
     const supabase = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!);
 
-    // Read Evolution API credentials from database
     const { data: whatsappConfig } = await supabase
       .from("configuracoes_whatsapp")
       .select("*")
@@ -352,9 +418,9 @@ serve(async (req) => {
       });
     }
 
-    // Fetch ALL system data
     const contextData = await fetchSystemData(supabase);
 
+    const now = new Date();
     const systemPrompt = `Você é um assistente de RH inteligente respondendo via WhatsApp. Você tem acesso COMPLETO a todos os dados do sistema de gestão de RH.
 
 INSTRUÇÕES:
@@ -364,11 +430,28 @@ INSTRUÇÕES:
 - Use formatação simples: *negrito*, _itálico_, listas com -
 - Não use headers com #
 - Limite respostas a no máximo 3000 caracteres
-- Você pode responder sobre: funcionários, férias (escala completa), folgas, faltas, ponto, banco de horas, folha de pagamento, adiantamentos, reajustes salariais, TACs, avaliações, estoque de EPIs e uniformes, recrutamento, vagas, candidaturas, treinamentos, cursos, certificados, eventos, avisos, exames médicos, afastamentos, checklists de admissão/desligamento
+- Data e hora atuais: ${now.toISOString()} (fuso horário: América/São Paulo, GMT-3)
+- Ano atual: ${now.getFullYear()}
+
+AÇÕES DISPONÍVEIS:
+- Você pode CRIAR EVENTOS no calendário quando o usuário pedir para agendar/marcar compromissos, reuniões, etc.
+- Quando o usuário informar um compromisso, extraia: título, data, hora início, hora fim (se houver), local e tipo.
+- Se o usuário não informar o horário de fim, assuma 1 hora de duração.
+- Se o usuário disser apenas a data sem hora, assuma 09:00.
+- Sempre confirme o evento criado com os detalhes.
+- Use o tool "criar_evento" para cadastrar o evento.
+
+TIPOS DE EVENTO DISPONÍVEIS: reuniao, treinamento, entrevista, compromisso, geral
 
 ${contextData}`;
 
-    const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const messages = [
+      { role: "system", content: systemPrompt },
+      { role: "user", content: userMessage },
+    ];
+
+    // First AI call - may request tool use
+    let aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${LOVABLE_API_KEY}`,
@@ -376,10 +459,8 @@ ${contextData}`;
       },
       body: JSON.stringify({
         model: "google/gemini-3-flash-preview",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userMessage },
-        ],
+        messages,
+        tools: toolDefinitions,
         stream: false,
       }),
     });
@@ -390,8 +471,57 @@ ${contextData}`;
       throw new Error(`AI error: ${aiResponse.status}`);
     }
 
-    const aiData = await aiResponse.json();
-    const aiText = aiData.choices?.[0]?.message?.content || "Desculpe, não consegui processar sua pergunta.";
+    let aiData = await aiResponse.json();
+    let assistantMessage = aiData.choices?.[0]?.message;
+
+    // Handle tool calls (function calling)
+    if (assistantMessage?.tool_calls && assistantMessage.tool_calls.length > 0) {
+      console.log("AI requested tool calls:", JSON.stringify(assistantMessage.tool_calls));
+
+      // Add assistant message with tool calls to conversation
+      messages.push(assistantMessage);
+
+      for (const toolCall of assistantMessage.tool_calls) {
+        if (toolCall.function.name === "criar_evento") {
+          const params = JSON.parse(toolCall.function.arguments);
+          console.log("Creating evento with params:", JSON.stringify(params));
+
+          const result = await createEvento(supabase, params);
+          console.log("Create evento result:", JSON.stringify(result));
+
+          messages.push({
+            role: "tool",
+            tool_call_id: toolCall.id,
+            content: JSON.stringify(result),
+          } as any);
+        }
+      }
+
+      // Second AI call to generate final response after tool execution
+      aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${LOVABLE_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "google/gemini-3-flash-preview",
+          messages,
+          stream: false,
+        }),
+      });
+
+      if (!aiResponse.ok) {
+        const errorText = await aiResponse.text();
+        console.error("AI follow-up error:", aiResponse.status, errorText);
+        throw new Error(`AI follow-up error: ${aiResponse.status}`);
+      }
+
+      aiData = await aiResponse.json();
+      assistantMessage = aiData.choices?.[0]?.message;
+    }
+
+    const aiText = assistantMessage?.content || "Desculpe, não consegui processar sua pergunta.";
     const formattedText = formatForWhatsApp(aiText);
 
     // Send response via Evolution API
