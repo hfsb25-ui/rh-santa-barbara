@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Send, Bot, User, Loader2, Sparkles, X, MessageCircle } from "lucide-react";
+import { Send, Bot, User, Loader2, Sparkles, X } from "lucide-react";
+import robotIcon from "@/assets/robot-chat-icon.png";
 import { toast } from "@/components/ui/use-toast";
 import ReactMarkdown from "react-markdown";
 import { supabase } from "@/integrations/supabase/client";
