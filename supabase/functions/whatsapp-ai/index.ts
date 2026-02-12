@@ -428,10 +428,18 @@ serve(async (req) => {
       .order("created_at", { ascending: false })
       .limit(20);
 
-    const historyMessages = (conversationHistory || []).reverse().map((h: any) => ({
+    const rawHistory = (conversationHistory || []).reverse();
+    const historyMessages = rawHistory.map((h: any) => ({
       role: h.role,
       content: h.content,
     }));
+
+    // Build a conversation summary for stronger context retention
+    const conversationSummary = rawHistory.length > 0
+      ? `\nHISTÓRICO RECENTE DA CONVERSA COM ESTE USUÁRIO (${rawHistory.length} mensagens):\n` +
+        rawHistory.map((h: any) => `[${h.role === 'user' ? 'USUÁRIO' : 'VOCÊ'}]: ${h.content.substring(0, 300)}`).join("\n") +
+        "\n\nIMPORTANTE: Use este histórico para entender referências como 'ele', 'ela', 'dele', 'dessa pessoa', etc. Se o usuário mencionou alguém antes, continue se referindo à mesma pessoa quando usar pronomes."
+      : "";
 
     const now = new Date();
     const systemPrompt = `Você é um assistente de RH inteligente respondendo via WhatsApp. Você tem acesso COMPLETO a todos os dados do sistema de gestão de RH.
@@ -446,11 +454,14 @@ INSTRUÇÕES:
 - Data e hora atuais: ${now.toISOString()} (fuso horário: América/São Paulo, GMT-3)
 - Ano atual: ${now.getFullYear()}
 
-MEMÓRIA E APRENDIZADO:
-- Você tem acesso ao histórico de conversas anteriores com este usuário
-- Use esse histórico para manter contexto, lembrar preferências e dar respostas personalizadas
+MEMÓRIA E CONTEXTO CONVERSACIONAL:
+- Você tem acesso ao histórico COMPLETO de conversas anteriores com este usuário
+- CRÍTICO: Quando o usuário usar pronomes como "ele", "ela", "dele", "dela", "dessa pessoa", "desse funcionário", etc., SEMPRE consulte as mensagens anteriores para identificar de quem está falando
+- Se na mensagem anterior você falou sobre um funcionário X, e o usuário perguntar "qual o salário dele?", entenda que "dele" se refere ao funcionário X
+- Mantenha o contexto da conversa inteira, não trate cada mensagem de forma isolada
+- Use o histórico para dar respostas personalizadas e manter a continuidade da conversa
 - Se o usuário corrigir algo ou fornecer informações, lembre-se disso nas próximas interações
-- Adapte seu tom e estilo conforme o padrão de comunicação do usuário
+${conversationSummary}
 
 AÇÕES DISPONÍVEIS:
 - Você pode CRIAR EVENTOS no calendário quando o usuário pedir para agendar/marcar compromissos, reuniões, etc.
