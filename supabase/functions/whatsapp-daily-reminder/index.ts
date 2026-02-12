@@ -50,6 +50,19 @@ serve(async (req) => {
       throw new Error("Evolution API credentials not configured");
     }
 
+    // Parse multiple numbers (comma-separated)
+    const numeros = numero_lembrete
+      .split(",")
+      .map((n: string) => n.trim())
+      .filter((n: string) => n.length > 0);
+
+    if (numeros.length === 0) {
+      return new Response(JSON.stringify({ status: "skipped", reason: "no reminder numbers configured" }), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const today = new Date().toISOString().split("T")[0];
     const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().split("T")[0];
 
@@ -137,19 +150,24 @@ EXAMES MÉDICOS PENDENTES PARA HOJE (${(examesPendentes || []).length}):
 ${(examesPendentes || []).slice(0, 5).map((e: any) => `- ${e.employees?.nome_completo}: ${e.tipo_exame}`).join("\n") || "Nenhum"}
 `;
 
-    // Get conversation history for this number
-    const { data: history } = await supabase
-      .from("whatsapp_conversas")
-      .select("role, content")
-      .eq("phone_number", numero_lembrete)
-      .order("created_at", { ascending: false })
-      .limit(10);
+    const results: { number: string; status: string; error?: string }[] = [];
 
-    const historyContext = (history || []).length > 0
-      ? `\n\nHISTÓRICO RECENTE DE CONVERSAS (para contexto):\n${(history || []).reverse().map((h: any) => `${h.role === "user" ? "Usuário" : "Assistente"}: ${h.content.substring(0, 200)}`).join("\n")}`
-      : "";
+    // Send to each number
+    for (const numero of numeros) {
+      try {
+        // Get conversation history for this number
+        const { data: history } = await supabase
+          .from("whatsapp_conversas")
+          .select("role, content")
+          .eq("phone_number", numero)
+          .order("created_at", { ascending: false })
+          .limit(10);
 
-    const systemPrompt = `Você é um assistente de RH inteligente enviando o lembrete matinal diário via WhatsApp.
+        const historyContext = (history || []).length > 0
+          ? `\n\nHISTÓRICO RECENTE DE CONVERSAS (para contexto):\n${(history || []).reverse().map((h: any) => `${h.role === "user" ? "Usuário" : "Assistente"}: ${h.content.substring(0, 200)}`).join("\n")}`
+          : "";
+
+        const systemPrompt = `Você é um assistente de RH inteligente enviando o lembrete matinal diário via WhatsApp.
 
 INSTRUÇÕES:
 - Comece com uma saudação amigável (Bom dia! 🌅)
@@ -166,58 +184,64 @@ ${historyContext}
 
 ${context}`;
 
-    const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: "Gere o lembrete matinal de hoje." },
-        ],
-        stream: false,
-      }),
-    });
+        const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${LOVABLE_API_KEY}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            model: "google/gemini-2.5-flash",
+            messages: [
+              { role: "system", content: systemPrompt },
+              { role: "user", content: "Gere o lembrete matinal de hoje." },
+            ],
+            stream: false,
+          }),
+        });
 
-    if (!aiResponse.ok) {
-      const errorText = await aiResponse.text();
-      throw new Error(`AI error: ${aiResponse.status} - ${errorText}`);
+        if (!aiResponse.ok) {
+          const errorText = await aiResponse.text();
+          throw new Error(`AI error: ${aiResponse.status} - ${errorText}`);
+        }
+
+        const aiData = await aiResponse.json();
+        const aiText = aiData.choices?.[0]?.message?.content || "Bom dia! Não há compromissos para hoje. 🌟";
+        const formattedText = formatForWhatsApp(aiText);
+
+        // Send via Evolution API
+        const sendUrl = `${evolution_api_url.replace(/\/$/, "")}/message/sendText/${evolution_instance_name}`;
+        const sendResponse = await fetch(sendUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            apikey: evolution_api_key,
+          },
+          body: JSON.stringify({
+            number: numero,
+            text: formattedText,
+          }),
+        });
+
+        if (!sendResponse.ok) {
+          const sendError = await sendResponse.text();
+          throw new Error(`Failed to send: ${sendResponse.status} - ${sendError}`);
+        }
+
+        // Save the reminder as conversation
+        await supabase.from("whatsapp_conversas").insert([
+          { phone_number: numero, role: "assistant", content: formattedText },
+        ]);
+
+        console.log("Daily reminder sent successfully to", numero);
+        results.push({ number: numero, status: "ok" });
+      } catch (numError) {
+        console.error(`Error sending reminder to ${numero}:`, numError);
+        results.push({ number: numero, status: "error", error: numError instanceof Error ? numError.message : "Unknown error" });
+      }
     }
 
-    const aiData = await aiResponse.json();
-    const aiText = aiData.choices?.[0]?.message?.content || "Bom dia! Não há compromissos para hoje. 🌟";
-    const formattedText = formatForWhatsApp(aiText);
-
-    // Send via Evolution API
-    const sendUrl = `${evolution_api_url.replace(/\/$/, "")}/message/sendText/${evolution_instance_name}`;
-    const sendResponse = await fetch(sendUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        apikey: evolution_api_key,
-      },
-      body: JSON.stringify({
-        number: numero_lembrete,
-        text: formattedText,
-      }),
-    });
-
-    if (!sendResponse.ok) {
-      const sendError = await sendResponse.text();
-      throw new Error(`Failed to send reminder: ${sendResponse.status} - ${sendError}`);
-    }
-
-    // Save the reminder as conversation
-    await supabase.from("whatsapp_conversas").insert([
-      { phone_number: numero_lembrete, role: "assistant", content: formattedText },
-    ]);
-
-    console.log("Daily reminder sent successfully to", numero_lembrete);
-
-    return new Response(JSON.stringify({ status: "ok", message: "Reminder sent" }), {
+    return new Response(JSON.stringify({ status: "ok", results }), {
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
