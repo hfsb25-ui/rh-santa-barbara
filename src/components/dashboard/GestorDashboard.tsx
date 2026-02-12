@@ -564,7 +564,7 @@ const GestorDashboard = ({ user }: GestorDashboardProps) => {
                   <Users className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">{stats.totalEmployees}</div>
+                  <div className="text-2xl font-bold">{stats.activeEmployees}</div>
                 </CardContent>
               </Card>
 
