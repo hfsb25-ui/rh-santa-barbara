@@ -68,12 +68,26 @@ const MetricsCharts = ({ selectedEmpresa, setSelectedEmpresa, empresas, period, 
       let absencesQuery = supabase.from("faltas").select("*, employees(nome_completo, setor)").gte("data", startDate.toISOString().split("T")[0]);
       const { data: absences } = await absencesQuery;
 
+      const todayStr = now.toISOString().split("T")[0];
       const { data: vacations } = await supabase.from("ferias").select("*, employees(nome_completo)")
-        .gte("periodo_gozo_inicio", now.toISOString().split("T")[0])
+        .gte("periodo_gozo_inicio", todayStr)
         .lte("periodo_gozo_inicio", new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0]);
 
+      // Contar férias ativas HOJE
+      const employeeIds = employees?.map((e: any) => e.id) || [];
+      let currentVacationCount = 0;
+      if (employeeIds.length > 0) {
+        const { count } = await supabase
+          .from("ferias")
+          .select("*", { count: "exact", head: true })
+          .in("employee_id", employeeIds)
+          .lte("periodo_gozo_inicio", todayStr)
+          .gte("periodo_gozo_fim", todayStr);
+        currentVacationCount = count || 0;
+      }
+
       // Process all data
-      const processedData = processData(employees, sectors, companies, payroll, episStock, uniformsStock, episHistory, uniformsHistory, absences, vacations, now, startDate);
+      const processedData = processData(employees, sectors, companies, payroll, episStock, uniformsStock, episHistory, uniformsHistory, absences, vacations, now, startDate, currentVacationCount);
       setData(processedData);
     } catch (error) {
       console.error("Error fetching metrics:", error);
@@ -82,11 +96,11 @@ const MetricsCharts = ({ selectedEmpresa, setSelectedEmpresa, empresas, period, 
     }
   };
 
-  const processData = (employees: any[], sectors: any[], companies: any[], payroll: any[], episStock: any[], uniformsStock: any[], episHistory: any[], uniformsHistory: any[], absences: any[], vacations: any[], now: Date, startDate: Date) => {
+  const processData = (employees: any[], sectors: any[], companies: any[], payroll: any[], episStock: any[], uniformsStock: any[], episHistory: any[], uniformsHistory: any[], absences: any[], vacations: any[], now: Date, startDate: Date, currentVacationCount: number) => {
     // HR Metrics
     const activeEmployees = employees?.filter(e => e.status === "ativo").length || 0;
     const totalEmployees = employees?.length || 0;
-    const onVacation = employees?.filter(e => e.status === "ferias").length || 0;
+    const onVacation = currentVacationCount;
     const onLeave = employees?.filter(e => e.status === "afastado").length || 0;
     
     const previousMonthEmployees = employees?.filter(e => {
