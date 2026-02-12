@@ -518,48 +518,7 @@ const GestorDashboard = ({ user }: GestorDashboardProps) => {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="border-b bg-card">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            {companyLogo ? (
-              <div className="w-10 h-10 flex items-center justify-center">
-                <img src={companyLogo} alt="Logo" className="w-10 h-10 object-contain" />
-              </div>
-            ) : (
-              <div className="w-10 h-10 bg-primary rounded-full flex items-center justify-center">
-                <Shield className="w-5 h-5 text-primary-foreground" />
-              </div>
-            )}
-            <div>
-              <h1 className="text-xl font-bold">Sistema de RH</h1>
-              <p className="text-sm text-muted-foreground">Painel do Gestor</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-4">
-            <Select value={selectedEmpresa} onValueChange={setSelectedEmpresa}>
-              <SelectTrigger className="w-[250px]">
-                <SelectValue placeholder="Selecione uma empresa" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todas as empresas</SelectItem>
-                {empresas.map((empresa) => (
-                  <SelectItem key={empresa.id} value={empresa.id}>
-                    {empresa.nome}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Button variant="outline" onClick={handleLogout}>
-              <LogOut className="w-4 h-4 mr-2" />
-              Sair
-            </Button>
-          </div>
-        </div>
-      </header>
-
-      <div className="container mx-auto px-4 py-8 space-y-8">
+    <div className="space-y-8">
         {/* Navigation Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <TabsList className="inline-flex lg:grid w-full lg:grid-cols-4 overflow-x-auto tabs-scroll">
@@ -784,146 +743,21 @@ const GestorDashboard = ({ user }: GestorDashboardProps) => {
               </div>
             )}
 
-            {/* Search and Actions */}
+            {/* Search and Employee List */}
             <div className="space-y-4">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-                <Input
-                  placeholder="Buscar por nome, cargo ou setor..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-              
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
-                <Button variant="outline" onClick={() => navigate("/stock")} className="w-full">
-                  <Package className="w-4 h-4 mr-2" />
-                  Estoque
-                </Button>
-                <Button variant="outline" onClick={() => navigate("/sectors")} className="w-full">
-                  <Building2 className="w-4 h-4 mr-2" />
-                  Setores
-                </Button>
-                <Button variant="outline" onClick={() => navigate("/turnover")} className="w-full">
-                  <TrendingUp className="w-4 h-4 mr-2" />
-                  Turnover
-                </Button>
-                <Button variant="outline" onClick={() => navigate("/payroll")} className="w-full">
-                  <Receipt className="w-4 h-4 mr-2" />
-                  Folha de Pagamento
-                </Button>
-                <Button variant="outline" onClick={() => navigate("/salary-adjustment")} className="w-full">
-                  <TrendingUpIcon className="w-4 h-4 mr-2" />
-                  Reajuste Salarial
-                </Button>
-                <Button variant="outline" onClick={() => navigate("/companies")} className="w-full">
-                  <Building2 className="w-4 h-4 mr-2" />
-                  Empresas
-                </Button>
-                <Button variant="outline" onClick={handleAddEmployee} className="w-full">
+              <div className="flex items-center gap-3">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+                  <Input
+                    placeholder="Buscar por nome, cargo ou setor..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+                <Button onClick={handleAddEmployee}>
                   <Plus className="w-4 h-4 mr-2" />
                   Novo Funcionário
-                </Button>
-                <Button variant="outline" onClick={() => setShowTimeOffDialog(true)} className="w-full">
-                  <Clock className="w-4 h-4 mr-2" />
-                  Folgas
-                </Button>
-                <Button variant="outline" onClick={() => setShowTimeOffHistoryDialog(true)} className="w-full">
-                  <FileText className="w-4 h-4 mr-2" />
-                  Histórico Folgas
-                </Button>
-                <Button variant="outline" onClick={() => setShowAvisoDialog(true)} className="w-full">
-                  <Bell className="w-4 h-4 mr-2" />
-                  Novo Aviso
-                </Button>
-                <Button variant="outline" onClick={() => setShowManageAvisosDialog(true)} className="w-full">
-                  <Shield className="w-4 h-4 mr-2" />
-                  Gerenciar Avisos
-                </Button>
-                <Button variant="outline" onClick={() => setShowLoginHistoryDialog(true)} className="w-full">
-                  <Clock className="w-4 h-4 mr-2" />
-                  Histórico Login
-                </Button>
-                <Button variant="outline" onClick={() => navigate("/funcoes")} className="w-full">
-                  <Briefcase className="w-4 h-4 mr-2" />
-                  Funções
-                </Button>
-                <Button variant="outline" onClick={() => navigate("/managers")} className="w-full">
-                  <Shield className="w-4 h-4 mr-2" />
-                  Gestores
-                </Button>
-                <Button variant="outline" onClick={() => navigate("/contracts")} className="w-full">
-                  <FileSignature className="w-4 h-4 mr-2" />
-                  Contratos
-                </Button>
-                <Button variant="outline" onClick={() => navigate("/recrutamento")} className="w-full">
-                  <Briefcase className="w-4 h-4 mr-2" />
-                  Recrutamento
-                </Button>
-                <Button variant="outline" onClick={() => navigate("/vagas")} className="w-full">
-                  <Users className="w-4 h-4 mr-2" />
-                  Vagas Públicas
-                </Button>
-                <Button variant="outline" onClick={() => navigate("/relatorios")} className="w-full">
-                  <BarChart3 className="w-4 h-4 mr-2" />
-                  Relatórios
-                </Button>
-                <Button variant="outline" onClick={() => navigate("/saude-ocupacional")} className="w-full">
-                  <Activity className="w-4 h-4 mr-2" />
-                  Saúde Ocupacional
-                </Button>
-                <Button variant="outline" onClick={() => navigate("/vacation-schedule")} className="w-full">
-                  <Calendar className="w-4 h-4 mr-2" />
-                  Escala de Férias
-                </Button>
-                <Button variant="outline" onClick={() => navigate("/controle-ponto")} className="w-full">
-                  <Clock className="w-4 h-4 mr-2" />
-                  Controle de Ponto
-                </Button>
-                <Button variant="outline" onClick={() => navigate("/avaliacoes")} className="w-full">
-                  <Award className="w-4 h-4 mr-2" />
-                  Avaliações
-                </Button>
-                <Button variant="outline" onClick={() => navigate("/treinamentos")} className="w-full">
-                  <GraduationCap className="w-4 h-4 mr-2" />
-                  Treinamentos
-                </Button>
-                <Button variant="outline" onClick={() => navigate("/adiantamentos")} className="w-full">
-                  <DollarSign className="w-4 h-4 mr-2" />
-                  Adiantamentos
-                </Button>
-                <Button variant="outline" onClick={() => navigate("/financeiro")} className="w-full">
-                  <Wallet className="w-4 h-4 mr-2" />
-                  Financeiro
-                </Button>
-                <Button variant="outline" onClick={() => navigate("/plano-admissao-desligamento")} className="w-full">
-                  <ClipboardList className="w-4 h-4 mr-2" />
-                  Admissão/Desligamento
-                </Button>
-                <Button variant="outline" onClick={() => navigate("/settings")} className="w-full">
-                  <Settings className="w-4 h-4 mr-2" />
-                  Configurações
-                </Button>
-                <Button variant="outline" onClick={() => navigate("/people-manager")} className="w-full">
-                  <UsersRound className="w-4 h-4 mr-2" />
-                  People Manager
-                </Button>
-                <Button variant="outline" onClick={() => navigate("/tacs")} className="w-full">
-                  <FileWarning className="w-4 h-4 mr-2" />
-                  TACs
-                </Button>
-                <Button variant="outline" onClick={() => navigate("/crachas")} className="w-full">
-                  <IdCard className="w-4 h-4 mr-2" />
-                  Crachás
-                </Button>
-                <Button variant="outline" onClick={() => navigate("/eventos")} className="w-full">
-                  <Calendar className="w-4 h-4 mr-2" />
-                  Calendário de Eventos
-                </Button>
-                <Button variant="default" onClick={() => navigate("/ai-insights")} className="w-full bg-primary hover:bg-primary/90">
-                  <Bot className="w-4 h-4 mr-2" />
-                  Inteligência Artificial
                 </Button>
               </div>
             </div>
@@ -1082,7 +916,6 @@ const GestorDashboard = ({ user }: GestorDashboardProps) => {
           onOpenChange={setShowBirthdayDialog}
           empresaId={selectedEmpresa !== "all" ? selectedEmpresa : undefined}
         />
-      </div>
     </div>
   );
 };
