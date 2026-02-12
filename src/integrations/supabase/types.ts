@@ -752,7 +752,10 @@ export type Database = {
           evolution_api_key: string | null
           evolution_api_url: string | null
           evolution_instance_name: string | null
+          horario_lembrete: string | null
           id: string
+          lembrete_ativo: boolean | null
+          numero_lembrete: string | null
           updated_at: string
           whatsapp_allowed_numbers: string | null
         }
@@ -761,7 +764,10 @@ export type Database = {
           evolution_api_key?: string | null
           evolution_api_url?: string | null
           evolution_instance_name?: string | null
+          horario_lembrete?: string | null
           id?: string
+          lembrete_ativo?: boolean | null
+          numero_lembrete?: string | null
           updated_at?: string
           whatsapp_allowed_numbers?: string | null
         }
@@ -770,7 +776,10 @@ export type Database = {
           evolution_api_key?: string | null
           evolution_api_url?: string | null
           evolution_instance_name?: string | null
+          horario_lembrete?: string | null
           id?: string
+          lembrete_ativo?: boolean | null
+          numero_lembrete?: string | null
           updated_at?: string
           whatsapp_allowed_numbers?: string | null
         }
@@ -3188,6 +3197,30 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      whatsapp_conversas: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          phone_number: string
+          role: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          phone_number: string
+          role: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          phone_number?: string
+          role?: string
+        }
+        Relationships: []
       }
     }
     Views: {
