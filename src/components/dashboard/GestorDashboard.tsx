@@ -172,13 +172,13 @@ const GestorDashboard = ({ user }: GestorDashboardProps) => {
     try {
       const todayStr = new Date().toISOString().split("T")[0];
 
-      // Buscar férias ativas (gozo) que ainda não tiveram retorno confirmado
-      // Inclui férias em andamento E férias que já terminaram mas não foram confirmadas
+      // Buscar férias ativas (gozo) que estão em andamento HOJE
       const { data: activeVacations, error: vacationsError } = await supabase
         .from("ferias")
         .select("*")
-        .eq("data_retorno_confirmada", false)
-        .lte("periodo_gozo_inicio", todayStr);
+        .lte("periodo_gozo_inicio", todayStr)
+        .gte("periodo_gozo_fim", todayStr)
+        .eq("data_retorno_confirmada", false);
 
       if (vacationsError || !activeVacations || activeVacations.length === 0) {
         setEmployeesOnVacation([]);
@@ -313,10 +313,23 @@ const GestorDashboard = ({ user }: GestorDashboardProps) => {
       let absencesQuery = supabase.from("faltas").select("*, employees(nome_completo)").gte("data", startDate.toISOString().split("T")[0]);
       const { data: absences } = await absencesQuery;
 
-      // Process data for charts
+      // Process data for charts - usar contagem real de férias ativas hoje
+      const todayForChart = new Date().toISOString().split("T")[0];
+      const employeeIds = employees?.map((e: any) => e.id) || [];
+      let onVacationChartCount = 0;
+      if (employeeIds.length > 0) {
+        const { count } = await supabase
+          .from("ferias")
+          .select("*", { count: "exact", head: true })
+          .in("employee_id", employeeIds)
+          .lte("periodo_gozo_inicio", todayForChart)
+          .gte("periodo_gozo_fim", todayForChart);
+        onVacationChartCount = count || 0;
+      }
+
       const statusData = [
         { name: "Ativos", value: employees?.filter(e => e.status === "ativo").length || 0, color: "hsl(var(--secondary))" },
-        { name: "Férias", value: employees?.filter(e => e.status === "ferias").length || 0, color: "hsl(var(--primary))" },
+        { name: "Férias", value: onVacationChartCount, color: "hsl(var(--primary))" },
         { name: "Afastados", value: employees?.filter(e => e.status === "afastado").length || 0, color: "hsl(var(--warning))" },
         { name: "Demitidos", value: employees?.filter(e => e.status === "demitido").length || 0, color: "hsl(var(--destructive))" }
       ];

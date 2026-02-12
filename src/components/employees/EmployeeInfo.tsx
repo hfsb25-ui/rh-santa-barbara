@@ -1,3 +1,5 @@
+import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
@@ -11,6 +13,28 @@ interface EmployeeInfoProps {
 }
 
 const EmployeeInfo = ({ employee }: EmployeeInfoProps) => {
+  const [isOnVacation, setIsOnVacation] = useState(false);
+
+  useEffect(() => {
+    const checkVacation = async () => {
+      if (!employee?.id) return;
+      const todayStr = new Date().toISOString().split("T")[0];
+      const { count } = await supabase
+        .from("ferias")
+        .select("*", { count: "exact", head: true })
+        .eq("employee_id", employee.id)
+        .lte("periodo_gozo_inicio", todayStr)
+        .gte("periodo_gozo_fim", todayStr);
+      setIsOnVacation((count || 0) > 0);
+    };
+    checkVacation();
+  }, [employee?.id]);
+
+  const getEffectiveStatus = () => {
+    if (isOnVacation) return "ferias";
+    if (employee.status === "ferias") return "ativo";
+    return employee.status;
+  };
   const getStatusBadge = (status: string) => {
     const variants: any = {
       em_admissao: "outline",
@@ -77,7 +101,7 @@ const EmployeeInfo = ({ employee }: EmployeeInfoProps) => {
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2">
             <span>Informações do Funcionário</span>
-            {getStatusBadge(employee.status)}
+            {getStatusBadge(getEffectiveStatus())}
           </CardTitle>
           <ChangePasswordDialog 
             userId={employee.user_id} 

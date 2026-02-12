@@ -39,11 +39,13 @@ const EmployeeList = ({ searchQuery, onStatsUpdate, empresaId }: EmployeeListPro
   const [contratoFilter, setContratoFilter] = useState<string>("all");
   const [empresas, setEmpresas] = useState<any[]>([]);
   const [setores, setSetores] = useState<any[]>([]);
+  const [employeesOnVacationIds, setEmployeesOnVacationIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     fetchEmployees();
     fetchEmpresas();
     fetchSetores();
+    fetchVacationStatus();
   }, [empresaId]);
 
   useEffect(() => {
@@ -91,11 +93,32 @@ const EmployeeList = ({ searchQuery, onStatsUpdate, empresaId }: EmployeeListPro
     }
   };
 
+  const fetchVacationStatus = async () => {
+    try {
+      const todayStr = new Date().toISOString().split("T")[0];
+      const { data, error } = await supabase
+        .from("ferias")
+        .select("employee_id")
+        .lte("periodo_gozo_inicio", todayStr)
+        .gte("periodo_gozo_fim", todayStr);
+      if (error) throw error;
+      setEmployeesOnVacationIds(new Set(data?.map(f => f.employee_id) || []));
+    } catch (error) {
+      console.error("Error fetching vacation status:", error);
+    }
+  };
+
+  const getEffectiveStatus = (emp: any) => {
+    if (employeesOnVacationIds.has(emp.id)) return "ferias";
+    if (emp.status === "ferias") return "ativo"; // Não está em férias hoje, mostrar como ativo
+    return emp.status;
+  };
+
   const filterEmployees = () => {
     let filtered = employees;
 
     if (statusFilter !== "all") {
-      filtered = filtered.filter((emp) => emp.status === statusFilter);
+      filtered = filtered.filter((emp) => getEffectiveStatus(emp) === statusFilter);
     }
     if (empresaFilter !== "all") {
       filtered = filtered.filter((emp) => emp.empresa_id === empresaFilter);
@@ -273,7 +296,7 @@ const EmployeeList = ({ searchQuery, onStatsUpdate, empresaId }: EmployeeListPro
                   <TableCell className="hidden lg:table-cell text-sm text-muted-foreground">
                     {getContratoLabel(employee.tipo_contrato)}
                   </TableCell>
-                  <TableCell>{getStatusBadge(employee.status)}</TableCell>
+                  <TableCell>{getStatusBadge(getEffectiveStatus(employee))}</TableCell>
                   <TableCell>
                     <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); navigate(`/employee/${employee.id}`); }}>
                       <Eye className="w-4 h-4" />
