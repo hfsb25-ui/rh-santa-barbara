@@ -44,6 +44,74 @@ async function createEvento(supabase: any, params: any) {
   return { success: true, evento: data };
 }
 
+async function createAdiantamento(supabase: any, params: any) {
+  const { nome_funcionario, valor, forma_pagamento } = params;
+
+  if (!nome_funcionario || !valor) {
+    return { success: false, error: "Nome do funcionário e valor são obrigatórios." };
+  }
+
+  // Search employee by name (fuzzy match)
+  const { data: employees, error: empError } = await supabase
+    .from("employees")
+    .select("id, nome_completo, empresa_id, setor")
+    .eq("status", "ativo");
+
+  if (empError) {
+    console.error("Error fetching employees:", empError);
+    return { success: false, error: "Erro ao buscar funcionários." };
+  }
+
+  // Find best match by name (case-insensitive partial match)
+  const searchName = nome_funcionario.toLowerCase().trim();
+  const matched = (employees || []).find((e: any) => {
+    const fullName = (e.nome_completo || "").toLowerCase();
+    return fullName.includes(searchName) || searchName.includes(fullName) ||
+      fullName.split(" ").some((part: string) => part === searchName);
+  });
+
+  if (!matched) {
+    return { 
+      success: false, 
+      error: `Funcionário "${nome_funcionario}" não encontrado. Funcionários ativos: ${(employees || []).map((e: any) => e.nome_completo).join(", ")}` 
+    };
+  }
+
+  if (!matched.empresa_id) {
+    return { success: false, error: `Funcionário ${matched.nome_completo} não tem empresa vinculada.` };
+  }
+
+  const now = new Date();
+  const mes = now.getMonth() + 1;
+  const ano = now.getFullYear();
+  const formaPagamento = forma_pagamento || "Dinheiro";
+
+  const { data, error } = await supabase.from("adiantamentos").insert({
+    employee_id: matched.id,
+    empresa_id: matched.empresa_id,
+    valor: parseFloat(valor),
+    forma_pagamento: formaPagamento,
+    mes,
+    ano,
+  }).select("*, employees(nome_completo)").single();
+
+  if (error) {
+    console.error("Error creating adiantamento:", error);
+    return { success: false, error: error.message };
+  }
+
+  return { 
+    success: true, 
+    adiantamento: {
+      ...data,
+      funcionario: matched.nome_completo,
+      setor: matched.setor,
+      mes,
+      ano,
+    }
+  };
+}
+
 async function fetchSystemData(supabase: any) {
   const today = new Date().toISOString().split("T")[0];
   const threeMonthsAgo = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
@@ -327,6 +395,32 @@ const toolDefinitions = [
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "criar_adiantamento",
+      description: "Registra/lança um adiantamento salarial para um funcionário. Use quando o usuário pedir para anotar, lançar, registrar ou criar um adiantamento. Extraia o nome do funcionário, o valor e a forma de pagamento da mensagem do usuário.",
+      parameters: {
+        type: "object",
+        properties: {
+          nome_funcionario: {
+            type: "string",
+            description: "Nome (ou parte do nome) do funcionário que receberá o adiantamento",
+          },
+          valor: {
+            type: "number",
+            description: "Valor do adiantamento em reais (ex: 500, 1000.50)",
+          },
+          forma_pagamento: {
+            type: "string",
+            description: "Forma de pagamento do adiantamento",
+            enum: ["PIX", "Dinheiro", "Transferência", "Conta", "Empréstimo", "Consumo"],
+          },
+        },
+        required: ["nome_funcionario", "valor"],
+      },
+    },
+  },
 ];
 
 serve(async (req) => {
@@ -478,14 +572,20 @@ MEMÓRIA E CONTEXTO CONVERSACIONAL:
 ${conversationSummary}
 
 AÇÕES DISPONÍVEIS:
-- Você pode CRIAR EVENTOS no calendário quando o usuário pedir para agendar/marcar compromissos, reuniões, etc.
-- Quando o usuário informar um compromisso, extraia: título, data, hora início, hora fim (se houver), local e tipo.
-- Se o usuário não informar o horário de fim, assuma 1 hora de duração.
-- Se o usuário disser apenas a data sem hora, assuma 09:00.
-- Sempre confirme o evento criado com os detalhes.
-- Use o tool "criar_evento" para cadastrar o evento.
+1. CRIAR EVENTOS: Você pode criar eventos no calendário quando o usuário pedir para agendar/marcar compromissos.
+   - Extraia: título, data, hora início, hora fim (se houver), local e tipo.
+   - Se não informar horário de fim, assuma 1 hora de duração.
+   - Se disser apenas a data sem hora, assuma 09:00.
+   - Use o tool "criar_evento".
+   - TIPOS: reuniao, treinamento, entrevista, compromisso, geral
 
-TIPOS DE EVENTO DISPONÍVEIS: reuniao, treinamento, entrevista, compromisso, geral
+2. LANÇAR ADIANTAMENTOS: Você pode registrar adiantamentos salariais quando o usuário pedir.
+   - Extraia: nome do funcionário, valor e forma de pagamento.
+   - Formas de pagamento válidas: PIX, Dinheiro, Transferência, Conta, Empréstimo, Consumo
+   - Se o usuário disser "em conta" ou "na conta", use "Conta". Se disser "em dinheiro" ou "no dinheiro", use "Dinheiro". Se disser "pix", use "PIX".
+   - O adiantamento será lançado no mês/ano atual automaticamente.
+   - Use o tool "criar_adiantamento".
+   - Sempre confirme o adiantamento criado com: nome, valor, forma de pagamento e mês/ano.
 
 ${contextData}`;
 
@@ -527,19 +627,25 @@ ${contextData}`;
       messages.push(assistantMessage);
 
       for (const toolCall of assistantMessage.tool_calls) {
+        const params = JSON.parse(toolCall.function.arguments);
+        let result: any;
+
         if (toolCall.function.name === "criar_evento") {
-          const params = JSON.parse(toolCall.function.arguments);
           console.log("Creating evento with params:", JSON.stringify(params));
-
-          const result = await createEvento(supabase, params);
-          console.log("Create evento result:", JSON.stringify(result));
-
-          messages.push({
-            role: "tool",
-            tool_call_id: toolCall.id,
-            content: JSON.stringify(result),
-          } as any);
+          result = await createEvento(supabase, params);
+        } else if (toolCall.function.name === "criar_adiantamento") {
+          console.log("Creating adiantamento with params:", JSON.stringify(params));
+          result = await createAdiantamento(supabase, params);
+        } else {
+          result = { success: false, error: `Tool ${toolCall.function.name} not found` };
         }
+
+        console.log(`Tool ${toolCall.function.name} result:`, JSON.stringify(result));
+        messages.push({
+          role: "tool",
+          tool_call_id: toolCall.id,
+          content: JSON.stringify(result),
+        } as any);
       }
 
       // Second AI call to generate final response after tool execution
