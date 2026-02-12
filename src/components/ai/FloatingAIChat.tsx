@@ -24,7 +24,7 @@ export function FloatingAIChat() {
   const [messages, setMessages] = useState<Message[]>([
     {
       role: "assistant",
-      content: "Olá! 👋 Sou seu assistente de RH. Como posso ajudar?",
+      content: "Olá! 👋 Sou o **Cérebrum**, a inteligência estratégica do RH Santa Bárbara. Como posso ajudar?",
     },
   ]);
   const [input, setInput] = useState("");
@@ -196,7 +196,7 @@ export function FloatingAIChat() {
           <div className="flex items-center justify-between px-4 py-3 border-b bg-primary/5">
             <div className="flex items-center gap-2">
               <Bot className="h-5 w-5 text-primary" />
-              <span className="font-semibold text-sm">Assistente IA</span>
+              <span className="font-semibold text-sm">Cérebrum</span>
               <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
                 <Sparkles className="h-2.5 w-2.5 mr-0.5" />
                 IA
