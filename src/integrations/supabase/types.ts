@@ -3252,7 +3252,7 @@ export type Database = {
         | "demitido"
       status_checklist: "em_andamento" | "concluido" | "cancelado"
       status_encaminhamento: "pendente" | "agendado" | "realizado" | "cancelado"
-      status_tac: "pendente" | "visualizado" | "confirmado"
+      status_tac: "pendente" | "visualizado" | "confirmado" | "aplicada"
       tipo_checklist: "admissao" | "desligamento"
       tipo_contrato: "fixo" | "intermitente" | "prestador_servico"
       tipo_exame_medico:
@@ -3414,7 +3414,7 @@ export const Constants = {
       ],
       status_checklist: ["em_andamento", "concluido", "cancelado"],
       status_encaminhamento: ["pendente", "agendado", "realizado", "cancelado"],
-      status_tac: ["pendente", "visualizado", "confirmado"],
+      status_tac: ["pendente", "visualizado", "confirmado", "aplicada"],
       tipo_checklist: ["admissao", "desligamento"],
       tipo_contrato: ["fixo", "intermitente", "prestador_servico"],
       tipo_exame_medico: [
