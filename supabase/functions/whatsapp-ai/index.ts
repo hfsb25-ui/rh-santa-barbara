@@ -204,7 +204,15 @@ Folhas processadas: ${folhaMesAtual.length}
 Total Proventos: R$ ${totalProventos.toFixed(2)}
 Total Descontos: R$ ${totalDescontos.toFixed(2)}
 Total Líquido: R$ ${totalLiquido.toFixed(2)}
-Adiantamentos: R$ ${totalAdiantamentos.toFixed(2)}
+
+=== ADIANTAMENTOS (${currentYear}) ===
+Total de registros de adiantamentos no ano: ${adiantamentos.length}
+${Array.from(new Set(adiantamentos.map((a: any) => a.mes))).sort((a: any, b: any) => a - b).map((mes: any) => {
+  const adiantamentosMes = adiantamentos.filter((a: any) => a.mes === mes);
+  const totalMes = adiantamentosMes.reduce((acc: number, a: any) => acc + (a.valor || 0), 0);
+  return `Mês ${mes}/${currentYear} (${adiantamentosMes.length} registros, Total: R$ ${totalMes.toFixed(2)}):
+${adiantamentosMes.map((a: any) => `  - ${a.employees?.nome_completo}: R$ ${a.valor?.toFixed(2)} (${a.forma_pagamento})`).join("\n")}`;
+}).join("\n") || "Nenhum adiantamento registrado"}
 
 Reajustes salariais (últimos 90 dias): ${reajustesSalariais.length}
 ${reajustesSalariais.slice(0, 15).map((r: any) => `- ${r.employees?.nome_completo}: R$ ${r.salario_anterior?.toFixed(2)} → R$ ${r.salario_novo?.toFixed(2)} (${r.percentual_reajuste?.toFixed(1)}%)`).join("\n") || "Nenhum"}
