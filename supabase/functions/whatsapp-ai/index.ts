@@ -420,6 +420,19 @@ serve(async (req) => {
 
     const contextData = await fetchSystemData(supabase);
 
+    // Fetch conversation history for this phone number (last 20 messages)
+    const { data: conversationHistory } = await supabase
+      .from("whatsapp_conversas")
+      .select("role, content, created_at")
+      .eq("phone_number", phoneNumber)
+      .order("created_at", { ascending: false })
+      .limit(20);
+
+    const historyMessages = (conversationHistory || []).reverse().map((h: any) => ({
+      role: h.role,
+      content: h.content,
+    }));
+
     const now = new Date();
     const systemPrompt = `Você é um assistente de RH inteligente respondendo via WhatsApp. Você tem acesso COMPLETO a todos os dados do sistema de gestão de RH.
 
@@ -433,6 +446,12 @@ INSTRUÇÕES:
 - Data e hora atuais: ${now.toISOString()} (fuso horário: América/São Paulo, GMT-3)
 - Ano atual: ${now.getFullYear()}
 
+MEMÓRIA E APRENDIZADO:
+- Você tem acesso ao histórico de conversas anteriores com este usuário
+- Use esse histórico para manter contexto, lembrar preferências e dar respostas personalizadas
+- Se o usuário corrigir algo ou fornecer informações, lembre-se disso nas próximas interações
+- Adapte seu tom e estilo conforme o padrão de comunicação do usuário
+
 AÇÕES DISPONÍVEIS:
 - Você pode CRIAR EVENTOS no calendário quando o usuário pedir para agendar/marcar compromissos, reuniões, etc.
 - Quando o usuário informar um compromisso, extraia: título, data, hora início, hora fim (se houver), local e tipo.
@@ -445,8 +464,9 @@ TIPOS DE EVENTO DISPONÍVEIS: reuniao, treinamento, entrevista, compromisso, ger
 
 ${contextData}`;
 
-    const messages = [
+    const messages: any[] = [
       { role: "system", content: systemPrompt },
+      ...historyMessages,
       { role: "user", content: userMessage },
     ];
 
@@ -523,6 +543,12 @@ ${contextData}`;
 
     const aiText = assistantMessage?.content || "Desculpe, não consegui processar sua pergunta.";
     const formattedText = formatForWhatsApp(aiText);
+
+    // Save conversation to memory
+    await supabase.from("whatsapp_conversas").insert([
+      { phone_number: phoneNumber, role: "user", content: userMessage },
+      { phone_number: phoneNumber, role: "assistant", content: aiText },
+    ]);
 
     // Send response via Evolution API
     const sendUrl = `${EVOLUTION_API_URL.replace(/\/$/, "")}/message/sendText/${EVOLUTION_INSTANCE_NAME}`;
