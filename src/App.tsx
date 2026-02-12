@@ -37,60 +37,64 @@ import Tacs from "./pages/Tacs";
 import Crachas from "./pages/Crachas";
 import Eventos from "./pages/Eventos";
 import AIInsights from "./pages/AIInsights";
+import AppLayout from "./components/layout/AppLayout";
 import { FloatingAIChat } from "./components/ai/FloatingAIChat";
+
 const queryClient = new QueryClient();
 
 const App = () => {
-  // Carrega configurações do site do banco de dados ao iniciar
   useSiteSettings();
 
   return (
-  <QueryClientProvider client={queryClient}>
-    <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <FloatingAIChat />
-        <Routes>
-          <Route path="/" element={<Auth />} />
-          <Route path="/auth" element={<Auth />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/employee/:id" element={<EmployeeDetails />} />
-          <Route path="/stock" element={<Stock />} />
-          <Route path="/sectors" element={<Sectors />} />
-          <Route path="/turnover" element={<Turnover />} />
-          <Route path="/financeiro" element={<Financeiro />} />
-          <Route path="/companies" element={<Companies />} />
-          <Route path="/payroll" element={<Payroll />} />
-          <Route path="/funcoes" element={<Funcoes />} />
-          <Route path="/contracts" element={<Contracts />} />
-          <Route path="/managers" element={<Managers />} />
-          <Route path="/salary-adjustment" element={<SalaryAdjustment />} />
-          <Route path="/vagas" element={<Vagas />} />
-          <Route path="/vaga/:id" element={<VagaDetalhes />} />
-          <Route path="/recrutamento" element={<Recrutamento />} />
-          <Route path="/recrutamento/vaga/:id/candidaturas" element={<CandidaturasVaga />} />
-          <Route path="/relatorios" element={<Relatorios />} />
-          <Route path="/saude-ocupacional" element={<SaudeOcupacional />} />
-          <Route path="/vacation-schedule" element={<VacationSchedule />} />
-          <Route path="/avaliacoes" element={<Avaliacoes />} />
-          <Route path="/controle-ponto" element={<ControlePonto />} />
-          <Route path="/treinamentos" element={<Treinamentos />} />
-          <Route path="/adiantamentos" element={<Adiantamentos />} />
-          <Route path="/plano-admissao-desligamento" element={<PlanoAdmissaoDesligamento />} />
-            <Route path="/people-manager" element={<PeopleManager />} />
-            <Route path="/tacs" element={<Tacs />} />
-            <Route path="/crachas" element={<Crachas />} />
-            <Route path="/settings" element={<Settings />} />
-            <Route path="/eventos" element={<Eventos />} />
-            <Route path="/ai-insights" element={<AIInsights />} />
-        <Route path="*" element={<NotFound />} />
-      </Routes>
-        </BrowserRouter>
-      </TooltipProvider>
-    </ThemeProvider>
-  </QueryClientProvider>
+    <QueryClientProvider client={queryClient}>
+      <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <FloatingAIChat />
+            <Routes>
+              <Route path="/" element={<Auth />} />
+              <Route path="/auth" element={<Auth />} />
+
+              {/* All gestor routes wrapped in AppLayout */}
+              <Route path="/dashboard" element={<AppLayout><Dashboard /></AppLayout>} />
+              <Route path="/employee/:id" element={<AppLayout><EmployeeDetails /></AppLayout>} />
+              <Route path="/stock" element={<AppLayout><Stock /></AppLayout>} />
+              <Route path="/sectors" element={<AppLayout><Sectors /></AppLayout>} />
+              <Route path="/turnover" element={<AppLayout><Turnover /></AppLayout>} />
+              <Route path="/financeiro" element={<AppLayout><Financeiro /></AppLayout>} />
+              <Route path="/companies" element={<AppLayout><Companies /></AppLayout>} />
+              <Route path="/payroll" element={<AppLayout><Payroll /></AppLayout>} />
+              <Route path="/funcoes" element={<AppLayout><Funcoes /></AppLayout>} />
+              <Route path="/contracts" element={<AppLayout><Contracts /></AppLayout>} />
+              <Route path="/managers" element={<AppLayout><Managers /></AppLayout>} />
+              <Route path="/salary-adjustment" element={<AppLayout><SalaryAdjustment /></AppLayout>} />
+              <Route path="/vagas" element={<AppLayout><Vagas /></AppLayout>} />
+              <Route path="/vaga/:id" element={<AppLayout><VagaDetalhes /></AppLayout>} />
+              <Route path="/recrutamento" element={<AppLayout><Recrutamento /></AppLayout>} />
+              <Route path="/recrutamento/vaga/:id/candidaturas" element={<AppLayout><CandidaturasVaga /></AppLayout>} />
+              <Route path="/relatorios" element={<AppLayout><Relatorios /></AppLayout>} />
+              <Route path="/saude-ocupacional" element={<AppLayout><SaudeOcupacional /></AppLayout>} />
+              <Route path="/vacation-schedule" element={<AppLayout><VacationSchedule /></AppLayout>} />
+              <Route path="/avaliacoes" element={<AppLayout><Avaliacoes /></AppLayout>} />
+              <Route path="/controle-ponto" element={<AppLayout><ControlePonto /></AppLayout>} />
+              <Route path="/treinamentos" element={<AppLayout><Treinamentos /></AppLayout>} />
+              <Route path="/adiantamentos" element={<AppLayout><Adiantamentos /></AppLayout>} />
+              <Route path="/plano-admissao-desligamento" element={<AppLayout><PlanoAdmissaoDesligamento /></AppLayout>} />
+              <Route path="/people-manager" element={<AppLayout><PeopleManager /></AppLayout>} />
+              <Route path="/tacs" element={<AppLayout><Tacs /></AppLayout>} />
+              <Route path="/crachas" element={<AppLayout><Crachas /></AppLayout>} />
+              <Route path="/settings" element={<AppLayout><Settings /></AppLayout>} />
+              <Route path="/eventos" element={<AppLayout><Eventos /></AppLayout>} />
+              <Route path="/ai-insights" element={<AppLayout><AIInsights /></AppLayout>} />
+
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </BrowserRouter>
+        </TooltipProvider>
+      </ThemeProvider>
+    </QueryClientProvider>
   );
 };
 

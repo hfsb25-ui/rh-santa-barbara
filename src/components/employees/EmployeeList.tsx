@@ -5,6 +5,15 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Eye, Loader2, Filter } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import {
   Select,
   SelectContent,
@@ -53,9 +62,7 @@ const EmployeeList = ({ searchQuery, onStatsUpdate, empresaId }: EmployeeListPro
       }
 
       const { data, error } = await query;
-
       if (error) throw error;
-
       setEmployees(data || []);
     } catch (error) {
       console.error("Error fetching employees:", error);
@@ -66,11 +73,7 @@ const EmployeeList = ({ searchQuery, onStatsUpdate, empresaId }: EmployeeListPro
 
   const fetchEmpresas = async () => {
     try {
-      const { data, error } = await supabase
-        .from("empresas")
-        .select("*")
-        .order("nome");
-
+      const { data, error } = await supabase.from("empresas").select("*").order("nome");
       if (error) throw error;
       setEmpresas(data || []);
     } catch (error) {
@@ -80,11 +83,7 @@ const EmployeeList = ({ searchQuery, onStatsUpdate, empresaId }: EmployeeListPro
 
   const fetchSetores = async () => {
     try {
-      const { data, error } = await supabase
-        .from("setores")
-        .select("*")
-        .order("nome");
-
+      const { data, error } = await supabase.from("setores").select("*").order("nome");
       if (error) throw error;
       setSetores(data || []);
     } catch (error) {
@@ -98,19 +97,15 @@ const EmployeeList = ({ searchQuery, onStatsUpdate, empresaId }: EmployeeListPro
     if (statusFilter !== "all") {
       filtered = filtered.filter((emp) => emp.status === statusFilter);
     }
-
     if (empresaFilter !== "all") {
       filtered = filtered.filter((emp) => emp.empresa_id === empresaFilter);
     }
-
     if (setorFilter !== "all") {
       filtered = filtered.filter((emp) => emp.setor === setorFilter);
     }
-
     if (contratoFilter !== "all") {
       filtered = filtered.filter((emp) => emp.tipo_contrato === contratoFilter);
     }
-
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter(
@@ -125,25 +120,33 @@ const EmployeeList = ({ searchQuery, onStatsUpdate, empresaId }: EmployeeListPro
   };
 
   const getStatusBadge = (status: string) => {
-    const variants: any = {
-      em_admissao: "outline",
-      ativo: "default",
-      ferias: "secondary",
-      afastado: "destructive",
-      demitido: "outline",
+    const config: Record<string, { variant: "default" | "secondary" | "destructive" | "outline"; label: string; className?: string }> = {
+      em_admissao: { variant: "outline", label: "Em Admissão", className: "bg-amber-50 text-amber-700 border-amber-200" },
+      ativo: { variant: "default", label: "Ativo" },
+      ferias: { variant: "secondary", label: "Férias" },
+      afastado: { variant: "destructive", label: "Afastado" },
+      demitido: { variant: "outline", label: "Demitido" },
     };
-    const labels: any = {
-      em_admissao: "Em Admissão",
-      ativo: "Ativo",
-      ferias: "Férias",
-      afastado: "Afastado",
-      demitido: "Demitido",
+    const c = config[status] || { variant: "default" as const, label: status };
+    return <Badge variant={c.variant} className={c.className}>{c.label}</Badge>;
+  };
+
+  const getContratoLabel = (tipo: string | null) => {
+    const labels: Record<string, string> = {
+      fixo: "Fixo",
+      intermitente: "Intermitente",
+      prestador_servico: "Prestador",
     };
-    return (
-      <Badge variant={variants[status] || "default"} className={status === "em_admissao" ? "bg-amber-50 text-amber-700 border-amber-200" : ""}>
-        {labels[status] || status}
-      </Badge>
-    );
+    return tipo ? labels[tipo] || tipo : "—";
+  };
+
+  const getInitials = (name: string) => {
+    return name
+      .split(" ")
+      .slice(0, 2)
+      .map((n) => n[0])
+      .join("")
+      .toUpperCase();
   };
 
   if (loading) {
@@ -156,14 +159,15 @@ const EmployeeList = ({ searchQuery, onStatsUpdate, empresaId }: EmployeeListPro
 
   return (
     <div>
+      {/* Filters */}
       <div className="mb-4 flex flex-wrap gap-3">
         <div className="flex items-center gap-2">
           <Filter className="w-4 h-4 text-muted-foreground" />
           <span className="text-sm font-medium text-muted-foreground">Filtros:</span>
         </div>
-        
+
         <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-[180px]">
+          <SelectTrigger className="w-[160px]">
             <SelectValue placeholder="Status" />
           </SelectTrigger>
           <SelectContent>
@@ -177,7 +181,7 @@ const EmployeeList = ({ searchQuery, onStatsUpdate, empresaId }: EmployeeListPro
         </Select>
 
         <Select value={empresaFilter} onValueChange={setEmpresaFilter}>
-          <SelectTrigger className="w-[200px]">
+          <SelectTrigger className="w-[180px]">
             <SelectValue placeholder="Empresa" />
           </SelectTrigger>
           <SelectContent>
@@ -191,7 +195,7 @@ const EmployeeList = ({ searchQuery, onStatsUpdate, empresaId }: EmployeeListPro
         </Select>
 
         <Select value={setorFilter} onValueChange={setSetorFilter}>
-          <SelectTrigger className="w-[180px]">
+          <SelectTrigger className="w-[160px]">
             <SelectValue placeholder="Setor" />
           </SelectTrigger>
           <SelectContent>
@@ -205,7 +209,7 @@ const EmployeeList = ({ searchQuery, onStatsUpdate, empresaId }: EmployeeListPro
         </Select>
 
         <Select value={contratoFilter} onValueChange={setContratoFilter}>
-          <SelectTrigger className="w-[200px]">
+          <SelectTrigger className="w-[180px]">
             <SelectValue placeholder="Tipo de Contrato" />
           </SelectTrigger>
           <SelectContent>
@@ -217,6 +221,7 @@ const EmployeeList = ({ searchQuery, onStatsUpdate, empresaId }: EmployeeListPro
         </Select>
       </div>
 
+      {/* Table */}
       {filteredEmployees.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center text-muted-foreground">
@@ -224,40 +229,66 @@ const EmployeeList = ({ searchQuery, onStatsUpdate, empresaId }: EmployeeListPro
           </CardContent>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredEmployees.map((employee) => (
-            <Card key={employee.id} className="hover:shadow-lg transition-shadow">
-              <CardContent className="pt-6">
-                <div className="flex items-start justify-between mb-4">
-                  <div>
-                    <h3 className="font-semibold text-lg">
-                      {employee.nome_completo}
-                    </h3>
-                    <p className="text-sm text-muted-foreground">
-                      {employee.cargo}
-                    </p>
-                    {employee.setor && (
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {employee.setor}
-                      </p>
-                    )}
-                  </div>
-                  {getStatusBadge(employee.status)}
-                </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="w-full"
+        <Card>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Funcionário</TableHead>
+                <TableHead className="hidden md:table-cell">Setor</TableHead>
+                <TableHead className="hidden lg:table-cell">Admissão</TableHead>
+                <TableHead className="hidden lg:table-cell">Contrato</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="w-[80px]"></TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredEmployees.map((employee) => (
+                <TableRow
+                  key={employee.id}
+                  className="cursor-pointer"
                   onClick={() => navigate(`/employee/${employee.id}`)}
                 >
-                  <Eye className="w-4 h-4 mr-2" />
-                  Ver detalhes
-                </Button>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+                  <TableCell>
+                    <div className="flex items-center gap-3">
+                      <Avatar className="h-9 w-9">
+                        <AvatarImage src={employee.foto_url || undefined} />
+                        <AvatarFallback className="text-xs bg-primary/10 text-primary">
+                          {getInitials(employee.nome_completo)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <p className="font-medium text-sm">{employee.nome_completo}</p>
+                        <p className="text-xs text-muted-foreground">{employee.cargo}</p>
+                      </div>
+                    </div>
+                  </TableCell>
+                  <TableCell className="hidden md:table-cell text-sm text-muted-foreground">
+                    {employee.setor || "—"}
+                  </TableCell>
+                  <TableCell className="hidden lg:table-cell text-sm text-muted-foreground">
+                    {employee.data_admissao
+                      ? new Date(employee.data_admissao).toLocaleDateString("pt-BR")
+                      : "—"}
+                  </TableCell>
+                  <TableCell className="hidden lg:table-cell text-sm text-muted-foreground">
+                    {getContratoLabel(employee.tipo_contrato)}
+                  </TableCell>
+                  <TableCell>{getStatusBadge(employee.status)}</TableCell>
+                  <TableCell>
+                    <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); navigate(`/employee/${employee.id}`); }}>
+                      <Eye className="w-4 h-4" />
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </Card>
       )}
+
+      <p className="text-xs text-muted-foreground mt-2">
+        {filteredEmployees.length} funcionário{filteredEmployees.length !== 1 ? "s" : ""} encontrado{filteredEmployees.length !== 1 ? "s" : ""}
+      </p>
     </div>
   );
 };
