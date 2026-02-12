@@ -25,7 +25,7 @@ export function AIAssistant() {
   const [messages, setMessages] = useState<Message[]>([
     {
       role: "assistant",
-      content: "Olá! 👋 Sou seu assistente de RH com inteligência artificial. Posso ajudar com consultas sobre funcionários, férias, avaliações, relatórios e muito mais. Como posso ajudar?",
+      content: "Olá! 👋 Sou o **Cérebrum**, a inteligência estratégica do RH Santa Bárbara. Criação de Bruno Carvalho. Posso ajudar com consultas sobre funcionários, férias, avaliações, relatórios e muito mais. Como posso ajudar?",
     },
   ]);
   const [input, setInput] = useState("");
@@ -166,7 +166,7 @@ export function AIAssistant() {
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2">
           <Bot className="h-5 w-5 text-primary" />
-          Assistente de RH
+          Cérebrum
           <Badge variant="secondary" className="ml-2">
             <Sparkles className="h-3 w-3 mr-1" />
             IA
