@@ -123,8 +123,6 @@ serve(async (req) => {
       });
     }
 
-    const supabase = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!);
-
     // Fetch system data (same logic as ai-assistant)
     const today = new Date().toISOString().split("T")[0];
     const currentMonth = new Date().toISOString().slice(0, 7);
