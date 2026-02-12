@@ -5,9 +5,12 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { MessageSquare, Copy, Bell, Send } from "lucide-react";
+import { MessageSquare, Copy, Bell, Send, History, User, Bot, ChevronDown, ChevronUp } from "lucide-react";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
 
 interface WhatsAppConfig {
   evolution_api_url: string;
@@ -17,6 +20,14 @@ interface WhatsAppConfig {
   numero_lembrete: string;
   horario_lembrete: string;
   lembrete_ativo: boolean;
+}
+
+interface Conversa {
+  id: string;
+  phone_number: string;
+  role: string;
+  content: string;
+  created_at: string;
 }
 
 export function WhatsAppSettings() {
@@ -33,11 +44,15 @@ export function WhatsAppSettings() {
   const [testing, setTesting] = useState(false);
   const [testingReminder, setTestingReminder] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  const [conversas, setConversas] = useState<Record<string, Conversa[]>>({});
+  const [loadingConversas, setLoadingConversas] = useState(false);
+  const [expandedNumber, setExpandedNumber] = useState<string | null>(null);
 
   const webhookUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/whatsapp-ai`;
 
   useEffect(() => {
     loadConfig();
+    loadConversas();
   }, []);
 
   const loadConfig = async () => {
@@ -60,6 +75,38 @@ export function WhatsAppSettings() {
       });
     }
     setLoaded(true);
+  };
+
+  const loadConversas = async () => {
+    setLoadingConversas(true);
+    try {
+      const { data, error } = await supabase
+        .from("whatsapp_conversas" as any)
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(500);
+
+      if (error) throw error;
+
+      const grouped: Record<string, Conversa[]> = {};
+      (data as any[] || []).forEach((msg: any) => {
+        if (!grouped[msg.phone_number]) {
+          grouped[msg.phone_number] = [];
+        }
+        grouped[msg.phone_number].push(msg);
+      });
+
+      // Sort messages within each number chronologically
+      Object.keys(grouped).forEach((num) => {
+        grouped[num].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+      });
+
+      setConversas(grouped);
+    } catch (error) {
+      console.error("Error loading conversations:", error);
+    } finally {
+      setLoadingConversas(false);
+    }
   };
 
   const handleSave = async () => {
@@ -133,7 +180,7 @@ export function WhatsAppSettings() {
 
   const handleTestReminder = async () => {
     if (!config.numero_lembrete) {
-      toast.error("Configure o número para lembrete primeiro");
+      toast.error("Configure os números para lembrete primeiro");
       return;
     }
     setTestingReminder(true);
@@ -157,6 +204,13 @@ export function WhatsAppSettings() {
     } finally {
       setTestingReminder(false);
     }
+  };
+
+  const formatPhoneNumber = (num: string) => {
+    if (num.length >= 12) {
+      return `+${num.slice(0, 2)} (${num.slice(2, 4)}) ${num.slice(4, 9)}-${num.slice(9)}`;
+    }
+    return num;
   };
 
   if (!loaded) return null;
@@ -265,15 +319,15 @@ export function WhatsAppSettings() {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="numero_lembrete">Número para receber lembrete</Label>
+            <Label htmlFor="numero_lembrete">Números para receber lembrete</Label>
             <Input
               id="numero_lembrete"
-              placeholder="5511999999999"
+              placeholder="5511999999999,5511888888888"
               value={config.numero_lembrete}
               onChange={(e) => setConfig(prev => ({ ...prev, numero_lembrete: e.target.value }))}
             />
             <p className="text-sm text-muted-foreground">
-              Número que receberá o lembrete diário (com código do país, sem +).
+              Números que receberão o lembrete diário, separados por vírgula (com código do país, sem +).
             </p>
           </div>
 
@@ -296,6 +350,106 @@ export function WhatsAppSettings() {
               {testingReminder ? "Enviando..." : "Enviar Lembrete Agora"}
             </Button>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Conversation History */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <History className="h-5 w-5" />
+                Histórico de Conversas WhatsApp
+              </CardTitle>
+              <CardDescription>
+                Veja o histórico de conversas do Cérebrum com cada número no WhatsApp.
+              </CardDescription>
+            </div>
+            <Button variant="outline" size="sm" onClick={loadConversas} disabled={loadingConversas}>
+              {loadingConversas ? "Carregando..." : "Atualizar"}
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {Object.keys(conversas).length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-8">
+              Nenhuma conversa registrada ainda.
+            </p>
+          ) : (
+            <div className="space-y-3">
+              {Object.entries(conversas)
+                .sort(([, a], [, b]) => {
+                  const lastA = a[a.length - 1]?.created_at || "";
+                  const lastB = b[b.length - 1]?.created_at || "";
+                  return lastB.localeCompare(lastA);
+                })
+                .map(([phoneNumber, msgs]) => (
+                  <div key={phoneNumber} className="border rounded-lg overflow-hidden">
+                    <button
+                      onClick={() => setExpandedNumber(expandedNumber === phoneNumber ? null : phoneNumber)}
+                      className="w-full flex items-center justify-between px-4 py-3 hover:bg-muted/50 transition-colors"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center">
+                          <User className="h-4 w-4 text-primary" />
+                        </div>
+                        <div className="text-left">
+                          <p className="font-medium text-sm">{formatPhoneNumber(phoneNumber)}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {msgs.length} mensagens · Última: {format(new Date(msgs[msgs.length - 1].created_at), "dd/MM/yyyy HH:mm", { locale: ptBR })}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="secondary" className="text-xs">{msgs.length}</Badge>
+                        {expandedNumber === phoneNumber ? (
+                          <ChevronUp className="h-4 w-4 text-muted-foreground" />
+                        ) : (
+                          <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                        )}
+                      </div>
+                    </button>
+
+                    {expandedNumber === phoneNumber && (
+                      <ScrollArea className="max-h-[400px] border-t">
+                        <div className="p-3 space-y-2">
+                          {msgs.map((msg) => (
+                            <div
+                              key={msg.id}
+                              className={`flex gap-2 ${msg.role === "user" ? "justify-end" : "justify-start"}`}
+                            >
+                              {msg.role === "assistant" && (
+                                <div className="flex-shrink-0 w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center mt-1">
+                                  <Bot className="h-3 w-3 text-primary" />
+                                </div>
+                              )}
+                              <div
+                                className={`max-w-[75%] rounded-lg px-3 py-2 text-xs ${
+                                  msg.role === "user"
+                                    ? "bg-primary text-primary-foreground"
+                                    : "bg-muted"
+                                }`}
+                              >
+                                <p className="whitespace-pre-wrap break-words">{msg.content}</p>
+                                <p className={`text-[10px] mt-1 ${msg.role === "user" ? "text-primary-foreground/70" : "text-muted-foreground"}`}>
+                                  {format(new Date(msg.created_at), "dd/MM HH:mm", { locale: ptBR })}
+                                </p>
+                              </div>
+                              {msg.role === "user" && (
+                                <div className="flex-shrink-0 w-6 h-6 rounded-full bg-primary flex items-center justify-center mt-1">
+                                  <User className="h-3 w-3 text-primary-foreground" />
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </ScrollArea>
+                    )}
+                  </div>
+                ))}
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -323,7 +477,7 @@ export function WhatsAppSettings() {
             </div>
             <div className="flex items-start gap-3">
               <Badge variant="outline" className="mt-0.5 shrink-0">5</Badge>
-              <p className="text-sm">Para lembretes diários, ative o lembrete, informe o número e horário desejado. O assistente aprende com as conversas anteriores!</p>
+              <p className="text-sm">Para lembretes diários, ative o lembrete, informe os números (separados por vírgula) e o horário desejado.</p>
             </div>
           </div>
         </CardContent>
