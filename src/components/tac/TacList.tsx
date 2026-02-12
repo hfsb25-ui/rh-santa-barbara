@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { Search, Eye, Trash2, Filter, Printer } from "lucide-react";
+import { Search, Eye, Trash2, Filter, Printer, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 import TacDetailsDialog from "./TacDetailsDialog";
 import { generateTacPDF } from "@/lib/pdfGeneratorTac";
@@ -23,12 +23,14 @@ const statusColors: Record<string, string> = {
   pendente: "bg-warning text-warning-foreground",
   visualizado: "bg-primary text-primary-foreground",
   confirmado: "bg-secondary text-secondary-foreground",
+  aplicada: "bg-green-600 text-white",
 };
 
 const statusLabels: Record<string, string> = {
   pendente: "Pendente",
   visualizado: "Visualizado",
   confirmado: "Confirmado",
+  aplicada: "Aplicada",
 };
 
 const TacList = () => {
@@ -90,6 +92,20 @@ const TacList = () => {
     setTacToDelete(null);
   };
 
+  const handleMarkAsApplied = async (tacId: string) => {
+    const { error } = await supabase
+      .from("tacs")
+      .update({ status: "aplicada" as any })
+      .eq("id", tacId);
+
+    if (error) {
+      toast.error("Erro ao marcar TAC como aplicada");
+    } else {
+      toast.success("TAC marcada como aplicada");
+      fetchTacs();
+    }
+  };
+
   const filteredTacs = tacs.filter((tac) => {
     const matchesSearch =
       tac.employees?.nome_completo?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -105,12 +121,13 @@ const TacList = () => {
     pendentes: tacs.filter((t) => t.status === "pendente").length,
     visualizados: tacs.filter((t) => t.status === "visualizado").length,
     confirmados: tacs.filter((t) => t.status === "confirmado").length,
+    aplicadas: tacs.filter((t) => t.status === "aplicada").length,
   };
 
   return (
     <div className="space-y-6">
       {/* Statistics */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         <Card>
           <CardContent className="pt-6">
             <div className="text-2xl font-bold">{stats.total}</div>
@@ -127,6 +144,12 @@ const TacList = () => {
           <CardContent className="pt-6">
             <div className="text-2xl font-bold text-primary">{stats.visualizados}</div>
             <p className="text-sm text-muted-foreground">Visualizados</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-2xl font-bold text-green-600">{stats.aplicadas}</div>
+            <p className="text-sm text-muted-foreground">Aplicadas</p>
           </CardContent>
         </Card>
         <Card>
@@ -165,6 +188,7 @@ const TacList = () => {
                 <SelectItem value="pendente">Pendente</SelectItem>
                 <SelectItem value="visualizado">Visualizado</SelectItem>
                 <SelectItem value="confirmado">Confirmado</SelectItem>
+                <SelectItem value="aplicada">Aplicada</SelectItem>
               </SelectContent>
             </Select>
             <Select value={tipoFilter} onValueChange={setTipoFilter}>
@@ -254,6 +278,17 @@ const TacList = () => {
                           >
                             <Printer className="w-4 h-4" />
                           </Button>
+                          {tac.status !== "aplicada" && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="text-green-600 hover:text-green-700"
+                              onClick={() => handleMarkAsApplied(tac.id)}
+                              title="Marcar como aplicada"
+                            >
+                              <CheckCircle2 className="w-4 h-4" />
+                            </Button>
+                          )}
                           <Button
                             variant="ghost"
                             size="icon"

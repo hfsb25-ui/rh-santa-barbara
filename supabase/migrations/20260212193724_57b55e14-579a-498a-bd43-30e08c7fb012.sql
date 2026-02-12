@@ -1,0 +1,1 @@
+ALTER TYPE public.status_tac ADD VALUE IF NOT EXISTS 'aplicada';
