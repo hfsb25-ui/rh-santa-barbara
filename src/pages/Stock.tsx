@@ -2,8 +2,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Plus, ArrowLeft } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { Plus } from "lucide-react";
 import EpiStockList from "@/components/stock/EpiStockList";
 import UniformStockList from "@/components/stock/UniformStockList";
 import EpiStockForm from "@/components/stock/EpiStockForm";
@@ -15,35 +14,29 @@ import UniformStockHistory from "@/components/stock/UniformStockHistory";
 import UniformDistributionBatch from "@/components/stock/UniformDistributionBatch";
 
 const Stock = () => {
-  const navigate = useNavigate();
   const [showEpiDialog, setShowEpiDialog] = useState(false);
   const [showUniformDialog, setShowUniformDialog] = useState(false);
   const [refreshEpi, setRefreshEpi] = useState(0);
   const [refreshUniform, setRefreshUniform] = useState(0);
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="container mx-auto px-4 py-8">
-        <div className="mb-6 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" onClick={() => navigate("/dashboard")}>
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Voltar
-            </Button>
-            <h1 className="text-3xl font-bold">Gerenciamento de Estoque</h1>
-          </div>
-        </div>
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold">Gerenciamento de Estoque</h1>
+      </div>
 
-        <Tabs defaultValue="epis" className="w-full">
-          <TabsList className="grid w-full grid-cols-7">
-            <TabsTrigger value="epis">Estoque EPIs</TabsTrigger>
-            <TabsTrigger value="uniformes">Estoque Uniformes</TabsTrigger>
-            <TabsTrigger value="distribuicao-lote">Distribuição em Lote</TabsTrigger>
-            <TabsTrigger value="movimentacao-epis">Movimentações EPIs</TabsTrigger>
-            <TabsTrigger value="movimentacao-uniformes">Movimentações Uniformes</TabsTrigger>
-            <TabsTrigger value="historico-epis">Distribuições EPIs</TabsTrigger>
-            <TabsTrigger value="historico-uniformes">Distribuições Uniformes</TabsTrigger>
+      <Tabs defaultValue="epis" className="w-full">
+        <div className="overflow-x-auto tabs-scroll">
+          <TabsList className="inline-flex w-auto min-w-full lg:grid lg:grid-cols-7">
+            <TabsTrigger value="epis" className="whitespace-nowrap">Estoque EPIs</TabsTrigger>
+            <TabsTrigger value="uniformes" className="whitespace-nowrap">Estoque Uniformes</TabsTrigger>
+            <TabsTrigger value="distribuicao-lote" className="whitespace-nowrap">Distribuição em Lote</TabsTrigger>
+            <TabsTrigger value="movimentacao-epis" className="whitespace-nowrap">Mov. EPIs</TabsTrigger>
+            <TabsTrigger value="movimentacao-uniformes" className="whitespace-nowrap">Mov. Uniformes</TabsTrigger>
+            <TabsTrigger value="historico-epis" className="whitespace-nowrap">Dist. EPIs</TabsTrigger>
+            <TabsTrigger value="historico-uniformes" className="whitespace-nowrap">Dist. Uniformes</TabsTrigger>
           </TabsList>
+        </div>
 
           <TabsContent value="epis" className="space-y-4">
             <div className="flex justify-end">
@@ -116,8 +109,7 @@ const Stock = () => {
           <TabsContent value="historico-uniformes" className="space-y-4">
             <UniformDistributionHistory />
           </TabsContent>
-        </Tabs>
-      </div>
+      </Tabs>
     </div>
   );
 };
