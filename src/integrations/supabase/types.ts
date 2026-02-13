@@ -756,6 +756,7 @@ export type Database = {
           id: string
           lembrete_ativo: boolean | null
           numero_lembrete: string | null
+          numeros_eventos_globais: string | null
           updated_at: string
           whatsapp_allowed_numbers: string | null
         }
@@ -768,6 +769,7 @@ export type Database = {
           id?: string
           lembrete_ativo?: boolean | null
           numero_lembrete?: string | null
+          numeros_eventos_globais?: string | null
           updated_at?: string
           whatsapp_allowed_numbers?: string | null
         }
@@ -780,6 +782,7 @@ export type Database = {
           id?: string
           lembrete_ativo?: boolean | null
           numero_lembrete?: string | null
+          numeros_eventos_globais?: string | null
           updated_at?: string
           whatsapp_allowed_numbers?: string | null
         }
