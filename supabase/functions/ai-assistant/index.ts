@@ -151,11 +151,11 @@ ${demitidos.map((e: any) => `- ${e.nome_completo} | Cargo: ${e.cargo} | Setor: $
 Funcionários de férias AGORA (${feriasAtuais.length}):
 ${feriasAtuais.map((f: any) => `- ${f.employees?.nome_completo}: ${f.periodo_gozo_inicio} a ${f.periodo_gozo_fim} (${f.dias_totais} dias) | Setor: ${f.employees?.setor || "N/A"}`).join("\n") || "Nenhum"}
 
-Férias programadas/futuras (${feriasFuturas.length}):
-${feriasFuturas.slice(0, 30).map((f: any) => `- ${f.employees?.nome_completo}: ${f.periodo_gozo_inicio} a ${f.periodo_gozo_fim} (${f.dias_totais} dias)`).join("\n") || "Nenhuma"}
+Férias CONFIRMADAS futuras (${feriasFuturas.length}):
+${feriasFuturas.slice(0, 30).map((f: any) => `- ${f.employees?.nome_completo}: ${f.periodo_gozo_inicio} a ${f.periodo_gozo_fim} (${f.dias_totais} dias) | Setor: ${f.employees?.setor || "N/A"}`).join("\n") || "Nenhuma"}
 
-Férias planejadas (${feriasPlanejadasData.length}):
-${feriasPlanejadasData.slice(0, 30).map((f: any) => `- ${f.employees?.nome_completo}: ${f.periodo_inicio} a ${f.periodo_fim} (${f.dias_totais} dias) - Status: ${f.status}`).join("\n") || "Nenhuma"}
+Férias PLANEJADAS/PROGRAMADAS para o ano (${feriasPlanejadasData.length} registros - IMPORTANTE: estes são os agendamentos futuros da escala de férias):
+${feriasPlanejadasData.map((f: any) => `- ${f.employees?.nome_completo}: ${f.periodo_inicio} a ${f.periodo_fim} (${f.dias_totais} dias) - Status: ${f.status} | Setor: ${f.employees?.setor || "N/A"}`).join("\n") || "Nenhuma"}
 
 Folgas registradas (últimos 90 dias): ${folgas.length}
 ${folgas.slice(0, 15).map((f: any) => `- ${f.employees?.nome_completo}: ${f.data} - ${f.motivo}`).join("\n") || "Nenhuma"}
@@ -246,7 +246,8 @@ ${checklistsPendentes.slice(0, 15).map((c: any) => {
 
 === RESUMO RÁPIDO ===
 - De férias agora: ${feriasAtuais.length}
-- Férias programadas: ${feriasFuturas.length}
+- Férias confirmadas futuras: ${feriasFuturas.length}
+- Férias PLANEJADAS/PROGRAMADAS na escala: ${feriasPlanejadasData.length}
 - Faltas não justificadas: ${faltasNaoJustificadas.length}
 - TACs pendentes: ${tacsPendentes.length}
 - Avaliações pendentes: ${avaliacoesPendentes.length}
@@ -304,6 +305,7 @@ INSTRUÇÕES:
 - Ofereça insights e sugestões quando apropriado
 - IMPORTANTE: NÃO repita, resuma ou mencione o conteúdo da sua resposta anterior na próxima mensagem. Cada resposta deve ser independente e focada APENAS na nova pergunta do usuário. Só faça referência a mensagens anteriores se o usuário explicitamente perguntar sobre algo que foi dito antes.
 - Você pode responder sobre: funcionários, férias, folgas, faltas, ponto, banco de horas, folha de pagamento, adiantamentos, reajustes salariais, TACs, avaliações, estoque de EPIs e uniformes, recrutamento, vagas, candidaturas, treinamentos, cursos, eventos, avisos, exames médicos, afastamentos, checklists de admissão/desligamento
+- IMPORTANTE SOBRE FÉRIAS: Existem DUAS fontes de dados de férias: 1) Férias CONFIRMADAS (tabela ferias - já aprovadas) e 2) Férias PLANEJADAS/PROGRAMADAS (tabela ferias_planejadas - escala anual). Quando perguntarem sobre "férias programadas", "escala de férias" ou "quem vai tirar férias", SEMPRE consulte AMBAS as seções nos dados. As férias planejadas contêm a programação completa do ano.
 
 ${contextData}`;
 
