@@ -1438,6 +1438,7 @@ export type Database = {
           tipo: string | null
           titulo: string
           updated_at: string | null
+          whatsapp_phone: string | null
         }
         Insert: {
           concluido?: boolean | null
@@ -1459,6 +1460,7 @@ export type Database = {
           tipo?: string | null
           titulo: string
           updated_at?: string | null
+          whatsapp_phone?: string | null
         }
         Update: {
           concluido?: boolean | null
@@ -1480,6 +1482,7 @@ export type Database = {
           tipo?: string | null
           titulo?: string
           updated_at?: string | null
+          whatsapp_phone?: string | null
         }
         Relationships: [
           {
