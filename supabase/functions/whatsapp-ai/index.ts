@@ -255,11 +255,11 @@ ${allEmployees.filter((e: any) => e.status === "demitido").map((e: any) => `- ${
 Funcionários de férias AGORA (${feriasAtuais.length}):
 ${feriasAtuais.map((f: any) => `- ${f.employees?.nome_completo}: ${f.periodo_gozo_inicio} a ${f.periodo_gozo_fim} (${f.dias_totais} dias) | Setor: ${f.employees?.setor || "N/A"}`).join("\n") || "Nenhum"}
 
-Férias programadas/futuras (${feriasFuturas.length}):
-${feriasFuturas.slice(0, 30).map((f: any) => `- ${f.employees?.nome_completo}: ${f.periodo_gozo_inicio} a ${f.periodo_gozo_fim} (${f.dias_totais} dias)`).join("\n") || "Nenhuma"}
+Férias CONFIRMADAS futuras (${feriasFuturas.length}):
+${feriasFuturas.slice(0, 30).map((f: any) => `- ${f.employees?.nome_completo}: ${f.periodo_gozo_inicio} a ${f.periodo_gozo_fim} (${f.dias_totais} dias) | Setor: ${f.employees?.setor || "N/A"}`).join("\n") || "Nenhuma"}
 
-Férias planejadas (${feriasPlanejadasData.length}):
-${feriasPlanejadasData.slice(0, 30).map((f: any) => `- ${f.employees?.nome_completo}: ${f.periodo_inicio} a ${f.periodo_fim} (${f.dias_totais} dias) - Status: ${f.status}`).join("\n") || "Nenhuma"}
+Férias PLANEJADAS/PROGRAMADAS para o ano (${feriasPlanejadasData.length} registros - IMPORTANTE: estes são os agendamentos futuros da escala de férias):
+${feriasPlanejadasData.map((f: any) => `- ${f.employees?.nome_completo}: ${f.periodo_inicio} a ${f.periodo_fim} (${f.dias_totais} dias) - Status: ${f.status} | Setor: ${f.employees?.setor || "N/A"}`).join("\n") || "Nenhuma"}
 
 Folgas registradas (últimos 90 dias): ${folgas.length}
 ${folgas.slice(0, 15).map((f: any) => `- ${f.employees?.nome_completo}: ${f.data} - ${f.motivo}`).join("\n") || "Nenhuma"}
@@ -350,7 +350,8 @@ ${checklistsPendentes.slice(0, 15).map((c: any) => {
 
 === RESUMO RÁPIDO ===
 - De férias agora: ${feriasAtuais.length}
-- Férias programadas: ${feriasFuturas.length}
+- Férias confirmadas futuras: ${feriasFuturas.length}
+- Férias PLANEJADAS/PROGRAMADAS na escala: ${feriasPlanejadasData.length}
 - Faltas não justificadas: ${faltasNaoJustificadas.length}
 - TACs pendentes: ${tacsPendentes.length}
 - Avaliações pendentes: ${avaliacoesPendentes.length}
