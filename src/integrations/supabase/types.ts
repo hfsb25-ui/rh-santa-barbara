@@ -1433,6 +1433,7 @@ export type Database = {
           empresa_id: string | null
           google_event_id: string | null
           id: string
+          lembrete_enviado: boolean | null
           lembrete_minutos: number | null
           local: string | null
           participantes: string[] | null
@@ -1455,6 +1456,7 @@ export type Database = {
           empresa_id?: string | null
           google_event_id?: string | null
           id?: string
+          lembrete_enviado?: boolean | null
           lembrete_minutos?: number | null
           local?: string | null
           participantes?: string[] | null
@@ -1477,6 +1479,7 @@ export type Database = {
           empresa_id?: string | null
           google_event_id?: string | null
           id?: string
+          lembrete_enviado?: boolean | null
           lembrete_minutos?: number | null
           local?: string | null
           participantes?: string[] | null
