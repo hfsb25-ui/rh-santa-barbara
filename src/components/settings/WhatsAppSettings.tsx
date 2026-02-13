@@ -18,6 +18,7 @@ interface WhatsAppConfig {
   evolution_instance_name: string;
   whatsapp_allowed_numbers: string;
   numero_lembrete: string;
+  numeros_eventos_globais: string;
   horario_lembrete: string;
   lembrete_ativo: boolean;
 }
@@ -37,6 +38,7 @@ export function WhatsAppSettings() {
     evolution_instance_name: "",
     whatsapp_allowed_numbers: "",
     numero_lembrete: "",
+    numeros_eventos_globais: "",
     horario_lembrete: "07:00",
     lembrete_ativo: false,
   });
@@ -70,6 +72,7 @@ export function WhatsAppSettings() {
         evolution_instance_name: d.evolution_instance_name || "",
         whatsapp_allowed_numbers: d.whatsapp_allowed_numbers || "",
         numero_lembrete: d.numero_lembrete || "",
+        numeros_eventos_globais: d.numeros_eventos_globais || "",
         horario_lembrete: d.horario_lembrete?.substring(0, 5) || "07:00",
         lembrete_ativo: d.lembrete_ativo || false,
       });
@@ -124,6 +127,7 @@ export function WhatsAppSettings() {
         evolution_instance_name: config.evolution_instance_name,
         whatsapp_allowed_numbers: config.whatsapp_allowed_numbers,
         numero_lembrete: config.numero_lembrete,
+        numeros_eventos_globais: config.numeros_eventos_globais,
         horario_lembrete: config.horario_lembrete + ":00",
         lembrete_ativo: config.lembrete_ativo,
       } as any;
@@ -327,7 +331,20 @@ export function WhatsAppSettings() {
               onChange={(e) => setConfig(prev => ({ ...prev, numero_lembrete: e.target.value }))}
             />
             <p className="text-sm text-muted-foreground">
-              Números que receberão o lembrete diário, separados por vírgula (com código do país, sem +).
+              Números que receberão o lembrete diário, separados por vírgula (com código do país, sem +). Cada número recebe apenas seus próprios compromissos agendados pelo WhatsApp.
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="numeros_eventos_globais">Números que recebem eventos globais do sistema</Label>
+            <Input
+              id="numeros_eventos_globais"
+              placeholder="5511999999999,5511888888888"
+              value={config.numeros_eventos_globais}
+              onChange={(e) => setConfig(prev => ({ ...prev, numeros_eventos_globais: e.target.value }))}
+            />
+            <p className="text-sm text-muted-foreground">
+              Estes números receberão no lembrete matinal TODOS os eventos do sistema (férias, afastamentos, aniversários, pendências etc.), além dos seus compromissos pessoais. Os demais números recebem apenas seus próprios compromissos.
             </p>
           </div>
 
