@@ -84,7 +84,7 @@ export function WhatsAppSettings() {
         .from("whatsapp_conversas" as any)
         .select("*")
         .order("created_at", { ascending: false })
-        .limit(500);
+        .limit(2000);
 
       if (error) throw error;
 
@@ -412,7 +412,7 @@ export function WhatsAppSettings() {
                     </button>
 
                     {expandedNumber === phoneNumber && (
-                      <ScrollArea className="max-h-[400px] border-t">
+                      <ScrollArea className="max-h-[600px] border-t">
                         <div className="p-3 space-y-2">
                           {msgs.map((msg) => (
                             <div
