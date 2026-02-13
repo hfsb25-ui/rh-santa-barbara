@@ -133,7 +133,7 @@ async function fetchSystemData(supabase: any) {
     configFeriasRes,
   ] = await Promise.all([
     supabase.from("employees").select("id, nome_completo, cargo, setor, status, data_admissao, data_desligamento, empresa_id, salario, tipo_contrato, telefone, cpf, data_nascimento, sexo").eq("status", "ativo"),
-    supabase.from("employees").select("id, nome_completo, cargo, setor, status, data_admissao, data_desligamento").in("status", ["ativo", "ferias", "em_admissao", "afastado"]),
+    supabase.from("employees").select("id, nome_completo, cargo, setor, status, data_admissao, data_desligamento").in("status", ["ativo", "ferias", "em_admissao", "afastado", "demitido"]),
     supabase.from("setores").select("id, nome"),
     supabase.from("empresas").select("id, nome, cnpj"),
     supabase.from("funcoes").select("id, nome, cbo"),
@@ -142,7 +142,7 @@ async function fetchSystemData(supabase: any) {
     supabase.from("folgas").select("*, employees(nome_completo, setor)").gte("data", threeMonthsAgo),
     supabase.from("faltas").select("*, employees(nome_completo, setor)").gte("data", threeMonthsAgo),
     supabase.from("registros_ponto").select("*, employees(nome_completo, setor)").gte("data", threeMonthsAgo).order("data", { ascending: false }).limit(300),
-    supabase.from("banco_horas").select("*, employees(nome_completo, setor)"),
+    supabase.from("banco_horas").select("*, employees(nome_completo, setor, status)"),
     supabase.from("folha_pagamento").select("*, employees(nome_completo, setor), folha_pagamento_itens(valor, variavel_id, variaveis_folha(nome, tipo))").eq("ano", currentYear).order("mes", { ascending: false }),
     supabase.from("adiantamentos").select("*, employees(nome_completo, setor)").eq("ano", currentYear),
     supabase.from("historico_reajustes_salariais").select("*, employees(nome_completo, setor, cargo)").gte("aplicado_em", threeMonthsAgo),
@@ -232,8 +232,14 @@ async function fetchSystemData(supabase: any) {
 DADOS COMPLETOS DO SISTEMA DE RH (${today}):
 
 === RESUMO GERAL ===
-- Total de funcionários ativos: ${employees.length}
-- Total geral (incluindo férias, admissão, afastados): ${allEmployees.length}
+- Funcionários ATIVOS: ${employees.length}
+- Funcionários em FÉRIAS (status): ${allEmployees.filter((e: any) => e.status === "ferias").length}
+- Funcionários em ADMISSÃO: ${allEmployees.filter((e: any) => e.status === "em_admissao").length}
+- Funcionários AFASTADOS: ${allEmployees.filter((e: any) => e.status === "afastado").length}
+- Funcionários DEMITIDOS/INATIVOS: ${allEmployees.filter((e: any) => e.status === "demitido").length}
+- Total geral: ${allEmployees.length}
+
+=== EMPRESAS E ESTRUTURA ===
 - Empresas: ${empresas.map((e: any) => `${e.nome}${e.cnpj ? ` (CNPJ: ${e.cnpj})` : ""}`).join(", ") || "Nenhuma"}
 - Setores: ${setores.map((s: any) => s.nome).join(", ") || "Nenhum"}
 - Funções cadastradas: ${funcoes.length}
@@ -241,6 +247,9 @@ DADOS COMPLETOS DO SISTEMA DE RH (${today}):
 
 === TODOS OS FUNCIONÁRIOS ATIVOS ===
 ${employees.map((e: any) => `- ${e.nome_completo} | Cargo: ${e.cargo} | Setor: ${e.setor || "N/A"} | Admissão: ${e.data_admissao || "N/A"} | Salário: R$ ${e.salario?.toFixed(2) || "N/A"} | Contrato: ${e.tipo_contrato || "N/A"} | Tel: ${e.telefone || "N/A"} | Nasc: ${e.data_nascimento || "N/A"}`).join("\n") || "Nenhum"}
+
+=== FUNCIONÁRIOS DEMITIDOS/INATIVOS ===
+${allEmployees.filter((e: any) => e.status === "demitido").map((e: any) => `- ${e.nome_completo} | Cargo: ${e.cargo} | Setor: ${e.setor || "N/A"} | Admissão: ${e.data_admissao || "N/A"} | Desligamento: ${e.data_desligamento || "N/A"} | STATUS: DEMITIDO`).join("\n") || "Nenhum"}
 
 === ESCALA DE FÉRIAS ===
 Funcionários de férias AGORA (${feriasAtuais.length}):
@@ -262,10 +271,9 @@ ${faltasNaoJustificadas.slice(0, 20).map((f: any) => `- ${f.employees?.nome_comp
 
 === CONTROLE DE PONTO ===
 Registros recentes: ${registrosPonto.length}
-Banco horas positivo (${bancoHorasPositivo.length}):
-${bancoHorasPositivo.slice(0, 15).map((b: any) => `- ${b.employees?.nome_completo}: +${b.saldo_horas?.toFixed(1)}h`).join("\n") || "Nenhum"}
-Banco horas negativo (${bancoHorasNegativo.length}):
-${bancoHorasNegativo.slice(0, 15).map((b: any) => `- ${b.employees?.nome_completo}: ${b.saldo_horas?.toFixed(1)}h`).join("\n") || "Nenhum"}
+TODOS os saldos de banco de horas (${bancoHoras.length} registros):
+${bancoHoras.map((b: any) => `- ${b.employees?.nome_completo} [${b.employees?.status || "N/A"}]: ${b.saldo_horas > 0 ? "+" : ""}${b.saldo_horas?.toFixed(1)}h | Setor: ${b.employees?.setor || "N/A"}`).join("\n") || "Nenhum"}
+Resumo: ${bancoHorasPositivo.length} com saldo positivo, ${bancoHorasNegativo.length} com saldo negativo, ${bancoHoras.filter((b: any) => b.saldo_horas === 0).length} zerados
 
 === FOLHA DE PAGAMENTO (${currentMonthNum}/${currentYear}) ===
 Folhas processadas: ${folhaMesAtual.length}
