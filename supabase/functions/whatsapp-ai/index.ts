@@ -534,7 +534,151 @@ serve(async (req) => {
       });
     }
 
-    const userMessage = message.conversation || message.extendedTextMessage?.text || "";
+    let userMessage = message.conversation || message.extendedTextMessage?.text || "";
+    
+    // Handle audio messages - transcribe using AI
+    const audioMessage = message.audioMessage;
+    if (audioMessage && !userMessage.trim()) {
+      console.log(`Audio message received from ${phoneNumber}, attempting transcription...`);
+      
+      const LOVABLE_API_KEY_CHECK = Deno.env.get("LOVABLE_API_KEY");
+      const SUPABASE_URL_CHECK = Deno.env.get("SUPABASE_URL");
+      const SUPABASE_SERVICE_ROLE_KEY_CHECK = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+      
+      if (!LOVABLE_API_KEY_CHECK) throw new Error("LOVABLE_API_KEY not configured");
+      
+      const supabaseForAudio = createClient(SUPABASE_URL_CHECK!, SUPABASE_SERVICE_ROLE_KEY_CHECK!);
+      
+      const { data: whatsappConfigAudio } = await supabaseForAudio
+        .from("configuracoes_whatsapp")
+        .select("*")
+        .limit(1)
+        .maybeSingle();
+      
+      if (!whatsappConfigAudio) throw new Error("WhatsApp config not found");
+      
+      const evoUrl = whatsappConfigAudio.evolution_api_url;
+      const evoKey = whatsappConfigAudio.evolution_api_key;
+      const evoInstance = whatsappConfigAudio.evolution_instance_name;
+      
+      try {
+        // Download audio from Evolution API using base64 endpoint
+        const mediaId = key.id;
+        const downloadUrl = `${evoUrl}/chat/getBase64FromMediaMessage/${evoInstance}`;
+        
+        const mediaResponse = await fetch(downloadUrl, {
+          method: "POST",
+          headers: {
+            "apikey": evoKey,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            message: {
+              key: {
+                remoteJid: key.remoteJid,
+                id: key.id,
+              },
+              message: data.message,
+            },
+          }),
+        });
+        
+        if (!mediaResponse.ok) {
+          console.error("Failed to download audio:", mediaResponse.status);
+          throw new Error("Failed to download audio");
+        }
+        
+        const mediaData = await mediaResponse.json();
+        const audioBase64 = mediaData.base64;
+        const mimetype = audioMessage.mimetype || "audio/ogg";
+        
+        if (!audioBase64) {
+          throw new Error("No base64 audio data received");
+        }
+        
+        console.log(`Audio downloaded, size: ${audioBase64.length} chars, mime: ${mimetype}`);
+        
+        // Transcribe using Gemini via Lovable AI
+        const transcribeResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${LOVABLE_API_KEY_CHECK}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            model: "google/gemini-2.5-flash",
+            messages: [
+              {
+                role: "user",
+                content: [
+                  {
+                    type: "text",
+                    text: "Transcreva este áudio em português brasileiro. Retorne APENAS o texto transcrito, sem aspas, sem prefixos, sem explicações. Se não conseguir entender, retorne 'ÁUDIO_INAUDÍVEL'.",
+                  },
+                  {
+                    type: "input_audio",
+                    input_audio: {
+                      data: audioBase64,
+                      format: mimetype.includes("ogg") ? "ogg" : mimetype.includes("mp4") || mimetype.includes("m4a") ? "mp4" : "wav",
+                    },
+                  },
+                ],
+              },
+            ],
+            stream: false,
+          }),
+        });
+        
+        if (!transcribeResponse.ok) {
+          const errText = await transcribeResponse.text();
+          console.error("Transcription failed:", transcribeResponse.status, errText);
+          throw new Error("Transcription failed");
+        }
+        
+        const transcribeData = await transcribeResponse.json();
+        const transcribedText = transcribeData.choices?.[0]?.message?.content?.trim() || "";
+        
+        if (!transcribedText || transcribedText === "ÁUDIO_INAUDÍVEL") {
+          // Send message back saying audio was not understood
+          const supabaseForReply = createClient(SUPABASE_URL_CHECK!, SUPABASE_SERVICE_ROLE_KEY_CHECK!);
+          const { data: configReply } = await supabaseForReply
+            .from("configuracoes_whatsapp")
+            .select("*")
+            .limit(1)
+            .maybeSingle();
+          
+          if (configReply) {
+            await fetch(`${configReply.evolution_api_url}/message/sendText/${configReply.evolution_instance_name}`, {
+              method: "POST",
+              headers: {
+                "apikey": configReply.evolution_api_key,
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                number: phoneNumber,
+                text: "Desculpe, não consegui entender o áudio. Pode tentar novamente ou enviar em texto? 🎤",
+              }),
+            });
+          }
+          
+          return new Response(JSON.stringify({ status: "audio_not_understood" }), {
+            status: 200,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+        
+        console.log(`Audio transcribed: "${transcribedText.substring(0, 100)}"`);
+        userMessage = transcribedText;
+      } catch (audioError) {
+        console.error("Audio processing error:", audioError);
+        // Notify user that audio could not be processed
+        return new Response(JSON.stringify({ status: "audio_error", error: String(audioError) }), {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    }
+    
     if (!userMessage.trim()) {
       return new Response(JSON.stringify({ status: "ignored", reason: "no text" }), {
         status: 200,
