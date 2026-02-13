@@ -115,9 +115,9 @@ async function createAdiantamento(supabase: any, params: any) {
 async function fetchSystemData(supabase: any) {
   const today = new Date().toISOString().split("T")[0];
   const threeMonthsAgo = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
-  const startOfYear = `${currentYear}-01-01`;
   const currentYear = new Date().getFullYear();
   const currentMonthNum = new Date().getMonth() + 1;
+  const startOfYear = `${currentYear}-01-01`;
 
   const [
     employeesRes, allEmployeesRes, setoresRes, empresasRes, funcoesRes,
