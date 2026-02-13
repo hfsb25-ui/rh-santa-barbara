@@ -66,96 +66,32 @@ serve(async (req) => {
     const today = new Date().toISOString().split("T")[0];
     const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().split("T")[0];
 
-    // Fetch today's events
-    const { data: eventos } = await supabase
-      .from("eventos")
-      .select("*")
-      .gte("data_inicio", `${today}T00:00:00`)
-      .lt("data_inicio", `${tomorrow}T00:00:00`)
-      .eq("concluido", false)
-      .order("data_inicio", { ascending: true });
-
-    // Fetch employees on vacation today
-    const { data: feriasHoje } = await supabase
-      .from("ferias")
-      .select("*, employees(nome_completo, setor)")
-      .lte("periodo_gozo_inicio", today)
-      .gte("periodo_gozo_fim", today);
-
-    // Fetch absences today
-    const { data: afastamentosHoje } = await supabase
-      .from("afastamentos")
-      .select("*, employees(nome_completo, setor)")
-      .lte("data_inicio", today)
-      .gte("data_fim", today);
-
-    // Fetch time off today
-    const { data: folgasHoje } = await supabase
-      .from("folgas")
-      .select("*, employees(nome_completo, setor)")
-      .eq("data", today);
-
-    // Fetch birthdays today
-    const { data: allEmployees } = await supabase
-      .from("employees")
-      .select("nome_completo, data_nascimento, setor")
-      .eq("status", "ativo");
-
-    const aniversariantes = (allEmployees || []).filter((e: any) => {
-      if (!e.data_nascimento) return false;
-      const [, m, d] = e.data_nascimento.split("-");
-      const [, tm, td] = today.split("-");
-      return m === tm && d === td;
-    });
-
-    // Fetch pending checklists
-    const { data: checklistsPendentes } = await supabase
-      .from("plano_checklist_funcionario")
-      .select("*, employees(nome_completo)")
-      .in("status", ["pendente", "em_andamento"]);
-
-    // Fetch pending exams
-    const { data: examesPendentes } = await supabase
-      .from("encaminhamentos_medicos")
-      .select("*, employees(nome_completo)")
-      .in("status", ["pendente", "agendado"])
-      .lte("data_agendamento", today);
-
-    // Build context for AI
-    const context = `
-DADOS PARA LEMBRETE MATINAL (${today}):
-
-EVENTOS DE HOJE (${(eventos || []).length}):
-${(eventos || []).map((e: any) => {
-  const hora = e.data_inicio ? new Date(e.data_inicio).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", timeZone: "America/Sao_Paulo" }) : "sem horário";
-  return `- ${hora} - ${e.titulo} ${e.local ? `(${e.local})` : ""} | Tipo: ${e.tipo || "geral"}`;
-}).join("\n") || "Nenhum evento hoje."}
-
-FUNCIONÁRIOS DE FÉRIAS HOJE (${(feriasHoje || []).length}):
-${(feriasHoje || []).map((f: any) => `- ${f.employees?.nome_completo} (${f.employees?.setor || "N/A"}) até ${f.periodo_gozo_fim}`).join("\n") || "Nenhum"}
-
-AFASTADOS HOJE (${(afastamentosHoje || []).length}):
-${(afastamentosHoje || []).map((a: any) => `- ${a.employees?.nome_completo}: ${a.motivo}`).join("\n") || "Nenhum"}
-
-FOLGAS HOJE (${(folgasHoje || []).length}):
-${(folgasHoje || []).map((f: any) => `- ${f.employees?.nome_completo}: ${f.motivo}`).join("\n") || "Nenhum"}
-
-ANIVERSARIANTES DO DIA (${aniversariantes.length}):
-${aniversariantes.map((a: any) => `- ${a.nome_completo} (${a.setor || "N/A"})`).join("\n") || "Nenhum"}
-
-CHECKLISTS PENDENTES (${(checklistsPendentes || []).length}):
-${(checklistsPendentes || []).slice(0, 5).map((c: any) => `- ${c.employees?.nome_completo}: ${c.tipo}`).join("\n") || "Nenhum"}
-
-EXAMES MÉDICOS PENDENTES PARA HOJE (${(examesPendentes || []).length}):
-${(examesPendentes || []).slice(0, 5).map((e: any) => `- ${e.employees?.nome_completo}: ${e.tipo_exame}`).join("\n") || "Nenhum"}
-`;
-
     const results: { number: string; status: string; error?: string }[] = [];
 
-    // Send to each number
+    // Send personalized reminder to each number
     for (const numero of numeros) {
       try {
-        // Get conversation history for this number
+        // Fetch ONLY this person's events (created via WhatsApp by this number)
+        const { data: eventosDoUsuario } = await supabase
+          .from("eventos")
+          .select("*")
+          .eq("whatsapp_phone", numero)
+          .gte("data_inicio", `${today}T00:00:00`)
+          .lt("data_inicio", `${tomorrow}T00:00:00`)
+          .eq("concluido", false)
+          .order("data_inicio", { ascending: true });
+
+        // Also fetch general events (no whatsapp_phone, visible to all)
+        const { data: eventosGerais } = await supabase
+          .from("eventos")
+          .select("*")
+          .is("whatsapp_phone", null)
+          .gte("data_inicio", `${today}T00:00:00`)
+          .lt("data_inicio", `${tomorrow}T00:00:00`)
+          .eq("concluido", false)
+          .order("data_inicio", { ascending: true });
+
+        // Get conversation history for context
         const { data: history } = await supabase
           .from("whatsapp_conversas")
           .select("role, content")
@@ -167,18 +103,34 @@ ${(examesPendentes || []).slice(0, 5).map((e: any) => `- ${e.employees?.nome_com
           ? `\n\nHISTÓRICO RECENTE DE CONVERSAS (para contexto):\n${(history || []).reverse().map((h: any) => `${h.role === "user" ? "Usuário" : "Assistente"}: ${h.content.substring(0, 200)}`).join("\n")}`
           : "";
 
+        // Build personalized context
+        const context = `
+DADOS PARA LEMBRETE MATINAL PERSONALIZADO (${today}):
+DESTINATÁRIO: ${numero}
+
+COMPROMISSOS PESSOAIS DE HOJE (${(eventosDoUsuario || []).length}):
+${(eventosDoUsuario || []).map((e: any) => {
+  const hora = e.data_inicio ? new Date(e.data_inicio).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", timeZone: "America/Sao_Paulo" }) : "sem horário";
+  return `- ${hora} - ${e.titulo} ${e.local ? `(${e.local})` : ""} | Tipo: ${e.tipo || "geral"}`;
+}).join("\n") || "Nenhum compromisso pessoal hoje."}
+
+EVENTOS GERAIS DA EMPRESA (${(eventosGerais || []).length}):
+${(eventosGerais || []).map((e: any) => {
+  const hora = e.data_inicio ? new Date(e.data_inicio).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", timeZone: "America/Sao_Paulo" }) : "sem horário";
+  return `- ${hora} - ${e.titulo} ${e.local ? `(${e.local})` : ""} | Tipo: ${e.tipo || "geral"}`;
+}).join("\n") || "Nenhum evento geral hoje."}
+`;
+
         const systemPrompt = `Você é um assistente de RH inteligente enviando o lembrete matinal diário via WhatsApp.
 
 INSTRUÇÕES:
 - Comece com uma saudação amigável (Bom dia! 🌅)
-- Resuma os compromissos do dia de forma clara e objetiva
-- Destaque eventos importantes, quem está ausente (férias/afastamento/folga)
-- Mencione aniversariantes se houver
-- Alerte sobre pendências importantes
+- Foque PRINCIPALMENTE nos compromissos PESSOAIS desta pessoa
+- Se houver eventos gerais da empresa, mencione-os separadamente como "Eventos Gerais"
 - Use formatação WhatsApp: *negrito*, _itálico_, listas com - ou emojis
 - Seja conciso mas completo
 - Máximo 2000 caracteres
-- Se não houver nada relevante, envie uma mensagem curta positiva
+- Se não houver nenhum compromisso pessoal nem evento geral, envie uma mensagem curta positiva desejando um bom dia
 
 ${historyContext}
 
@@ -194,7 +146,7 @@ ${context}`;
             model: "google/gemini-2.5-flash",
             messages: [
               { role: "system", content: systemPrompt },
-              { role: "user", content: "Gere o lembrete matinal de hoje." },
+              { role: "user", content: "Gere o lembrete matinal personalizado de hoje." },
             ],
             stream: false,
           }),

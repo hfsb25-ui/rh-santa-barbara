@@ -16,7 +16,7 @@ function formatForWhatsApp(text: string): string {
     .trim();
 }
 
-async function createEvento(supabase: any, params: any) {
+async function createEvento(supabase: any, params: any, phoneNumber?: string) {
   const { titulo, data_inicio, data_fim, descricao, local, tipo } = params;
 
   if (!titulo || !data_inicio) {
@@ -26,7 +26,7 @@ async function createEvento(supabase: any, params: any) {
   const finalDataFim = data_fim || data_inicio;
   const finalTipo = tipo || "compromisso";
 
-  const { data, error } = await supabase.from("eventos").insert({
+  const insertData: any = {
     titulo,
     data_inicio,
     data_fim: finalDataFim,
@@ -34,7 +34,14 @@ async function createEvento(supabase: any, params: any) {
     local: local || null,
     tipo: finalTipo,
     cor: "#3B82F6",
-  }).select().single();
+  };
+
+  // Associate event with the WhatsApp phone number that created it
+  if (phoneNumber) {
+    insertData.whatsapp_phone = phoneNumber;
+  }
+
+  const { data, error } = await supabase.from("eventos").insert(insertData).select().single();
 
   if (error) {
     console.error("Error creating evento:", error);
@@ -784,7 +791,9 @@ MEMÓRIA E CONTEXTO CONVERSACIONAL:
 ${conversationSummary}
 
 AÇÕES DISPONÍVEIS:
-1. CRIAR EVENTOS: Você pode criar eventos no calendário quando o usuário pedir para agendar/marcar compromissos.
+1. CRIAR EVENTOS/COMPROMISSOS PESSOAIS: Você pode criar eventos no calendário PESSOAL do usuário quando ele pedir para agendar/marcar compromissos.
+   - Os eventos criados ficam vinculados ao número do WhatsApp do usuário.
+   - Cada pessoa só recebe lembretes dos SEUS PRÓPRIOS compromissos no briefing matinal.
    - Extraia: título, data, hora início, hora fim (se houver), local e tipo.
    - Se não informar horário de fim, assuma 1 hora de duração.
    - Se disser apenas a data sem hora, assuma 09:00.
@@ -844,7 +853,7 @@ ${contextData}`;
 
         if (toolCall.function.name === "criar_evento") {
           console.log("Creating evento with params:", JSON.stringify(params));
-          result = await createEvento(supabase, params);
+          result = await createEvento(supabase, params, phoneNumber);
         } else if (toolCall.function.name === "criar_adiantamento") {
           console.log("Creating adiantamento with params:", JSON.stringify(params));
           result = await createAdiantamento(supabase, params);
