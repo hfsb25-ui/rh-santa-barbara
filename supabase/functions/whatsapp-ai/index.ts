@@ -115,13 +115,14 @@ async function createAdiantamento(supabase: any, params: any) {
 async function fetchSystemData(supabase: any) {
   const today = new Date().toISOString().split("T")[0];
   const threeMonthsAgo = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
+  const startOfYear = `${currentYear}-01-01`;
   const currentYear = new Date().getFullYear();
   const currentMonthNum = new Date().getMonth() + 1;
 
   const [
     employeesRes, allEmployeesRes, setoresRes, empresasRes, funcoesRes,
     feriasRes, feriasPlanejadasRes, folgasRes,
-    faltasRes, registrosPontoRes, bancoHorasRes,
+    faltasRes, registrosPontoRes, bancoHorasRes, configHorasRes,
     folhaPagamentoRes, adiantamentosRes, reajustesSalariaisRes,
     tacsRes, avaliacoesRes, ciclosAvaliacaoRes, criteriosAvaliacaoRes,
     estoqueEpisRes, estoqueUniformesRes, episEntreguesRes, uniformesEntreguesRes,
@@ -141,8 +142,9 @@ async function fetchSystemData(supabase: any) {
     supabase.from("ferias_planejadas").select("*, employees(nome_completo, setor)").gte("periodo_fim", today),
     supabase.from("folgas").select("*, employees(nome_completo, setor)").gte("data", threeMonthsAgo),
     supabase.from("faltas").select("*, employees(nome_completo, setor)").gte("data", threeMonthsAgo),
-    supabase.from("registros_ponto").select("*, employees(nome_completo, setor)").gte("data", threeMonthsAgo).order("data", { ascending: false }).limit(300),
+    supabase.from("registros_ponto").select("employee_id, data, tipo_dia, horas_trabalhadas, hora_entrada, hora_saida, hora_inicio_intervalo, hora_fim_intervalo, employees(nome_completo, setor)").gte("data", startOfYear).order("data", { ascending: false }),
     supabase.from("banco_horas").select("*, employees(nome_completo, setor, status)"),
+    supabase.from("configuracao_horas_trabalho").select("employee_id, horas_diarias_esperadas"),
     supabase.from("folha_pagamento").select("*, employees(nome_completo, setor), folha_pagamento_itens(valor, variavel_id, variaveis_folha(nome, tipo))").eq("ano", currentYear).order("mes", { ascending: false }),
     supabase.from("adiantamentos").select("*, employees(nome_completo, setor)").eq("ano", currentYear),
     supabase.from("historico_reajustes_salariais").select("*, employees(nome_completo, setor, cargo)").gte("aplicado_em", threeMonthsAgo),
@@ -178,6 +180,7 @@ async function fetchSystemData(supabase: any) {
   const faltas = faltasRes.data || [];
   const registrosPonto = registrosPontoRes.data || [];
   const bancoHoras = bancoHorasRes.data || [];
+  const configHoras = configHorasRes.data || [];
   const folhaPagamento = folhaPagamentoRes.data || [];
   const adiantamentos = adiantamentosRes.data || [];
   const reajustesSalariais = reajustesSalariaisRes.data || [];
@@ -199,6 +202,43 @@ async function fetchSystemData(supabase: any) {
   const encaminhamentos = encaminhamentosRes.data || [];
   const afastamentos = afastamentosRes.data || [];
   const checklists = checklistsFuncionarioRes.data || [];
+
+  // Build config map: employee_id -> horas_diarias_esperadas
+  const configMap: Record<string, number> = {};
+  configHoras.forEach((c: any) => { configMap[c.employee_id] = c.horas_diarias_esperadas; });
+
+  // Calculate monthly hour saldos per employee
+  const isDiaNormalLancado = (reg: any) => {
+    return reg.tipo_dia === "normal" && Boolean(
+      reg.hora_entrada || reg.hora_saida || reg.hora_inicio_intervalo || reg.hora_fim_intervalo ||
+      (typeof reg.horas_trabalhadas === "number" && reg.horas_trabalhadas > 0)
+    );
+  };
+
+  const saldosMensais: Record<string, { nome: string; setor: string; meses: Record<number, { esperadas: number; trabalhadas: number; saldo: number }> }> = {};
+  
+  employees.forEach((emp: any) => {
+    const horasDiarias = configMap[emp.id] || 8;
+    const empRegistros = registrosPonto.filter((r: any) => r.employee_id === emp.id);
+    const meses: Record<number, { esperadas: number; trabalhadas: number; saldo: number }> = {};
+    
+    for (let m = 1; m <= currentMonthNum; m++) {
+      const mesStr = String(m).padStart(2, "0");
+      const mesRegistros = empRegistros.filter((r: any) => r.data.startsWith(`${currentYear}-${mesStr}`));
+      const diasNormais = mesRegistros.filter(isDiaNormalLancado).length;
+      const esperadas = diasNormais * horasDiarias;
+      const trabalhadas = mesRegistros.reduce((s: number, r: any) => s + (r.horas_trabalhadas || 0), 0);
+      if (diasNormais > 0 || trabalhadas > 0) {
+        meses[m] = { esperadas, trabalhadas, saldo: trabalhadas - esperadas };
+      }
+    }
+    
+    if (Object.keys(meses).length > 0) {
+      saldosMensais[emp.id] = { nome: emp.nome_completo, setor: emp.setor || "N/A", meses };
+    }
+  });
+
+  const nomeMes = (m: number) => ["", "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"][m];
 
   const feriasAtuais = ferias.filter((f: any) => f.periodo_gozo_inicio <= today && f.periodo_gozo_fim >= today);
   const feriasFuturas = ferias.filter((f: any) => f.periodo_gozo_inicio > today);
@@ -270,10 +310,19 @@ Faltas não justificadas: ${faltasNaoJustificadas.length}
 ${faltasNaoJustificadas.slice(0, 20).map((f: any) => `- ${f.employees?.nome_completo}: ${f.data} ${f.motivo ? `(${f.motivo})` : ""}`).join("\n") || "Nenhuma"}
 
 === CONTROLE DE PONTO ===
-Registros recentes: ${registrosPonto.length}
-TODOS os saldos de banco de horas (${bancoHoras.length} registros):
+Registros de ponto no ano: ${registrosPonto.length}
+TODOS os saldos GERAIS de banco de horas (${bancoHoras.length} registros):
 ${bancoHoras.map((b: any) => `- ${b.employees?.nome_completo} [${b.employees?.status || "N/A"}]: ${b.saldo_horas > 0 ? "+" : ""}${b.saldo_horas?.toFixed(1)}h | Setor: ${b.employees?.setor || "N/A"}`).join("\n") || "Nenhum"}
 Resumo: ${bancoHorasPositivo.length} com saldo positivo, ${bancoHorasNegativo.length} com saldo negativo, ${bancoHoras.filter((b: any) => b.saldo_horas === 0).length} zerados
+
+=== RELATÓRIO DE HORAS MENSAL (${currentYear}) ===
+SALDO DE HORAS POR MÊS POR FUNCIONÁRIO (calculado: horas trabalhadas - horas esperadas):
+${Object.values(saldosMensais).map((emp: any) => {
+  const mesesInfo = Object.entries(emp.meses).map(([m, dados]: [string, any]) => 
+    `  ${nomeMes(parseInt(m))}: Esperadas=${dados.esperadas.toFixed(1)}h | Trabalhadas=${dados.trabalhadas.toFixed(1)}h | Saldo=${dados.saldo >= 0 ? "+" : ""}${dados.saldo.toFixed(1)}h`
+  ).join("\n");
+  return `- ${emp.nome} (${emp.setor}):\n${mesesInfo}`;
+}).join("\n") || "Nenhum registro"}
 
 === FOLHA DE PAGAMENTO (${currentMonthNum}/${currentYear}) ===
 Folhas processadas: ${folhaMesAtual.length}
