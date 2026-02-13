@@ -17,7 +17,7 @@ function formatForWhatsApp(text: string): string {
 }
 
 async function createEvento(supabase: any, params: any, phoneNumber?: string) {
-  const { titulo, data_inicio, data_fim, descricao, local, tipo } = params;
+  const { titulo, data_inicio, data_fim, descricao, local, tipo, lembrete_minutos } = params;
 
   if (!titulo || !data_inicio) {
     return { success: false, error: "Título e data/hora de início são obrigatórios." };
@@ -34,6 +34,8 @@ async function createEvento(supabase: any, params: any, phoneNumber?: string) {
     local: local || null,
     tipo: finalTipo,
     cor: "#3B82F6",
+    lembrete_minutos: lembrete_minutos || 30,
+    lembrete_enviado: false,
   };
 
   // Associate event with the WhatsApp phone number that created it
@@ -455,6 +457,10 @@ const toolDefinitions = [
             description: "Tipo do evento: reuniao, treinamento, entrevista, compromisso, geral",
             enum: ["reuniao", "treinamento", "entrevista", "compromisso", "geral"],
           },
+          lembrete_minutos: {
+            type: "number",
+            description: "Quantos minutos antes do evento o lembrete deve ser enviado via WhatsApp. Exemplo: 10 para 10 minutos antes, 30 para 30 minutos antes, 60 para 1 hora antes. Padrão: 30 minutos.",
+          },
         },
         required: ["titulo", "data_inicio"],
       },
@@ -794,11 +800,18 @@ AÇÕES DISPONÍVEIS:
 1. CRIAR EVENTOS/COMPROMISSOS PESSOAIS: Você pode criar eventos no calendário PESSOAL do usuário quando ele pedir para agendar/marcar compromissos.
    - Os eventos criados ficam vinculados ao número do WhatsApp do usuário.
    - Cada pessoa só recebe lembretes dos SEUS PRÓPRIOS compromissos no briefing matinal.
-   - Extraia: título, data, hora início, hora fim (se houver), local e tipo.
+   - Extraia: título, data, hora início, hora fim (se houver), local, tipo e tempo de lembrete.
    - Se não informar horário de fim, assuma 1 hora de duração.
    - Se disser apenas a data sem hora, assuma 09:00.
    - Use o tool "criar_evento".
    - TIPOS: reuniao, treinamento, entrevista, compromisso, geral
+   - LEMBRETES PERSONALIZADOS: O usuário pode pedir para ser lembrado X minutos/horas antes do evento.
+     - Exemplos: "me lembre 10 minutos antes" → lembrete_minutos: 10
+     - "me avise 1 hora antes" → lembrete_minutos: 60
+     - "lembre 30 min antes" → lembrete_minutos: 30
+     - Se o usuário não especificar, use 30 minutos como padrão.
+     - O lembrete será enviado automaticamente via WhatsApp no horário exato solicitado.
+     - SEMPRE confirme ao usuário o horário exato que o lembrete será enviado (ex: "Vou te lembrar às 11:50 ⏰")
 
 2. LANÇAR ADIANTAMENTOS: Você pode registrar adiantamentos salariais quando o usuário pedir.
    - Extraia: nome do funcionário, valor e forma de pagamento.
