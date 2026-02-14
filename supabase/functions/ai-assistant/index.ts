@@ -322,19 +322,32 @@ serve(async (req) => {
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
     const supabase = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!);
 
-    // Determine AI provider: Ollama (VPS) or Google Gemini (fallback)
+    // Determine AI provider: OpenAI, Ollama (VPS), or Google Gemini (fallback)
     const OLLAMA_BASE_URL = Deno.env.get("OLLAMA_BASE_URL");
+    const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
     let GOOGLE_GEMINI_API_KEY = Deno.env.get("GOOGLE_GEMINI_API_KEY");
-    const { data: iaConfig } = await supabase.from("configuracoes_ia").select("google_gemini_api_key, modelo").limit(1).maybeSingle();
+    const { data: iaConfig } = await supabase.from("configuracoes_ia").select("google_gemini_api_key, openai_api_key, modelo, provedor").limit(1).maybeSingle();
     if (iaConfig?.google_gemini_api_key) {
       GOOGLE_GEMINI_API_KEY = iaConfig.google_gemini_api_key;
     }
-    const aiModel = iaConfig?.modelo || (OLLAMA_BASE_URL ? "llama3.1" : "gemini-2.0-flash");
+    const openaiKey = iaConfig?.openai_api_key || OPENAI_API_KEY;
+    const provedor = iaConfig?.provedor || (openaiKey ? "openai" : OLLAMA_BASE_URL ? "ollama" : "gemini");
+    
+    const defaultModels: Record<string, string> = {
+      openai: "gpt-4o-mini",
+      ollama: "llama3.1",
+      gemini: "gemini-2.0-flash",
+    };
+    const aiModel = iaConfig?.modelo || defaultModels[provedor] || "gemini-2.0-flash";
 
-    const useOllama = !!OLLAMA_BASE_URL;
-
-    if (!useOllama && !GOOGLE_GEMINI_API_KEY) {
-      throw new Error("Nenhum provedor de IA configurado. Configure OLLAMA_BASE_URL ou GOOGLE_GEMINI_API_KEY.");
+    if (provedor === "openai" && !openaiKey) {
+      throw new Error("Chave da OpenAI não configurada.");
+    }
+    if (provedor === "gemini" && !GOOGLE_GEMINI_API_KEY) {
+      throw new Error("Chave do Google Gemini não configurada.");
+    }
+    if (provedor === "ollama" && !OLLAMA_BASE_URL) {
+      throw new Error("OLLAMA_BASE_URL não configurada.");
     }
 
     const contextData = await fetchSystemData(supabase);
@@ -375,9 +388,24 @@ ${contextData}`;
 
     let response: Response;
 
-    if (useOllama) {
+    if (provedor === "openai") {
+      // OpenAI API
+      console.log(`Using OpenAI with model ${aiModel}`);
+      response = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${openaiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: aiModel,
+          messages: aiMessages,
+          stream: true,
+        }),
+      });
+    } else if (provedor === "ollama") {
       // Ollama on VPS - OpenAI-compatible API
-      const ollamaUrl = `${OLLAMA_BASE_URL.replace(/\/$/, "")}/v1/chat/completions`;
+      const ollamaUrl = `${OLLAMA_BASE_URL!.replace(/\/$/, "")}/v1/chat/completions`;
       console.log(`Using Ollama at ${ollamaUrl} with model ${aiModel}`);
       
       response = await fetch(ollamaUrl, {
@@ -390,7 +418,7 @@ ${contextData}`;
         }),
       });
     } else {
-      // Google Gemini fallback with retry
+      // Google Gemini with retry
       const aiPayload = {
         model: aiModel,
         messages: aiMessages,
