@@ -350,7 +350,19 @@ serve(async (req) => {
       throw new Error("OLLAMA_BASE_URL não configurada.");
     }
 
-    const contextData = await fetchSystemData(supabase);
+    const { data: memorias } = await supabase
+      .from("cerebrum_memorias")
+      .select("conteudo, categoria, nome_professor, created_at")
+      .eq("ativo", true)
+      .order("created_at", { ascending: false })
+      .limit(100);
+
+    const [contextData] = await Promise.all([fetchSystemData(supabase)]);
+
+    const memoriasText = (memorias && memorias.length > 0)
+      ? "\n\n=== MEMÓRIA PERMANENTE DO CÉREBRUM (aprendizados anteriores) ===\n" +
+        memorias.map((m: any) => `- [${m.categoria}] ${m.conteudo}${m.nome_professor ? ` (ensinado por ${m.nome_professor})` : ""}`).join("\n")
+      : "";
 
     const systemPrompt = `Você é o CÉREBRUM — a inteligência estratégica do RH do Hotel Fazenda Santa Bárbara. Você tem acesso COMPLETO a todos os dados do sistema de gestão de RH e pode responder perguntas sobre qualquer aspecto do sistema.
 
@@ -377,6 +389,7 @@ INSTRUÇÕES CRÍTICAS DE ECONOMIA DE TOKENS:
 - Se não tiver informação suficiente, diga brevemente que não há dados.
 - NÃO repita ou resuma respostas anteriores. Cada resposta é independente.
 - IMPORTANTE SOBRE FÉRIAS: Existem DUAS fontes: 1) Férias CONFIRMADAS (tabela ferias) e 2) Férias PLANEJADAS (tabela ferias_planejadas). Consulte ambas quando perguntarem sobre férias.
+${memoriasText}
 
 ${contextData}`;
 

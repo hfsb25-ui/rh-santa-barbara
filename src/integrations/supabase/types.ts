@@ -444,6 +444,42 @@ export type Database = {
           },
         ]
       }
+      cerebrum_memorias: {
+        Row: {
+          ativo: boolean
+          categoria: string
+          conteudo: string
+          contexto: string | null
+          created_at: string
+          ensinado_por: string | null
+          id: string
+          nome_professor: string | null
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean
+          categoria?: string
+          conteudo: string
+          contexto?: string | null
+          created_at?: string
+          ensinado_por?: string | null
+          id?: string
+          nome_professor?: string | null
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean
+          categoria?: string
+          conteudo?: string
+          contexto?: string | null
+          created_at?: string
+          ensinado_por?: string | null
+          id?: string
+          nome_professor?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       certificados_liberados: {
         Row: {
           created_at: string

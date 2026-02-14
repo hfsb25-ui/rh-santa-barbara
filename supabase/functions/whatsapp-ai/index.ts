@@ -423,6 +423,35 @@ ${checklistsPendentes.slice(0, 15).map((c: any) => {
 `;
 }
 
+async function salvarMemoria(supabase: any, params: any, phoneNumber: string, nomeProfessor?: string) {
+  const { conteudo, categoria, contexto } = params;
+  if (!conteudo) return { success: false, error: "Conteúdo da memória é obrigatório." };
+
+  const { data, error } = await supabase.from("cerebrum_memorias").insert({
+    conteudo,
+    categoria: categoria || "geral",
+    contexto: contexto || null,
+    ensinado_por: phoneNumber,
+    nome_professor: nomeProfessor || null,
+  }).select().single();
+
+  if (error) {
+    console.error("Error saving memoria:", error);
+    return { success: false, error: error.message };
+  }
+  return { success: true, memoria: data };
+}
+
+async function fetchMemorias(supabase: any) {
+  const { data } = await supabase
+    .from("cerebrum_memorias")
+    .select("conteudo, categoria, nome_professor, created_at")
+    .eq("ativo", true)
+    .order("created_at", { ascending: false })
+    .limit(100);
+  return data || [];
+}
+
 const toolDefinitions = [
   {
     type: "function",
@@ -489,6 +518,32 @@ const toolDefinitions = [
           },
         },
         required: ["nome_funcionario", "valor"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "salvar_memoria",
+      description: "Salva um aprendizado permanente na memória do Cérebrum. Use SEMPRE que o usuário ensinar algo novo, corrigir uma informação, informar uma preferência, regra do hotel, padrão do RH, ou qualquer fato que deva ser lembrado permanentemente. Exemplos: 'lembre que o Jaime prefere relatórios semanais', 'a regra do hotel é X', 'quando eu perguntar Y, responda Z', 'o apelido do fulano é X', correções de informações incorretas.",
+      parameters: {
+        type: "object",
+        properties: {
+          conteudo: {
+            type: "string",
+            description: "O conhecimento/fato/regra/preferência a ser memorizado permanentemente. Escreva de forma clara e objetiva.",
+          },
+          categoria: {
+            type: "string",
+            description: "Categoria do aprendizado",
+            enum: ["preferencia", "correcao", "padrao_rh", "fato", "regra", "geral"],
+          },
+          contexto: {
+            type: "string",
+            description: "Contexto em que o aprendizado foi ensinado (ex: 'Usuário corrigiu informação sobre horário de reuniões')",
+          },
+        },
+        required: ["conteudo"],
       },
     },
   },
@@ -782,7 +837,15 @@ serve(async (req) => {
       });
     }
 
-    const contextData = await fetchSystemData(supabase);
+    const [contextData, memorias] = await Promise.all([
+      fetchSystemData(supabase),
+      fetchMemorias(supabase),
+    ]);
+
+    const memoriasText = memorias.length > 0
+      ? "\n\n=== MEMÓRIA PERMANENTE DO CÉREBRUM (aprendizados anteriores) ===\n" +
+        memorias.map((m: any) => `- [${m.categoria}] ${m.conteudo}${m.nome_professor ? ` (ensinado por ${m.nome_professor})` : ""}`).join("\n")
+      : "";
 
     // Fetch conversation history for this phone number (last 20 messages)
     const { data: conversationHistory } = await supabase
@@ -867,6 +930,13 @@ AÇÕES DISPONÍVEIS:
    - Use o tool "criar_adiantamento".
    - Sempre confirme o adiantamento criado com: nome, valor, forma de pagamento e mês/ano.
 
+3. SALVAR MEMÓRIA/APRENDIZADO: Quando o usuário ENSINAR algo, CORRIGIR uma informação, pedir para LEMBRAR/MEMORIZAR algo, ou informar uma REGRA/PREFERÊNCIA/PADRÃO, use o tool "salvar_memoria" IMEDIATAMENTE.
+   - Exemplos de quando salvar: "lembre que...", "anota que...", "a regra aqui é...", "quando eu perguntar X, responda Y", "o apelido do fulano é...", "não é assim, é assim...", correções em geral.
+   - Categorias: preferencia, correcao, padrao_rh, fato, regra, geral
+   - Escreva o conteúdo de forma clara e permanente, como se fosse uma anotação para si mesmo.
+   - Depois de salvar, confirme ao usuário: "Memorizado! ✅ Vou lembrar disso daqui em diante."
+${memoriasText}
+
 ${contextData}`;
 
     const messages: any[] = [
@@ -922,6 +992,12 @@ ${contextData}`;
         } else if (toolCall.function.name === "criar_adiantamento") {
           console.log("Creating adiantamento with params:", JSON.stringify(params));
           result = await createAdiantamento(supabase, params);
+        } else if (toolCall.function.name === "salvar_memoria") {
+          console.log("Saving memoria with params:", JSON.stringify(params));
+          // Extract professor name from conversation history
+          const lastUserName = rawHistory.find((h: any) => h.role === "assistant" && h.content.includes("Com quem falo"));
+          const professorName = params.nome_professor || null;
+          result = await salvarMemoria(supabase, params, phoneNumber, professorName);
         } else {
           result = { success: false, error: `Tool ${toolCall.function.name} not found` };
         }
