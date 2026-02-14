@@ -618,34 +618,29 @@ serve(async (req) => {
         
         console.log(`Audio downloaded, size: ${audioBase64.length} chars, mime: ${mimetype}`);
         
-        // Transcribe using Gemini via Lovable AI
-        const transcribeResponse = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
+        // Transcribe using Gemini native API (supports ogg audio)
+        const geminiNativeUrl = `https://generativelanguage.googleapis.com/v1beta/models/${aiModelAudio}:generateContent?key=${GOOGLE_GEMINI_API_KEY_CHECK}`;
+        const transcribeResponse = await fetch(geminiNativeUrl, {
           method: "POST",
           headers: {
-            Authorization: `Bearer ${GOOGLE_GEMINI_API_KEY_CHECK}`,
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            model: aiModelAudio,
-            messages: [
+            contents: [
               {
-                role: "user",
-                content: [
+                parts: [
                   {
-                    type: "text",
                     text: "Transcreva este áudio em português brasileiro. Retorne APENAS o texto transcrito, sem aspas, sem prefixos, sem explicações. Se não conseguir entender, retorne 'ÁUDIO_INAUDÍVEL'.",
                   },
                   {
-                    type: "input_audio",
-                    input_audio: {
+                    inline_data: {
+                      mime_type: mimetype.split(";")[0].trim(),
                       data: audioBase64,
-                      format: mimetype.includes("ogg") ? "ogg" : mimetype.includes("mp4") || mimetype.includes("m4a") ? "mp4" : "wav",
                     },
                   },
                 ],
               },
             ],
-            stream: false,
           }),
         });
         
@@ -656,7 +651,7 @@ serve(async (req) => {
         }
         
         const transcribeData = await transcribeResponse.json();
-        const transcribedText = transcribeData.choices?.[0]?.message?.content?.trim() || "";
+        const transcribedText = transcribeData.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || "";
         
         if (!transcribedText || transcribedText === "ÁUDIO_INAUDÍVEL") {
           // Send message back saying audio was not understood
