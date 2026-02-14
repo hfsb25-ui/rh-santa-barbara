@@ -364,38 +364,48 @@ INSTRUÇÕES:
 
 ${contextData}`;
 
-    const response = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${GOOGLE_GEMINI_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: aiModel,
-        messages: [
-          { role: "system", content: systemPrompt },
-          ...(messages || []),
-          ...(userMessage ? [{ role: "user", content: userMessage }] : [])
-        ],
-        stream: true,
-      }),
-    });
+    const aiPayload = {
+      model: aiModel,
+      messages: [
+        { role: "system", content: systemPrompt },
+        ...(messages || []),
+        ...(userMessage ? [{ role: "user", content: userMessage }] : [])
+      ],
+      stream: true,
+    };
 
-    if (!response.ok) {
-      if (response.status === 429) {
-        return new Response(JSON.stringify({ error: "Limite de requisições excedido. Tente novamente em alguns segundos." }), {
+    // Retry logic for Google Gemini free tier rate limits
+    let response: Response | null = null;
+    const maxRetries = 3;
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      response = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${GOOGLE_GEMINI_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(aiPayload),
+      });
+
+      if (response.status === 429 && attempt < maxRetries) {
+        const waitMs = (attempt + 1) * 2000; // 2s, 4s, 6s
+        console.log(`Rate limited (429), retrying in ${waitMs}ms (attempt ${attempt + 1}/${maxRetries})`);
+        await new Promise(r => setTimeout(r, waitMs));
+        continue;
+      }
+      break;
+    }
+
+    if (!response || !response.ok) {
+      const status = response?.status || 500;
+      if (status === 429) {
+        return new Response(JSON.stringify({ error: "Limite de requisições excedido mesmo após tentativas. Aguarde 1 minuto e tente novamente." }), {
           status: 429,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      if (response.status === 402) {
-        return new Response(JSON.stringify({ error: "Créditos de IA esgotados. Adicione mais créditos no Lovable." }), {
-          status: 402,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      const errorText = await response.text();
-      console.error("AI gateway error:", response.status, errorText);
+      const errorText = await response?.text().catch(() => "Unknown error");
+      console.error("AI gateway error:", status, errorText);
       return new Response(JSON.stringify({ error: "Erro ao processar sua pergunta" }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
