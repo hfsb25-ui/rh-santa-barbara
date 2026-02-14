@@ -328,9 +328,15 @@ serve(async (req) => {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
-    // Check DB for model preference
+    // Check DB for model preference, map old model names to valid gateway models
     const { data: iaConfig } = await supabase.from("configuracoes_ia").select("modelo").limit(1).maybeSingle();
-    const aiModel = iaConfig?.modelo || "google/gemini-2.5-flash";
+    const modelMap: Record<string, string> = {
+      "gemini-2.0-flash": "google/gemini-2.5-flash",
+      "gemini-2.5-flash": "google/gemini-2.5-flash",
+      "gemini-2.5-pro": "google/gemini-2.5-pro",
+    };
+    const rawModel = iaConfig?.modelo || "google/gemini-2.5-flash";
+    const aiModel = modelMap[rawModel] || (rawModel.startsWith("google/") || rawModel.startsWith("openai/") ? rawModel : "google/gemini-2.5-flash");
 
     const contextData = await fetchSystemData(supabase);
 
