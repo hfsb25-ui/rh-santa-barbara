@@ -554,13 +554,19 @@ serve(async (req) => {
     if (audioMessage && !userMessage.trim()) {
       console.log(`Audio message received from ${phoneNumber}, attempting transcription...`);
       
-      const GOOGLE_GEMINI_API_KEY_CHECK = Deno.env.get("GOOGLE_GEMINI_API_KEY");
       const SUPABASE_URL_CHECK = Deno.env.get("SUPABASE_URL");
       const SUPABASE_SERVICE_ROLE_KEY_CHECK = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+      const supabaseForAudio = createClient(SUPABASE_URL_CHECK!, SUPABASE_SERVICE_ROLE_KEY_CHECK!);
+
+      // Try to get API key from DB first, fallback to env
+      let GOOGLE_GEMINI_API_KEY_CHECK = Deno.env.get("GOOGLE_GEMINI_API_KEY");
+      const { data: iaConfigAudio } = await supabaseForAudio.from("configuracoes_ia").select("google_gemini_api_key, modelo").limit(1).maybeSingle();
+      if (iaConfigAudio?.google_gemini_api_key) {
+        GOOGLE_GEMINI_API_KEY_CHECK = iaConfigAudio.google_gemini_api_key;
+      }
+      const aiModelAudio = iaConfigAudio?.modelo || "gemini-2.0-flash";
       
       if (!GOOGLE_GEMINI_API_KEY_CHECK) throw new Error("GOOGLE_GEMINI_API_KEY not configured");
-      
-      const supabaseForAudio = createClient(SUPABASE_URL_CHECK!, SUPABASE_SERVICE_ROLE_KEY_CHECK!);
       
       const { data: whatsappConfigAudio } = await supabaseForAudio
         .from("configuracoes_whatsapp")
@@ -619,7 +625,7 @@ serve(async (req) => {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            model: "gemini-2.0-flash",
+            model: aiModelAudio,
             messages: [
               {
                 role: "user",
@@ -701,13 +707,19 @@ serve(async (req) => {
 
     console.log(`Processing message from ${phoneNumber}: ${userMessage.substring(0, 100)}`);
 
-    const GOOGLE_GEMINI_API_KEY = Deno.env.get("GOOGLE_GEMINI_API_KEY");
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    const supabase = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!);
+
+    // Try to get API key from DB first, fallback to env
+    let GOOGLE_GEMINI_API_KEY = Deno.env.get("GOOGLE_GEMINI_API_KEY");
+    const { data: iaConfigMain } = await supabase.from("configuracoes_ia").select("google_gemini_api_key, modelo").limit(1).maybeSingle();
+    if (iaConfigMain?.google_gemini_api_key) {
+      GOOGLE_GEMINI_API_KEY = iaConfigMain.google_gemini_api_key;
+    }
+    const aiModel = iaConfigMain?.modelo || "gemini-2.0-flash";
 
     if (!GOOGLE_GEMINI_API_KEY) throw new Error("GOOGLE_GEMINI_API_KEY not configured");
-
-    const supabase = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!);
 
     const { data: whatsappConfig } = await supabase
       .from("configuracoes_whatsapp")
@@ -837,7 +849,7 @@ ${contextData}`;
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "gemini-2.0-flash",
+        model: aiModel,
         messages,
         tools: toolDefinitions,
         stream: false,
@@ -890,7 +902,7 @@ ${contextData}`;
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: "gemini-2.0-flash",
+          model: aiModel,
           messages,
           stream: false,
         }),

@@ -8,6 +8,7 @@ import { DashboardVisibilitySettings } from "@/components/settings/DashboardVisi
 import { ExperienceAlertSettings } from "@/components/settings/ExperienceAlertSettings";
 import { DatabaseBackupSettings } from "@/components/settings/DatabaseBackupSettings";
 import { WhatsAppSettings } from "@/components/settings/WhatsAppSettings";
+import { AISettings } from "@/components/settings/AISettings";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const Settings = () => {
@@ -56,6 +57,7 @@ const Settings = () => {
               <TabsTrigger value="alertas">Alertas</TabsTrigger>
               <TabsTrigger value="backup">Backup</TabsTrigger>
               <TabsTrigger value="whatsapp">WhatsApp</TabsTrigger>
+              <TabsTrigger value="ia">Inteligência Artificial</TabsTrigger>
             </TabsList>
             
             <TabsContent value="site">
@@ -76,6 +78,10 @@ const Settings = () => {
 
             <TabsContent value="whatsapp">
               <WhatsAppSettings />
+            </TabsContent>
+
+            <TabsContent value="ia">
+              <AISettings />
             </TabsContent>
           </Tabs>
         </div>
