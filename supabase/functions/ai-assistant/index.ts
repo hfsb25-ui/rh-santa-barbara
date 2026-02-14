@@ -322,16 +322,19 @@ serve(async (req) => {
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
     const supabase = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!);
 
-    // Use Google Gemini API directly (free tier)
+    // Determine AI provider: Ollama (VPS) or Google Gemini (fallback)
+    const OLLAMA_BASE_URL = Deno.env.get("OLLAMA_BASE_URL");
     let GOOGLE_GEMINI_API_KEY = Deno.env.get("GOOGLE_GEMINI_API_KEY");
     const { data: iaConfig } = await supabase.from("configuracoes_ia").select("google_gemini_api_key, modelo").limit(1).maybeSingle();
     if (iaConfig?.google_gemini_api_key) {
       GOOGLE_GEMINI_API_KEY = iaConfig.google_gemini_api_key;
     }
-    const aiModel = iaConfig?.modelo || "gemini-2.0-flash";
+    const aiModel = iaConfig?.modelo || (OLLAMA_BASE_URL ? "llama3.1" : "gemini-2.0-flash");
 
-    if (!GOOGLE_GEMINI_API_KEY) {
-      throw new Error("GOOGLE_GEMINI_API_KEY is not configured");
+    const useOllama = !!OLLAMA_BASE_URL;
+
+    if (!useOllama && !GOOGLE_GEMINI_API_KEY) {
+      throw new Error("Nenhum provedor de IA configurado. Configure OLLAMA_BASE_URL ou GOOGLE_GEMINI_API_KEY.");
     }
 
     const contextData = await fetchSystemData(supabase);
@@ -364,49 +367,70 @@ INSTRUÇÕES:
 
 ${contextData}`;
 
-    const aiPayload = {
-      model: aiModel,
-      messages: [
-        { role: "system", content: systemPrompt },
-        ...(messages || []),
-        ...(userMessage ? [{ role: "user", content: userMessage }] : [])
-      ],
-      stream: true,
-    };
+    const aiMessages = [
+      { role: "system", content: systemPrompt },
+      ...(messages || []),
+      ...(userMessage ? [{ role: "user", content: userMessage }] : [])
+    ];
 
-    // Retry logic for Google Gemini free tier rate limits
-    let response: Response | null = null;
-    const maxRetries = 3;
-    for (let attempt = 0; attempt <= maxRetries; attempt++) {
-      response = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
+    let response: Response;
+
+    if (useOllama) {
+      // Ollama on VPS - OpenAI-compatible API
+      const ollamaUrl = `${OLLAMA_BASE_URL.replace(/\/$/, "")}/v1/chat/completions`;
+      console.log(`Using Ollama at ${ollamaUrl} with model ${aiModel}`);
+      
+      response = await fetch(ollamaUrl, {
         method: "POST",
-        headers: {
-          Authorization: `Bearer ${GOOGLE_GEMINI_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(aiPayload),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: aiModel,
+          messages: aiMessages,
+          stream: true,
+        }),
       });
+    } else {
+      // Google Gemini fallback with retry
+      const aiPayload = {
+        model: aiModel,
+        messages: aiMessages,
+        stream: true,
+      };
 
-      if (response.status === 429 && attempt < maxRetries) {
-        const waitMs = (attempt + 1) * 2000; // 2s, 4s, 6s
-        console.log(`Rate limited (429), retrying in ${waitMs}ms (attempt ${attempt + 1}/${maxRetries})`);
-        await new Promise(r => setTimeout(r, waitMs));
-        continue;
+      let lastResponse: Response | null = null;
+      const maxRetries = 3;
+      for (let attempt = 0; attempt <= maxRetries; attempt++) {
+        lastResponse = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${GOOGLE_GEMINI_API_KEY}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(aiPayload),
+        });
+
+        if (lastResponse.status === 429 && attempt < maxRetries) {
+          const waitMs = (attempt + 1) * 2000;
+          console.log(`Rate limited (429), retrying in ${waitMs}ms (attempt ${attempt + 1}/${maxRetries})`);
+          await new Promise(r => setTimeout(r, waitMs));
+          continue;
+        }
+        break;
       }
-      break;
+      response = lastResponse!;
     }
 
-    if (!response || !response.ok) {
-      const status = response?.status || 500;
+    if (!response.ok) {
+      const status = response.status;
       if (status === 429) {
-        return new Response(JSON.stringify({ error: "Limite de requisições excedido mesmo após tentativas. Aguarde 1 minuto e tente novamente." }), {
+        return new Response(JSON.stringify({ error: "Limite de requisições excedido. Aguarde e tente novamente." }), {
           status: 429,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      const errorText = await response?.text().catch(() => "Unknown error");
-      console.error("AI gateway error:", status, errorText);
-      return new Response(JSON.stringify({ error: "Erro ao processar sua pergunta" }), {
+      const errorText = await response.text().catch(() => "Unknown error");
+      console.error("AI error:", status, errorText);
+      return new Response(JSON.stringify({ error: `Erro ao processar sua pergunta (${useOllama ? "Ollama" : "Gemini"}: ${status})` }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
