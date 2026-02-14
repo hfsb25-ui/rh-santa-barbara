@@ -322,21 +322,17 @@ serve(async (req) => {
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
     const supabase = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!);
 
-    // Use Lovable AI Gateway
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) {
-      throw new Error("LOVABLE_API_KEY is not configured");
+    // Use Google Gemini API directly (free tier)
+    let GOOGLE_GEMINI_API_KEY = Deno.env.get("GOOGLE_GEMINI_API_KEY");
+    const { data: iaConfig } = await supabase.from("configuracoes_ia").select("google_gemini_api_key, modelo").limit(1).maybeSingle();
+    if (iaConfig?.google_gemini_api_key) {
+      GOOGLE_GEMINI_API_KEY = iaConfig.google_gemini_api_key;
     }
+    const aiModel = iaConfig?.modelo || "gemini-2.0-flash";
 
-    // Check DB for model preference, map old model names to valid gateway models
-    const { data: iaConfig } = await supabase.from("configuracoes_ia").select("modelo").limit(1).maybeSingle();
-    const modelMap: Record<string, string> = {
-      "gemini-2.0-flash": "google/gemini-2.5-flash",
-      "gemini-2.5-flash": "google/gemini-2.5-flash",
-      "gemini-2.5-pro": "google/gemini-2.5-pro",
-    };
-    const rawModel = iaConfig?.modelo || "google/gemini-2.5-flash";
-    const aiModel = modelMap[rawModel] || (rawModel.startsWith("google/") || rawModel.startsWith("openai/") ? rawModel : "google/gemini-2.5-flash");
+    if (!GOOGLE_GEMINI_API_KEY) {
+      throw new Error("GOOGLE_GEMINI_API_KEY is not configured");
+    }
 
     const contextData = await fetchSystemData(supabase);
 
@@ -368,10 +364,10 @@ INSTRUÇÕES:
 
 ${contextData}`;
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const response = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        Authorization: `Bearer ${GOOGLE_GEMINI_API_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
