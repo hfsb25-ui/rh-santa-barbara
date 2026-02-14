@@ -558,16 +558,13 @@ serve(async (req) => {
       const SUPABASE_SERVICE_ROLE_KEY_CHECK = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
       const supabaseForAudio = createClient(SUPABASE_URL_CHECK!, SUPABASE_SERVICE_ROLE_KEY_CHECK!);
 
-      // Try to get API key from DB first, fallback to env
+      // Try to get API keys from DB first, fallback to env
       let GOOGLE_GEMINI_API_KEY_CHECK = Deno.env.get("GOOGLE_GEMINI_API_KEY");
-      const { data: iaConfigAudio } = await supabaseForAudio.from("configuracoes_ia").select("google_gemini_api_key, modelo, provedor").limit(1).maybeSingle();
-      if (iaConfigAudio?.google_gemini_api_key) {
-        GOOGLE_GEMINI_API_KEY_CHECK = iaConfigAudio.google_gemini_api_key;
-      }
-      // Audio transcription always uses Gemini (best for multimodal)
-      const aiModelAudio = (iaConfigAudio?.provedor === "openai") ? "gemini-2.0-flash" : (iaConfigAudio?.modelo || "gemini-2.0-flash");
-      
-      if (!GOOGLE_GEMINI_API_KEY_CHECK) throw new Error("GOOGLE_GEMINI_API_KEY not configured for audio transcription");
+      let OPENAI_API_KEY_CHECK = Deno.env.get("OPENAI_API_KEY");
+      const { data: iaConfigAudio } = await supabaseForAudio.from("configuracoes_ia").select("google_gemini_api_key, openai_api_key, modelo, provedor").limit(1).maybeSingle();
+      if (iaConfigAudio?.google_gemini_api_key) GOOGLE_GEMINI_API_KEY_CHECK = iaConfigAudio.google_gemini_api_key;
+      if (iaConfigAudio?.openai_api_key) OPENAI_API_KEY_CHECK = iaConfigAudio.openai_api_key;
+      const audioProvedor = iaConfigAudio?.provedor || "gemini";
       
       const { data: whatsappConfigAudio } = await supabaseForAudio
         .from("configuracoes_whatsapp")
@@ -618,40 +615,76 @@ serve(async (req) => {
         
         console.log(`Audio downloaded, size: ${audioBase64.length} chars, mime: ${mimetype}`);
         
-        // Transcribe using Gemini native API (supports ogg audio)
-        const geminiNativeUrl = `https://generativelanguage.googleapis.com/v1beta/models/${aiModelAudio}:generateContent?key=${GOOGLE_GEMINI_API_KEY_CHECK}`;
-        const transcribeResponse = await fetch(geminiNativeUrl, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            contents: [
-              {
+        let transcribedText = "";
+        
+        // Use OpenAI Whisper when provider is OpenAI (better for audio transcription)
+        if (audioProvedor === "openai" && OPENAI_API_KEY_CHECK) {
+          console.log("Transcribing with OpenAI Whisper...");
+          
+          // Convert base64 to binary
+          const binaryString = atob(audioBase64);
+          const bytes = new Uint8Array(binaryString.length);
+          for (let i = 0; i < binaryString.length; i++) {
+            bytes[i] = binaryString.charCodeAt(i);
+          }
+          
+          const ext = mimetype.includes("ogg") ? "ogg" : mimetype.includes("mp4") ? "mp4" : "wav";
+          const audioBlob = new Blob([bytes], { type: mimetype.split(";")[0].trim() });
+          const audioFile = new File([audioBlob], `audio.${ext}`, { type: mimetype.split(";")[0].trim() });
+          
+          const formData = new FormData();
+          formData.append("file", audioFile);
+          formData.append("model", "whisper-1");
+          formData.append("language", "pt");
+          
+          const whisperResponse = await fetch("https://api.openai.com/v1/audio/transcriptions", {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${OPENAI_API_KEY_CHECK}`,
+            },
+            body: formData,
+          });
+          
+          if (!whisperResponse.ok) {
+            const errText = await whisperResponse.text();
+            console.error("Whisper transcription failed:", whisperResponse.status, errText);
+            throw new Error("Whisper transcription failed");
+          }
+          
+          const whisperData = await whisperResponse.json();
+          transcribedText = whisperData.text?.trim() || "";
+          console.log(`Whisper transcription: "${transcribedText}"`);
+          
+        } else if (GOOGLE_GEMINI_API_KEY_CHECK) {
+          // Use Gemini native API for audio transcription
+          console.log("Transcribing with Gemini...");
+          const aiModelAudio = (iaConfigAudio?.modelo && !iaConfigAudio.modelo.startsWith("gpt")) ? iaConfigAudio.modelo : "gemini-2.0-flash";
+          const geminiNativeUrl = `https://generativelanguage.googleapis.com/v1beta/models/${aiModelAudio}:generateContent?key=${GOOGLE_GEMINI_API_KEY_CHECK}`;
+          const transcribeResponse = await fetch(geminiNativeUrl, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              contents: [{
                 parts: [
-                  {
-                    text: "Transcreva este áudio em português brasileiro. Retorne APENAS o texto transcrito, sem aspas, sem prefixos, sem explicações. Se não conseguir entender, retorne 'ÁUDIO_INAUDÍVEL'.",
-                  },
-                  {
-                    inline_data: {
-                      mime_type: mimetype.split(";")[0].trim(),
-                      data: audioBase64,
-                    },
-                  },
+                  { text: "Transcreva este áudio em português brasileiro. Retorne APENAS o texto transcrito, sem aspas, sem prefixos, sem explicações. Se não conseguir entender, retorne 'ÁUDIO_INAUDÍVEL'." },
+                  { inline_data: { mime_type: mimetype.split(";")[0].trim(), data: audioBase64 } },
                 ],
-              },
-            ],
-          }),
-        });
-        
-        if (!transcribeResponse.ok) {
-          const errText = await transcribeResponse.text();
-          console.error("Transcription failed:", transcribeResponse.status, errText);
-          throw new Error("Transcription failed");
+              }],
+            }),
+          });
+          
+          if (!transcribeResponse.ok) {
+            const errText = await transcribeResponse.text();
+            console.error("Gemini transcription failed:", transcribeResponse.status, errText);
+            throw new Error("Gemini transcription failed");
+          }
+          
+          const transcribeData = await transcribeResponse.json();
+          transcribedText = transcribeData.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || "";
+          console.log(`Gemini transcription: "${transcribedText}"`);
+        } else {
+          throw new Error("No API key configured for audio transcription");
         }
-        
-        const transcribeData = await transcribeResponse.json();
-        const transcribedText = transcribeData.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || "";
         
         if (!transcribedText || transcribedText === "ÁUDIO_INAUDÍVEL") {
           // Send message back saying audio was not understood
