@@ -554,11 +554,11 @@ serve(async (req) => {
     if (audioMessage && !userMessage.trim()) {
       console.log(`Audio message received from ${phoneNumber}, attempting transcription...`);
       
-      const LOVABLE_API_KEY_CHECK = Deno.env.get("LOVABLE_API_KEY");
+      const GOOGLE_GEMINI_API_KEY_CHECK = Deno.env.get("GOOGLE_GEMINI_API_KEY");
       const SUPABASE_URL_CHECK = Deno.env.get("SUPABASE_URL");
       const SUPABASE_SERVICE_ROLE_KEY_CHECK = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
       
-      if (!LOVABLE_API_KEY_CHECK) throw new Error("LOVABLE_API_KEY not configured");
+      if (!GOOGLE_GEMINI_API_KEY_CHECK) throw new Error("GOOGLE_GEMINI_API_KEY not configured");
       
       const supabaseForAudio = createClient(SUPABASE_URL_CHECK!, SUPABASE_SERVICE_ROLE_KEY_CHECK!);
       
@@ -612,14 +612,14 @@ serve(async (req) => {
         console.log(`Audio downloaded, size: ${audioBase64.length} chars, mime: ${mimetype}`);
         
         // Transcribe using Gemini via Lovable AI
-        const transcribeResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        const transcribeResponse = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
           method: "POST",
           headers: {
-            Authorization: `Bearer ${LOVABLE_API_KEY_CHECK}`,
+            Authorization: `Bearer ${GOOGLE_GEMINI_API_KEY_CHECK}`,
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            model: "google/gemini-2.5-flash",
+            model: "gemini-2.0-flash",
             messages: [
               {
                 role: "user",
@@ -701,11 +701,11 @@ serve(async (req) => {
 
     console.log(`Processing message from ${phoneNumber}: ${userMessage.substring(0, 100)}`);
 
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    const GOOGLE_GEMINI_API_KEY = Deno.env.get("GOOGLE_GEMINI_API_KEY");
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
+    if (!GOOGLE_GEMINI_API_KEY) throw new Error("GOOGLE_GEMINI_API_KEY not configured");
 
     const supabase = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!);
 
@@ -830,14 +830,14 @@ ${contextData}`;
     ];
 
     // First AI call - may request tool use
-    let aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    let aiResponse = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        Authorization: `Bearer ${GOOGLE_GEMINI_API_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
+        model: "gemini-2.0-flash",
         messages,
         tools: toolDefinitions,
         stream: false,
@@ -883,14 +883,14 @@ ${contextData}`;
       }
 
       // Second AI call to generate final response after tool execution
-      aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      aiResponse = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${LOVABLE_API_KEY}`,
+          Authorization: `Bearer ${GOOGLE_GEMINI_API_KEY}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: "google/gemini-3-flash-preview",
+          model: "gemini-2.0-flash",
           messages,
           stream: false,
         }),
