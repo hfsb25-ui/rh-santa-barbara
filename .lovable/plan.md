@@ -1,106 +1,60 @@
 
 
-# Reestruturar Dashboard: Sidebar + Lista de Funcionarios
+# Migrar IA para Google Gemini (Gratis)
 
-## Problema Atual
-- O dashboard tem **mais de 30 botoes** em um grid desorganizado, dificultando encontrar funcionalidades
-- A lista de funcionarios mostra cards basicos sem informacoes suficientes de relance
-- Toda a navegacao esta concentrada dentro do dashboard, sem hierarquia clara
+## Resumo
+Trocar todas as edge functions que usam o gateway Lovable AI (`ai.gateway.lovable.dev`) para usar a API gratuita do Google Gemini (`generativelanguage.googleapis.com`) diretamente.
 
-## Solucao Proposta
+## Passo 1 - Obter chave de API (voce)
+- Acessar https://aistudio.google.com/apikey
+- Criar uma chave de API gratuita (o plano free tem limite generoso: ~1500 req/dia do Gemini Flash)
+- Informar a chave quando solicitado no Lovable
 
-### 1. Sidebar Lateral Colapsavel
-Substituir o grid de botoes por uma sidebar lateral organizada em categorias logicas:
+## Passo 2 - Salvar o segredo
+- Adicionar o segredo `GOOGLE_GEMINI_API_KEY` nas configuracoes do projeto
 
-```text
-+------------------+-----------------------------------+
-| SIDEBAR          | CONTEUDO PRINCIPAL                |
-|                  |                                   |
-| > Visao Geral    |  (Dashboard / Pagina ativa)      |
-|                  |                                   |
-| PESSOAS          |                                   |
-|   Funcionarios   |                                   |
-|   Gestores       |                                   |
-|   Funcoes        |                                   |
-|   People Manager |                                   |
-|                  |                                   |
-| OPERACIONAL      |                                   |
-|   Ponto          |                                   |
-|   Ferias         |                                   |
-|   Folgas/Avisos  |                                   |
-|   Avaliacoes     |                                   |
-|   Treinamentos   |                                   |
-|   Checklists     |                                   |
-|   Eventos        |                                   |
-|                  |                                   |
-| RECRUTAMENTO     |                                   |
-|   Vagas          |                                   |
-|   Candidaturas   |                                   |
-|                  |                                   |
-| FINANCEIRO       |                                   |
-|   Folha Pgto     |                                   |
-|   Reajuste       |                                   |
-|   Adiantamentos  |                                   |
-|   Financeiro     |                                   |
-|                  |                                   |
-| DOCUMENTOS       |                                   |
-|   Contratos      |                                   |
-|   TACs           |                                   |
-|   Crachas        |                                   |
-|                  |                                   |
-| ESTOQUE          |                                   |
-|   EPIs/Uniformes |                                   |
-|                  |                                   |
-| SAUDE            |                                   |
-|   Saude Ocup.    |                                   |
-|                  |                                   |
-| ADMIN            |                                   |
-|   Empresas       |                                   |
-|   Setores        |                                   |
-|   Relatorios     |                                   |
-|   Configuracoes  |                                   |
-|                  |                                   |
-| CEREBRUM IA      |                                   |
-+------------------+-----------------------------------+
-```
+## Passo 3 - Atualizar as 6 Edge Functions
 
-- Usa o componente `Sidebar` do shadcn/ui ja disponivel no projeto
-- Colapsavel para modo mini (so icones)
-- Destaque visual na rota ativa
-- Grupos expansiveis/retrativeis
+Todas as funcoes abaixo serao alteradas para usar a API do Google Gemini em vez do gateway Lovable:
 
-### 2. Lista de Funcionarios Melhorada
-Transformar os cards simples em uma **tabela** mais informativa e compacta:
+| Funcao | Tipo de uso | Streaming |
+|--------|-------------|-----------|
+| `ai-assistant` | Chat com contexto RH | Sim |
+| `ai-predictions` | Sugestoes de turnover | Nao |
+| `ai-reports` | Relatorios mensais e sentimento | Nao |
+| `whatsapp-ai` | Chat WhatsApp com tools | Nao |
+| `whatsapp-daily-reminder` | Briefing matinal | Nao |
+| `whatsapp-event-reminder` | Lembrete de evento | Nao |
 
-- Foto/avatar do funcionario
-- Nome, cargo, setor
-- Empresa (quando filtro "Todas")
-- Status com badge colorido
-- Data de admissao
-- Tipo de contrato
-- Botao de acao rapida (ver detalhes)
-- Paginacao ou scroll infinito para grandes listas
+### Mudancas em cada funcao
 
-### 3. Layout Global
-- Criar um componente `AppLayout` que envolve todas as paginas do gestor com a sidebar
-- O header fica simplificado (logo + seletor empresa + logout)
-- Remover o grid de botoes do `GestorDashboard`
-- O dashboard fica limpo: apenas KPIs, alertas, graficos e a lista
+**Substituicao do endpoint:**
+- De: `https://ai.gateway.lovable.dev/v1/chat/completions`
+- Para: `https://generativelanguage.googleapis.com/v1beta/openai/chat/completions`
 
----
+**Substituicao da autenticacao:**
+- De: `Authorization: Bearer ${LOVABLE_API_KEY}`
+- Para: `Authorization: Bearer ${GOOGLE_GEMINI_API_KEY}`
 
-## Detalhes Tecnicos
+**Substituicao do modelo:**
+- De: `google/gemini-3-flash-preview`
+- Para: `gemini-2.0-flash` (modelo gratuito mais capaz e rapido)
 
-### Arquivos a Criar
-- `src/components/layout/AppLayout.tsx` — Layout global com SidebarProvider + Sidebar + header
-- `src/components/layout/AppSidebar.tsx` — Sidebar com todas as categorias e links
+**Variavel de ambiente:**
+- De: `Deno.env.get("LOVABLE_API_KEY")`
+- Para: `Deno.env.get("GOOGLE_GEMINI_API_KEY")`
 
-### Arquivos a Modificar
-- `src/App.tsx` — Envolver rotas do gestor com `AppLayout`
-- `src/pages/Dashboard.tsx` — Passar layout para o AppLayout
-- `src/components/dashboard/GestorDashboard.tsx` — Remover header, grid de botoes, simplificar para apenas conteudo do dashboard
-- `src/components/employees/EmployeeList.tsx` — Trocar cards por tabela com mais colunas e avatar
+### Detalhes tecnicos
 
-### Dependencias
-- Nenhuma nova — usa `Sidebar`, `Table`, `Avatar` ja instalados no projeto
+A API do Google Gemini e compativel com o formato OpenAI (`/v1beta/openai/chat/completions`), entao as mudancas sao minimas - apenas URL, chave e nome do modelo. O formato de request/response (messages, tools, streaming SSE) permanece identico.
+
+Para funcoes com streaming (`ai-assistant`), o formato SSE do Gemini via endpoint OpenAI-compatible e identico, entao o frontend nao precisa de nenhuma alteracao.
+
+Para funcoes com tool calling (`whatsapp-ai`), o formato de tools tambem e compativel.
+
+## Resultado
+- Zero custo de IA (plano gratuito do Google Gemini)
+- Mesma qualidade de respostas (Gemini 2.0 Flash)
+- Nenhuma mudanca no frontend
+- Nenhuma mudanca na logica de negocio
 
