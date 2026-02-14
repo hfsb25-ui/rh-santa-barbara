@@ -322,17 +322,13 @@ serve(async (req) => {
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
     const supabase = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!);
 
-    // Use Google Gemini API directly (free tier)
-    let GOOGLE_GEMINI_API_KEY = Deno.env.get("GOOGLE_GEMINI_API_KEY");
-    const { data: iaConfig } = await supabase.from("configuracoes_ia").select("google_gemini_api_key, modelo").limit(1).maybeSingle();
-    if (iaConfig?.google_gemini_api_key) {
-      GOOGLE_GEMINI_API_KEY = iaConfig.google_gemini_api_key;
+    // Use Groq API for fast inference
+    const GROQ_API_KEY = Deno.env.get("GROQ_API_KEY");
+    if (!GROQ_API_KEY) {
+      throw new Error("GROQ_API_KEY is not configured");
     }
-    const aiModel = iaConfig?.modelo || "gemini-2.0-flash";
-
-    if (!GOOGLE_GEMINI_API_KEY) {
-      throw new Error("GOOGLE_GEMINI_API_KEY is not configured");
-    }
+    const { data: iaConfig } = await supabase.from("configuracoes_ia").select("modelo").limit(1).maybeSingle();
+    const aiModel = iaConfig?.modelo || "llama-3.3-70b-versatile";
 
     const contextData = await fetchSystemData(supabase);
 
@@ -364,10 +360,10 @@ INSTRUÇÕES:
 
 ${contextData}`;
 
-    const response = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
+    const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${GOOGLE_GEMINI_API_KEY}`,
+        Authorization: `Bearer ${GROQ_API_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
