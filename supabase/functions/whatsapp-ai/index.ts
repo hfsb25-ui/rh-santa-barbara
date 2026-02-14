@@ -560,13 +560,14 @@ serve(async (req) => {
 
       // Try to get API key from DB first, fallback to env
       let GOOGLE_GEMINI_API_KEY_CHECK = Deno.env.get("GOOGLE_GEMINI_API_KEY");
-      const { data: iaConfigAudio } = await supabaseForAudio.from("configuracoes_ia").select("google_gemini_api_key, modelo").limit(1).maybeSingle();
+      const { data: iaConfigAudio } = await supabaseForAudio.from("configuracoes_ia").select("google_gemini_api_key, modelo, provedor").limit(1).maybeSingle();
       if (iaConfigAudio?.google_gemini_api_key) {
         GOOGLE_GEMINI_API_KEY_CHECK = iaConfigAudio.google_gemini_api_key;
       }
-      const aiModelAudio = iaConfigAudio?.modelo || "gemini-2.0-flash";
+      // Audio transcription always uses Gemini (best for multimodal)
+      const aiModelAudio = (iaConfigAudio?.provedor === "openai") ? "gemini-2.0-flash" : (iaConfigAudio?.modelo || "gemini-2.0-flash");
       
-      if (!GOOGLE_GEMINI_API_KEY_CHECK) throw new Error("GOOGLE_GEMINI_API_KEY not configured");
+      if (!GOOGLE_GEMINI_API_KEY_CHECK) throw new Error("GOOGLE_GEMINI_API_KEY not configured for audio transcription");
       
       const { data: whatsappConfigAudio } = await supabaseForAudio
         .from("configuracoes_whatsapp")
@@ -711,15 +712,21 @@ serve(async (req) => {
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
     const supabase = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!);
 
-    // Try to get API key from DB first, fallback to env
+    // Try to get API config from DB first, fallback to env
     let GOOGLE_GEMINI_API_KEY = Deno.env.get("GOOGLE_GEMINI_API_KEY");
-    const { data: iaConfigMain } = await supabase.from("configuracoes_ia").select("google_gemini_api_key, modelo").limit(1).maybeSingle();
+    let OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
+    const { data: iaConfigMain } = await supabase.from("configuracoes_ia").select("google_gemini_api_key, openai_api_key, modelo, provedor").limit(1).maybeSingle();
     if (iaConfigMain?.google_gemini_api_key) {
       GOOGLE_GEMINI_API_KEY = iaConfigMain.google_gemini_api_key;
     }
-    const aiModel = iaConfigMain?.modelo || "gemini-2.0-flash";
+    if (iaConfigMain?.openai_api_key) {
+      OPENAI_API_KEY = iaConfigMain.openai_api_key;
+    }
+    const provedor = iaConfigMain?.provedor || "gemini";
+    const aiModel = iaConfigMain?.modelo || (provedor === "openai" ? "gpt-4o-mini" : "gemini-2.0-flash");
 
-    if (!GOOGLE_GEMINI_API_KEY) throw new Error("GOOGLE_GEMINI_API_KEY not configured");
+    if (provedor === "openai" && !OPENAI_API_KEY) throw new Error("OPENAI_API_KEY not configured");
+    if (provedor !== "openai" && !GOOGLE_GEMINI_API_KEY) throw new Error("GOOGLE_GEMINI_API_KEY not configured");
 
     const { data: whatsappConfig } = await supabase
       .from("configuracoes_whatsapp")
@@ -842,10 +849,16 @@ ${contextData}`;
     ];
 
     // First AI call - may request tool use
-    let aiResponse = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
+    const aiUrl = provedor === "openai" 
+      ? "https://api.openai.com/v1/chat/completions"
+      : "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
+    const aiKey = provedor === "openai" ? OPENAI_API_KEY : GOOGLE_GEMINI_API_KEY;
+    console.log(`Using ${provedor} with model ${aiModel}`);
+
+    let aiResponse = await fetch(aiUrl, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${GOOGLE_GEMINI_API_KEY}`,
+        Authorization: `Bearer ${aiKey}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
@@ -895,10 +908,10 @@ ${contextData}`;
       }
 
       // Second AI call to generate final response after tool execution
-      aiResponse = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
+      aiResponse = await fetch(aiUrl, {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${GOOGLE_GEMINI_API_KEY}`,
+          Authorization: `Bearer ${aiKey}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
