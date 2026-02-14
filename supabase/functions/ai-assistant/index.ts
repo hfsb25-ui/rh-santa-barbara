@@ -43,10 +43,12 @@ async function consultarFuncionarios(supabase: any, params: any) {
   if (params.setor) query = query.ilike("setor", `%${params.setor}%`);
   if (params.nome) query = query.ilike("nome_completo", `%${params.nome}%`);
   if (params.cargo) query = query.ilike("cargo", `%${params.cargo}%`);
+  if (params.sexo) query = query.ilike("sexo", `%${params.sexo}%`);
+  if (params.empresa) query = query.ilike("empresas.nome", `%${params.empresa}%`);
   if (!params.status && !params.incluir_inativos) query = query.in("status", ["ativo", "ferias", "em_admissao", "afastado"]);
-  const { data, error } = await query.order("nome_completo").limit(50);
+  const { data, error } = await query.order("nome_completo").limit(200);
   if (error) return { error: error.message };
-  return { total: (data || []).length, funcionarios: (data || []).map((e: any) => `${e.nome_completo} [${e.status}] | ${e.cargo} | Setor: ${e.setor || "N/A"} | Admissão: ${e.data_admissao || "N/A"} | Salário: R$ ${e.salario?.toFixed(2) || "N/A"} | Contrato: ${e.tipo_contrato || "N/A"} | Tel: ${e.telefone || "N/A"} | Nasc: ${e.data_nascimento || "N/A"} | Empresa: ${e.empresas?.nome || "N/A"}`) };
+  return { total: (data || []).length, funcionarios: (data || []).map((e: any) => `${e.nome_completo} [${e.status}] | ${e.cargo} | Setor: ${e.setor || "N/A"} | Admissão: ${e.data_admissao || "N/A"} | Salário: R$ ${e.salario?.toFixed(2) || "N/A"} | Contrato: ${e.tipo_contrato || "N/A"} | Tel: ${e.telefone || "N/A"} | Nasc: ${e.data_nascimento || "N/A"} | Sexo: ${e.sexo || "N/A"} | Empresa: ${e.empresas?.nome || "N/A"}`) };
 }
 
 async function consultarFerias(supabase: any, params: any) {
@@ -395,7 +397,7 @@ async function consultarConfiguracoes(supabase: any, params: any) {
 // ============= TOOL DEFINITIONS =============
 
 const toolDefinitions = [
-  { type: "function", function: { name: "consultar_funcionarios", description: "Busca funcionários por nome, setor, status ou cargo.", parameters: { type: "object", properties: { nome: { type: "string" }, setor: { type: "string" }, status: { type: "string", enum: ["ativo", "ferias", "em_admissao", "afastado", "demitido"] }, cargo: { type: "string" }, incluir_inativos: { type: "boolean" } } } } },
+  { type: "function", function: { name: "consultar_funcionarios", description: "Busca funcionários por nome, setor, status, cargo, sexo ou empresa. Para listar mulheres use sexo='feminino', para homens use sexo='masculino'.", parameters: { type: "object", properties: { nome: { type: "string" }, setor: { type: "string" }, status: { type: "string", enum: ["ativo", "ferias", "em_admissao", "afastado", "demitido"] }, cargo: { type: "string" }, sexo: { type: "string", enum: ["feminino", "masculino"] }, empresa: { type: "string" }, incluir_inativos: { type: "boolean" } } } } },
   { type: "function", function: { name: "consultar_ferias", description: "Consulta férias atuais, futuras, planejadas e folgas.", parameters: { type: "object", properties: { incluir_folgas: { type: "boolean" } } } } },
   { type: "function", function: { name: "consultar_faltas_folgas", description: "Consulta faltas e folgas dos últimos 90 dias.", parameters: { type: "object", properties: { nome: { type: "string" } } } } },
   { type: "function", function: { name: "consultar_ponto_banco_horas", description: "Consulta banco de horas e registros de ponto.", parameters: { type: "object", properties: { nome_funcionario: { type: "string" } } } } },

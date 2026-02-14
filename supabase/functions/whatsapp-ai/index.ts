@@ -115,10 +115,12 @@ async function consultarFuncionarios(supabase: any, params: any) {
   if (params.setor) query = query.ilike("setor", `%${params.setor}%`);
   if (params.nome) query = query.ilike("nome_completo", `%${params.nome}%`);
   if (params.cargo) query = query.ilike("cargo", `%${params.cargo}%`);
+  if (params.sexo) query = query.ilike("sexo", `%${params.sexo}%`);
+  if (params.empresa) query = query.ilike("empresas.nome", `%${params.empresa}%`);
   if (!params.status && !params.incluir_inativos) query = query.in("status", ["ativo", "ferias", "em_admissao", "afastado"]);
-  const { data, error } = await query.order("nome_completo").limit(50);
+  const { data, error } = await query.order("nome_completo").limit(200);
   if (error) return { error: error.message };
-  return { total: (data || []).length, funcionarios: (data || []).map((e: any) => `${e.nome_completo} [${e.status}] | ${e.cargo} | Setor: ${e.setor || "N/A"} | Admissão: ${e.data_admissao || "N/A"} | Salário: R$ ${e.salario?.toFixed(2) || "N/A"} | Contrato: ${e.tipo_contrato || "N/A"} | Tel: ${e.telefone || "N/A"} | Nasc: ${e.data_nascimento || "N/A"} | Empresa: ${e.empresas?.nome || "N/A"}`) };
+  return { total: (data || []).length, funcionarios: (data || []).map((e: any) => `${e.nome_completo} [${e.status}] | ${e.cargo} | Setor: ${e.setor || "N/A"} | Admissão: ${e.data_admissao || "N/A"} | Salário: R$ ${e.salario?.toFixed(2) || "N/A"} | Contrato: ${e.tipo_contrato || "N/A"} | Tel: ${e.telefone || "N/A"} | Nasc: ${e.data_nascimento || "N/A"} | Sexo: ${e.sexo || "N/A"} | Empresa: ${e.empresas?.nome || "N/A"}`) };
 }
 
 async function consultarFerias(supabase: any, params: any) {
@@ -553,7 +555,7 @@ const toolDefinitions = [
     type: "function",
     function: {
       name: "consultar_funcionarios",
-      description: "Busca funcionários por nome, setor, status ou cargo. Use para perguntas sobre dados de funcionários específicos ou listagens.",
+      description: "Busca funcionários por nome, setor, status, cargo, sexo ou empresa. Use para perguntas sobre dados de funcionários específicos ou listagens. Para listar mulheres use sexo='feminino', para homens use sexo='masculino'.",
       parameters: {
         type: "object",
         properties: {
@@ -561,6 +563,8 @@ const toolDefinitions = [
           setor: { type: "string", description: "Setor/departamento" },
           status: { type: "string", description: "Status: ativo, ferias, em_admissao, afastado, demitido", enum: ["ativo", "ferias", "em_admissao", "afastado", "demitido"] },
           cargo: { type: "string", description: "Cargo/função" },
+          sexo: { type: "string", description: "Sexo/gênero: feminino ou masculino", enum: ["feminino", "masculino"] },
+          empresa: { type: "string", description: "Nome da empresa" },
           incluir_inativos: { type: "boolean", description: "Incluir demitidos/inativos na busca" },
         },
       },
