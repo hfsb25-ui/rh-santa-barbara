@@ -14,15 +14,21 @@ serve(async (req) => {
   try {
     const { type, month, year } = await req.json(); // type: "monthly" | "sentiment"
     
-    const GOOGLE_GEMINI_API_KEY = Deno.env.get("GOOGLE_GEMINI_API_KEY");
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    const supabase = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!);
+
+    // Try to get API key from DB first, fallback to env
+    let GOOGLE_GEMINI_API_KEY = Deno.env.get("GOOGLE_GEMINI_API_KEY");
+    const { data: iaConfig } = await supabase.from("configuracoes_ia").select("google_gemini_api_key, modelo").limit(1).maybeSingle();
+    if (iaConfig?.google_gemini_api_key) {
+      GOOGLE_GEMINI_API_KEY = iaConfig.google_gemini_api_key;
+    }
+    const aiModel = iaConfig?.modelo || "gemini-2.0-flash";
 
     if (!GOOGLE_GEMINI_API_KEY) {
       throw new Error("GOOGLE_GEMINI_API_KEY is not configured");
     }
-
-    const supabase = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!);
 
     const currentDate = new Date();
     const targetMonth = month || currentDate.getMonth() + 1;
@@ -134,7 +140,7 @@ ${reportData}`;
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: "gemini-2.0-flash",
+          model: aiModel,
           messages: [{ role: "user", content: prompt }],
         }),
       });
@@ -215,7 +221,7 @@ Responda de forma estruturada e objetiva.`;
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: "gemini-2.0-flash",
+          model: aiModel,
           messages: [{ role: "user", content: prompt }],
         }),
       });

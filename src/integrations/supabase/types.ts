@@ -746,6 +746,30 @@ export type Database = {
         }
         Relationships: []
       }
+      configuracoes_ia: {
+        Row: {
+          created_at: string
+          google_gemini_api_key: string | null
+          id: string
+          modelo: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          google_gemini_api_key?: string | null
+          id?: string
+          modelo?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          google_gemini_api_key?: string | null
+          id?: string
+          modelo?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       configuracoes_whatsapp: {
         Row: {
           created_at: string
