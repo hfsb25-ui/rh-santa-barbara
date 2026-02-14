@@ -752,6 +752,8 @@ export type Database = {
           google_gemini_api_key: string | null
           id: string
           modelo: string | null
+          openai_api_key: string | null
+          provedor: string | null
           updated_at: string
         }
         Insert: {
@@ -759,6 +761,8 @@ export type Database = {
           google_gemini_api_key?: string | null
           id?: string
           modelo?: string | null
+          openai_api_key?: string | null
+          provedor?: string | null
           updated_at?: string
         }
         Update: {
@@ -766,6 +770,8 @@ export type Database = {
           google_gemini_api_key?: string | null
           id?: string
           modelo?: string | null
+          openai_api_key?: string | null
+          provedor?: string | null
           updated_at?: string
         }
         Relationships: []

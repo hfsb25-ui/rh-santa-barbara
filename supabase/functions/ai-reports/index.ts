@@ -18,15 +18,28 @@ serve(async (req) => {
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
     const supabase = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!);
 
-    // Try to get API key from DB first, fallback to env
+    // Determine AI provider
+    const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
     let GOOGLE_GEMINI_API_KEY = Deno.env.get("GOOGLE_GEMINI_API_KEY");
-    const { data: iaConfig } = await supabase.from("configuracoes_ia").select("google_gemini_api_key, modelo").limit(1).maybeSingle();
+    const { data: iaConfig } = await supabase.from("configuracoes_ia").select("google_gemini_api_key, openai_api_key, modelo, provedor").limit(1).maybeSingle();
     if (iaConfig?.google_gemini_api_key) {
       GOOGLE_GEMINI_API_KEY = iaConfig.google_gemini_api_key;
     }
-    const aiModel = iaConfig?.modelo || "gemini-2.0-flash";
+    const openaiKey = iaConfig?.openai_api_key || OPENAI_API_KEY;
+    const provedor = iaConfig?.provedor || (openaiKey ? "openai" : "gemini");
+    const defaultModels: Record<string, string> = { openai: "gpt-4o-mini", gemini: "gemini-2.0-flash" };
+    const aiModel = iaConfig?.modelo || defaultModels[provedor] || "gemini-2.0-flash";
 
-    if (!GOOGLE_GEMINI_API_KEY) {
+    const getAiUrl = () => provedor === "openai" ? "https://api.openai.com/v1/chat/completions" : "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
+    const getAiHeaders = () => ({
+      Authorization: `Bearer ${provedor === "openai" ? openaiKey : GOOGLE_GEMINI_API_KEY}`,
+      "Content-Type": "application/json",
+    });
+
+    if (provedor === "openai" && !openaiKey) {
+      throw new Error("Chave da OpenAI não configurada.");
+    }
+    if (provedor === "gemini" && !GOOGLE_GEMINI_API_KEY) {
       throw new Error("GOOGLE_GEMINI_API_KEY is not configured");
     }
 
@@ -133,12 +146,9 @@ Use bullet points e seja objetivo. Máximo 300 palavras.
 
 ${reportData}`;
 
-      const response = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
+      const response = await fetch(getAiUrl(), {
         method: "POST",
-        headers: {
-          Authorization: `Bearer ${GOOGLE_GEMINI_API_KEY}`,
-          "Content-Type": "application/json",
-        },
+        headers: getAiHeaders(),
         body: JSON.stringify({
           model: aiModel,
           messages: [{ role: "user", content: prompt }],
@@ -214,12 +224,9 @@ ${comments.slice(0, 50).map((c, i) => `${i + 1}. "${c}"`).join("\n")}
 
 Responda de forma estruturada e objetiva.`;
 
-      const response = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
+      const response = await fetch(getAiUrl(), {
         method: "POST",
-        headers: {
-          Authorization: `Bearer ${GOOGLE_GEMINI_API_KEY}`,
-          "Content-Type": "application/json",
-        },
+        headers: getAiHeaders(),
         body: JSON.stringify({
           model: aiModel,
           messages: [{ role: "user", content: prompt }],
