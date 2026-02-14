@@ -1,60 +1,100 @@
 
 
-# Migrar IA para Google Gemini (Gratis)
+# Otimizacao do Cerebrum: Retrieval via Tools
 
-## Resumo
-Trocar todas as edge functions que usam o gateway Lovable AI (`ai.gateway.lovable.dev`) para usar a API gratuita do Google Gemini (`generativelanguage.googleapis.com`) diretamente.
+## Problema Atual
+Cada mensagem no WhatsApp (e na web) dispara **35+ queries ao banco** e injeta **todos os dados do RH** no system prompt — funcionarios, ferias, faltas, ponto, folha, adiantamentos, TACs, estoque, vagas, treinamentos, eventos, etc. Isso consome milhares de tokens desnecessarios quando o usuario so quer saber, por exemplo, "quem esta de ferias?".
 
-## Passo 1 - Obter chave de API (voce)
-- Acessar https://aistudio.google.com/apikey
-- Criar uma chave de API gratuita (o plano free tem limite generoso: ~1500 req/dia do Gemini Flash)
-- Informar a chave quando solicitado no Lovable
+## Solucao: Retrieval sob Demanda
 
-## Passo 2 - Salvar o segredo
-- Adicionar o segredo `GOOGLE_GEMINI_API_KEY` nas configuracoes do projeto
+Em vez de enviar tudo no prompt, o Cerebrum recebera apenas um **resumo minimo** (contagens gerais) e usara **tools de consulta** para buscar dados especificos quando necessario. A IA decidira quais tools chamar com base na pergunta do usuario.
 
-## Passo 3 - Atualizar as 6 Edge Functions
+---
 
-Todas as funcoes abaixo serao alteradas para usar a API do Google Gemini em vez do gateway Lovable:
+## Arquitetura Nova
 
-| Funcao | Tipo de uso | Streaming |
-|--------|-------------|-----------|
-| `ai-assistant` | Chat com contexto RH | Sim |
-| `ai-predictions` | Sugestoes de turnover | Nao |
-| `ai-reports` | Relatorios mensais e sentimento | Nao |
-| `whatsapp-ai` | Chat WhatsApp com tools | Nao |
-| `whatsapp-daily-reminder` | Briefing matinal | Nao |
-| `whatsapp-event-reminder` | Lembrete de evento | Nao |
+```text
+ANTES (atual):
+  Mensagem -> 35 queries -> Tudo no prompt -> IA responde
+  Tokens: ~15.000-25.000 por mensagem
 
-### Mudancas em cada funcao
+DEPOIS (otimizado):
+  Mensagem -> 3 queries (resumo + memorias + historico) -> Prompt enxuto -> IA chama tools -> Resposta
+  Tokens: ~2.000-5.000 por mensagem (reducao de 70-80%)
+```
 
-**Substituicao do endpoint:**
-- De: `https://ai.gateway.lovable.dev/v1/chat/completions`
-- Para: `https://generativelanguage.googleapis.com/v1beta/openai/chat/completions`
+---
 
-**Substituicao da autenticacao:**
-- De: `Authorization: Bearer ${LOVABLE_API_KEY}`
-- Para: `Authorization: Bearer ${GOOGLE_GEMINI_API_KEY}`
+## Plano de Implementacao
 
-**Substituicao do modelo:**
-- De: `google/gemini-3-flash-preview`
-- Para: `gemini-2.0-flash` (modelo gratuito mais capaz e rapido)
+### 1. Criar Tools de Consulta (novos tools para a IA)
 
-**Variavel de ambiente:**
-- De: `Deno.env.get("LOVABLE_API_KEY")`
-- Para: `Deno.env.get("GOOGLE_GEMINI_API_KEY")`
+Adicionar os seguintes tools ao array `toolDefinitions`:
 
-### Detalhes tecnicos
+| Tool | Descricao | Quando a IA usa |
+|------|-----------|-----------------|
+| `consultar_funcionarios` | Busca funcionarios por nome, setor, status, cargo | "quem trabalha na cozinha?", "dados do Joao" |
+| `consultar_ferias` | Ferias atuais, futuras e planejadas | "quem esta de ferias?", "escala de ferias" |
+| `consultar_faltas_folgas` | Faltas e folgas dos ultimos 90 dias | "faltas nao justificadas", "folgas do mes" |
+| `consultar_ponto_banco_horas` | Registros de ponto e saldos de banco de horas | "saldo de horas do Joao", "banco de horas" |
+| `consultar_financeiro` | Folha, adiantamentos, reajustes | "adiantamentos do mes", "folha de pagamento" |
+| `consultar_tacs_avaliacoes` | TACs e avaliacoes de desempenho | "TACs pendentes", "avaliacoes" |
+| `consultar_estoque` | EPIs e uniformes em estoque | "estoque de EPIs", "uniformes em falta" |
+| `consultar_recrutamento` | Vagas e candidaturas | "vagas abertas", "candidatos pendentes" |
+| `consultar_treinamentos` | Cursos, progresso e certificados | "cursos obrigatorios", "quem completou treinamento" |
+| `consultar_eventos_avisos` | Eventos e avisos ativos | "proximos eventos", "avisos ativos" |
+| `consultar_saude_ocupacional` | Exames, encaminhamentos, afastamentos | "exames pendentes", "quem esta afastado" |
+| `consultar_checklists` | Checklists de admissao/desligamento | "checklists pendentes" |
+| `consultar_resumo_geral` | Resumo completo com contagens (para visao geral) | "resumo do RH", "como esta o RH hoje" |
 
-A API do Google Gemini e compativel com o formato OpenAI (`/v1beta/openai/chat/completions`), entao as mudancas sao minimas - apenas URL, chave e nome do modelo. O formato de request/response (messages, tools, streaming SSE) permanece identico.
+### 2. Substituir `fetchSystemData` por `fetchResumoMinimo`
 
-Para funcoes com streaming (`ai-assistant`), o formato SSE do Gemini via endpoint OpenAI-compatible e identico, entao o frontend nao precisa de nenhuma alteracao.
+A nova funcao `fetchResumoMinimo` fara apenas **3-5 queries leves** para fornecer um contexto basico:
+- Contagem de funcionarios ativos por status
+- Setores e empresas (listas curtas)
+- Contagens de pendencias (TACs, avaliacoes, checklists, exames)
+- Alertas criticos (estoque baixo, afastamentos ativos)
 
-Para funcoes com tool calling (`whatsapp-ai`), o formato de tools tambem e compativel.
+Isso fornece contexto suficiente para a IA decidir quais tools chamar.
 
-## Resultado
-- Zero custo de IA (plano gratuito do Google Gemini)
-- Mesma qualidade de respostas (Gemini 2.0 Flash)
-- Nenhuma mudanca no frontend
-- Nenhuma mudanca na logica de negocio
+### 3. Implementar funcoes handler para cada tool
+
+Cada tool tera uma funcao async que executa as queries especificas e retorna dados formatados. Por exemplo:
+
+- `consultar_funcionarios({nome: "Joao", setor: "Cozinha", status: "ativo"})` faz query filtrada na tabela employees
+- `consultar_ferias({tipo: "atuais"})` busca so ferias em gozo atual
+- `consultar_ponto_banco_horas({nome_funcionario: "Maria"})` busca saldo especifico
+
+### 4. Atualizar o system prompt
+
+O prompt passara a instruir a IA:
+- "Voce tem acesso a tools de consulta. Use-os para buscar dados antes de responder."
+- "NAO invente dados. Se precisar de informacoes, use o tool adequado."
+- "Para perguntas gerais ('como esta o RH?'), use consultar_resumo_geral."
+
+### 5. Atualizar o loop de tool calls
+
+O loop atual so suporta 1 rodada de tool calls. Sera expandido para suportar **ate 3 rodadas**, permitindo que a IA faca multiplas consultas sequenciais se necessario.
+
+### 6. Aplicar a mesma logica no `ai-assistant`
+
+A funcao `ai-assistant/index.ts` (web) recebera as mesmas otimizacoes, mantendo paridade entre WhatsApp e web.
+
+---
+
+## Detalhes Tecnicos
+
+### Arquivos modificados:
+- `supabase/functions/whatsapp-ai/index.ts` — refatoracao completa
+- `supabase/functions/ai-assistant/index.ts` — mesma refatoracao
+
+### Impacto estimado:
+- **Tokens por mensagem**: de ~20.000 para ~3.000-5.000 (reducao de 75%)
+- **Latencia**: reducao de ~2-3s nas queries iniciais (so busca o necessario)
+- **Custo**: reducao proporcional ao consumo de tokens
+- **Precisao**: mantida — a IA busca exatamente os dados que precisa
+
+### Trade-offs:
+- Perguntas muito amplas ("me conte tudo") podem precisar de 2-3 tool calls em sequencia, adicionando ~1s de latencia
+- A IA precisa ser boa em decidir qual tool usar (Gemini e GPT-4o lidam bem com isso)
 
