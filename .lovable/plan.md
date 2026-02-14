@@ -1,100 +1,90 @@
 
 
-# Otimizacao do Cerebrum: Retrieval via Tools
+# Adicionar Tools Completos ao Cerebrum
 
-## Problema Atual
-Cada mensagem no WhatsApp (e na web) dispara **35+ queries ao banco** e injeta **todos os dados do RH** no system prompt — funcionarios, ferias, faltas, ponto, folha, adiantamentos, TACs, estoque, vagas, treinamentos, eventos, etc. Isso consome milhares de tokens desnecessarios quando o usuario so quer saber, por exemplo, "quem esta de ferias?".
+## Situacao Atual
 
-## Solucao: Retrieval sob Demanda
+O Cerebrum ja possui 13 tools de consulta cobrindo as tabelas principais. Porem, existem **~20 tabelas** que nao sao consultaveis diretamente, incluindo dados importantes como metas de funcionarios, progresso detalhado de treinamentos, historico de movimentacoes, variaveis fixas, arquivos, contratos e detalhes de candidaturas.
 
-Em vez de enviar tudo no prompt, o Cerebrum recebera apenas um **resumo minimo** (contagens gerais) e usara **tools de consulta** para buscar dados especificos quando necessario. A IA decidira quais tools chamar com base na pergunta do usuario.
+## Tabelas NAO cobertas atualmente
 
----
+| Tabela | Dados |
+|--------|-------|
+| `metas_funcionario` | Metas individuais de desempenho |
+| `modulos`, `aulas`, `progresso_treinamento` | Detalhes de modulos/aulas e progresso individual |
+| `notas_avaliacao`, `criterios_avaliacao` | Notas detalhadas por criterio nas avaliacoes |
+| `historico_banco_horas` | Movimentacoes de banco de horas |
+| `historico_estoque_epis`, `historico_estoque_uniformes` | Movimentacoes de entrada/saida de estoque |
+| `historico_folgas` | Alteracoes no saldo de folgas |
+| `historico_status_candidatura` | Timeline de status das candidaturas |
+| `variaveis_fixas_funcionario` | Proventos/descontos fixos por funcionario |
+| `variaveis_folha` | Variaveis globais da folha de pagamento |
+| `employee_files` | Arquivos/documentos dos funcionarios |
+| `modelos_contrato` | Templates de contrato |
+| `login_history` | Historico de login dos usuarios |
+| `configuracao_setor` | Configuracao de lotacao por setor |
+| `configuracoes_ferias` | Regras de ferias |
+| `plano_checklist_templates`, `plano_checklist_itens` | Templates de checklists |
+| `uniformes`, `epis` (entregas individuais) | Ja parcialmente no estoque, mas sem detalhe individual |
 
-## Arquitetura Nova
+## Novos Tools a Adicionar (8 tools)
 
-```text
-ANTES (atual):
-  Mensagem -> 35 queries -> Tudo no prompt -> IA responde
-  Tokens: ~15.000-25.000 por mensagem
+### 1. `consultar_metas`
+- Tabela: `metas_funcionario`
+- Busca metas por funcionario, status (pendente, em_andamento, concluida)
+- Parametros: `nome_funcionario`, `status`
 
-DEPOIS (otimizado):
-  Mensagem -> 3 queries (resumo + memorias + historico) -> Prompt enxuto -> IA chama tools -> Resposta
-  Tokens: ~2.000-5.000 por mensagem (reducao de 70-80%)
-```
+### 2. `consultar_progresso_treinamento`
+- Tabelas: `modulos`, `aulas`, `progresso_treinamento`
+- Progresso individual de cada funcionario nos cursos
+- Parametros: `nome_funcionario`, `curso`
 
----
+### 3. `consultar_detalhes_avaliacao`
+- Tabelas: `notas_avaliacao`, `criterios_avaliacao`
+- Notas detalhadas por criterio de cada avaliacao
+- Parametros: `nome_funcionario`
 
-## Plano de Implementacao
+### 4. `consultar_historicos`
+- Tabelas: `historico_banco_horas`, `historico_estoque_epis`, `historico_estoque_uniformes`, `historico_folgas`
+- Movimentacoes e alteracoes recentes
+- Parametros: `tipo` (banco_horas, estoque_epis, estoque_uniformes, folgas), `nome_funcionario`
 
-### 1. Criar Tools de Consulta (novos tools para a IA)
+### 5. `consultar_variaveis_fixas`
+- Tabelas: `variaveis_fixas_funcionario`, `variaveis_folha`
+- Proventos/descontos fixos e variaveis globais da folha
+- Parametros: `nome_funcionario`
 
-Adicionar os seguintes tools ao array `toolDefinitions`:
+### 6. `consultar_arquivos_funcionario`
+- Tabela: `employee_files`
+- Lista de documentos/arquivos de um funcionario
+- Parametros: `nome_funcionario`
 
-| Tool | Descricao | Quando a IA usa |
-|------|-----------|-----------------|
-| `consultar_funcionarios` | Busca funcionarios por nome, setor, status, cargo | "quem trabalha na cozinha?", "dados do Joao" |
-| `consultar_ferias` | Ferias atuais, futuras e planejadas | "quem esta de ferias?", "escala de ferias" |
-| `consultar_faltas_folgas` | Faltas e folgas dos ultimos 90 dias | "faltas nao justificadas", "folgas do mes" |
-| `consultar_ponto_banco_horas` | Registros de ponto e saldos de banco de horas | "saldo de horas do Joao", "banco de horas" |
-| `consultar_financeiro` | Folha, adiantamentos, reajustes | "adiantamentos do mes", "folha de pagamento" |
-| `consultar_tacs_avaliacoes` | TACs e avaliacoes de desempenho | "TACs pendentes", "avaliacoes" |
-| `consultar_estoque` | EPIs e uniformes em estoque | "estoque de EPIs", "uniformes em falta" |
-| `consultar_recrutamento` | Vagas e candidaturas | "vagas abertas", "candidatos pendentes" |
-| `consultar_treinamentos` | Cursos, progresso e certificados | "cursos obrigatorios", "quem completou treinamento" |
-| `consultar_eventos_avisos` | Eventos e avisos ativos | "proximos eventos", "avisos ativos" |
-| `consultar_saude_ocupacional` | Exames, encaminhamentos, afastamentos | "exames pendentes", "quem esta afastado" |
-| `consultar_checklists` | Checklists de admissao/desligamento | "checklists pendentes" |
-| `consultar_resumo_geral` | Resumo completo com contagens (para visao geral) | "resumo do RH", "como esta o RH hoje" |
+### 7. `consultar_contratos`
+- Tabela: `modelos_contrato`
+- Templates de contrato disponiveis
+- Parametros: nenhum
 
-### 2. Substituir `fetchSystemData` por `fetchResumoMinimo`
+### 8. `consultar_configuracoes`
+- Tabelas: `configuracao_setor`, `configuracoes_ferias`, `plano_checklist_templates`, `plano_checklist_itens`
+- Configuracoes do sistema (lotacao, ferias, templates de checklist)
+- Parametros: `tipo` (setores, ferias, checklists)
 
-A nova funcao `fetchResumoMinimo` fara apenas **3-5 queries leves** para fornecer um contexto basico:
-- Contagem de funcionarios ativos por status
-- Setores e empresas (listas curtas)
-- Contagens de pendencias (TACs, avaliacoes, checklists, exames)
-- Alertas criticos (estoque baixo, afastamentos ativos)
+## Melhorias nos Tools Existentes
 
-Isso fornece contexto suficiente para a IA decidir quais tools chamar.
+Alem dos novos tools, os seguintes serao enriquecidos:
 
-### 3. Implementar funcoes handler para cada tool
+- **`consultar_recrutamento`**: Adicionar `historico_status_candidatura` para timeline de cada candidato e detalhes completos das candidaturas
+- **`consultar_treinamentos`**: Incluir contagem de modulos e aulas por curso
+- **`consultar_estoque`**: Incluir entregas individuais de EPIs e uniformes com mais detalhes
 
-Cada tool tera uma funcao async que executa as queries especificas e retorna dados formatados. Por exemplo:
+## Arquivos Modificados
 
-- `consultar_funcionarios({nome: "Joao", setor: "Cozinha", status: "ativo"})` faz query filtrada na tabela employees
-- `consultar_ferias({tipo: "atuais"})` busca so ferias em gozo atual
-- `consultar_ponto_banco_horas({nome_funcionario: "Maria"})` busca saldo especifico
+- `supabase/functions/whatsapp-ai/index.ts` - Adicionar 8 novas funcoes handler + tool definitions + switch cases
+- `supabase/functions/ai-assistant/index.ts` - Mesmas adicoes para paridade web/WhatsApp
 
-### 4. Atualizar o system prompt
+## Impacto
 
-O prompt passara a instruir a IA:
-- "Voce tem acesso a tools de consulta. Use-os para buscar dados antes de responder."
-- "NAO invente dados. Se precisar de informacoes, use o tool adequado."
-- "Para perguntas gerais ('como esta o RH?'), use consultar_resumo_geral."
-
-### 5. Atualizar o loop de tool calls
-
-O loop atual so suporta 1 rodada de tool calls. Sera expandido para suportar **ate 3 rodadas**, permitindo que a IA faca multiplas consultas sequenciais se necessario.
-
-### 6. Aplicar a mesma logica no `ai-assistant`
-
-A funcao `ai-assistant/index.ts` (web) recebera as mesmas otimizacoes, mantendo paridade entre WhatsApp e web.
-
----
-
-## Detalhes Tecnicos
-
-### Arquivos modificados:
-- `supabase/functions/whatsapp-ai/index.ts` — refatoracao completa
-- `supabase/functions/ai-assistant/index.ts` — mesma refatoracao
-
-### Impacto estimado:
-- **Tokens por mensagem**: de ~20.000 para ~3.000-5.000 (reducao de 75%)
-- **Latencia**: reducao de ~2-3s nas queries iniciais (so busca o necessario)
-- **Custo**: reducao proporcional ao consumo de tokens
-- **Precisao**: mantida — a IA busca exatamente os dados que precisa
-
-### Trade-offs:
-- Perguntas muito amplas ("me conte tudo") podem precisar de 2-3 tool calls em sequencia, adicionando ~1s de latencia
-- A IA precisa ser boa em decidir qual tool usar (Gemini e GPT-4o lidam bem com isso)
+- O Cerebrum passara a cobrir **100% das tabelas** do sistema
+- Nenhuma query adicional no prompt inicial (mantem o modelo retrieval)
+- Cada novo tool so e chamado quando relevante a pergunta do usuario
 
