@@ -357,6 +357,190 @@ async function consultarResumoGeral(supabase: any, _params: any) {
   return `=== RESUMO COMPLETO DO RH ===\n\n${typeof funcs === 'string' ? funcs : JSON.stringify(funcs)}\n\n${ferias}\n\n${faltas}\n\n${ponto}\n\n${fin}\n\n${tacs}\n\n${estoque}\n\n${recr}\n\n${trein}\n\n${eventos}\n\n${saude}\n\n${checks}`;
 }
 
+// ============= NEW TOOLS =============
+
+async function consultarMetas(supabase: any, params: any) {
+  let query = supabase.from("metas_funcionario").select("*, employees(nome_completo, setor, cargo)").order("created_at", { ascending: false }).limit(50);
+  if (params.status) query = query.eq("status", params.status);
+  if (params.nome_funcionario) {
+    const { data: emps } = await supabase.from("employees").select("id, nome_completo").ilike("nome_completo", `%${params.nome_funcionario}%`).limit(10);
+    if (emps?.length > 0) query = query.in("employee_id", emps.map((e: any) => e.id));
+    else return "Nenhum funcionário encontrado com esse nome.";
+  }
+  const { data, error } = await query;
+  if (error) return { error: error.message };
+  const metas = data || [];
+  return `METAS (${metas.length}):\n${metas.map((m: any) => `- ${m.employees?.nome_completo}: ${m.titulo || m.descricao || "Meta"} | Status: ${m.status} | Prazo: ${m.prazo || "N/A"} | Progresso: ${m.progresso || 0}%`).join("\n") || "Nenhuma meta encontrada."}`;
+}
+
+async function consultarProgressoTreinamento(supabase: any, params: any) {
+  const [modulosRes, aulasRes, progressoRes] = await Promise.all([
+    supabase.from("modulos").select("id, titulo, ordem, curso_id, cursos(titulo)").order("ordem"),
+    supabase.from("aulas").select("id, titulo, modulo_id, ordem, duracao_minutos").order("ordem"),
+    params.nome_funcionario
+      ? supabase.from("progresso_aulas").select("*, employees(nome_completo), aulas(titulo, modulo_id)").order("updated_at", { ascending: false }).limit(200)
+      : supabase.from("progresso_aulas").select("*, employees(nome_completo), aulas(titulo, modulo_id)").order("updated_at", { ascending: false }).limit(100),
+  ]);
+  const modulos = modulosRes.data || [];
+  const aulas = aulasRes.data || [];
+  const progresso = progressoRes.data || [];
+
+  let result = `MÓDULOS (${modulos.length}):\n`;
+  const cursoMap: Record<string, { titulo: string; modulos: any[]; totalAulas: number }> = {};
+  for (const m of modulos) {
+    const cid = m.curso_id;
+    if (!cursoMap[cid]) cursoMap[cid] = { titulo: m.cursos?.titulo || "Sem curso", modulos: [], totalAulas: 0 };
+    const aulasDoModulo = aulas.filter((a: any) => a.modulo_id === m.id);
+    cursoMap[cid].modulos.push({ ...m, aulas: aulasDoModulo.length });
+    cursoMap[cid].totalAulas += aulasDoModulo.length;
+  }
+  for (const [cid, info] of Object.entries(cursoMap)) {
+    result += `\n📚 ${info.titulo}: ${info.modulos.length} módulos, ${info.totalAulas} aulas`;
+    for (const m of info.modulos) result += `\n  - ${m.titulo}: ${m.aulas} aulas`;
+  }
+
+  if (params.nome_funcionario) {
+    const filtered = progresso.filter((p: any) => (p.employees?.nome_completo || "").toLowerCase().includes(params.nome_funcionario.toLowerCase()));
+    result += `\n\nPROGRESSO de "${params.nome_funcionario}" (${filtered.length} aulas assistidas):\n${filtered.slice(0, 30).map((p: any) => `- ${p.aulas?.titulo}: ${p.concluida ? "✅ Concluída" : "⏳ Em andamento"} | ${p.updated_at?.substring(0, 10)}`).join("\n") || "Nenhum progresso encontrado."}`;
+  } else {
+    result += `\n\nTotal registros de progresso: ${progresso.length}`;
+  }
+  return result;
+}
+
+async function consultarDetalhesAvaliacao(supabase: any, params: any) {
+  let avalQuery = supabase.from("avaliacoes_desempenho").select("id, employee_id, tipo, status, nota_final, periodo_inicio, periodo_fim, observacoes, employees(nome_completo, setor, cargo)").order("created_at", { ascending: false }).limit(30);
+  if (params.nome_funcionario) {
+    const { data: emps } = await supabase.from("employees").select("id").ilike("nome_completo", `%${params.nome_funcionario}%`).limit(10);
+    if (emps?.length > 0) avalQuery = avalQuery.in("employee_id", emps.map((e: any) => e.id));
+  }
+  const { data: avaliacoes } = await avalQuery;
+  if (!avaliacoes || avaliacoes.length === 0) return "Nenhuma avaliação encontrada.";
+
+  const avalIds = avaliacoes.map((a: any) => a.id);
+  const [notasRes, criteriosRes] = await Promise.all([
+    supabase.from("notas_avaliacao").select("*, criterios_avaliacao(nome, peso)").in("avaliacao_id", avalIds),
+    supabase.from("criterios_avaliacao").select("*").eq("ativo", true),
+  ]);
+  const notas = notasRes.data || [];
+  const criterios = criteriosRes.data || [];
+
+  let result = `AVALIAÇÕES DETALHADAS (${avaliacoes.length}):\n`;
+  for (const av of avaliacoes) {
+    const avNotas = notas.filter((n: any) => n.avaliacao_id === av.id);
+    result += `\n👤 ${av.employees?.nome_completo} (${av.tipo}, ${av.status}) | Nota: ${av.nota_final || "pendente"} | ${av.periodo_inicio} a ${av.periodo_fim}`;
+    if (avNotas.length > 0) {
+      result += `\n  Critérios:`;
+      for (const n of avNotas) {
+        result += `\n    - ${n.criterios_avaliacao?.nome || "Critério"} (peso ${n.criterios_avaliacao?.peso || 1}): Func=${n.nota_funcionario || "-"} | Gestor=${n.nota_gestor || "-"}`;
+        if (n.comentario_gestor) result += ` | "${n.comentario_gestor.substring(0, 80)}"`;
+      }
+    }
+  }
+  result += `\n\nCRITÉRIOS ATIVOS (${criterios.length}): ${criterios.map((c: any) => `${c.nome} (peso ${c.peso})`).join(", ")}`;
+  return result;
+}
+
+async function consultarHistoricos(supabase: any, params: any) {
+  const tipo = params.tipo || "todos";
+  const limit = 30;
+  let result = "";
+
+  if (tipo === "banco_horas" || tipo === "todos") {
+    let query = supabase.from("historico_banco_horas").select("*, employees(nome_completo)").order("created_at", { ascending: false }).limit(limit);
+    if (params.nome_funcionario) {
+      const { data: emps } = await supabase.from("employees").select("id").ilike("nome_completo", `%${params.nome_funcionario}%`).limit(10);
+      if (emps?.length > 0) query = query.in("employee_id", emps.map((e: any) => e.id));
+    }
+    const { data } = await query;
+    result += `HISTÓRICO BANCO DE HORAS (${(data || []).length}):\n${(data || []).map((h: any) => `- ${h.employees?.nome_completo}: ${h.tipo_movimentacao || "mov"} ${h.horas > 0 ? "+" : ""}${h.horas}h | Saldo: ${h.saldo_anterior}→${h.saldo_novo} | ${h.motivo || ""} | ${h.created_at?.substring(0, 10)}`).join("\n") || "Nenhum"}\n\n`;
+  }
+
+  if (tipo === "estoque_epis" || tipo === "todos") {
+    const { data } = await supabase.from("historico_estoque_epis").select("*, estoque_epis:estoque_epi_id(tipo_epi, marca_modelo, tamanho), employees:employee_id(nome_completo)").order("created_at", { ascending: false }).limit(limit);
+    result += `HISTÓRICO ESTOQUE EPIs (${(data || []).length}):\n${(data || []).map((h: any) => `- ${h.estoque_epis?.tipo_epi || "EPI"} ${h.estoque_epis?.tamanho || ""}: ${h.tipo_movimentacao} ${h.quantidade}un (${h.quantidade_anterior}→${h.quantidade_nova}) | ${h.employees?.nome_completo || ""} | ${h.motivo || ""}`).join("\n") || "Nenhum"}\n\n`;
+  }
+
+  if (tipo === "estoque_uniformes" || tipo === "todos") {
+    const { data } = await supabase.from("historico_estoque_uniformes").select("*, estoque_uniformes:estoque_uniforme_id(tipo_uniforme, tamanho, cor), employees:employee_id(nome_completo)").order("created_at", { ascending: false }).limit(limit);
+    result += `HISTÓRICO ESTOQUE UNIFORMES (${(data || []).length}):\n${(data || []).map((h: any) => `- ${h.estoque_uniformes?.tipo_uniforme || "Uniforme"} ${h.estoque_uniformes?.tamanho || ""}: ${h.tipo_movimentacao} ${h.quantidade}un (${h.quantidade_anterior}→${h.quantidade_nova}) | ${h.employees?.nome_completo || ""} | ${h.motivo || ""}`).join("\n") || "Nenhum"}\n\n`;
+  }
+
+  if (tipo === "folgas" || tipo === "todos") {
+    let query = supabase.from("historico_folgas").select("*, employees:employee_id(nome_completo)").order("created_at", { ascending: false }).limit(limit);
+    if (params.nome_funcionario) {
+      const { data: emps } = await supabase.from("employees").select("id").ilike("nome_completo", `%${params.nome_funcionario}%`).limit(10);
+      if (emps?.length > 0) query = query.in("employee_id", emps.map((e: any) => e.id));
+    }
+    const { data } = await query;
+    result += `HISTÓRICO FOLGAS (${(data || []).length}):\n${(data || []).map((h: any) => `- ${h.employees?.nome_completo}: ${h.quantidade_anterior}→${h.quantidade_nova} folgas | ${h.observacao || ""} | ${h.alterado_em?.substring(0, 10)}`).join("\n") || "Nenhum"}`;
+  }
+
+  return result || "Nenhum histórico encontrado.";
+}
+
+async function consultarVariaveisFixas(supabase: any, params: any) {
+  const [variaveisRes, fixasRes] = await Promise.all([
+    supabase.from("variaveis_folha").select("*").eq("ativo", true).order("tipo").order("nome"),
+    params.nome_funcionario
+      ? (async () => {
+          const { data: emps } = await supabase.from("employees").select("id").ilike("nome_completo", `%${params.nome_funcionario}%`).limit(10);
+          if (emps?.length > 0) return supabase.from("variaveis_fixas_funcionario").select("*, variavel:variaveis_folha(nome, tipo, codigo), employees:employee_id(nome_completo)").in("employee_id", emps.map((e: any) => e.id));
+          return { data: [] };
+        })()
+      : supabase.from("variaveis_fixas_funcionario").select("*, variavel:variaveis_folha(nome, tipo, codigo), employees:employee_id(nome_completo)").eq("ativo", true).limit(100),
+  ]);
+
+  const variaveis = variaveisRes.data || [];
+  const fixas = fixasRes.data || [];
+  const proventos = variaveis.filter((v: any) => v.tipo === "provento");
+  const descontos = variaveis.filter((v: any) => v.tipo === "desconto");
+
+  let result = `VARIÁVEIS DA FOLHA (${variaveis.length}):\nProventos (${proventos.length}): ${proventos.map((v: any) => `${v.nome}${v.codigo ? ` (${v.codigo})` : ""}`).join(", ") || "Nenhum"}\nDescontos (${descontos.length}): ${descontos.map((v: any) => `${v.nome}${v.codigo ? ` (${v.codigo})` : ""}`).join(", ") || "Nenhum"}`;
+  result += `\n\nVARIÁVEIS FIXAS POR FUNCIONÁRIO (${fixas.length}):\n${fixas.map((f: any) => `- ${f.employees?.nome_completo}: ${f.variavel?.nome} (${f.variavel?.tipo}) = R$ ${f.valor?.toFixed(2)} ${f.ativo ? "✅" : "❌ inativa"}`).join("\n") || "Nenhuma"}`;
+  return result;
+}
+
+async function consultarArquivosFuncionario(supabase: any, params: any) {
+  if (!params.nome_funcionario) return "Informe o nome do funcionário para buscar arquivos.";
+  const { data: emps } = await supabase.from("employees").select("id, nome_completo").ilike("nome_completo", `%${params.nome_funcionario}%`).limit(5);
+  if (!emps || emps.length === 0) return `Funcionário "${params.nome_funcionario}" não encontrado.`;
+
+  const empIds = emps.map((e: any) => e.id);
+  const { data: files } = await supabase.from("employee_files").select("*, employees:employee_id(nome_completo)").in("employee_id", empIds).order("created_at", { ascending: false });
+  return `ARQUIVOS (${(files || []).length}):\n${(files || []).map((f: any) => `- ${f.employees?.nome_completo}: ${f.file_name} (${f.file_type || "arquivo"}) | ${f.description || ""} | ${f.created_at?.substring(0, 10)}`).join("\n") || "Nenhum arquivo encontrado."}`;
+}
+
+async function consultarContratos(supabase: any, _params: any) {
+  const { data } = await supabase.from("modelos_contrato").select("*").order("created_at", { ascending: false });
+  return `MODELOS DE CONTRATO (${(data || []).length}):\n${(data || []).map((c: any) => `- ${c.nome} | Tipo: ${c.tipo || "geral"} | Atualizado: ${c.updated_at?.substring(0, 10) || c.created_at?.substring(0, 10)}`).join("\n") || "Nenhum modelo encontrado."}`;
+}
+
+async function consultarConfiguracoes(supabase: any, params: any) {
+  const tipo = params.tipo || "todos";
+  let result = "";
+
+  if (tipo === "setores" || tipo === "todos") {
+    const { data } = await supabase.from("configuracao_setor").select("*, setores:setor_id(nome)");
+    result += `CONFIG SETORES (${(data || []).length}):\n${(data || []).map((c: any) => `- ${c.setores?.nome}: Qtd média: ${c.quantidade_media} | Alertas: ${c.alertas_ativos ? "✅" : "❌"}`).join("\n") || "Nenhuma"}\n\n`;
+  }
+
+  if (tipo === "ferias" || tipo === "todos") {
+    const { data } = await supabase.from("configuracoes_ferias").select("*");
+    result += `CONFIG FÉRIAS (${(data || []).length}):\n${(data || []).map((c: any) => `- Máx ausência: ${c.percentual_maximo_ausencia || "N/A"}% | Cobertura mín: ${c.cobertura_minima || "N/A"}`).join("\n") || "Nenhuma"}\n\n`;
+  }
+
+  if (tipo === "checklists" || tipo === "todos") {
+    const { data: templates } = await supabase.from("plano_checklist_templates").select("*, plano_checklist_itens(id, titulo, obrigatorio, prazo_dias)").eq("ativo", true);
+    result += `TEMPLATES CHECKLIST (${(templates || []).length}):\n${(templates || []).map((t: any) => {
+      const itens = t.plano_checklist_itens || [];
+      return `- ${t.nome} (${t.tipo}): ${itens.length} itens${itens.length > 0 ? "\n    " + itens.map((i: any) => `${i.titulo}${i.obrigatorio ? " *" : ""}${i.prazo_dias ? ` (${i.prazo_dias}d)` : ""}`).join("\n    ") : ""}`;
+    }).join("\n") || "Nenhum"}`;
+  }
+
+  return result || "Nenhuma configuração encontrada.";
+}
+
 async function fetchMemorias(supabase: any) {
   const { data } = await supabase.from("cerebrum_memorias").select("conteudo, categoria, nome_professor, created_at").eq("ativo", true).order("created_at", { ascending: false }).limit(100);
   return data || [];
@@ -498,6 +682,71 @@ const toolDefinitions = [
       parameters: { type: "object", properties: {} },
     },
   },
+  // NEW TOOLS
+  {
+    type: "function",
+    function: {
+      name: "consultar_metas",
+      description: "Consulta metas individuais de desempenho dos funcionários. Use para perguntas sobre metas, objetivos, OKRs.",
+      parameters: { type: "object", properties: { nome_funcionario: { type: "string", description: "Nome do funcionário" }, status: { type: "string", description: "Status da meta", enum: ["pendente", "em_andamento", "concluida", "cancelada"] } } },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "consultar_progresso_treinamento",
+      description: "Consulta progresso detalhado de funcionários nos cursos: módulos, aulas assistidas, conclusão. Use para saber quem completou treinamento.",
+      parameters: { type: "object", properties: { nome_funcionario: { type: "string", description: "Nome do funcionário para ver progresso individual" }, curso: { type: "string", description: "Nome do curso" } } },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "consultar_detalhes_avaliacao",
+      description: "Consulta notas detalhadas por critério das avaliações de desempenho. Use para detalhes de notas, critérios, auto-avaliação vs gestor.",
+      parameters: { type: "object", properties: { nome_funcionario: { type: "string", description: "Nome do funcionário" } } },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "consultar_historicos",
+      description: "Consulta históricos de movimentações: banco de horas, estoque EPIs/uniformes, folgas. Use para auditoria, rastreabilidade.",
+      parameters: { type: "object", properties: { tipo: { type: "string", description: "Tipo de histórico", enum: ["banco_horas", "estoque_epis", "estoque_uniformes", "folgas", "todos"] }, nome_funcionario: { type: "string", description: "Filtrar por funcionário" } } },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "consultar_variaveis_fixas",
+      description: "Consulta variáveis da folha de pagamento (proventos/descontos cadastrados) e variáveis fixas por funcionário.",
+      parameters: { type: "object", properties: { nome_funcionario: { type: "string", description: "Nome do funcionário para ver variáveis fixas individuais" } } },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "consultar_arquivos_funcionario",
+      description: "Lista arquivos/documentos enviados de um funcionário específico.",
+      parameters: { type: "object", properties: { nome_funcionario: { type: "string", description: "Nome do funcionário (obrigatório)" } }, required: ["nome_funcionario"] },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "consultar_contratos",
+      description: "Lista modelos/templates de contrato disponíveis no sistema.",
+      parameters: { type: "object", properties: {} },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "consultar_configuracoes",
+      description: "Consulta configurações do sistema: lotação de setores, regras de férias, templates de checklist.",
+      parameters: { type: "object", properties: { tipo: { type: "string", description: "Tipo de configuração", enum: ["setores", "ferias", "checklists", "todos"] } } },
+    },
+  },
   // ACTION TOOLS
   {
     type: "function",
@@ -570,6 +819,14 @@ async function executeTool(supabase: any, toolName: string, params: any, phoneNu
     case "consultar_saude_ocupacional": return await consultarSaudeOcupacional(supabase, params);
     case "consultar_checklists": return await consultarChecklists(supabase, params);
     case "consultar_resumo_geral": return await consultarResumoGeral(supabase, params);
+    case "consultar_metas": return await consultarMetas(supabase, params);
+    case "consultar_progresso_treinamento": return await consultarProgressoTreinamento(supabase, params);
+    case "consultar_detalhes_avaliacao": return await consultarDetalhesAvaliacao(supabase, params);
+    case "consultar_historicos": return await consultarHistoricos(supabase, params);
+    case "consultar_variaveis_fixas": return await consultarVariaveisFixas(supabase, params);
+    case "consultar_arquivos_funcionario": return await consultarArquivosFuncionario(supabase, params);
+    case "consultar_contratos": return await consultarContratos(supabase, params);
+    case "consultar_configuracoes": return await consultarConfiguracoes(supabase, params);
     case "criar_evento": return await createEvento(supabase, params, phoneNumber);
     case "criar_adiantamento": return await createAdiantamento(supabase, params);
     case "salvar_memoria": {
@@ -768,6 +1025,14 @@ Você tem acesso a tools que consultam o banco de dados em tempo real. USE-OS an
 - consultar_saude_ocupacional: exames, afastamentos
 - consultar_checklists: checklists de admissão/desligamento
 - consultar_resumo_geral: resumo completo (use para visão geral)
+- consultar_metas: metas individuais de desempenho
+- consultar_progresso_treinamento: progresso detalhado em módulos/aulas
+- consultar_detalhes_avaliacao: notas por critério das avaliações
+- consultar_historicos: movimentações de banco de horas, estoque, folgas
+- consultar_variaveis_fixas: proventos/descontos fixos da folha
+- consultar_arquivos_funcionario: documentos/arquivos de funcionários
+- consultar_contratos: modelos de contrato disponíveis
+- consultar_configuracoes: configurações de setores, férias, checklists
 
 TOOLS DE AÇÃO:
 - criar_evento: agendar eventos/compromissos
