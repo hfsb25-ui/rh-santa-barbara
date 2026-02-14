@@ -225,6 +225,173 @@ async function consultarResumoGeral(supabase: any, _params: any) {
   return `=== RESUMO COMPLETO ===\n\n${typeof funcs === 'string' ? funcs : JSON.stringify(funcs)}\n\n${ferias}\n\n${faltas}\n\n${ponto}\n\n${fin}\n\n${tacs}\n\n${estoque}\n\n${recr}\n\n${trein}\n\n${eventos}\n\n${saude}\n\n${checks}`;
 }
 
+// ============= NEW TOOLS =============
+
+async function consultarMetas(supabase: any, params: any) {
+  let query = supabase.from("metas_funcionario").select("*, employees(nome_completo, setor, cargo)").order("created_at", { ascending: false }).limit(50);
+  if (params.status) query = query.eq("status", params.status);
+  if (params.nome_funcionario) {
+    const { data: emps } = await supabase.from("employees").select("id, nome_completo").ilike("nome_completo", `%${params.nome_funcionario}%`).limit(10);
+    if (emps?.length > 0) query = query.in("employee_id", emps.map((e: any) => e.id));
+    else return "Nenhum funcionário encontrado com esse nome.";
+  }
+  const { data, error } = await query;
+  if (error) return { error: error.message };
+  const metas = data || [];
+  return `METAS (${metas.length}):\n${metas.map((m: any) => `- ${m.employees?.nome_completo}: ${m.titulo || m.descricao || "Meta"} | Status: ${m.status} | Prazo: ${m.prazo || "N/A"} | Progresso: ${m.progresso || 0}%`).join("\n") || "Nenhuma meta encontrada."}`;
+}
+
+async function consultarProgressoTreinamento(supabase: any, params: any) {
+  const [modulosRes, aulasRes, progressoRes] = await Promise.all([
+    supabase.from("modulos").select("id, titulo, ordem, curso_id, cursos(titulo)").order("ordem"),
+    supabase.from("aulas").select("id, titulo, modulo_id, ordem, duracao_minutos").order("ordem"),
+    params.nome_funcionario
+      ? supabase.from("progresso_aulas").select("*, employees(nome_completo), aulas(titulo, modulo_id)").order("updated_at", { ascending: false }).limit(200)
+      : supabase.from("progresso_aulas").select("*, employees(nome_completo), aulas(titulo, modulo_id)").order("updated_at", { ascending: false }).limit(100),
+  ]);
+  const modulos = modulosRes.data || [];
+  const aulas = aulasRes.data || [];
+  const progresso = progressoRes.data || [];
+  let result = `MÓDULOS (${modulos.length}):\n`;
+  const cursoMap: Record<string, { titulo: string; modulos: any[]; totalAulas: number }> = {};
+  for (const m of modulos) {
+    const cid = m.curso_id;
+    if (!cursoMap[cid]) cursoMap[cid] = { titulo: m.cursos?.titulo || "Sem curso", modulos: [], totalAulas: 0 };
+    const aulasDoModulo = aulas.filter((a: any) => a.modulo_id === m.id);
+    cursoMap[cid].modulos.push({ ...m, aulas: aulasDoModulo.length });
+    cursoMap[cid].totalAulas += aulasDoModulo.length;
+  }
+  for (const [, info] of Object.entries(cursoMap)) {
+    result += `\n📚 ${info.titulo}: ${info.modulos.length} módulos, ${info.totalAulas} aulas`;
+    for (const m of info.modulos) result += `\n  - ${m.titulo}: ${m.aulas} aulas`;
+  }
+  if (params.nome_funcionario) {
+    const filtered = progresso.filter((p: any) => (p.employees?.nome_completo || "").toLowerCase().includes(params.nome_funcionario.toLowerCase()));
+    result += `\n\nPROGRESSO de "${params.nome_funcionario}" (${filtered.length} aulas):\n${filtered.slice(0, 30).map((p: any) => `- ${p.aulas?.titulo}: ${p.concluida ? "✅" : "⏳"} | ${p.updated_at?.substring(0, 10)}`).join("\n") || "Nenhum progresso."}`;
+  } else {
+    result += `\n\nTotal registros de progresso: ${progresso.length}`;
+  }
+  return result;
+}
+
+async function consultarDetalhesAvaliacao(supabase: any, params: any) {
+  let avalQuery = supabase.from("avaliacoes_desempenho").select("id, employee_id, tipo, status, nota_final, periodo_inicio, periodo_fim, observacoes, employees(nome_completo, setor, cargo)").order("created_at", { ascending: false }).limit(30);
+  if (params.nome_funcionario) {
+    const { data: emps } = await supabase.from("employees").select("id").ilike("nome_completo", `%${params.nome_funcionario}%`).limit(10);
+    if (emps?.length > 0) avalQuery = avalQuery.in("employee_id", emps.map((e: any) => e.id));
+  }
+  const { data: avaliacoes } = await avalQuery;
+  if (!avaliacoes || avaliacoes.length === 0) return "Nenhuma avaliação encontrada.";
+  const avalIds = avaliacoes.map((a: any) => a.id);
+  const [notasRes, criteriosRes] = await Promise.all([
+    supabase.from("notas_avaliacao").select("*, criterios_avaliacao(nome, peso)").in("avaliacao_id", avalIds),
+    supabase.from("criterios_avaliacao").select("*").eq("ativo", true),
+  ]);
+  const notas = notasRes.data || [];
+  const criterios = criteriosRes.data || [];
+  let result = `AVALIAÇÕES DETALHADAS (${avaliacoes.length}):\n`;
+  for (const av of avaliacoes) {
+    const avNotas = notas.filter((n: any) => n.avaliacao_id === av.id);
+    result += `\n👤 ${av.employees?.nome_completo} (${av.tipo}, ${av.status}) | Nota: ${av.nota_final || "pendente"} | ${av.periodo_inicio} a ${av.periodo_fim}`;
+    if (avNotas.length > 0) {
+      result += `\n  Critérios:`;
+      for (const n of avNotas) {
+        result += `\n    - ${n.criterios_avaliacao?.nome || "Critério"} (peso ${n.criterios_avaliacao?.peso || 1}): Func=${n.nota_funcionario || "-"} | Gestor=${n.nota_gestor || "-"}`;
+        if (n.comentario_gestor) result += ` | "${n.comentario_gestor.substring(0, 80)}"`;
+      }
+    }
+  }
+  result += `\n\nCRITÉRIOS ATIVOS (${criterios.length}): ${criterios.map((c: any) => `${c.nome} (peso ${c.peso})`).join(", ")}`;
+  return result;
+}
+
+async function consultarHistoricos(supabase: any, params: any) {
+  const tipo = params.tipo || "todos";
+  const limit = 30;
+  let result = "";
+  if (tipo === "banco_horas" || tipo === "todos") {
+    let query = supabase.from("historico_banco_horas").select("*, employees(nome_completo)").order("created_at", { ascending: false }).limit(limit);
+    if (params.nome_funcionario) {
+      const { data: emps } = await supabase.from("employees").select("id").ilike("nome_completo", `%${params.nome_funcionario}%`).limit(10);
+      if (emps?.length > 0) query = query.in("employee_id", emps.map((e: any) => e.id));
+    }
+    const { data } = await query;
+    result += `HISTÓRICO BANCO DE HORAS (${(data || []).length}):\n${(data || []).map((h: any) => `- ${h.employees?.nome_completo}: ${h.tipo_movimentacao || "mov"} ${h.horas > 0 ? "+" : ""}${h.horas}h | Saldo: ${h.saldo_anterior}→${h.saldo_novo} | ${h.motivo || ""} | ${h.created_at?.substring(0, 10)}`).join("\n") || "Nenhum"}\n\n`;
+  }
+  if (tipo === "estoque_epis" || tipo === "todos") {
+    const { data } = await supabase.from("historico_estoque_epis").select("*, estoque_epis:estoque_epi_id(tipo_epi, marca_modelo, tamanho), employees:employee_id(nome_completo)").order("created_at", { ascending: false }).limit(limit);
+    result += `HISTÓRICO ESTOQUE EPIs (${(data || []).length}):\n${(data || []).map((h: any) => `- ${h.estoque_epis?.tipo_epi || "EPI"} ${h.estoque_epis?.tamanho || ""}: ${h.tipo_movimentacao} ${h.quantidade}un (${h.quantidade_anterior}→${h.quantidade_nova}) | ${h.employees?.nome_completo || ""} | ${h.motivo || ""}`).join("\n") || "Nenhum"}\n\n`;
+  }
+  if (tipo === "estoque_uniformes" || tipo === "todos") {
+    const { data } = await supabase.from("historico_estoque_uniformes").select("*, estoque_uniformes:estoque_uniforme_id(tipo_uniforme, tamanho, cor), employees:employee_id(nome_completo)").order("created_at", { ascending: false }).limit(limit);
+    result += `HISTÓRICO ESTOQUE UNIFORMES (${(data || []).length}):\n${(data || []).map((h: any) => `- ${h.estoque_uniformes?.tipo_uniforme || "Uniforme"} ${h.estoque_uniformes?.tamanho || ""}: ${h.tipo_movimentacao} ${h.quantidade}un (${h.quantidade_anterior}→${h.quantidade_nova}) | ${h.employees?.nome_completo || ""} | ${h.motivo || ""}`).join("\n") || "Nenhum"}\n\n`;
+  }
+  if (tipo === "folgas" || tipo === "todos") {
+    let query = supabase.from("historico_folgas").select("*, employees:employee_id(nome_completo)").order("created_at", { ascending: false }).limit(limit);
+    if (params.nome_funcionario) {
+      const { data: emps } = await supabase.from("employees").select("id").ilike("nome_completo", `%${params.nome_funcionario}%`).limit(10);
+      if (emps?.length > 0) query = query.in("employee_id", emps.map((e: any) => e.id));
+    }
+    const { data } = await query;
+    result += `HISTÓRICO FOLGAS (${(data || []).length}):\n${(data || []).map((h: any) => `- ${h.employees?.nome_completo}: ${h.quantidade_anterior}→${h.quantidade_nova} folgas | ${h.observacao || ""} | ${h.alterado_em?.substring(0, 10)}`).join("\n") || "Nenhum"}`;
+  }
+  return result || "Nenhum histórico encontrado.";
+}
+
+async function consultarVariaveisFixas(supabase: any, params: any) {
+  const [variaveisRes, fixasRes] = await Promise.all([
+    supabase.from("variaveis_folha").select("*").eq("ativo", true).order("tipo").order("nome"),
+    params.nome_funcionario
+      ? (async () => {
+          const { data: emps } = await supabase.from("employees").select("id").ilike("nome_completo", `%${params.nome_funcionario}%`).limit(10);
+          if (emps?.length > 0) return supabase.from("variaveis_fixas_funcionario").select("*, variavel:variaveis_folha(nome, tipo, codigo), employees:employee_id(nome_completo)").in("employee_id", emps.map((e: any) => e.id));
+          return { data: [] };
+        })()
+      : supabase.from("variaveis_fixas_funcionario").select("*, variavel:variaveis_folha(nome, tipo, codigo), employees:employee_id(nome_completo)").eq("ativo", true).limit(100),
+  ]);
+  const variaveis = variaveisRes.data || [];
+  const fixas = fixasRes.data || [];
+  const proventos = variaveis.filter((v: any) => v.tipo === "provento");
+  const descontos = variaveis.filter((v: any) => v.tipo === "desconto");
+  let result = `VARIÁVEIS DA FOLHA (${variaveis.length}):\nProventos (${proventos.length}): ${proventos.map((v: any) => `${v.nome}${v.codigo ? ` (${v.codigo})` : ""}`).join(", ") || "Nenhum"}\nDescontos (${descontos.length}): ${descontos.map((v: any) => `${v.nome}${v.codigo ? ` (${v.codigo})` : ""}`).join(", ") || "Nenhum"}`;
+  result += `\n\nVARIÁVEIS FIXAS POR FUNCIONÁRIO (${fixas.length}):\n${fixas.map((f: any) => `- ${f.employees?.nome_completo}: ${f.variavel?.nome} (${f.variavel?.tipo}) = R$ ${f.valor?.toFixed(2)} ${f.ativo ? "✅" : "❌"}`).join("\n") || "Nenhuma"}`;
+  return result;
+}
+
+async function consultarArquivosFuncionario(supabase: any, params: any) {
+  if (!params.nome_funcionario) return "Informe o nome do funcionário.";
+  const { data: emps } = await supabase.from("employees").select("id, nome_completo").ilike("nome_completo", `%${params.nome_funcionario}%`).limit(5);
+  if (!emps || emps.length === 0) return `Funcionário "${params.nome_funcionario}" não encontrado.`;
+  const { data: files } = await supabase.from("employee_files").select("*, employees:employee_id(nome_completo)").in("employee_id", emps.map((e: any) => e.id)).order("created_at", { ascending: false });
+  return `ARQUIVOS (${(files || []).length}):\n${(files || []).map((f: any) => `- ${f.employees?.nome_completo}: ${f.file_name} (${f.file_type || "arquivo"}) | ${f.description || ""} | ${f.created_at?.substring(0, 10)}`).join("\n") || "Nenhum arquivo."}`;
+}
+
+async function consultarContratos(supabase: any, _params: any) {
+  const { data } = await supabase.from("modelos_contrato").select("*").order("created_at", { ascending: false });
+  return `MODELOS DE CONTRATO (${(data || []).length}):\n${(data || []).map((c: any) => `- ${c.nome} | Tipo: ${c.tipo || "geral"} | ${c.updated_at?.substring(0, 10) || c.created_at?.substring(0, 10)}`).join("\n") || "Nenhum."}`;
+}
+
+async function consultarConfiguracoes(supabase: any, params: any) {
+  const tipo = params.tipo || "todos";
+  let result = "";
+  if (tipo === "setores" || tipo === "todos") {
+    const { data } = await supabase.from("configuracao_setor").select("*, setores:setor_id(nome)");
+    result += `CONFIG SETORES (${(data || []).length}):\n${(data || []).map((c: any) => `- ${c.setores?.nome}: Qtd média: ${c.quantidade_media} | Alertas: ${c.alertas_ativos ? "✅" : "❌"}`).join("\n") || "Nenhuma"}\n\n`;
+  }
+  if (tipo === "ferias" || tipo === "todos") {
+    const { data } = await supabase.from("configuracoes_ferias").select("*");
+    result += `CONFIG FÉRIAS (${(data || []).length}):\n${(data || []).map((c: any) => `- Máx ausência: ${c.percentual_maximo_ausencia || "N/A"}% | Cobertura mín: ${c.cobertura_minima || "N/A"}`).join("\n") || "Nenhuma"}\n\n`;
+  }
+  if (tipo === "checklists" || tipo === "todos") {
+    const { data: templates } = await supabase.from("plano_checklist_templates").select("*, plano_checklist_itens(id, titulo, obrigatorio, prazo_dias)").eq("ativo", true);
+    result += `TEMPLATES CHECKLIST (${(templates || []).length}):\n${(templates || []).map((t: any) => {
+      const itens = t.plano_checklist_itens || [];
+      return `- ${t.nome} (${t.tipo}): ${itens.length} itens${itens.length > 0 ? "\n    " + itens.map((i: any) => `${i.titulo}${i.obrigatorio ? " *" : ""}${i.prazo_dias ? ` (${i.prazo_dias}d)` : ""}`).join("\n    ") : ""}`;
+    }).join("\n") || "Nenhum"}`;
+  }
+  return result || "Nenhuma configuração encontrada.";
+}
+
 // ============= TOOL DEFINITIONS =============
 
 const toolDefinitions = [
@@ -241,6 +408,15 @@ const toolDefinitions = [
   { type: "function", function: { name: "consultar_saude_ocupacional", description: "Consulta exames e afastamentos.", parameters: { type: "object", properties: {} } } },
   { type: "function", function: { name: "consultar_checklists", description: "Consulta checklists pendentes.", parameters: { type: "object", properties: {} } } },
   { type: "function", function: { name: "consultar_resumo_geral", description: "Resumo completo do RH. Use para visão geral.", parameters: { type: "object", properties: {} } } },
+  // NEW TOOLS
+  { type: "function", function: { name: "consultar_metas", description: "Consulta metas individuais de desempenho dos funcionários.", parameters: { type: "object", properties: { nome_funcionario: { type: "string" }, status: { type: "string", enum: ["pendente", "em_andamento", "concluida", "cancelada"] } } } } },
+  { type: "function", function: { name: "consultar_progresso_treinamento", description: "Consulta progresso detalhado nos cursos: módulos, aulas, conclusão.", parameters: { type: "object", properties: { nome_funcionario: { type: "string" }, curso: { type: "string" } } } } },
+  { type: "function", function: { name: "consultar_detalhes_avaliacao", description: "Notas detalhadas por critério das avaliações.", parameters: { type: "object", properties: { nome_funcionario: { type: "string" } } } } },
+  { type: "function", function: { name: "consultar_historicos", description: "Históricos de movimentações: banco de horas, estoque, folgas.", parameters: { type: "object", properties: { tipo: { type: "string", enum: ["banco_horas", "estoque_epis", "estoque_uniformes", "folgas", "todos"] }, nome_funcionario: { type: "string" } } } } },
+  { type: "function", function: { name: "consultar_variaveis_fixas", description: "Variáveis da folha e proventos/descontos fixos por funcionário.", parameters: { type: "object", properties: { nome_funcionario: { type: "string" } } } } },
+  { type: "function", function: { name: "consultar_arquivos_funcionario", description: "Arquivos/documentos de um funcionário.", parameters: { type: "object", properties: { nome_funcionario: { type: "string" } }, required: ["nome_funcionario"] } } },
+  { type: "function", function: { name: "consultar_contratos", description: "Modelos de contrato disponíveis.", parameters: { type: "object", properties: {} } } },
+  { type: "function", function: { name: "consultar_configuracoes", description: "Configurações de setores, férias, checklists.", parameters: { type: "object", properties: { tipo: { type: "string", enum: ["setores", "ferias", "checklists", "todos"] } } } } },
 ];
 
 async function executeTool(supabase: any, toolName: string, params: any) {
@@ -258,6 +434,14 @@ async function executeTool(supabase: any, toolName: string, params: any) {
     case "consultar_saude_ocupacional": return await consultarSaudeOcupacional(supabase, params);
     case "consultar_checklists": return await consultarChecklists(supabase, params);
     case "consultar_resumo_geral": return await consultarResumoGeral(supabase, params);
+    case "consultar_metas": return await consultarMetas(supabase, params);
+    case "consultar_progresso_treinamento": return await consultarProgressoTreinamento(supabase, params);
+    case "consultar_detalhes_avaliacao": return await consultarDetalhesAvaliacao(supabase, params);
+    case "consultar_historicos": return await consultarHistoricos(supabase, params);
+    case "consultar_variaveis_fixas": return await consultarVariaveisFixas(supabase, params);
+    case "consultar_arquivos_funcionario": return await consultarArquivosFuncionario(supabase, params);
+    case "consultar_contratos": return await consultarContratos(supabase, params);
+    case "consultar_configuracoes": return await consultarConfiguracoes(supabase, params);
     default: return { error: `Tool ${toolName} not found` };
   }
 }
@@ -310,7 +494,7 @@ REGRAS:
 - Responda em português brasileiro.
 
 TOOLS DE CONSULTA (use antes de responder):
-consultar_funcionarios, consultar_ferias, consultar_faltas_folgas, consultar_ponto_banco_horas, consultar_financeiro, consultar_tacs_avaliacoes, consultar_estoque, consultar_recrutamento, consultar_treinamentos, consultar_eventos_avisos, consultar_saude_ocupacional, consultar_checklists, consultar_resumo_geral
+consultar_funcionarios, consultar_ferias, consultar_faltas_folgas, consultar_ponto_banco_horas, consultar_financeiro, consultar_tacs_avaliacoes, consultar_estoque, consultar_recrutamento, consultar_treinamentos, consultar_eventos_avisos, consultar_saude_ocupacional, consultar_checklists, consultar_resumo_geral, consultar_metas, consultar_progresso_treinamento, consultar_detalhes_avaliacao, consultar_historicos, consultar_variaveis_fixas, consultar_arquivos_funcionario, consultar_contratos, consultar_configuracoes
 
 Data/hora: ${now.toISOString()} | Ano: ${now.getFullYear()}
 ${memoriasText}
