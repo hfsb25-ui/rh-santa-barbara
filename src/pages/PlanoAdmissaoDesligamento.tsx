@@ -25,10 +25,10 @@ export default function PlanoAdmissaoDesligamento() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="admissoes">Admissões em Andamento</TabsTrigger>
-          <TabsTrigger value="desligamentos">Desligamentos em Andamento</TabsTrigger>
-          <TabsTrigger value="templates">Configurar Templates</TabsTrigger>
+        <TabsList className="inline-flex w-full overflow-x-auto tabs-scroll lg:grid lg:grid-cols-3">
+          <TabsTrigger value="admissoes" className="flex-shrink-0 whitespace-nowrap">Admissões em Andamento</TabsTrigger>
+          <TabsTrigger value="desligamentos" className="flex-shrink-0 whitespace-nowrap">Desligamentos em Andamento</TabsTrigger>
+          <TabsTrigger value="templates" className="flex-shrink-0 whitespace-nowrap">Configurar Templates</TabsTrigger>
         </TabsList>
 
         <TabsContent value="admissoes" className="mt-6">

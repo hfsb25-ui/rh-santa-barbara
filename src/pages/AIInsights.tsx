@@ -41,24 +41,24 @@ const AIInsights = () => {
         </div>
 
         <Tabs defaultValue="assistant" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5 lg:w-auto lg:inline-grid">
-            <TabsTrigger value="assistant" className="flex items-center gap-2">
+          <TabsList className="inline-flex w-full overflow-x-auto tabs-scroll lg:grid lg:grid-cols-5">
+            <TabsTrigger value="assistant" className="flex-shrink-0 flex items-center gap-2">
               <Bot className="h-4 w-4" />
               <span className="hidden sm:inline">Assistente</span>
             </TabsTrigger>
-            <TabsTrigger value="turnover" className="flex items-center gap-2">
+            <TabsTrigger value="turnover" className="flex-shrink-0 flex items-center gap-2">
               <Target className="h-4 w-4" />
               <span className="hidden sm:inline">Turnover</span>
             </TabsTrigger>
-            <TabsTrigger value="promotion" className="flex items-center gap-2">
+            <TabsTrigger value="promotion" className="flex-shrink-0 flex items-center gap-2">
               <Award className="h-4 w-4" />
               <span className="hidden sm:inline">Promoções</span>
             </TabsTrigger>
-            <TabsTrigger value="reports" className="flex items-center gap-2">
+            <TabsTrigger value="reports" className="flex-shrink-0 flex items-center gap-2">
               <FileText className="h-4 w-4" />
               <span className="hidden sm:inline">Relatórios</span>
             </TabsTrigger>
-            <TabsTrigger value="sentiment" className="flex items-center gap-2">
+            <TabsTrigger value="sentiment" className="flex-shrink-0 flex items-center gap-2">
               <Brain className="h-4 w-4" />
               <span className="hidden sm:inline">Sentimento</span>
             </TabsTrigger>

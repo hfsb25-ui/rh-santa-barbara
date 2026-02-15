@@ -40,30 +40,30 @@ export default function ControlePonto() {
         </div>
 
         <Tabs defaultValue="individual" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-6">
-            <TabsTrigger value="individual" className="flex items-center gap-2">
+          <TabsList className="inline-flex w-full overflow-x-auto tabs-scroll lg:grid lg:grid-cols-6">
+            <TabsTrigger value="individual" className="flex-shrink-0 flex items-center gap-2">
               <Calendar className="h-4 w-4" />
-              Lançamento Individual
+              <span className="hidden sm:inline">Lançamento Individual</span>
             </TabsTrigger>
-            <TabsTrigger value="lote" className="flex items-center gap-2">
+            <TabsTrigger value="lote" className="flex-shrink-0 flex items-center gap-2">
               <Users className="h-4 w-4" />
-              Lançamento em Lote
+              <span className="hidden sm:inline">Lançamento em Lote</span>
             </TabsTrigger>
-            <TabsTrigger value="configuracao" className="flex items-center gap-2">
+            <TabsTrigger value="configuracao" className="flex-shrink-0 flex items-center gap-2">
               <Clock className="h-4 w-4" />
-              Configuração de Horas
+              <span className="hidden sm:inline">Configuração de Horas</span>
             </TabsTrigger>
-            <TabsTrigger value="relatorios" className="flex items-center gap-2">
+            <TabsTrigger value="relatorios" className="flex-shrink-0 flex items-center gap-2">
               <Calendar className="h-4 w-4" />
-              Relatórios
+              <span className="hidden sm:inline">Relatórios</span>
             </TabsTrigger>
-            <TabsTrigger value="banco" className="flex items-center gap-2">
+            <TabsTrigger value="banco" className="flex-shrink-0 flex items-center gap-2">
               <Wallet className="h-4 w-4" />
-              Banco de Horas
+              <span className="hidden sm:inline">Banco de Horas</span>
             </TabsTrigger>
-            <TabsTrigger value="etiquetas" className="flex items-center gap-2">
+            <TabsTrigger value="etiquetas" className="flex-shrink-0 flex items-center gap-2">
               <Tag className="h-4 w-4" />
-              Etiquetas
+              <span className="hidden sm:inline">Etiquetas</span>
             </TabsTrigger>
           </TabsList>
 
