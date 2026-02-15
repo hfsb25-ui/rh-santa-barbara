@@ -6,6 +6,21 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Deduplication: track processed message IDs to prevent duplicate responses
+const processedMessages = new Map<string, number>();
+const DEDUP_TTL_MS = 120_000; // 2 minutes
+
+function isDuplicate(messageId: string): boolean {
+  const now = Date.now();
+  // Cleanup old entries
+  for (const [id, ts] of processedMessages) {
+    if (now - ts > DEDUP_TTL_MS) processedMessages.delete(id);
+  }
+  if (processedMessages.has(messageId)) return true;
+  processedMessages.set(messageId, now);
+  return false;
+}
+
 function formatForWhatsApp(text: string): string {
   return text
     .replace(/#{1,6}\s/g, "")
@@ -860,6 +875,13 @@ serve(async (req) => {
     const message = data.message;
     if (!key || !message) return new Response(JSON.stringify({ status: "ignored", reason: "no message data" }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     if (key.fromMe) return new Response(JSON.stringify({ status: "ignored", reason: "own message" }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+
+    // Deduplicate: ignore if this message ID was already processed
+    const messageId = key.id;
+    if (messageId && isDuplicate(messageId)) {
+      console.log(`Duplicate message ignored: ${messageId}`);
+      return new Response(JSON.stringify({ status: "ignored", reason: "duplicate message" }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
 
     const remoteJid = key.remoteJid || "";
     if (remoteJid.includes("@g.us")) return new Response(JSON.stringify({ status: "ignored", reason: "group message" }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
