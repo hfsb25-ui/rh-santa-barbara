@@ -60,7 +60,9 @@ export function AIAssistant() {
             Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
           },
           body: JSON.stringify({
-            messages: messages.filter((m) => m.role !== "assistant" || messages.indexOf(m) > 0),
+            messages: messages
+              .filter((m) => m.role !== "assistant" || messages.indexOf(m) > 0)
+              .slice(-8),
             userMessage: text,
           }),
         }
