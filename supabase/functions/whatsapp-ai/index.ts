@@ -90,42 +90,29 @@ async function salvarMemoria(supabase: any, params: any, phoneNumber: string, no
   return { success: true, memoria: data };
 }
 
-// ============= RETRIEVAL TOOLS (new) =============
+// ============= RETRIEVAL TOOLS (compactados) =============
 
-async function fetchResumoMinimo(supabase: any) {
+async function consultarResumoRapido(supabase: any) {
   const today = new Date().toISOString().split("T")[0];
-  const [empRes, setoresRes, empresasRes, tacsRes, avalRes, estoqueEpiRes, estoqueUniRes, afastRes, checkRes, examesRes] = await Promise.all([
+  const [empRes, tacsRes, avalRes, estoqueEpiRes, estoqueUniRes, afastRes, checkRes, examesRes] = await Promise.all([
     supabase.from("employees").select("status", { count: "exact", head: false }),
-    supabase.from("setores").select("nome"),
-    supabase.from("empresas").select("nome"),
     supabase.from("tacs").select("id", { count: "exact", head: true }).eq("status", "pendente"),
     supabase.from("avaliacoes_desempenho").select("id", { count: "exact", head: true }).eq("status", "pendente"),
-    supabase.from("estoque_epis").select("tipo_epi, quantidade_estoque, quantidade_minima"),
-    supabase.from("estoque_uniformes").select("tipo_uniforme, quantidade_estoque, quantidade_minima"),
+    supabase.from("estoque_epis").select("quantidade_estoque, quantidade_minima"),
+    supabase.from("estoque_uniformes").select("quantidade_estoque, quantidade_minima"),
     supabase.from("afastamentos").select("id", { count: "exact", head: true }).lte("data_inicio", today).gte("data_fim", today),
     supabase.from("plano_checklist_funcionario").select("id", { count: "exact", head: true }).in("status", ["em_andamento", "pendente"]),
     supabase.from("encaminhamentos_medicos").select("id", { count: "exact", head: true }).in("status", ["pendente", "agendado"]),
   ]);
-
-  const allEmps = empRes.data || [];
-  const statusCount: Record<string, number> = {};
-  allEmps.forEach((e: any) => { statusCount[e.status] = (statusCount[e.status] || 0) + 1; });
-
-  const episBaixo = (estoqueEpiRes.data || []).filter((e: any) => e.quantidade_estoque <= (e.quantidade_minima || 10));
-  const uniBaixo = (estoqueUniRes.data || []).filter((u: any) => u.quantidade_estoque <= (u.quantidade_minima || 10));
-
-  return `RESUMO RÁPIDO (${today}):
-- Ativos: ${statusCount["ativo"] || 0} | Férias: ${statusCount["ferias"] || 0} | Admissão: ${statusCount["em_admissao"] || 0} | Afastados: ${statusCount["afastado"] || 0} | Demitidos: ${statusCount["demitido"] || 0}
-- Setores: ${(setoresRes.data || []).map((s: any) => s.nome).join(", ")}
-- Empresas: ${(empresasRes.data || []).map((e: any) => e.nome).join(", ")}
-- TACs pendentes: ${tacsRes.count || 0} | Avaliações pendentes: ${avalRes.count || 0}
-- Afastados agora: ${afastRes.count || 0} | Exames pendentes: ${examesRes.count || 0}
-- Checklists pendentes: ${checkRes.count || 0}
-- EPIs em falta: ${episBaixo.length} | Uniformes em falta: ${uniBaixo.length}`;
+  const sc: Record<string, number> = {};
+  (empRes.data || []).forEach((e: any) => { sc[e.status] = (sc[e.status] || 0) + 1; });
+  const episBaixo = (estoqueEpiRes.data || []).filter((e: any) => e.quantidade_estoque <= (e.quantidade_minima || 10)).length;
+  const uniBaixo = (estoqueUniRes.data || []).filter((u: any) => u.quantidade_estoque <= (u.quantidade_minima || 10)).length;
+  return `RESUMO(${today}): Ativos:${sc["ativo"]||0} Férias:${sc["ferias"]||0} Adm:${sc["em_admissao"]||0} Afast:${sc["afastado"]||0} Dem:${sc["demitido"]||0} | TACs:${tacsRes.count||0} Aval:${avalRes.count||0} Afast:${afastRes.count||0} Exames:${examesRes.count||0} Checks:${checkRes.count||0} EPIs falta:${episBaixo} Unif falta:${uniBaixo}`;
 }
 
 async function consultarFuncionarios(supabase: any, params: any) {
-  let query = supabase.from("employees").select("nome_completo, cargo, setor, status, data_admissao, data_desligamento, salario, tipo_contrato, telefone, cpf, data_nascimento, sexo, empresa_id, empresas(nome)");
+  let query = supabase.from("employees").select("nome_completo, cargo, setor, status, data_admissao, salario, tipo_contrato, telefone, cpf, data_nascimento, sexo, empresas(nome)");
   if (params.status) query = query.eq("status", params.status);
   if (params.setor) query = query.ilike("setor", `%${params.setor}%`);
   if (params.nome) query = query.ilike("nome_completo", `%${params.nome}%`);
@@ -133,9 +120,9 @@ async function consultarFuncionarios(supabase: any, params: any) {
   if (params.sexo) query = query.ilike("sexo", `%${params.sexo}%`);
   if (params.empresa) query = query.ilike("empresas.nome", `%${params.empresa}%`);
   if (!params.status && !params.incluir_inativos) query = query.in("status", ["ativo", "ferias", "em_admissao", "afastado"]);
-  const { data, error } = await query.order("nome_completo").limit(200);
+  const { data, error } = await query.order("nome_completo").limit(30);
   if (error) return { error: error.message };
-  return { total: (data || []).length, funcionarios: (data || []).map((e: any) => `${e.nome_completo} [${e.status}] | ${e.cargo} | Setor: ${e.setor || "N/A"} | Admissão: ${e.data_admissao || "N/A"} | Salário: R$ ${e.salario?.toFixed(2) || "N/A"} | Contrato: ${e.tipo_contrato || "N/A"} | Tel: ${e.telefone || "N/A"} | Nasc: ${e.data_nascimento || "N/A"} | Sexo: ${e.sexo || "N/A"} | Empresa: ${e.empresas?.nome || "N/A"}`) };
+  return { total: (data || []).length, funcionarios: (data || []).map((e: any) => `${e.nome_completo}|${e.status}|${e.cargo}|${e.setor||"-"}|R$${e.salario||"-"}|${e.telefone||"-"}|${e.empresas?.nome||"-"}`) };
 }
 
 async function consultarFerias(supabase: any, params: any) {
