@@ -1,90 +1,96 @@
 
 
-# Adicionar Tools Completos ao Cerebrum
+# Plano para Reduzir o Consumo de Tokens do Cerebrum
 
-## Situacao Atual
+## Diagnostico Atual
 
-O Cerebrum ja possui 13 tools de consulta cobrindo as tabelas principais. Porem, existem **~20 tabelas** que nao sao consultaveis diretamente, incluindo dados importantes como metas de funcionarios, progresso detalhado de treinamentos, historico de movimentacoes, variaveis fixas, arquivos, contratos e detalhes de candidaturas.
+Analisei toda a arquitetura do Cerebrum e identifiquei os principais pontos de consumo excessivo de tokens:
 
-## Tabelas NAO cobertas atualmente
+1. **System prompt muito extenso** (~2.500 caracteres) enviado em TODA requisicao
+2. **Resumo Minimo** carregado em toda mensagem (mesmo quando desnecessario)
+3. **100 memorias** carregadas do banco em toda requisicao
+4. **21 tool definitions** (~3.000 tokens) enviadas em toda chamada a IA
+5. **Tool calls nao-streaming** + resposta final simulada como streaming = 2 chamadas minimas a IA por pergunta simples
+6. **Dados retornados pelas tools muito verbosos** (listas completas com formatacao pesada)
+7. **Historico de mensagens do frontend** enviado sem limite
+8. **`consultar_resumo_geral`** executa TODAS as 12 consultas de uma vez
 
-| Tabela | Dados |
-|--------|-------|
-| `metas_funcionario` | Metas individuais de desempenho |
-| `modulos`, `aulas`, `progresso_treinamento` | Detalhes de modulos/aulas e progresso individual |
-| `notas_avaliacao`, `criterios_avaliacao` | Notas detalhadas por criterio nas avaliacoes |
-| `historico_banco_horas` | Movimentacoes de banco de horas |
-| `historico_estoque_epis`, `historico_estoque_uniformes` | Movimentacoes de entrada/saida de estoque |
-| `historico_folgas` | Alteracoes no saldo de folgas |
-| `historico_status_candidatura` | Timeline de status das candidaturas |
-| `variaveis_fixas_funcionario` | Proventos/descontos fixos por funcionario |
-| `variaveis_folha` | Variaveis globais da folha de pagamento |
-| `employee_files` | Arquivos/documentos dos funcionarios |
-| `modelos_contrato` | Templates de contrato |
-| `login_history` | Historico de login dos usuarios |
-| `configuracao_setor` | Configuracao de lotacao por setor |
-| `configuracoes_ferias` | Regras de ferias |
-| `plano_checklist_templates`, `plano_checklist_itens` | Templates de checklists |
-| `uniformes`, `epis` (entregas individuais) | Ja parcialmente no estoque, mas sem detalhe individual |
+## Acoes Propostas (por impacto)
 
-## Novos Tools a Adicionar (8 tools)
+### 1. Compactar o System Prompt
+- Reduzir texto descritivo da personalidade (manter essencia, cortar repeticoes)
+- Mover a historia de criacao para uma tool separada (`consultar_identidade`) em vez de enviar em toda mensagem
+- Economia estimada: ~500 tokens por mensagem
 
-### 1. `consultar_metas`
-- Tabela: `metas_funcionario`
-- Busca metas por funcionario, status (pendente, em_andamento, concluida)
-- Parametros: `nome_funcionario`, `status`
+### 2. Limitar Historico de Mensagens
+- No frontend, enviar apenas as ultimas 6-8 mensagens (3-4 pares user/assistant) em vez de todo o historico
+- Economia estimada: cresce com o uso, pode chegar a milhares de tokens
 
-### 2. `consultar_progresso_treinamento`
-- Tabelas: `modulos`, `aulas`, `progresso_treinamento`
-- Progresso individual de cada funcionario nos cursos
-- Parametros: `nome_funcionario`, `curso`
+### 3. Carregar Memorias sob Demanda
+- Em vez de carregar 100 memorias em toda requisicao, criar uma tool `consultar_memorias` que a IA chama quando precisa
+- Remover o bloco de memorias do system prompt
+- Economia estimada: ~200-1.000 tokens por mensagem
 
-### 3. `consultar_detalhes_avaliacao`
-- Tabelas: `notas_avaliacao`, `criterios_avaliacao`
-- Notas detalhadas por criterio de cada avaliacao
-- Parametros: `nome_funcionario`
+### 4. Compactar Retorno das Tools
+- Reduzir formatacao dos dados retornados (remover labels redundantes, usar formato mais compacto)
+- Limitar resultados: ex. listar top 10 em vez de 200 funcionarios
+- Economia estimada: variavel, ate 50% menos tokens nas respostas de tools
 
-### 4. `consultar_historicos`
-- Tabelas: `historico_banco_horas`, `historico_estoque_epis`, `historico_estoque_uniformes`, `historico_folgas`
-- Movimentacoes e alteracoes recentes
-- Parametros: `tipo` (banco_horas, estoque_epis, estoque_uniformes, folgas), `nome_funcionario`
+### 5. Remover o Resumo Minimo do Prompt Inicial
+- Mover o resumo para uma tool `consultar_resumo_rapido` que a IA chama quando precisa de contexto geral
+- Nao carregar automaticamente
+- Economia estimada: ~200 tokens por mensagem
 
-### 5. `consultar_variaveis_fixas`
-- Tabelas: `variaveis_fixas_funcionario`, `variaveis_folha`
-- Proventos/descontos fixos e variaveis globais da folha
-- Parametros: `nome_funcionario`
+### 6. Streaming Real na Resposta Final
+- Usar `stream: true` na chamada final da IA em vez de gerar tudo e simular SSE
+- Nao reduz tokens diretamente, mas melhora latencia percebida
 
-### 6. `consultar_arquivos_funcionario`
-- Tabela: `employee_files`
-- Lista de documentos/arquivos de um funcionario
-- Parametros: `nome_funcionario`
+### 7. Cache de Configuracao da IA
+- Evitar consultar `configuracoes_ia` em toda requisicao (usar valor em memoria com TTL)
 
-### 7. `consultar_contratos`
-- Tabela: `modelos_contrato`
-- Templates de contrato disponiveis
-- Parametros: nenhum
+## Detalhes Tecnicos
 
-### 8. `consultar_configuracoes`
-- Tabelas: `configuracao_setor`, `configuracoes_ferias`, `plano_checklist_templates`, `plano_checklist_itens`
-- Configuracoes do sistema (lotacao, ferias, templates de checklist)
-- Parametros: `tipo` (setores, ferias, checklists)
+### Arquivo: `supabase/functions/ai-assistant/index.ts`
 
-## Melhorias nos Tools Existentes
+**System prompt compactado:**
+- Remover bloco "IDENTIDADE E HISTORIA DE CRIACAO" (mover para tool)
+- Remover lista de tools do prompt (a IA ja recebe via parametro `tools`)
+- Condensar regras de personalidade em 2-3 linhas
 
-Alem dos novos tools, os seguintes serao enriquecidos:
+**Nova tool `consultar_memorias`:**
+```text
+function consultar_memorias(supabase, params)
+  -> busca cerebrum_memorias filtrado por categoria se fornecida
+```
 
-- **`consultar_recrutamento`**: Adicionar `historico_status_candidatura` para timeline de cada candidato e detalhes completos das candidaturas
-- **`consultar_treinamentos`**: Incluir contagem de modulos e aulas por curso
-- **`consultar_estoque`**: Incluir entregas individuais de EPIs e uniformes com mais detalhes
+**Nova tool `consultar_identidade`:**
+```text
+function consultar_identidade()
+  -> retorna historia de criacao do Cerebrum
+```
 
-## Arquivos Modificados
+**Limite de historico no frontend (`AIAssistant.tsx`):**
+```text
+- Enviar apenas as ultimas 8 mensagens no body da requisicao
+- Manter todas localmente para exibicao
+```
 
-- `supabase/functions/whatsapp-ai/index.ts` - Adicionar 8 novas funcoes handler + tool definitions + switch cases
-- `supabase/functions/ai-assistant/index.ts` - Mesmas adicoes para paridade web/WhatsApp
+**Compactacao de retornos das tools:**
+- `consultarFuncionarios`: limitar a 30 resultados, formato mais curto
+- `consultarResumoGeral`: remover (ou deprecar), ja que cada area tem sua tool
+- Outras tools: reduzir `.limit()` e cortar campos desnecessarios
 
-## Impacto
+### Arquivo: `src/components/ai/AIAssistant.tsx`
 
-- O Cerebrum passara a cobrir **100% das tabelas** do sistema
-- Nenhuma query adicional no prompt inicial (mantem o modelo retrieval)
-- Cada novo tool so e chamado quando relevante a pergunta do usuario
+- Limitar array `messages` enviado ao backend para as ultimas 8 entradas
+
+### Arquivo: `supabase/functions/whatsapp-ai/index.ts`
+
+- Aplicar as mesmas otimizacoes de prompt e memorias
+
+## Resultado Esperado
+
+- Reducao de **40-60%** no consumo de tokens por interacao
+- Respostas mais rapidas (menos dados no prompt inicial)
+- Mesma qualidade de resposta (tools continuam disponiveis sob demanda)
 
