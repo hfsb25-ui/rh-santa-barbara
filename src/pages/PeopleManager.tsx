@@ -32,34 +32,34 @@ export default function PeopleManager() {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-7 h-auto">
-            <TabsTrigger value="dashboard" className="flex flex-col gap-1 py-3">
+          <TabsList className="inline-flex w-full overflow-x-auto tabs-scroll lg:grid lg:grid-cols-7 h-auto">
+            <TabsTrigger value="dashboard" className="flex-shrink-0 flex flex-col gap-1 py-3">
               <Users className="h-4 w-4" />
-              <span className="text-xs">Dashboard</span>
+              <span className="text-xs hidden sm:inline">Dashboard</span>
             </TabsTrigger>
-            <TabsTrigger value="organograma" className="flex flex-col gap-1 py-3">
+            <TabsTrigger value="organograma" className="flex-shrink-0 flex flex-col gap-1 py-3">
               <Network className="h-4 w-4" />
-              <span className="text-xs">Organograma</span>
+              <span className="text-xs hidden sm:inline">Organograma</span>
             </TabsTrigger>
-            <TabsTrigger value="analytics" className="flex flex-col gap-1 py-3">
+            <TabsTrigger value="analytics" className="flex-shrink-0 flex flex-col gap-1 py-3">
               <TrendingUp className="h-4 w-4" />
-              <span className="text-xs">Analytics</span>
+              <span className="text-xs hidden sm:inline">Analytics</span>
             </TabsTrigger>
-            <TabsTrigger value="carreira" className="flex flex-col gap-1 py-3">
+            <TabsTrigger value="carreira" className="flex-shrink-0 flex flex-col gap-1 py-3">
               <Briefcase className="h-4 w-4" />
-              <span className="text-xs">Carreira</span>
+              <span className="text-xs hidden sm:inline">Carreira</span>
             </TabsTrigger>
-            <TabsTrigger value="workforce" className="flex flex-col gap-1 py-3">
+            <TabsTrigger value="workforce" className="flex-shrink-0 flex flex-col gap-1 py-3">
               <Calendar className="h-4 w-4" />
-              <span className="text-xs">Workforce</span>
+              <span className="text-xs hidden sm:inline">Workforce</span>
             </TabsTrigger>
-            <TabsTrigger value="engagement" className="flex flex-col gap-1 py-3">
+            <TabsTrigger value="engagement" className="flex-shrink-0 flex flex-col gap-1 py-3">
               <Heart className="h-4 w-4" />
-              <span className="text-xs">Engajamento</span>
+              <span className="text-xs hidden sm:inline">Engajamento</span>
             </TabsTrigger>
-            <TabsTrigger value="compliance" className="flex flex-col gap-1 py-3">
+            <TabsTrigger value="compliance" className="flex-shrink-0 flex flex-col gap-1 py-3">
               <FileCheck className="h-4 w-4" />
-              <span className="text-xs">Compliance</span>
+              <span className="text-xs hidden sm:inline">Compliance</span>
             </TabsTrigger>
           </TabsList>
 

@@ -199,16 +199,16 @@ export const BirthdayListDialog = ({
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="today" className="flex items-center gap-2">
+          <TabsList className="inline-flex w-full overflow-x-auto tabs-scroll lg:grid lg:grid-cols-3">
+            <TabsTrigger value="today" className="flex-shrink-0 flex items-center gap-2">
               <Cake className="w-4 h-4" />
               Hoje ({birthdaysToday.length})
             </TabsTrigger>
-            <TabsTrigger value="month" className="flex items-center gap-2">
+            <TabsTrigger value="month" className="flex-shrink-0 flex items-center gap-2">
               <Calendar className="w-4 h-4" />
               Este Mês ({birthdaysThisMonth.length})
             </TabsTrigger>
-            <TabsTrigger value="upcoming" className="flex items-center gap-2">
+            <TabsTrigger value="upcoming" className="flex-shrink-0 flex items-center gap-2">
               <Calendar className="w-4 h-4" />
               Próximos 7 Dias ({birthdaysNext7Days.length})
             </TabsTrigger>

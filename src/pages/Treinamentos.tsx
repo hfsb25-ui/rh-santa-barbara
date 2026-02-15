@@ -14,10 +14,10 @@ export default function Treinamentos() {
       </div>
 
       <Tabs defaultValue="cursos" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="cursos">Cursos</TabsTrigger>
-          <TabsTrigger value="relatorios">Relatórios</TabsTrigger>
-          <TabsTrigger value="estatisticas">Estatísticas</TabsTrigger>
+        <TabsList className="inline-flex w-full overflow-x-auto tabs-scroll lg:grid lg:grid-cols-3">
+          <TabsTrigger value="cursos" className="flex-shrink-0 whitespace-nowrap">Cursos</TabsTrigger>
+          <TabsTrigger value="relatorios" className="flex-shrink-0 whitespace-nowrap">Relatórios</TabsTrigger>
+          <TabsTrigger value="estatisticas" className="flex-shrink-0 whitespace-nowrap">Estatísticas</TabsTrigger>
         </TabsList>
 
         <TabsContent value="cursos" className="mt-6">

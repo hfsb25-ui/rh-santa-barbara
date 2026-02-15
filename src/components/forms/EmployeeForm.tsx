@@ -390,20 +390,20 @@ const EmployeeForm = ({ employeeId, initialData, onSaved, onCancel }: EmployeeFo
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-6">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-4">
-              <TabsTrigger value="dados-pessoais" className="flex items-center gap-2">
+            <TabsList className="inline-flex w-full overflow-x-auto tabs-scroll lg:grid lg:grid-cols-4">
+              <TabsTrigger value="dados-pessoais" className="flex-shrink-0 flex items-center gap-2">
                 <User className="h-4 w-4" />
                 <span className="hidden sm:inline">Dados Pessoais</span>
               </TabsTrigger>
-              <TabsTrigger value="documentacao" className="flex items-center gap-2">
+              <TabsTrigger value="documentacao" className="flex-shrink-0 flex items-center gap-2">
                 <FileText className="h-4 w-4" />
                 <span className="hidden sm:inline">Documentação</span>
               </TabsTrigger>
-              <TabsTrigger value="endereco" className="flex items-center gap-2">
+              <TabsTrigger value="endereco" className="flex-shrink-0 flex items-center gap-2">
                 <MapPin className="h-4 w-4" />
                 <span className="hidden sm:inline">Endereço</span>
               </TabsTrigger>
-              <TabsTrigger value="movimentacoes" className="flex items-center gap-2">
+              <TabsTrigger value="movimentacoes" className="flex-shrink-0 flex items-center gap-2">
                 <Briefcase className="h-4 w-4" />
                 <span className="hidden sm:inline">Movimentações</span>
               </TabsTrigger>

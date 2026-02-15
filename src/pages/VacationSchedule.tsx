@@ -76,24 +76,24 @@ export default function VacationSchedule() {
         </Card>
 
         <Tabs defaultValue="calendar" className="w-full">
-          <TabsList className="grid w-full grid-cols-5">
-            <TabsTrigger value="calendar" className="flex items-center gap-2">
+          <TabsList className="inline-flex w-full overflow-x-auto tabs-scroll lg:grid lg:grid-cols-5">
+            <TabsTrigger value="calendar" className="flex-shrink-0 flex items-center gap-2">
               <Calendar className="h-4 w-4" />
               <span className="hidden sm:inline">Calendário</span>
             </TabsTrigger>
-            <TabsTrigger value="timeline" className="flex items-center gap-2">
+            <TabsTrigger value="timeline" className="flex-shrink-0 flex items-center gap-2">
               <TrendingUp className="h-4 w-4" />
               <span className="hidden sm:inline">Timeline</span>
             </TabsTrigger>
-            <TabsTrigger value="list" className="flex items-center gap-2">
+            <TabsTrigger value="list" className="flex-shrink-0 flex items-center gap-2">
               <LayoutList className="h-4 w-4" />
               <span className="hidden sm:inline">Lista</span>
             </TabsTrigger>
-            <TabsTrigger value="charts" className="flex items-center gap-2">
+            <TabsTrigger value="charts" className="flex-shrink-0 flex items-center gap-2">
               <BarChart3 className="h-4 w-4" />
               <span className="hidden sm:inline">Gráficos</span>
             </TabsTrigger>
-            <TabsTrigger value="settings" className="flex items-center gap-2">
+            <TabsTrigger value="settings" className="flex-shrink-0 flex items-center gap-2">
               <Settings className="h-4 w-4" />
               <span className="hidden sm:inline">Configurações</span>
             </TabsTrigger>
