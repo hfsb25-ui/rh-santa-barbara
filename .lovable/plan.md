@@ -1,96 +1,101 @@
 
 
-# Plano para Reduzir o Consumo de Tokens do Cerebrum
+# Tornar Todos os Menus/Abas Responsivos
 
-## Diagnostico Atual
+## Problema Identificado
 
-Analisei toda a arquitetura do Cerebrum e identifiquei os principais pontos de consumo excessivo de tokens:
+Varias paginas usam `TabsList` com `grid grid-cols-N` fixo, o que causa sobreposicao e corte de texto em telas menores. Algumas paginas ja foram corrigidas (Stock, Relatorios, GestorDashboard, EmployeeDetails), mas muitas ainda nao.
 
-1. **System prompt muito extenso** (~2.500 caracteres) enviado em TODA requisicao
-2. **Resumo Minimo** carregado em toda mensagem (mesmo quando desnecessario)
-3. **100 memorias** carregadas do banco em toda requisicao
-4. **21 tool definitions** (~3.000 tokens) enviadas em toda chamada a IA
-5. **Tool calls nao-streaming** + resposta final simulada como streaming = 2 chamadas minimas a IA por pergunta simples
-6. **Dados retornados pelas tools muito verbosos** (listas completas com formatacao pesada)
-7. **Historico de mensagens do frontend** enviado sem limite
-8. **`consultar_resumo_geral`** executa TODAS as 12 consultas de uma vez
+## Paginas que Precisam de Correcao
 
-## Acoes Propostas (por impacto)
+### Criticas (muitas colunas, quebram em mobile)
 
-### 1. Compactar o System Prompt
-- Reduzir texto descritivo da personalidade (manter essencia, cortar repeticoes)
-- Mover a historia de criacao para uma tool separada (`consultar_identidade`) em vez de enviar em toda mensagem
-- Economia estimada: ~500 tokens por mensagem
+1. **ControlePonto.tsx** - `grid-cols-6` fixo, 6 abas com texto longo
+2. **PeopleManager.tsx** - `grid-cols-7` fixo, 7 abas com icones + texto
+3. **VacationSchedule.tsx** - `grid-cols-5` fixo, 5 abas
+4. **AIInsights.tsx** - `grid-cols-5` (parcialmente ok com `lg:w-auto`, mas falta scroll mobile)
 
-### 2. Limitar Historico de Mensagens
-- No frontend, enviar apenas as ultimas 6-8 mensagens (3-4 pares user/assistant) em vez de todo o historico
-- Economia estimada: cresce com o uso, pode chegar a milhares de tokens
+### Moderadas (3-4 colunas, podem quebrar em telas pequenas)
 
-### 3. Carregar Memorias sob Demanda
-- Em vez de carregar 100 memorias em toda requisicao, criar uma tool `consultar_memorias` que a IA chama quando precisa
-- Remover o bloco de memorias do system prompt
-- Economia estimada: ~200-1.000 tokens por mensagem
+5. **Treinamentos.tsx** - `grid-cols-3` fixo
+6. **PlanoAdmissaoDesligamento.tsx** - `grid-cols-3` fixo com texto longo
+7. **EmployeeForm.tsx** - `grid-cols-4` fixo
+8. **EmployeeInfo.tsx** - `grid-cols-4` fixo
+9. **BirthdayListDialog.tsx** - `grid-cols-3` fixo
 
-### 4. Compactar Retorno das Tools
-- Reduzir formatacao dos dados retornados (remover labels redundantes, usar formato mais compacto)
-- Limitar resultados: ex. listar top 10 em vez de 200 funcionarios
-- Economia estimada: variavel, ate 50% menos tokens nas respostas de tools
+### Ja OK (nao precisam de mudanca)
 
-### 5. Remover o Resumo Minimo do Prompt Inicial
-- Mover o resumo para uma tool `consultar_resumo_rapido` que a IA chama quando precisa de contexto geral
-- Nao carregar automaticamente
-- Economia estimada: ~200 tokens por mensagem
+- **Settings.tsx** - usa `flex-wrap` (ok)
+- **Stock.tsx** - usa `overflow-x-auto tabs-scroll` (ok)
+- **Relatorios.tsx** - usa `inline-flex lg:grid` (ok)
+- **GestorDashboard.tsx** - usa `inline-flex lg:grid` (ok)
+- **EmployeeDetails.tsx** - usa `inline-flex overflow-x-auto` (ok)
+- **Tacs.tsx** - `grid-cols-2` (ok, so 2 abas)
+- **Eventos.tsx** - `grid-cols-2 max-w-md` (ok)
+- **Sectors.tsx** - `grid-cols-2` (ok)
+- **Payroll.tsx** - sem grid fixo (ok)
+- **Avaliacoes.tsx** - sem grid fixo (ok)
 
-### 6. Streaming Real na Resposta Final
-- Usar `stream: true` na chamada final da IA em vez de gerar tudo e simular SSE
-- Nao reduz tokens diretamente, mas melhora latencia percebida
+## Solucao Padrao
 
-### 7. Cache de Configuracao da IA
-- Evitar consultar `configuracoes_ia` em toda requisicao (usar valor em memoria com TTL)
+Aplicar o mesmo padrao ja usado nas paginas corrigidas:
 
-## Detalhes Tecnicos
-
-### Arquivo: `supabase/functions/ai-assistant/index.ts`
-
-**System prompt compactado:**
-- Remover bloco "IDENTIDADE E HISTORIA DE CRIACAO" (mover para tool)
-- Remover lista de tools do prompt (a IA ja recebe via parametro `tools`)
-- Condensar regras de personalidade em 2-3 linhas
-
-**Nova tool `consultar_memorias`:**
 ```text
-function consultar_memorias(supabase, params)
-  -> busca cerebrum_memorias filtrado por categoria se fornecida
+TabsList: "inline-flex w-full overflow-x-auto tabs-scroll lg:grid lg:grid-cols-N"
+TabsTrigger: adicionar "flex-shrink-0 whitespace-nowrap" ou "min-w-fit"
 ```
 
-**Nova tool `consultar_identidade`:**
+Em mobile: scroll horizontal com indicador visual sutil.
+Em desktop (lg+): grid normal com colunas distribuidas.
+
+Para abas com icone + texto longo, esconder o texto em mobile e mostrar so o icone:
 ```text
-function consultar_identidade()
-  -> retorna historia de criacao do Cerebrum
+<span className="hidden sm:inline">Texto</span>
 ```
 
-**Limite de historico no frontend (`AIAssistant.tsx`):**
-```text
-- Enviar apenas as ultimas 8 mensagens no body da requisicao
-- Manter todas localmente para exibicao
-```
+## Alteracoes por Arquivo
 
-**Compactacao de retornos das tools:**
-- `consultarFuncionarios`: limitar a 30 resultados, formato mais curto
-- `consultarResumoGeral`: remover (ou deprecar), ja que cada area tem sua tool
-- Outras tools: reduzir `.limit()` e cortar campos desnecessarios
+### 1. `src/pages/ControlePonto.tsx`
+- Linha 43: trocar `grid w-full grid-cols-6` por `inline-flex w-full overflow-x-auto tabs-scroll lg:grid lg:grid-cols-6`
+- Cada TabsTrigger: adicionar `flex-shrink-0 whitespace-nowrap`
+- Esconder texto em mobile, manter so icone com `<span className="hidden sm:inline">`
 
-### Arquivo: `src/components/ai/AIAssistant.tsx`
+### 2. `src/pages/PeopleManager.tsx`
+- Linha 35: trocar `grid w-full grid-cols-7 h-auto` por `inline-flex w-full overflow-x-auto tabs-scroll lg:grid lg:grid-cols-7 h-auto`
+- Cada TabsTrigger: adicionar `flex-shrink-0`
 
-- Limitar array `messages` enviado ao backend para as ultimas 8 entradas
+### 3. `src/pages/VacationSchedule.tsx`
+- Linha 79: trocar `grid w-full grid-cols-5` por `inline-flex w-full overflow-x-auto tabs-scroll lg:grid lg:grid-cols-5`
+- Cada TabsTrigger: adicionar `flex-shrink-0`
 
-### Arquivo: `supabase/functions/whatsapp-ai/index.ts`
+### 4. `src/pages/AIInsights.tsx`
+- Linha 44: trocar `grid w-full grid-cols-5 lg:w-auto lg:inline-grid` por `inline-flex w-full overflow-x-auto tabs-scroll lg:grid lg:grid-cols-5`
+- Cada TabsTrigger: adicionar `flex-shrink-0`
 
-- Aplicar as mesmas otimizacoes de prompt e memorias
+### 5. `src/pages/Treinamentos.tsx`
+- Linha 17: trocar `grid w-full grid-cols-3` por `inline-flex w-full overflow-x-auto tabs-scroll lg:grid lg:grid-cols-3`
+- Cada TabsTrigger: adicionar `flex-shrink-0 whitespace-nowrap`
 
-## Resultado Esperado
+### 6. `src/pages/PlanoAdmissaoDesligamento.tsx`
+- Linha 28: trocar `grid w-full grid-cols-3` por `inline-flex w-full overflow-x-auto tabs-scroll lg:grid lg:grid-cols-3`
+- Cada TabsTrigger: adicionar `flex-shrink-0 whitespace-nowrap`
 
-- Reducao de **40-60%** no consumo de tokens por interacao
-- Respostas mais rapidas (menos dados no prompt inicial)
-- Mesma qualidade de resposta (tools continuam disponiveis sob demanda)
+### 7. `src/components/forms/EmployeeForm.tsx`
+- Linha 393: trocar `grid w-full grid-cols-4` por `inline-flex w-full overflow-x-auto tabs-scroll lg:grid lg:grid-cols-4`
+- Cada TabsTrigger: adicionar `flex-shrink-0`
 
+### 8. `src/components/employees/EmployeeInfo.tsx`
+- Linha 123: trocar `grid w-full grid-cols-4` por `inline-flex w-full overflow-x-auto tabs-scroll lg:grid lg:grid-cols-4`
+- Cada TabsTrigger: adicionar `flex-shrink-0`
+
+### 9. `src/components/dashboard/BirthdayListDialog.tsx`
+- Linha 202: trocar `grid w-full grid-cols-3` por `inline-flex w-full overflow-x-auto tabs-scroll lg:grid lg:grid-cols-3`
+- Cada TabsTrigger: adicionar `flex-shrink-0`
+
+## Resultado
+
+- Todas as paginas terao scroll horizontal suave em mobile
+- Em desktop, mantem o layout em grid
+- Zero sobreposicao de texto
+- Padrao consistente em todo o sistema
+- Classe `tabs-scroll` ja existente no CSS global sera reutilizada
