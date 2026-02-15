@@ -756,6 +756,24 @@ const GestorDashboard = ({ user }: GestorDashboardProps) => {
               </div>
             )}
 
+            {/* Folgas na Casa */}
+            <div>
+              <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                <Clock className="w-5 h-5" />
+                Folgas na Casa
+              </h2>
+              <div className="flex flex-wrap gap-2">
+                <Button variant="outline" onClick={() => setShowTimeOffDialog(true)}>
+                  <Users className="w-4 h-4 mr-2" />
+                  Controle de Folgas
+                </Button>
+                <Button variant="outline" onClick={() => setShowTimeOffHistoryDialog(true)}>
+                  <FileText className="w-4 h-4 mr-2" />
+                  Histórico de Alterações
+                </Button>
+              </div>
+            </div>
+
             {/* Search and Employee List */}
             <div className="space-y-4">
               <div className="flex items-center gap-3">
