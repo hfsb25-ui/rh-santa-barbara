@@ -1,118 +1,63 @@
 
-# Auditoria Completa do Cérebrum — Falhas Identificadas
+# Envio de Foto de Funcionário pelo Cérebrum no WhatsApp
 
-Após leitura integral do arquivo (1.211 linhas), foram encontradas **8 falhas** em consultas, respostas e lógica geral.
+## O Que Será Feito
 
----
-
-## FALHA 1 — Funcionário não encontrado por nome (ex: "Bruno Brandi")
-**Gravidade: Alta**
-
-Na função `consultarFuncionarios`, a busca por nome usa `.ilike("nome_completo", `%${params.nome}%`)`. O problema é que o campo `nome_completo` está indexado e os dados estão no banco, mas **a IA às vezes passa só o primeiro nome ou sobrenome** e o sistema não encontra o registro. Além disso, quando **não encontra ninguém**, a função retorna o objeto `{ total: 0, funcionarios: [] }` — a IA interpreta isso como "não existe no sistema" em vez de "busca vazia", e afirma que a pessoa não existe.
-
-**Correção:** Quando `total === 0`, a mensagem retornada deve ser explícita: `"Nenhum funcionário encontrado com nome contendo '${params.nome}'. Verifique se o nome está correto."` — em formato string, não objeto, evitando que a IA fabrique conclusões.
+Quando um gestor pedir no WhatsApp "me manda a foto da [nome]" ou "mostra a foto do [nome]", o Cérebrum vai buscar a `foto_url` do funcionário no banco e enviar a imagem diretamente no chat via Evolution API.
 
 ---
 
-## FALHA 2 — Faltas trazem dados errados quando há múltiplos funcionários com nome similar
-**Gravidade: Alta**
+## Como Funciona a Evolution API para Imagens
 
-Na `consultarFaltasFolgas`, quando o usuário pergunta "quantas faltas tem a Aline", o sistema faz:
-1. Busca por `employees` com `.ilike("nome_completo", "%Aline%")` — pode retornar **várias Alines** (ex: Aline Silva, Aline Santos).
-2. Usa `.in("employee_id", employeeIds)` — traz faltas de **todas** as Alines juntas.
-3. A IA soma tudo e responde o total errado.
-
-O retorno do resultado não especifica **de qual pessoa** são as faltas — apenas lista sem identificar claramente.
-
-**Correção:** Quando `employeeIds.length > 1`, retornar os nomes encontrados e pedir confirmação: `"Encontrei X funcionários com esse nome: [lista]. Qual deles você quer consultar?"`. Além disso, o resultado deve agrupar por funcionário mostrando contagem individual.
-
----
-
-## FALHA 3 — Banco de horas usa filtro por string (não por ID) — mesmo padrão quebrado
-**Gravidade: Alta**
-
-Na `consultarPontoBancoHoras`, o filtro por funcionário ainda usa o padrão antigo e quebrado:
-```typescript
-bancoHoras.filter((b: any) => 
-  (b.employees?.nome_completo || "").toLowerCase()
-    .includes(params.nome_funcionario.toLowerCase())
-)
+A API já suporta envio de mídia pelo endpoint:
 ```
-Isso filtra **depois de buscar tudo** do banco. Se houver mais de 1000 registros (limite Supabase), registros do funcionário podem ser cortados antes de chegar ao filtro. Além disso, filtra em memória sem garantia de precisão.
-
-**Correção:** Resolver o `employee_id` primeiro (padrão da correção da semana passada) e aplicar `.in()` direto nas queries de `banco_horas` e `registros_ponto`.
-
----
-
-## FALHA 4 — `consultarPontoBancoHoras` ignora filtro de nome nos registros de ponto
-**Gravidade: Média**
-
-Na linha 198-200, quando `params.nome_funcionario` existe, a query de `registros_ponto` busca os últimos 500 registros **sem filtrar por funcionário**:
-```typescript
-supabase.from("registros_ponto").select("...").gte("data", startOfYear).order(...).limit(500)
+POST /message/sendMedia/{instance}
 ```
-Depois filtra em JS. Com muitos funcionários, isso desperdiça banda e pode cortar o funcionário certo se ele não estiver nos 500 primeiros.
-
-**Correção:** Resolver o `employee_id` antes e filtrar direto no banco: `.eq("employee_id", empId)`.
-
----
-
-## FALHA 5 — Resposta truncada em 3000 caracteres pode cortar dados no meio
-**Gravidade: Média**
-
-O prompt instrui: *"Máximo 3000 caracteres"*, mas não há truncamento automático no código. Se a IA gerar uma resposta longa (ex: listar 30 funcionários com detalhes), o WhatsApp pode recusar o envio ou a mensagem pode chegar cortada.
-
-**Correção:** Aplicar truncamento programático antes de enviar: `if (formattedText.length > 3800) formattedText = formattedText.substring(0, 3800) + "\n\n_(resposta truncada — peça mais detalhes específicos)_"`.
-
----
-
-## FALHA 6 — Whitelist de números verificada duas vezes com lógicas diferentes
-**Gravidade: Média**
-
-O número é verificado **duas vezes**:
-1. Linha 902-905: Via variável de ambiente `WHATSAPP_ALLOWED_NUMBERS`
-2. Linha 1042-1045: Via banco de dados `whatsapp_allowed_numbers`
-
-Se o gestor configura os números no painel (banco de dados), mas a variável de ambiente está vazia ou com outros números, a verificação da linha 902 pode bloquear usuários autorizados **antes mesmo** de consultar o banco. Ou o inverso: usuários bloqueados no banco passam pela primeira checagem.
-
-**Correção:** Remover a verificação por variável de ambiente (linha 902-905) e usar somente a configuração do banco de dados, que é a fonte de verdade atualizada pelo painel.
-
----
-
-## FALHA 7 — `consultarFaltasFolgas` só olha os últimos 90 dias — não informa o período ao usuário
-**Gravidade: Baixa**
-
-Quando alguém pergunta "quantas faltas tem X?", o Cérebrum responde com um número mas **não menciona que é dos últimos 90 dias**. O gestor pode interpretar como o total histórico.
-
-**Correção:** O retorno da função já inclui "(últimos 90 dias)" no texto, mas a IA às vezes reformula e omite esse contexto. Adicionar instrução no system prompt para sempre indicar o período das consultas.
-
----
-
-## FALHA 8 — Erro silencioso se a IA retorna `content: null` com tool_calls
-**Gravidade: Baixa**
-
-Na linha 1181:
-```typescript
-const aiText = assistantMessage?.content || "Desculpe, não consegui processar sua pergunta.";
+Com payload:
+```json
+{
+  "number": "5511999999999",
+  "mediatype": "image",
+  "media": "https://url-da-foto.com/foto.jpg",
+  "caption": "📸 João da Silva — Garçom | Restaurante"
+}
 ```
-Se o loop de tool calls terminar nas 3 rodadas sem produzir uma resposta final (último assistantMessage ainda tem `tool_calls` e `content: null`), a mensagem enviada ao usuário será "Desculpe, não consegui processar sua pergunta." sem nenhum log de diagnóstico.
-
-**Correção:** Logar explicitamente quando o loop de 3 rodadas esgota sem resposta final: `console.error("Tool call loop exhausted without final response")`.
+O `media` aceita **URL pública diretamente** — e as fotos já estão no bucket `employee-photos` que é público, então as URLs funcionam sem necessidade de tokens.
 
 ---
 
-## O Que Será Corrigido
+## Mudanças Técnicas no `whatsapp-ai/index.ts`
 
-### Arquivo: `supabase/functions/whatsapp-ai/index.ts`
+### 1. Nova função `enviarFotoFuncionario`
+Busca o funcionário pelo nome, valida se tem foto cadastrada, e retorna um objeto especial `{ _sendImage: true, url, caption, nome }` para sinalizar ao handler principal que deve enviar uma imagem.
 
-1. **`consultarFuncionarios`**: Retornar string explicativa quando nenhum funcionário for encontrado, em vez de objeto `{total:0}`.
+### 2. Nova tool `enviar_foto_funcionario`
+Adicionada na lista `toolDefinitions`, com descrição clara para a IA usar quando o usuário pedir uma foto. Parâmetro: `nome_funcionario`.
 
-2. **`consultarFaltasFolgas`**: Quando múltiplos funcionários forem encontrados, retornar lista de nomes para o usuário confirmar qual quer, agrupando os dados por pessoa.
+### 3. Atualização do `executeTool`
+Adiciona o case `"enviar_foto_funcionario"` que chama a nova função.
 
-3. **`consultarPontoBancoHoras`**: Resolver `employee_id` antes das queries e aplicar filtro `.eq()` direto nas queries de banco de dados.
+### 4. Detecção de resposta com imagem no handler principal
+Após o loop de tool calls, antes de enviar o texto, o código verifica se alguma tool retornou `_sendImage: true`. Se sim:
+- Envia a imagem via `/message/sendMedia/`
+- Envia o texto de resposta normalmente em seguida (ou omite se a legenda for suficiente)
 
-4. **Truncamento automático**: Aplicar limite de 3800 caracteres na resposta final antes de enviar ao WhatsApp.
+### 5. Atualização do System Prompt
+Instrução para a IA: *"Se o usuário pedir foto de um funcionário, use a tool `enviar_foto_funcionario`. Informe que a foto foi enviada após o envio."*
 
-5. **Whitelist dupla**: Remover a verificação por variável de ambiente, mantendo apenas a do banco de dados.
+---
 
-6. **Log de loop esgotado**: Adicionar log de erro quando as 3 rodadas de tool calls se esgotam sem resposta.
+## Casos Tratados
+
+| Situação | Comportamento |
+|---|---|
+| Funcionário encontrado com foto | Envia a imagem com legenda (nome, cargo, setor) |
+| Funcionário encontrado sem foto | Responde: "X não tem foto cadastrada no sistema." |
+| Nome ambíguo (múltiplos) | Retorna lista e pede confirmação |
+| Funcionário não encontrado | Retorna mensagem de não encontrado |
+
+---
+
+## Arquivo Modificado
+
+- `supabase/functions/whatsapp-ai/index.ts`
