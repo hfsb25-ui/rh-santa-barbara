@@ -112,13 +112,20 @@ async function consultarResumoRapido(supabase: any) {
 }
 
 async function consultarFuncionarios(supabase: any, params: any) {
-  let query = supabase.from("employees").select("nome_completo, cargo, setor, status, data_admissao, salario, tipo_contrato, telefone, cpf, data_nascimento, sexo, empresas(nome)");
+  // If filtering by empresa, resolve empresa_id first
+  let empresaIds: string[] | null = null;
+  if (params.empresa) {
+    const { data: empData } = await supabase.from("empresas").select("id").ilike("nome", `%${params.empresa}%`);
+    empresaIds = (empData || []).map((e: any) => e.id);
+  }
+
+  let query = supabase.from("employees").select("nome_completo, cargo, setor, status, data_admissao, salario, tipo_contrato, telefone, cpf, data_nascimento, sexo, empresa_id, empresas(nome)");
   if (params.status) query = query.eq("status", params.status);
   if (params.setor) query = query.ilike("setor", `%${params.setor}%`);
   if (params.nome) query = query.ilike("nome_completo", `%${params.nome}%`);
   if (params.cargo) query = query.ilike("cargo", `%${params.cargo}%`);
   if (params.sexo) query = query.ilike("sexo", `%${params.sexo}%`);
-  if (params.empresa) query = query.ilike("empresas.nome", `%${params.empresa}%`);
+  if (empresaIds) query = query.in("empresa_id", empresaIds);
   if (!params.status && !params.incluir_inativos) query = query.in("status", ["ativo", "ferias", "em_admissao", "afastado"]);
   const { data, error } = await query.order("nome_completo").limit(30);
   if (error) return { error: error.message };
@@ -150,11 +157,29 @@ async function consultarFerias(supabase: any, params: any) {
 
 async function consultarFaltasFolgas(supabase: any, params: any) {
   const threeMonthsAgo = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
+
+  // If filtering by name, first resolve employee_ids to avoid broken .ilike on related table
+  let employeeIds: string[] | null = null;
+  if (params.nome) {
+    const { data: empData } = await supabase
+      .from("employees")
+      .select("id")
+      .ilike("nome_completo", `%${params.nome}%`);
+    employeeIds = (empData || []).map((e: any) => e.id);
+    if (employeeIds!.length === 0) {
+      return `FALTAS: Nenhum funcionário encontrado com nome "${params.nome}".`;
+    }
+  }
+
   let faltasQuery = supabase.from("faltas").select("*, employees(nome_completo, setor)").gte("data", threeMonthsAgo).order("data", { ascending: false });
-  if (params.nome) faltasQuery = faltasQuery.ilike("employees.nome_completo", `%${params.nome}%`);
+  if (employeeIds) faltasQuery = faltasQuery.in("employee_id", employeeIds);
+
+  let folgasQuery = supabase.from("folgas").select("*, employees(nome_completo, setor)").gte("data", threeMonthsAgo).order("data", { ascending: false });
+  if (employeeIds) folgasQuery = folgasQuery.in("employee_id", employeeIds);
+
   const [faltasRes, folgasRes] = await Promise.all([
     faltasQuery.limit(50),
-    supabase.from("folgas").select("*, employees(nome_completo, setor)").gte("data", threeMonthsAgo).order("data", { ascending: false }).limit(30),
+    folgasQuery.limit(30),
   ]);
   const faltas = faltasRes.data || [];
   const folgas = folgasRes.data || [];
