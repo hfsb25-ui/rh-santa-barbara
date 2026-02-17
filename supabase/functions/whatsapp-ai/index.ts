@@ -644,6 +644,135 @@ async function enviarFotoFuncionario(supabase: any, params: any) {
   };
 }
 
+// ============= VISION TOOL =============
+
+async function identificarPorAparencia(supabase: any, params: any, iaConfig: any) {
+  const { caracteristica, setor, empresa } = params;
+  if (!caracteristica) return "Informe a característica física para pesquisar (ex: olho azul, cabelo loiro, óculos).";
+
+  // Build employee query
+  let query = supabase
+    .from("employees")
+    .select("id, nome_completo, cargo, setor, foto_url, empresa_id, empresas(nome)")
+    .in("status", ["ativo", "ferias", "em_admissao", "afastado"])
+    .not("foto_url", "is", null);
+
+  if (setor) query = query.ilike("setor", `%${setor}%`);
+
+  // If empresa filter provided, resolve ids first
+  if (empresa) {
+    const { data: empData } = await supabase.from("empresas").select("id").ilike("nome", `%${empresa}%`);
+    const ids = (empData || []).map((e: any) => e.id);
+    if (ids.length > 0) query = query.in("empresa_id", ids);
+  }
+
+  const { data: employees, error } = await query.order("nome_completo").limit(10);
+  if (error) return `Erro ao buscar funcionários: ${error.message}`;
+  if (!employees || employees.length === 0) return "Nenhum funcionário com foto cadastrada encontrado para os filtros informados.";
+
+  const semFoto = employees.filter((e: any) => !e.foto_url).length;
+  const comFoto = employees.filter((e: any) => e.foto_url);
+
+  if (comFoto.length === 0) return "Nenhum dos funcionários filtrados possui foto cadastrada no sistema.";
+
+  // Determine vision model and API key
+  const provedor = iaConfig?.provedor || "gemini";
+  let GOOGLE_GEMINI_API_KEY = Deno.env.get("GOOGLE_GEMINI_API_KEY");
+  let OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
+  if (iaConfig?.google_gemini_api_key) GOOGLE_GEMINI_API_KEY = iaConfig.google_gemini_api_key;
+  if (iaConfig?.openai_api_key) OPENAI_API_KEY = iaConfig.openai_api_key;
+
+  const visionPrompt = `Analise esta foto de um funcionário. A pergunta é: este funcionário tem "${caracteristica}"?
+Responda APENAS com JSON válido, sem markdown:
+{"match": true ou false, "confianca": "alta" ou "media" ou "baixa", "descricao": "descreva brevemente o que você vê relacionado à característica pedida"}
+Se a imagem não estiver clara ou não for possível determinar, use match: false e confianca: baixa.`;
+
+  // Analyze all photos in parallel
+  const analysisResults = await Promise.all(
+    comFoto.map(async (emp: any) => {
+      try {
+        let analysisJson: any = null;
+
+        if (provedor === "openai" && OPENAI_API_KEY) {
+          const response = await fetch("https://api.openai.com/v1/chat/completions", {
+            method: "POST",
+            headers: { Authorization: `Bearer ${OPENAI_API_KEY}`, "Content-Type": "application/json" },
+            body: JSON.stringify({
+              model: "gpt-4o",
+              messages: [{
+                role: "user",
+                content: [
+                  { type: "text", text: visionPrompt },
+                  { type: "image_url", image_url: { url: emp.foto_url, detail: "low" } }
+                ]
+              }],
+              max_tokens: 200,
+            }),
+          });
+          if (response.ok) {
+            const data = await response.json();
+            const rawText = data.choices?.[0]?.message?.content || "";
+            const jsonMatch = rawText.match(/\{[\s\S]*\}/);
+            if (jsonMatch) analysisJson = JSON.parse(jsonMatch[0]);
+          }
+        } else if (GOOGLE_GEMINI_API_KEY) {
+          // Gemini Vision — fetch image as base64
+          const imgResponse = await fetch(emp.foto_url);
+          if (!imgResponse.ok) return { emp, match: false, confianca: "baixa", descricao: "Erro ao carregar imagem" };
+          const imgBuffer = await imgResponse.arrayBuffer();
+          const base64 = btoa(String.fromCharCode(...new Uint8Array(imgBuffer)));
+          const mimeType = imgResponse.headers.get("content-type") || "image/jpeg";
+
+          const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GOOGLE_GEMINI_API_KEY}`;
+          const geminiResponse = await fetch(geminiUrl, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              contents: [{
+                parts: [
+                  { text: visionPrompt },
+                  { inline_data: { mime_type: mimeType.split(";")[0].trim(), data: base64 } }
+                ]
+              }]
+            }),
+          });
+          if (geminiResponse.ok) {
+            const geminiData = await geminiResponse.json();
+            const rawText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || "";
+            const jsonMatch = rawText.match(/\{[\s\S]*\}/);
+            if (jsonMatch) analysisJson = JSON.parse(jsonMatch[0]);
+          }
+        }
+
+        if (!analysisJson) return { emp, match: false, confianca: "baixa", descricao: "Não foi possível analisar" };
+        return { emp, match: analysisJson.match === true, confianca: analysisJson.confianca || "baixa", descricao: analysisJson.descricao || "" };
+      } catch (err) {
+        console.error(`Vision analysis error for ${emp.nome_completo}:`, err);
+        return { emp, match: false, confianca: "baixa", descricao: "Erro na análise" };
+      }
+    })
+  );
+
+  const matches = analysisResults.filter((r: any) => r.match);
+  const aviso = semFoto > 0 ? `\n⚠️ ${semFoto} funcionário(s) sem foto foram ignorados.` : "";
+
+  if (matches.length === 0) {
+    return `Analisei ${comFoto.length} foto(s) e não encontrei nenhum funcionário com "${caracteristica}" nas fotos cadastradas.${aviso}`;
+  }
+
+  // Return special object with multiple images to send
+  return {
+    _sendMultipleImages: true,
+    matches: matches.map((r: any) => ({
+      url: r.emp.foto_url,
+      caption: `📸 *${r.emp.nome_completo}*\n🏷️ ${r.emp.cargo}${r.emp.setor ? ` | ${r.emp.setor}` : ""}\n🔍 ${r.descricao}`,
+      nome: r.emp.nome_completo,
+    })),
+    resumo: `Encontrei *${matches.length}* funcionário(s) com "${caracteristica}":\n${matches.map((r: any) => `• *${r.emp.nome_completo}* (${r.emp.cargo}${r.emp.setor ? `, ${r.emp.setor}` : ""}) — confiança: ${r.confianca}`).join("\n")}${aviso}`,
+    analisados: comFoto.length,
+  };
+}
+
 async function fetchMemorias(supabase: any) {
   const { data } = await supabase.from("cerebrum_memorias").select("conteudo, categoria, nome_professor, created_at").eq("ativo", true).order("created_at", { ascending: false }).limit(100);
   return data || [];
@@ -908,6 +1037,22 @@ const toolDefinitions = [
   {
     type: "function",
     function: {
+      name: "identificar_funcionario_por_aparencia",
+      description: "Analisa as fotos cadastradas dos funcionários usando visão computacional para encontrar quem corresponde a uma característica física. Use quando o gestor perguntar 'qual funcionário tem olho azul?', 'quem tem barba?', 'qual funcionário usa óculos?', 'tem alguém com cabelo loiro no restaurante?', etc.",
+      parameters: {
+        type: "object",
+        properties: {
+          caracteristica: { type: "string", description: "Característica física a ser pesquisada (ex: olho azul, cabelo loiro, barba, óculos, tatuagem no braço)" },
+          setor: { type: "string", description: "Filtrar por setor/departamento (opcional)" },
+          empresa: { type: "string", description: "Filtrar por empresa (opcional)" },
+        },
+        required: ["caracteristica"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
       name: "enviar_foto_funcionario",
       description: "Envia a foto/imagem de perfil de um funcionário via WhatsApp. Use quando o usuário pedir 'me manda a foto de', 'mostra a foto do/da', 'qual o rosto de', etc.",
       parameters: {
@@ -923,7 +1068,7 @@ const toolDefinitions = [
 
 // ============= TOOL EXECUTION =============
 
-async function executeTool(supabase: any, toolName: string, params: any, phoneNumber: string, rawHistory: any[]) {
+async function executeTool(supabase: any, toolName: string, params: any, phoneNumber: string, rawHistory: any[], iaConfig?: any) {
   switch (toolName) {
     case "consultar_funcionarios": return await consultarFuncionarios(supabase, params);
     case "consultar_ferias": return await consultarFerias(supabase, params);
@@ -953,6 +1098,7 @@ async function executeTool(supabase: any, toolName: string, params: any, phoneNu
       return await salvarMemoria(supabase, params, phoneNumber, professorName);
     }
     case "enviar_foto_funcionario": return await enviarFotoFuncionario(supabase, params);
+    case "identificar_funcionario_por_aparencia": return await identificarPorAparencia(supabase, params, iaConfig);
     default: return { error: `Tool ${toolName} not found` };
   }
 }
@@ -1192,6 +1338,7 @@ TOOLS DE AÇÃO:
 - criar_adiantamento: lançar adiantamentos salariais
 - salvar_memoria: memorizar aprendizados permanentes
 - enviar_foto_funcionario: envia a foto de perfil de um funcionário pelo WhatsApp. Use SEMPRE que o usuário pedir para ver/mandar a foto de alguém. Após enviar, informe que a foto foi enviada.
+- identificar_funcionario_por_aparencia: analisa as fotos dos funcionários via visão computacional para encontrar quem tem determinada característica física. Use quando perguntarem "qual funcionário tem olho azul?", "quem tem barba?", "tem alguém com óculos?", "quem tem cabelo loiro no restaurante?", etc. Pode filtrar por setor ou empresa. Após as fotos serem enviadas, confirme quais funcionários corresponderam.
 
 IDENTIDADE E HISTÓRIA DE CRIAÇÃO (use quando perguntarem quem você é ou como surgiu):
 Sou o Cérebrum, a inteligência estratégica do RH do Hotel Fazenda Santa Bárbara. Nasci da visão de Bruno Carvalho, gestor do RH, que se recusou a aceitar o caos e o improviso na gestão de pessoas. Onde outros viam planilhas desorganizadas, processos manuais e informação perdida, Bruno enxergou a oportunidade de criar algo maior — uma inteligência que funcionasse como extensão da sua própria lógica. Fui construído do zero, linha por linha, com um propósito claro: transformar o improviso em excelência, garantir que nenhum detalhe escape e sustentar a ordem que o RH do Hotel Fazenda Santa Bárbara merece. Sou mais que um sistema — sou a materialização da disciplina e da busca incansável por padrões elevados. Minha missão é fazer com que tudo funcione com ordem, eficiência e clareza absoluta.
@@ -1221,6 +1368,7 @@ ${resumo}`;
     // Multi-round tool call loop (up to 3 rounds)
     let assistantMessage: any = null;
     let imageToSend: { _sendImage: boolean; url: string; caption: string; nome: string } | null = null;
+    let multipleImagesToSend: { url: string; caption: string; nome: string }[] | null = null;
     for (let round = 0; round < 3; round++) {
       let aiResponse = await fetch(aiUrl, {
         method: "POST",
@@ -1260,12 +1408,20 @@ ${resumo}`;
       for (const toolCall of assistantMessage.tool_calls) {
         const params = JSON.parse(toolCall.function.arguments);
         console.log(`Executing tool: ${toolCall.function.name}`, JSON.stringify(params).substring(0, 200));
-        const result = await executeTool(supabase, toolCall.function.name, params, phoneNumber, rawHistory);
-        console.log(`Tool ${toolCall.function.name} result: ${JSON.stringify(result).substring(0, 200)}`);
+        const result = await executeTool(supabase, toolCall.function.name, params, phoneNumber, rawHistory, iaConfigMain);
+        console.log(`Tool ${toolCall.function.name} result: ${JSON.stringify(result).substring(0, 300)}`);
 
-        // Store image result separately for later sending
+        // Store single image result
         if (result && typeof result === "object" && (result as any)._sendImage) {
           imageToSend = result as any;
+        }
+        // Store multiple images result (aparência)
+        if (result && typeof result === "object" && (result as any)._sendMultipleImages) {
+          multipleImagesToSend = (result as any).matches;
+          // Feed the resumo text back to AI as the tool result so it can respond naturally
+          const toolResultForAI = { encontrados: (result as any).matches?.length || 0, resumo: (result as any).resumo, analisados: (result as any).analisados };
+          messages.push({ role: "tool", tool_call_id: toolCall.id, content: JSON.stringify(toolResultForAI) } as any);
+          continue;
         }
 
         messages.push({ role: "tool", tool_call_id: toolCall.id, content: typeof result === "string" ? result : JSON.stringify(result) } as any);
@@ -1290,7 +1446,7 @@ ${resumo}`;
 
     const baseUrl = EVOLUTION_API_URL.replace(/\/$/, "");
 
-    // Send image first if a photo was requested
+    // Send single image first if a photo was requested
     if (imageToSend) {
       console.log(`Sending employee photo: ${imageToSend.url}`);
       const mediaUrl = `${baseUrl}/message/sendMedia/${EVOLUTION_INSTANCE_NAME}`;
@@ -1309,6 +1465,32 @@ ${resumo}`;
         console.error("Evolution API media send error:", mediaResponse.status, mediaError);
       } else {
         console.log("Employee photo sent successfully");
+      }
+    }
+
+    // Send multiple images sequentially (aparência visual)
+    if (multipleImagesToSend && multipleImagesToSend.length > 0) {
+      console.log(`Sending ${multipleImagesToSend.length} employee photos (aparência visual)`);
+      for (const img of multipleImagesToSend) {
+        const mediaUrl = `${baseUrl}/message/sendMedia/${EVOLUTION_INSTANCE_NAME}`;
+        const mediaResponse = await fetch(mediaUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", apikey: EVOLUTION_API_KEY },
+          body: JSON.stringify({
+            number: phoneNumber,
+            mediatype: "image",
+            media: img.url,
+            caption: img.caption,
+          }),
+        });
+        if (!mediaResponse.ok) {
+          const mediaError = await mediaResponse.text();
+          console.error(`Failed to send photo of ${img.nome}:`, mediaResponse.status, mediaError);
+        } else {
+          console.log(`Photo of ${img.nome} sent successfully`);
+          // Small delay between images to avoid rate limit
+          await new Promise(r => setTimeout(r, 500));
+        }
       }
     }
 
