@@ -127,14 +127,17 @@ async function consultarFuncionarios(supabase: any, params: any) {
   if (params.sexo) query = query.ilike("sexo", `%${params.sexo}%`);
   if (empresaIds) query = query.in("empresa_id", empresaIds);
   if (!params.status && !params.incluir_inativos) query = query.in("status", ["ativo", "ferias", "em_admissao", "afastado"]);
-  const { data, error } = await query.order("nome_completo").limit(30);
-  if (error) return { error: error.message };
+  // Busca o total real com count (sem limit) e os dados listados com limit
+  const { count: totalCount, error: countError } = await (query as any).select("id", { count: "exact", head: true });
+  const { data, error } = await query.order("nome_completo").limit(50);
+  if (error || countError) return { error: (error || countError)?.message };
   const funcionarios = data || [];
-  if (funcionarios.length === 0) {
+  const totalReal = totalCount ?? funcionarios.length;
+  if (totalReal === 0) {
     const termo = params.nome || params.setor || params.cargo || "esse critério";
     return `Nenhum funcionário encontrado com nome contendo "${termo}". Verifique se o nome está correto ou tente com outra parte do nome.`;
   }
-  return { total: funcionarios.length, funcionarios: funcionarios.map((e: any) => `${e.nome_completo}|${e.status}|${e.cargo}|${e.setor||"-"}|R$${e.salario||"-"}|${e.telefone||"-"}|${e.empresas?.nome||"-"}`) };
+  return { total: totalReal, exibindo: funcionarios.length, funcionarios: funcionarios.map((e: any) => `${e.nome_completo}|${e.status}|${e.cargo}|${e.setor||"-"}|R$${e.salario||"-"}|${e.telefone||"-"}|${e.empresas?.nome||"-"}`) };
 }
 
 async function consultarFerias(supabase: any, params: any) {
