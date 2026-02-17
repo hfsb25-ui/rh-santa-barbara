@@ -964,6 +964,26 @@ serve(async (req) => {
 
     console.log(`Processing message from ${phoneNumber}: ${userMessage.substring(0, 100)}`);
 
+    // Send read receipt so the user sees double blue ticks on their message
+    try {
+      const SUPABASE_URL_RC = Deno.env.get("SUPABASE_URL");
+      const SUPABASE_SERVICE_ROLE_KEY_RC = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+      const supabaseRC = createClient(SUPABASE_URL_RC!, SUPABASE_SERVICE_ROLE_KEY_RC!);
+      const { data: waCfgRC } = await supabaseRC.from("configuracoes_whatsapp").select("evolution_api_url, evolution_api_key, evolution_instance_name").limit(1).maybeSingle();
+      if (waCfgRC?.evolution_api_url && waCfgRC?.evolution_api_key && waCfgRC?.evolution_instance_name) {
+        await fetch(`${waCfgRC.evolution_api_url.replace(/\/$/, "")}/chat/updatePresence/${waCfgRC.evolution_instance_name}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", apikey: waCfgRC.evolution_api_key },
+          body: JSON.stringify({ number: remoteJid, options: { presence: "composing" } }),
+        }).catch(() => {});
+        await fetch(`${waCfgRC.evolution_api_url.replace(/\/$/, "")}/message/readMessages/${waCfgRC.evolution_instance_name}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", apikey: waCfgRC.evolution_api_key },
+          body: JSON.stringify({ readMessages: [{ remoteJid: key.remoteJid, fromMe: false, id: key.id }] }),
+        }).catch(() => {});
+      }
+    } catch (_rcErr) { /* non-critical */ }
+
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
     const supabase = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!);
