@@ -129,7 +129,12 @@ async function consultarFuncionarios(supabase: any, params: any) {
   if (!params.status && !params.incluir_inativos) query = query.in("status", ["ativo", "ferias", "em_admissao", "afastado"]);
   const { data, error } = await query.order("nome_completo").limit(30);
   if (error) return { error: error.message };
-  return { total: (data || []).length, funcionarios: (data || []).map((e: any) => `${e.nome_completo}|${e.status}|${e.cargo}|${e.setor||"-"}|R$${e.salario||"-"}|${e.telefone||"-"}|${e.empresas?.nome||"-"}`) };
+  const funcionarios = data || [];
+  if (funcionarios.length === 0) {
+    const termo = params.nome || params.setor || params.cargo || "esse critério";
+    return `Nenhum funcionário encontrado com nome contendo "${termo}". Verifique se o nome está correto ou tente com outra parte do nome.`;
+  }
+  return { total: funcionarios.length, funcionarios: funcionarios.map((e: any) => `${e.nome_completo}|${e.status}|${e.cargo}|${e.setor||"-"}|R$${e.salario||"-"}|${e.telefone||"-"}|${e.empresas?.nome||"-"}`) };
 }
 
 async function consultarFerias(supabase: any, params: any) {
@@ -158,17 +163,24 @@ async function consultarFerias(supabase: any, params: any) {
 async function consultarFaltasFolgas(supabase: any, params: any) {
   const threeMonthsAgo = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
 
-  // If filtering by name, first resolve employee_ids to avoid broken .ilike on related table
+  // If filtering by name, first resolve employee_ids
   let employeeIds: string[] | null = null;
+  let employeeNames: string[] = [];
   if (params.nome) {
     const { data: empData } = await supabase
       .from("employees")
-      .select("id")
+      .select("id, nome_completo")
       .ilike("nome_completo", `%${params.nome}%`);
-    employeeIds = (empData || []).map((e: any) => e.id);
-    if (employeeIds!.length === 0) {
+    if (!empData || empData.length === 0) {
       return `FALTAS: Nenhum funcionário encontrado com nome "${params.nome}".`;
     }
+    // FALHA 2: múltiplos funcionários → pedir confirmação
+    if (empData.length > 1) {
+      const nomes = empData.map((e: any) => e.nome_completo).join(", ");
+      return `Encontrei ${empData.length} funcionários com esse nome: ${nomes}. Qual deles você quer consultar? Por favor, informe o nome completo.`;
+    }
+    employeeIds = empData.map((e: any) => e.id);
+    employeeNames = empData.map((e: any) => e.nome_completo);
   }
 
   let faltasQuery = supabase.from("faltas").select("*, employees(nome_completo, setor)").gte("data", threeMonthsAgo).order("data", { ascending: false });
@@ -184,7 +196,8 @@ async function consultarFaltasFolgas(supabase: any, params: any) {
   const faltas = faltasRes.data || [];
   const folgas = folgasRes.data || [];
   const naoJust = faltas.filter((f: any) => !f.justificada);
-  return `FALTAS (últimos 90 dias): ${faltas.length} total, ${naoJust.length} não justificadas\n${naoJust.slice(0, 20).map((f: any) => `- ${f.employees?.nome_completo}: ${f.data} ${f.motivo ? `(${f.motivo})` : ""}`).join("\n") || "Nenhuma"}\n\nFOLGAS (últimos 90 dias): ${folgas.length}\n${folgas.slice(0, 15).map((f: any) => `- ${f.employees?.nome_completo}: ${f.data} - ${f.motivo}`).join("\n") || "Nenhuma"}`;
+  const nomeRef = employeeNames.length > 0 ? ` de ${employeeNames[0]}` : "";
+  return `FALTAS${nomeRef} (últimos 90 dias): ${faltas.length} total, ${naoJust.length} não justificadas\n${naoJust.slice(0, 20).map((f: any) => `- ${f.employees?.nome_completo}: ${f.data} ${f.motivo ? `(${f.motivo})` : ""}`).join("\n") || "Nenhuma"}\n\nFOLGAS${nomeRef} (últimos 90 dias): ${folgas.length}\n${folgas.slice(0, 15).map((f: any) => `- ${f.employees?.nome_completo}: ${f.data} - ${f.motivo}`).join("\n") || "Nenhuma"}`;
 }
 
 async function consultarPontoBancoHoras(supabase: any, params: any) {
@@ -192,49 +205,67 @@ async function consultarPontoBancoHoras(supabase: any, params: any) {
   const currentMonth = new Date().getMonth() + 1;
   const startOfYear = `${currentYear}-01-01`;
 
+  // FALHA 3+4: resolver employee_id primeiro, depois filtrar direto no banco
+  let resolvedEmployeeIds: string[] | null = null;
+  let resolvedEmployeeNames: string[] = [];
+  if (params.nome_funcionario) {
+    const { data: empData } = await supabase
+      .from("employees")
+      .select("id, nome_completo")
+      .ilike("nome_completo", `%${params.nome_funcionario}%`);
+    if (!empData || empData.length === 0) {
+      return `Nenhum funcionário encontrado com nome "${params.nome_funcionario}".`;
+    }
+    if (empData.length > 1) {
+      const nomes = empData.map((e: any) => e.nome_completo).join(", ");
+      return `Encontrei ${empData.length} funcionários com esse nome: ${nomes}. Qual deles você quer consultar? Por favor, informe o nome completo.`;
+    }
+    resolvedEmployeeIds = empData.map((e: any) => e.id);
+    resolvedEmployeeNames = empData.map((e: any) => e.nome_completo);
+  }
+
+  let bancoQuery = supabase.from("banco_horas").select("*, employees(nome_completo, setor, status)");
+  if (resolvedEmployeeIds) bancoQuery = bancoQuery.in("employee_id", resolvedEmployeeIds);
+
+  let pontoQuery = resolvedEmployeeIds
+    ? supabase.from("registros_ponto").select("employee_id, data, tipo_dia, horas_trabalhadas, hora_entrada, hora_saida, employees(nome_completo, setor)").gte("data", startOfYear).in("employee_id", resolvedEmployeeIds).order("data", { ascending: false }).limit(500)
+    : Promise.resolve({ data: [] });
+
   const [bancoRes, configRes, pontoRes] = await Promise.all([
-    supabase.from("banco_horas").select("*, employees(nome_completo, setor, status)"),
+    bancoQuery,
     supabase.from("configuracao_horas_trabalho").select("employee_id, horas_diarias_esperadas"),
-    params.nome_funcionario
-      ? supabase.from("registros_ponto").select("employee_id, data, tipo_dia, horas_trabalhadas, hora_entrada, hora_saida, employees(nome_completo, setor)").gte("data", startOfYear).order("data", { ascending: false }).limit(500)
-      : Promise.resolve({ data: [] }),
+    pontoQuery,
   ]);
 
   const bancoHoras = bancoRes.data || [];
-  let result = `BANCO DE HORAS (${bancoHoras.length} registros):\n`;
-  const filtrados = params.nome_funcionario
-    ? bancoHoras.filter((b: any) => (b.employees?.nome_completo || "").toLowerCase().includes(params.nome_funcionario.toLowerCase()))
-    : bancoHoras;
-  result += filtrados.map((b: any) => `- ${b.employees?.nome_completo} [${b.employees?.status}]: ${b.saldo_horas > 0 ? "+" : ""}${b.saldo_horas?.toFixed(1)}h | Setor: ${b.employees?.setor || "N/A"}`).join("\n") || "Nenhum";
+  const nomeRef = resolvedEmployeeNames.length > 0 ? ` — ${resolvedEmployeeNames[0]}` : "";
+  let result = `BANCO DE HORAS${nomeRef} (${bancoHoras.length} registros):\n`;
+  result += bancoHoras.map((b: any) => `- ${b.employees?.nome_completo} [${b.employees?.status}]: ${b.saldo_horas > 0 ? "+" : ""}${b.saldo_horas?.toFixed(1)}h | Setor: ${b.employees?.setor || "N/A"}`).join("\n") || "Nenhum";
 
-  const positivo = bancoHoras.filter((b: any) => b.saldo_horas > 0).length;
-  const negativo = bancoHoras.filter((b: any) => b.saldo_horas < 0).length;
-  result += `\nResumo: ${positivo} positivos, ${negativo} negativos, ${bancoHoras.length - positivo - negativo} zerados`;
+  if (!resolvedEmployeeIds) {
+    const positivo = bancoHoras.filter((b: any) => b.saldo_horas > 0).length;
+    const negativo = bancoHoras.filter((b: any) => b.saldo_horas < 0).length;
+    result += `\nResumo: ${positivo} positivos, ${negativo} negativos, ${bancoHoras.length - positivo - negativo} zerados`;
+  }
 
   // If searching specific employee, add monthly breakdown
-  if (params.nome_funcionario && pontoRes.data && pontoRes.data.length > 0) {
+  if (resolvedEmployeeIds && pontoRes.data && pontoRes.data.length > 0) {
     const configMap: Record<string, number> = {};
     (configRes.data || []).forEach((c: any) => { configMap[c.employee_id] = c.horas_diarias_esperadas; });
     const nomeMes = (m: number) => ["", "Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"][m];
 
-    const empRegistros = pontoRes.data.filter((r: any) =>
-      (r.employees?.nome_completo || "").toLowerCase().includes(params.nome_funcionario.toLowerCase())
-    );
-
-    if (empRegistros.length > 0) {
-      const empId = empRegistros[0].employee_id;
-      const horasDiarias = configMap[empId] || 8;
-      result += `\n\nDETALHE MENSAL (${currentYear}):`;
-      for (let m = 1; m <= currentMonth; m++) {
-        const mesStr = String(m).padStart(2, "0");
-        const mesRegs = empRegistros.filter((r: any) => r.data.startsWith(`${currentYear}-${mesStr}`));
-        const diasNormais = mesRegs.filter((r: any) => r.tipo_dia === "normal" && (r.hora_entrada || r.hora_saida || r.horas_trabalhadas > 0)).length;
-        const trabalhadas = mesRegs.reduce((s: number, r: any) => s + (r.horas_trabalhadas || 0), 0);
-        const esperadas = diasNormais * horasDiarias;
-        if (diasNormais > 0) {
-          const saldo = trabalhadas - esperadas;
-          result += `\n  ${nomeMes(m)}: Esperadas=${esperadas.toFixed(1)}h | Trabalhadas=${trabalhadas.toFixed(1)}h | Saldo=${saldo >= 0 ? "+" : ""}${saldo.toFixed(1)}h`;
-        }
+    const empId = resolvedEmployeeIds[0];
+    const horasDiarias = configMap[empId] || 8;
+    result += `\n\nDETALHE MENSAL (${currentYear}):`;
+    for (let m = 1; m <= currentMonth; m++) {
+      const mesStr = String(m).padStart(2, "0");
+      const mesRegs = pontoRes.data.filter((r: any) => r.data.startsWith(`${currentYear}-${mesStr}`));
+      const diasNormais = mesRegs.filter((r: any) => r.tipo_dia === "normal" && (r.hora_entrada || r.hora_saida || r.horas_trabalhadas > 0)).length;
+      const trabalhadas = mesRegs.reduce((s: number, r: any) => s + (r.horas_trabalhadas || 0), 0);
+      const esperadas = diasNormais * horasDiarias;
+      if (diasNormais > 0) {
+        const saldo = trabalhadas - esperadas;
+        result += `\n  ${nomeMes(m)}: Esperadas=${esperadas.toFixed(1)}h | Trabalhadas=${trabalhadas.toFixed(1)}h | Saldo=${saldo >= 0 ? "+" : ""}${saldo.toFixed(1)}h`;
       }
     }
   }
@@ -899,10 +930,7 @@ serve(async (req) => {
     if (remoteJid.includes("@g.us")) return new Response(JSON.stringify({ status: "ignored", reason: "group message" }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
     const phoneNumber = remoteJid.replace("@s.whatsapp.net", "");
-    const allowedNumbers = (Deno.env.get("WHATSAPP_ALLOWED_NUMBERS") || "").split(",").map(n => n.trim()).filter(Boolean);
-    if (allowedNumbers.length > 0 && !allowedNumbers.includes(phoneNumber)) {
-      return new Response(JSON.stringify({ status: "ignored", reason: "unauthorized" }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-    }
+    // FIX 6: Whitelist verificada somente via banco de dados (configuracoes_whatsapp), não via env var
 
     let userMessage = message.conversation || message.extendedTextMessage?.text || "";
 
@@ -1178,7 +1206,14 @@ ${resumo}`;
       }
     }
 
-    const aiText = assistantMessage?.content || "Desculpe, não consegui processar sua pergunta.";
+    // FIX 8: log when loop exhausts without final text response
+    if (!assistantMessage?.content && assistantMessage?.tool_calls) {
+      console.error("Tool call loop exhausted without final response — last message still has tool_calls and no content");
+    }
+
+    const rawAiText = assistantMessage?.content || "Desculpe, não consegui processar sua pergunta.";
+    // FIX 5: truncamento programático para evitar mensagens cortadas pelo WhatsApp
+    const aiText = rawAiText.length > 3800 ? rawAiText.substring(0, 3800) + "\n\n_(resposta truncada — peça mais detalhes específicos)_" : rawAiText;
     const formattedText = formatForWhatsApp(aiText);
 
     // Save conversation
