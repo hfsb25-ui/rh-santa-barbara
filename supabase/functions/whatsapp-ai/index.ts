@@ -975,7 +975,7 @@ serve(async (req) => {
     const [iaConfigRes, whatsappConfigRes, resumo, memorias, historyRes] = await Promise.all([
       supabase.from("configuracoes_ia").select("google_gemini_api_key, openai_api_key, modelo, provedor").limit(1).maybeSingle(),
       supabase.from("configuracoes_whatsapp").select("*").limit(1).maybeSingle(),
-      fetchResumoMinimo(supabase),
+      consultarResumoRapido(supabase),
       fetchMemorias(supabase),
       supabase.from("whatsapp_conversas").select("role, content, created_at").eq("phone_number", phoneNumber).order("created_at", { ascending: false }).limit(20),
     ]);
