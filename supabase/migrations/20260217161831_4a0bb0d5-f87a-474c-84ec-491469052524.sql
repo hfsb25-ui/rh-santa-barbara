@@ -1,0 +1,1 @@
+ALTER TABLE public.adiantamentos ADD COLUMN status text NOT NULL DEFAULT 'aguardando' CHECK (status IN ('aguardando', 'feito'));

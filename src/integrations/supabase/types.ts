@@ -24,6 +24,7 @@ export type Database = {
           forma_pagamento: string
           id: string
           mes: number
+          status: string
           updated_at: string
           valor: number
         }
@@ -36,6 +37,7 @@ export type Database = {
           forma_pagamento: string
           id?: string
           mes: number
+          status?: string
           updated_at?: string
           valor?: number
         }
@@ -48,6 +50,7 @@ export type Database = {
           forma_pagamento?: string
           id?: string
           mes?: number
+          status?: string
           updated_at?: string
           valor?: number
         }

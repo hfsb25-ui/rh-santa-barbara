@@ -10,7 +10,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Loader2, FileDown, Receipt, BarChart, Pencil, Trash2 } from "lucide-react";
+import { Loader2, FileDown, Receipt, BarChart, Pencil, Trash2, CheckCircle } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
@@ -49,6 +50,7 @@ interface AdiantamentoHistorico {
   empresa_id: string;
   valor: number;
   forma_pagamento: string;
+  status: string;
   mes: number;
   ano: number;
   created_at: string;
@@ -436,6 +438,23 @@ const Adiantamentos = () => {
     }
   };
 
+  const handleConfirmAdiantamento = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from("adiantamentos")
+        .update({ status: "feito" })
+        .eq("id", id);
+
+      if (error) throw error;
+
+      toast.success("Adiantamento confirmado!");
+      fetchHistorico();
+    } catch (error: any) {
+      console.error("Erro ao confirmar adiantamento:", error);
+      toast.error("Erro ao confirmar adiantamento");
+    }
+  };
+
   const handleExportPDF = () => {
     try {
       const adiantamentosComValor = adiantamentos.filter(a => a.valor && parseFloat(a.valor) > 0);
@@ -788,6 +807,7 @@ const Adiantamentos = () => {
                         <TableHead>Empresa</TableHead>
                         <TableHead>Valor (R$)</TableHead>
                         <TableHead>Forma Pagamento</TableHead>
+                        <TableHead>Status</TableHead>
                         <TableHead>Data Lançamento</TableHead>
                         <TableHead className="text-right">Ações</TableHead>
                       </TableRow>
@@ -795,7 +815,7 @@ const Adiantamentos = () => {
                     <TableBody>
                       {historico.length === 0 ? (
                         <TableRow>
-                          <TableCell colSpan={8} className="text-center text-muted-foreground">
+                          <TableCell colSpan={9} className="text-center text-muted-foreground">
                             Nenhum adiantamento encontrado para este período
                           </TableCell>
                         </TableRow>
@@ -811,10 +831,28 @@ const Adiantamentos = () => {
                               {getFormaPagamentoLabel(adiant.forma_pagamento)}
                             </TableCell>
                             <TableCell>
+                              {adiant.status === "feito" ? (
+                                <Badge className="bg-green-500 hover:bg-green-600">Feito</Badge>
+                              ) : (
+                                <Badge variant="outline" className="border-amber-500 text-amber-600">Aguardando</Badge>
+                              )}
+                            </TableCell>
+                            <TableCell>
                               {new Date(adiant.created_at).toLocaleDateString("pt-BR")}
                             </TableCell>
                             <TableCell className="text-right">
                               <div className="flex justify-end gap-2">
+                                {adiant.status === "aguardando" && (
+                                  <Button
+                                    variant="outline"
+                                    size="icon"
+                                    className="text-green-600 hover:text-green-700"
+                                    title="Confirmar"
+                                    onClick={() => handleConfirmAdiantamento(adiant.id)}
+                                  >
+                                    <CheckCircle className="h-4 w-4" />
+                                  </Button>
+                                )}
                                 <Button
                                   variant="outline"
                                   size="icon"
