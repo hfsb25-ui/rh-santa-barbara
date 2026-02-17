@@ -1,63 +1,110 @@
 
-# Envio de Foto de Funcionário pelo Cérebrum no WhatsApp
+# Identificação de Funcionários por Características Visuais nas Fotos
 
 ## O Que Será Feito
 
-Quando um gestor pedir no WhatsApp "me manda a foto da [nome]" ou "mostra a foto do [nome]", o Cérebrum vai buscar a `foto_url` do funcionário no banco e enviar a imagem diretamente no chat via Evolution API.
+Quando o gestor perguntar no WhatsApp algo como *"qual funcionário do restaurante tem olho azul?"* ou *"quem do setor de cozinha tem tatuagem no braço?"*, o Cérebrum vai analisar as fotos cadastradas dos funcionários usando visão computacional (o próprio modelo de IA que já está configurado — OpenAI GPT-4o ou Google Gemini) e retornar os nomes e fotos dos que mais correspondem à descrição.
 
 ---
 
-## Como Funciona a Evolution API para Imagens
+## Como Vai Funcionar
 
-A API já suporta envio de mídia pelo endpoint:
-```
-POST /message/sendMedia/{instance}
-```
-Com payload:
-```json
-{
-  "number": "5511999999999",
-  "mediatype": "image",
-  "media": "https://url-da-foto.com/foto.jpg",
-  "caption": "📸 João da Silva — Garçom | Restaurante"
+O fluxo será:
+
+1. Gestor pergunta: *"quem tem olho azul no restaurante?"*
+2. Cérebrum chama a nova tool `identificar_funcionario_por_aparencia`
+3. A função busca todos os funcionários com `foto_url` preenchida, filtrando por setor/empresa se mencionado
+4. Para cada foto, envia a imagem ao modelo de visão (GPT-4o Vision ou Gemini Vision) com a pergunta: *"este funcionário tem olho azul?"*
+5. O modelo responde com sim/não e um score de confiança
+6. Os funcionários que correspondem são retornados ao Cérebrum
+7. O Cérebrum envia as fotos dos correspondentes + resposta textual
+
+---
+
+## Arquitetura Técnica
+
+### Nova função: `identificarPorAparencia`
+
+```typescript
+async function identificarPorAparencia(supabase, params, iaConfig) {
+  // 1. Busca funcionários com foto, filtrando por setor se informado
+  // 2. Para cada foto, chama a Vision API com a característica
+  // 3. Retorna lista de matches com nome + url + cargo + setor
 }
 ```
-O `media` aceita **URL pública diretamente** — e as fotos já estão no bucket `employee-photos` que é público, então as URLs funcionam sem necessidade de tokens.
 
----
+**Parâmetros da tool:**
+- `caracteristica`: descrição física (ex: "olho azul", "cabelo vermelho", "tatuagem no braço")
+- `setor`: filtro opcional de setor
+- `empresa`: filtro opcional de empresa
 
-## Mudanças Técnicas no `whatsapp-ai/index.ts`
+### Chamada Vision — OpenAI (GPT-4o)
 
-### 1. Nova função `enviarFotoFuncionario`
-Busca o funcionário pelo nome, valida se tem foto cadastrada, e retorna um objeto especial `{ _sendImage: true, url, caption, nome }` para sinalizar ao handler principal que deve enviar uma imagem.
+```json
+{
+  "model": "gpt-4o",
+  "messages": [{
+    "role": "user",
+    "content": [
+      { "type": "text", "text": "Analise esta foto. Responda APENAS com JSON: {\"match\": true/false, \"confianca\": \"alta/media/baixa\", \"descricao\": \"...\"}" },
+      { "type": "image_url", "image_url": { "url": "https://url-da-foto.jpg" } }
+    ]
+  }]
+}
+```
 
-### 2. Nova tool `enviar_foto_funcionario`
-Adicionada na lista `toolDefinitions`, com descrição clara para a IA usar quando o usuário pedir uma foto. Parâmetro: `nome_funcionario`.
+### Chamada Vision — Gemini (fallback)
 
-### 3. Atualização do `executeTool`
-Adiciona o case `"enviar_foto_funcionario"` que chama a nova função.
+```json
+{
+  "contents": [{
+    "parts": [
+      { "text": "..." },
+      { "inline_data": { "mime_type": "image/jpeg", "data": "base64..." } }
+    ]
+  }]
+}
+```
 
-### 4. Detecção de resposta com imagem no handler principal
-Após o loop de tool calls, antes de enviar o texto, o código verifica se alguma tool retornou `_sendImage: true`. Se sim:
-- Envia a imagem via `/message/sendMedia/`
-- Envia o texto de resposta normalmente em seguida (ou omite se a legenda for suficiente)
-
-### 5. Atualização do System Prompt
-Instrução para a IA: *"Se o usuário pedir foto de um funcionário, use a tool `enviar_foto_funcionario`. Informe que a foto foi enviada após o envio."*
-
----
-
-## Casos Tratados
+### Detecção de múltiplos resultados
 
 | Situação | Comportamento |
 |---|---|
-| Funcionário encontrado com foto | Envia a imagem com legenda (nome, cargo, setor) |
-| Funcionário encontrado sem foto | Responde: "X não tem foto cadastrada no sistema." |
-| Nome ambíguo (múltiplos) | Retorna lista e pede confirmação |
-| Funcionário não encontrado | Retorna mensagem de não encontrado |
+| 1 correspondência | Envia foto + texto |
+| 2-4 correspondências | Envia todas as fotos em sequência + texto listando os nomes |
+| Nenhuma correspondência | Responde: "Não encontrei nenhum funcionário com essa característica nas fotos cadastradas." |
+| Muitos funcionários sem foto | Avisa quantos foram ignorados por não ter foto |
+| Mais de 10 fotos a analisar | Limita a 10 para não exceder tempo de resposta |
 
 ---
 
-## Arquivo Modificado
+## Cuidados Importantes
 
-- `supabase/functions/whatsapp-ai/index.ts`
+- **Performance**: A análise é feita em paralelo (Promise.all) para não demorar demais
+- **Fallback por setor/empresa**: Se o gestor mencionar "do restaurante" ou "da cozinha", o filtro reduz o número de fotos a analisar
+- **Modelo de visão**: O sistema usa o provedor já configurado — se for `openai`, usa `gpt-4o` (que tem visão); se for `gemini`, usa `gemini-2.0-flash`
+- **Limite de fotos**: Máximo 10 funcionários analisados por busca para evitar timeout da Edge Function
+
+---
+
+## Mudanças no Arquivo
+
+### `supabase/functions/whatsapp-ai/index.ts`
+
+1. **Nova função `identificarPorAparencia`**: Lógica completa de busca + análise visual
+2. **Nova tool `identificar_funcionario_por_aparencia`**: Adicionada em `toolDefinitions`
+3. **`executeTool`**: Novo case para a tool, passando a configuração de IA
+4. **`executeTool`**: Assinatura atualizada para receber `iaConfig` (já disponível no handler)
+5. **Handler principal**: Atualização para suportar `_sendMultipleImages` — quando múltiplos funcionários correspondem, o handler envia cada foto em sequência antes do texto
+6. **System Prompt**: Nova instrução para usar a tool quando perguntas sobre aparência física forem feitas
+
+---
+
+## Exemplos de Uso
+
+- *"quem tem cabelo loiro no setor de atendimento?"*
+- *"qual funcionário da cozinha usa óculos?"*
+- *"tem alguém com barba no restaurante?"*
+- *"quem tem tatuagem visível?"*
+- *"me mostra os funcionários de uniforme azul"*
+
