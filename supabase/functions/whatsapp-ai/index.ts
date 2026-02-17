@@ -119,17 +119,26 @@ async function consultarFuncionarios(supabase: any, params: any) {
     empresaIds = (empData || []).map((e: any) => e.id);
   }
 
-  let query = supabase.from("employees").select("nome_completo, cargo, setor, status, data_admissao, salario, tipo_contrato, telefone, cpf, data_nascimento, sexo, empresa_id, empresas(nome)");
-  if (params.status) query = query.eq("status", params.status);
-  if (params.setor) query = query.ilike("setor", `%${params.setor}%`);
-  if (params.nome) query = query.ilike("nome_completo", `%${params.nome}%`);
-  if (params.cargo) query = query.ilike("cargo", `%${params.cargo}%`);
-  if (params.sexo) query = query.ilike("sexo", `%${params.sexo}%`);
-  if (empresaIds) query = query.in("empresa_id", empresaIds);
-  if (!params.status && !params.incluir_inativos) query = query.in("status", ["ativo", "ferias", "em_admissao", "afastado"]);
-  // Busca o total real com count (sem limit) e os dados listados com limit
-  const { count: totalCount, error: countError } = await (query as any).select("id", { count: "exact", head: true });
-  const { data, error } = await query.order("nome_completo").limit(50);
+  // Constrói os filtros como função para reusar em duas queries independentes
+  const buildFilters = (q: any) => {
+    if (params.status) q = q.eq("status", params.status);
+    if (params.setor) q = q.ilike("setor", `%${params.setor}%`);
+    if (params.nome) q = q.ilike("nome_completo", `%${params.nome}%`);
+    if (params.cargo) q = q.ilike("cargo", `%${params.cargo}%`);
+    if (params.sexo) q = q.ilike("sexo", `%${params.sexo}%`);
+    if (empresaIds) q = q.in("empresa_id", empresaIds);
+    if (!params.status && !params.incluir_inativos) q = q.in("status", ["ativo", "ferias", "em_admissao", "afastado"]);
+    return q;
+  };
+
+  // Query 1: total real (sem limit, só count)
+  const countQuery = buildFilters(supabase.from("employees").select("id", { count: "exact", head: true }));
+  const { count: totalCount, error: countError } = await countQuery;
+
+  // Query 2: dados detalhados (com limit)
+  const dataQuery = buildFilters(supabase.from("employees").select("nome_completo, cargo, setor, status, data_admissao, salario, tipo_contrato, telefone, cpf, data_nascimento, sexo, empresa_id, empresas(nome)"));
+  const { data, error } = await dataQuery.order("nome_completo").limit(50);
+
   if (error || countError) return { error: (error || countError)?.message };
   const funcionarios = data || [];
   const totalReal = totalCount ?? funcionarios.length;
