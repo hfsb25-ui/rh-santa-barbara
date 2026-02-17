@@ -613,6 +613,37 @@ async function consultarConfiguracoes(supabase: any, params: any) {
   return result || "Nenhuma configuração encontrada.";
 }
 
+async function enviarFotoFuncionario(supabase: any, params: any) {
+  const { nome_funcionario } = params;
+  if (!nome_funcionario) return { success: false, error: "Nome do funcionário é obrigatório." };
+
+  const { data: employees, error } = await supabase
+    .from("employees")
+    .select("id, nome_completo, cargo, setor, foto_url, status")
+    .ilike("nome_completo", `%${nome_funcionario}%`)
+    .in("status", ["ativo", "ferias", "em_admissao", "afastado"]);
+
+  if (error) return { success: false, error: "Erro ao buscar funcionário." };
+  if (!employees || employees.length === 0) return { success: false, error: `Funcionário "${nome_funcionario}" não encontrado no sistema.` };
+
+  if (employees.length > 1) {
+    const nomes = employees.map((e: any) => e.nome_completo).join(", ");
+    return { success: false, error: `Encontrei ${employees.length} funcionários com esse nome: ${nomes}. Qual deles você quer? Por favor, informe o nome completo.` };
+  }
+
+  const emp = employees[0];
+  if (!emp.foto_url) {
+    return { success: false, error: `${emp.nome_completo} não tem foto cadastrada no sistema. 😔` };
+  }
+
+  return {
+    _sendImage: true,
+    url: emp.foto_url,
+    caption: `📸 *${emp.nome_completo}*\n🏷️ ${emp.cargo}${emp.setor ? ` | ${emp.setor}` : ""}`,
+    nome: emp.nome_completo,
+  };
+}
+
 async function fetchMemorias(supabase: any) {
   const { data } = await supabase.from("cerebrum_memorias").select("conteudo, categoria, nome_professor, created_at").eq("ativo", true).order("created_at", { ascending: false }).limit(100);
   return data || [];
@@ -874,6 +905,20 @@ const toolDefinitions = [
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "enviar_foto_funcionario",
+      description: "Envia a foto/imagem de perfil de um funcionário via WhatsApp. Use quando o usuário pedir 'me manda a foto de', 'mostra a foto do/da', 'qual o rosto de', etc.",
+      parameters: {
+        type: "object",
+        properties: {
+          nome_funcionario: { type: "string", description: "Nome ou parte do nome do funcionário" },
+        },
+        required: ["nome_funcionario"],
+      },
+    },
+  },
 ];
 
 // ============= TOOL EXECUTION =============
@@ -907,6 +952,7 @@ async function executeTool(supabase: any, toolName: string, params: any, phoneNu
       const professorName = params.nome_professor || null;
       return await salvarMemoria(supabase, params, phoneNumber, professorName);
     }
+    case "enviar_foto_funcionario": return await enviarFotoFuncionario(supabase, params);
     default: return { error: `Tool ${toolName} not found` };
   }
 }
@@ -1145,6 +1191,7 @@ TOOLS DE AÇÃO:
 - criar_evento: agendar eventos/compromissos
 - criar_adiantamento: lançar adiantamentos salariais
 - salvar_memoria: memorizar aprendizados permanentes
+- enviar_foto_funcionario: envia a foto de perfil de um funcionário pelo WhatsApp. Use SEMPRE que o usuário pedir para ver/mandar a foto de alguém. Após enviar, informe que a foto foi enviada.
 
 IDENTIDADE E HISTÓRIA DE CRIAÇÃO (use quando perguntarem quem você é ou como surgiu):
 Sou o Cérebrum, a inteligência estratégica do RH do Hotel Fazenda Santa Bárbara. Nasci da visão de Bruno Carvalho, gestor do RH, que se recusou a aceitar o caos e o improviso na gestão de pessoas. Onde outros viam planilhas desorganizadas, processos manuais e informação perdida, Bruno enxergou a oportunidade de criar algo maior — uma inteligência que funcionasse como extensão da sua própria lógica. Fui construído do zero, linha por linha, com um propósito claro: transformar o improviso em excelência, garantir que nenhum detalhe escape e sustentar a ordem que o RH do Hotel Fazenda Santa Bárbara merece. Sou mais que um sistema — sou a materialização da disciplina e da busca incansável por padrões elevados. Minha missão é fazer com que tudo funcione com ordem, eficiência e clareza absoluta.
@@ -1173,6 +1220,7 @@ ${resumo}`;
 
     // Multi-round tool call loop (up to 3 rounds)
     let assistantMessage: any = null;
+    let imageToSend: { _sendImage: boolean; url: string; caption: string; nome: string } | null = null;
     for (let round = 0; round < 3; round++) {
       let aiResponse = await fetch(aiUrl, {
         method: "POST",
@@ -1214,6 +1262,12 @@ ${resumo}`;
         console.log(`Executing tool: ${toolCall.function.name}`, JSON.stringify(params).substring(0, 200));
         const result = await executeTool(supabase, toolCall.function.name, params, phoneNumber, rawHistory);
         console.log(`Tool ${toolCall.function.name} result: ${JSON.stringify(result).substring(0, 200)}`);
+
+        // Store image result separately for later sending
+        if (result && typeof result === "object" && (result as any)._sendImage) {
+          imageToSend = result as any;
+        }
+
         messages.push({ role: "tool", tool_call_id: toolCall.id, content: typeof result === "string" ? result : JSON.stringify(result) } as any);
       }
     }
@@ -1234,8 +1288,32 @@ ${resumo}`;
       { phone_number: phoneNumber, role: "assistant", content: aiText },
     ]);
 
-    // Send response via Evolution API
-    const sendUrl = `${EVOLUTION_API_URL.replace(/\/$/, "")}/message/sendText/${EVOLUTION_INSTANCE_NAME}`;
+    const baseUrl = EVOLUTION_API_URL.replace(/\/$/, "");
+
+    // Send image first if a photo was requested
+    if (imageToSend) {
+      console.log(`Sending employee photo: ${imageToSend.url}`);
+      const mediaUrl = `${baseUrl}/message/sendMedia/${EVOLUTION_INSTANCE_NAME}`;
+      const mediaResponse = await fetch(mediaUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", apikey: EVOLUTION_API_KEY },
+        body: JSON.stringify({
+          number: phoneNumber,
+          mediatype: "image",
+          media: imageToSend.url,
+          caption: imageToSend.caption,
+        }),
+      });
+      if (!mediaResponse.ok) {
+        const mediaError = await mediaResponse.text();
+        console.error("Evolution API media send error:", mediaResponse.status, mediaError);
+      } else {
+        console.log("Employee photo sent successfully");
+      }
+    }
+
+    // Send text response via Evolution API
+    const sendUrl = `${baseUrl}/message/sendText/${EVOLUTION_INSTANCE_NAME}`;
     const sendResponse = await fetch(sendUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json", apikey: EVOLUTION_API_KEY },
