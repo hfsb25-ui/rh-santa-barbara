@@ -32,8 +32,10 @@ serve(async (req) => {
     }
 
     const now = new Date();
-    // Check events in the next 60 minutes that have whatsapp_phone set and reminder not sent
-    const windowEnd = new Date(now.getTime() + 60 * 60 * 1000);
+
+    // Fetch all pending reminders where the event hasn't started yet
+    // We look up to 24h in the future to catch any missed reminders
+    const windowEnd = new Date(now.getTime() + 24 * 60 * 60 * 1000);
 
     const { data: eventos, error } = await supabase
       .from("eventos")
@@ -41,7 +43,7 @@ serve(async (req) => {
       .eq("lembrete_enviado", false)
       .eq("concluido", false)
       .not("whatsapp_phone", "is", null)
-      .gte("data_inicio", now.toISOString())
+      .gt("data_inicio", now.toISOString())
       .lte("data_inicio", windowEnd.toISOString());
 
     if (error) {
@@ -62,10 +64,10 @@ serve(async (req) => {
       const eventTime = new Date(evento.data_inicio).getTime();
       const lembreteMinutos = evento.lembrete_minutos || 30;
       const reminderTime = eventTime - lembreteMinutos * 60 * 1000;
-
-      // Check if it's time to send the reminder (within a 5-minute window)
       const nowMs = now.getTime();
-      if (nowMs >= reminderTime && nowMs <= reminderTime + 5 * 60 * 1000) {
+
+      // Send if reminder time has already passed (no strict 5-min window — catches missed cron runs)
+      if (nowMs >= reminderTime) {
         try {
           const eventDate = new Date(evento.data_inicio);
           const hora = eventDate.toLocaleTimeString("pt-BR", {
