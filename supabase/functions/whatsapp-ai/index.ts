@@ -175,18 +175,19 @@ async function consultarFerias(supabase: any, params: any) {
 async function consultarFaltasFolgas(supabase: any, params: any) {
   const threeMonthsAgo = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
 
-  // If filtering by name, first resolve employee_ids
+  // If filtering by name, first resolve employee_ids — only active employees
   let employeeIds: string[] | null = null;
   let employeeNames: string[] = [];
   if (params.nome) {
     const { data: empData } = await supabase
       .from("employees")
       .select("id, nome_completo")
-      .ilike("nome_completo", `%${params.nome}%`);
+      .ilike("nome_completo", `%${params.nome}%`)
+      .neq("status", "demitido");
     if (!empData || empData.length === 0) {
-      return `FALTAS: Nenhum funcionário encontrado com nome "${params.nome}".`;
+      return `FALTAS: Nenhum funcionário ativo encontrado com nome "${params.nome}".`;
     }
-    // FALHA 2: múltiplos funcionários → pedir confirmação
+    // Multiple employees → ask for confirmation
     if (empData.length > 1) {
       const nomes = empData.map((e: any) => e.nome_completo).join(", ");
       return `Encontrei ${empData.length} funcionários com esse nome: ${nomes}. Qual deles você quer consultar? Por favor, informe o nome completo.`;
@@ -195,10 +196,21 @@ async function consultarFaltasFolgas(supabase: any, params: any) {
     employeeNames = empData.map((e: any) => e.nome_completo);
   }
 
-  let faltasQuery = supabase.from("faltas").select("*, employees(nome_completo, setor)").gte("data", threeMonthsAgo).order("data", { ascending: false });
+  // Join with employees to filter out demitidos at query level
+  let faltasQuery = supabase
+    .from("faltas")
+    .select("*, employees!inner(nome_completo, setor, status)")
+    .gte("data", threeMonthsAgo)
+    .neq("employees.status", "demitido")
+    .order("data", { ascending: false });
   if (employeeIds) faltasQuery = faltasQuery.in("employee_id", employeeIds);
 
-  let folgasQuery = supabase.from("folgas").select("*, employees(nome_completo, setor)").gte("data", threeMonthsAgo).order("data", { ascending: false });
+  let folgasQuery = supabase
+    .from("folgas")
+    .select("*, employees!inner(nome_completo, setor, status)")
+    .gte("data", threeMonthsAgo)
+    .neq("employees.status", "demitido")
+    .order("data", { ascending: false });
   if (employeeIds) folgasQuery = folgasQuery.in("employee_id", employeeIds);
 
   const [faltasRes, folgasRes] = await Promise.all([
@@ -209,7 +221,13 @@ async function consultarFaltasFolgas(supabase: any, params: any) {
   const folgas = folgasRes.data || [];
   const naoJust = faltas.filter((f: any) => !f.justificada);
   const nomeRef = employeeNames.length > 0 ? ` de ${employeeNames[0]}` : "";
-  return `FALTAS${nomeRef} (últimos 90 dias): ${faltas.length} total, ${naoJust.length} não justificadas\n${naoJust.slice(0, 20).map((f: any) => `- ${f.employees?.nome_completo}: ${f.data} ${f.motivo ? `(${f.motivo})` : ""}`).join("\n") || "Nenhuma"}\n\nFOLGAS${nomeRef} (últimos 90 dias): ${folgas.length}\n${folgas.slice(0, 15).map((f: any) => `- ${f.employees?.nome_completo}: ${f.data} - ${f.motivo}`).join("\n") || "Nenhuma"}`;
+
+  // If specific employee was queried and has 0 absences, be explicit
+  if (employeeIds && faltas.length === 0) {
+    return `FALTAS de ${employeeNames[0]} (últimos 90 dias): 0 faltas registradas.\n\nFOLGAS de ${employeeNames[0]} (últimos 90 dias): ${folgas.length}\n${folgas.slice(0, 15).map((f: any) => `- ${f.data} - ${f.motivo}`).join("\n") || "Nenhuma"}`;
+  }
+
+  return `FALTAS${nomeRef} (últimos 90 dias): ${faltas.length} total, ${naoJust.length} não justificadas\n${faltas.slice(0, 20).map((f: any) => `- ${f.employees?.nome_completo}: ${f.data} ${f.justificada ? "(justificada)" : "(NÃO justificada)"} ${f.motivo ? `- ${f.motivo}` : ""}`).join("\n") || "Nenhuma"}\n\nFOLGAS${nomeRef} (últimos 90 dias): ${folgas.length}\n${folgas.slice(0, 15).map((f: any) => `- ${f.employees?.nome_completo}: ${f.data} - ${f.motivo}`).join("\n") || "Nenhuma"}`;
 }
 
 async function consultarPontoBancoHoras(supabase: any, params: any) {
