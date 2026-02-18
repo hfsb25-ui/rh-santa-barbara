@@ -33,8 +33,10 @@ serve(async (req) => {
 
     const now = new Date();
 
-    // Fetch all pending reminders where the event hasn't started yet
-    // We look up to 24h in the future to catch any missed reminders
+    // Fetch events in a wide window:
+    // - Up to 24h in the future (upcoming events)
+    // - Up to 2h in the past (catch missed cron runs where event just passed)
+    const windowStart = new Date(now.getTime() - 2 * 60 * 60 * 1000);
     const windowEnd = new Date(now.getTime() + 24 * 60 * 60 * 1000);
 
     const { data: eventos, error } = await supabase
@@ -43,7 +45,7 @@ serve(async (req) => {
       .eq("lembrete_enviado", false)
       .eq("concluido", false)
       .not("whatsapp_phone", "is", null)
-      .gt("data_inicio", now.toISOString())
+      .gte("data_inicio", windowStart.toISOString())
       .lte("data_inicio", windowEnd.toISOString());
 
     if (error) {
