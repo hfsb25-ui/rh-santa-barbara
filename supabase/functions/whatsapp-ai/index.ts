@@ -1004,7 +1004,7 @@ const toolDefinitions = [
     type: "function",
     function: {
       name: "criar_evento",
-      description: "Cria um novo evento/compromisso no calendário. Use quando o usuário pedir para agendar, marcar ou criar um evento.",
+      description: "Cria um novo evento/compromisso no calendário. Use SEMPRE que: (1) o usuário pedir para agendar, marcar ou criar um evento; (2) o usuário mencionar que TEM um compromisso/reunião/consulta e quiser ser lembrado; (3) o usuário pedir um lembrete para qualquer hora/data; (4) o usuário disser 'me avise', 'me lembra', 'quero lembrete', 'tenho compromisso'. Sempre extraia título, data e hora do contexto da conversa.",
       parameters: {
         type: "object",
         properties: {
@@ -1352,7 +1352,7 @@ Você tem acesso a tools que consultam o banco de dados em tempo real. USE-OS an
 - consultar_configuracoes: configurações de setores, férias, checklists
 
 TOOLS DE AÇÃO:
-- criar_evento: agendar eventos/compromissos
+- criar_evento: agendar eventos/compromissos. OBRIGATÓRIO usar quando: usuário pedir lembrete, mencionar compromisso/reunião/consulta querendo ser avisado, disser "me avise", "me lembra", "tenho compromisso às X horas", "quero lembrete". Se o usuário não especificar o tempo de antecedência, use 30 minutos (lembrete_minutos: 30). Se especificar "me avise X minutos antes", use esse valor. SEMPRE crie o evento com o número de telefone do remetente vinculado.
 - criar_adiantamento: lançar adiantamentos salariais
 - salvar_memoria: memorizar aprendizados permanentes
 - enviar_foto_funcionario: envia a foto de perfil de um funcionário pelo WhatsApp. Use SEMPRE que o usuário pedir para ver/mandar a foto de alguém. Após enviar, informe que a foto foi enviada.
