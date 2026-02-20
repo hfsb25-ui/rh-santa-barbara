@@ -9,6 +9,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { MessageSquare, Copy, Bell, Send, History, User, Bot, ChevronDown, ChevronUp } from "lucide-react";
+import { WhatsAppContatos } from "./WhatsAppContatos";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -369,6 +370,8 @@ export function WhatsAppSettings() {
           </div>
         </CardContent>
       </Card>
+
+      <WhatsAppContatos />
 
       {/* Conversation History */}
       <Card>
