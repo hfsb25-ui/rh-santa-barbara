@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Plus } from "lucide-react";
+import { Plus, FileText } from "lucide-react";
 import EpiStockList from "@/components/stock/EpiStockList";
 import UniformStockList from "@/components/stock/UniformStockList";
 import EpiStockForm from "@/components/stock/EpiStockForm";
@@ -12,10 +12,12 @@ import UniformDistributionHistory from "@/components/stock/UniformDistributionHi
 import EpiStockHistory from "@/components/stock/EpiStockHistory";
 import UniformStockHistory from "@/components/stock/UniformStockHistory";
 import UniformDistributionBatch from "@/components/stock/UniformDistributionBatch";
+import ImportNfeDialog from "@/components/stock/ImportNfeDialog";
 
 const Stock = () => {
   const [showEpiDialog, setShowEpiDialog] = useState(false);
   const [showUniformDialog, setShowUniformDialog] = useState(false);
+  const [showNfeDialog, setShowNfeDialog] = useState(false);
   const [refreshEpi, setRefreshEpi] = useState(0);
   const [refreshUniform, setRefreshUniform] = useState(0);
 
@@ -23,6 +25,10 @@ const Stock = () => {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Gerenciamento de Estoque</h1>
+        <Button variant="outline" onClick={() => setShowNfeDialog(true)}>
+          <FileText className="w-4 h-4 mr-2" />
+          Importar NF-e
+        </Button>
       </div>
 
       <Tabs defaultValue="epis" className="w-full">
@@ -110,6 +116,15 @@ const Stock = () => {
             <UniformDistributionHistory />
           </TabsContent>
       </Tabs>
+
+      <ImportNfeDialog
+        open={showNfeDialog}
+        onOpenChange={setShowNfeDialog}
+        onImported={() => {
+          setRefreshEpi(prev => prev + 1);
+          setRefreshUniform(prev => prev + 1);
+        }}
+      />
     </div>
   );
 };
