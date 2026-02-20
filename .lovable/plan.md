@@ -1,110 +1,58 @@
 
-# Identificação de Funcionários por Características Visuais nas Fotos
 
-## O Que Será Feito
+# Reformulacao do Sistema de Lancamento de Folha
 
-Quando o gestor perguntar no WhatsApp algo como *"qual funcionário do restaurante tem olho azul?"* ou *"quem do setor de cozinha tem tatuagem no braço?"*, o Cérebrum vai analisar as fotos cadastradas dos funcionários usando visão computacional (o próprio modelo de IA que já está configurado — OpenAI GPT-4o ou Google Gemini) e retornar os nomes e fotos dos que mais correspondem à descrição.
+## Problema Atual
 
----
+O formulario de lancamento mostra todos os funcionarios de uma vez, cada um com secoes separadas de proventos e descontos, campos de codigo, valor e observacoes. Isso cria uma pagina extremamente longa e confusa, especialmente com muitos funcionarios.
 
-## Como Vai Funcionar
+## Solucao Proposta
 
-O fluxo será:
+Redesenhar o formulario com uma abordagem de **navegacao por funcionario** usando um layout compacto em formato de tabela/stepper, onde o usuario trabalha com um funcionario por vez.
 
-1. Gestor pergunta: *"quem tem olho azul no restaurante?"*
-2. Cérebrum chama a nova tool `identificar_funcionario_por_aparencia`
-3. A função busca todos os funcionários com `foto_url` preenchida, filtrando por setor/empresa se mencionado
-4. Para cada foto, envia a imagem ao modelo de visão (GPT-4o Vision ou Gemini Vision) com a pergunta: *"este funcionário tem olho azul?"*
-5. O modelo responde com sim/não e um score de confiança
-6. Os funcionários que correspondem são retornados ao Cérebrum
-7. O Cérebrum envia as fotos dos correspondentes + resposta textual
+### Mudancas principais:
 
----
+1. **Lista lateral de funcionarios** - Uma lista compacta a esquerda mostrando todos os funcionarios com indicador visual de quem ja tem dados preenchidos (check verde) e quem falta.
 
-## Arquitetura Técnica
+2. **Painel de edicao focado** - Ao clicar em um funcionario, o painel a direita mostra apenas os dados dele, organizados de forma limpa:
+   - Salario base no topo
+   - Tabela simples de proventos (nome | valor | remover)
+   - Tabela simples de descontos (nome | valor | remover)
+   - Campo unico para adicionar variavel (codigo + valor + Enter, ou Enter vazio para picker)
+   - Observacoes
+   - Resumo (proventos, descontos, liquido) fixo no rodape
 
-### Nova função: `identificarPorAparencia`
+3. **Navegacao rapida** - Botoes "Anterior" / "Proximo" para navegar entre funcionarios sem voltar a lista.
 
-```typescript
-async function identificarPorAparencia(supabase, params, iaConfig) {
-  // 1. Busca funcionários com foto, filtrando por setor se informado
-  // 2. Para cada foto, chama a Vision API com a característica
-  // 3. Retorna lista de matches com nome + url + cargo + setor
-}
-```
-
-**Parâmetros da tool:**
-- `caracteristica`: descrição física (ex: "olho azul", "cabelo vermelho", "tatuagem no braço")
-- `setor`: filtro opcional de setor
-- `empresa`: filtro opcional de empresa
-
-### Chamada Vision — OpenAI (GPT-4o)
-
-```json
-{
-  "model": "gpt-4o",
-  "messages": [{
-    "role": "user",
-    "content": [
-      { "type": "text", "text": "Analise esta foto. Responda APENAS com JSON: {\"match\": true/false, \"confianca\": \"alta/media/baixa\", \"descricao\": \"...\"}" },
-      { "type": "image_url", "image_url": { "url": "https://url-da-foto.jpg" } }
-    ]
-  }]
-}
-```
-
-### Chamada Vision — Gemini (fallback)
-
-```json
-{
-  "contents": [{
-    "parts": [
-      { "text": "..." },
-      { "inline_data": { "mime_type": "image/jpeg", "data": "base64..." } }
-    ]
-  }]
-}
-```
-
-### Detecção de múltiplos resultados
-
-| Situação | Comportamento |
-|---|---|
-| 1 correspondência | Envia foto + texto |
-| 2-4 correspondências | Envia todas as fotos em sequência + texto listando os nomes |
-| Nenhuma correspondência | Responde: "Não encontrei nenhum funcionário com essa característica nas fotos cadastradas." |
-| Muitos funcionários sem foto | Avisa quantos foram ignorados por não ter foto |
-| Mais de 10 fotos a analisar | Limita a 10 para não exceder tempo de resposta |
+4. **Resumo geral compacto** - O resumo geral fica sempre visivel no topo, mostrando progresso (ex: "5 de 12 funcionarios preenchidos").
 
 ---
 
-## Cuidados Importantes
+## Detalhes Tecnicos
 
-- **Performance**: A análise é feita em paralelo (Promise.all) para não demorar demais
-- **Fallback por setor/empresa**: Se o gestor mencionar "do restaurante" ou "da cozinha", o filtro reduz o número de fotos a analisar
-- **Modelo de visão**: O sistema usa o provedor já configurado — se for `openai`, usa `gpt-4o` (que tem visão); se for `gemini`, usa `gemini-2.0-flash`
-- **Limite de fotos**: Máximo 10 funcionários analisados por busca para evitar timeout da Edge Function
+### Arquivo: `src/components/payroll/LancamentoFolhaForm.tsx`
 
----
+**Reestruturacao completa do layout (render/JSX):**
 
-## Mudanças no Arquivo
+- Substituir o scroll vertical com todos os funcionarios por um layout de 2 colunas:
+  - Coluna esquerda (~250px): `ScrollArea` com lista de nomes, badge de status (preenchido/vazio), busca por nome
+  - Coluna direita (flex-1): formulario do funcionario selecionado
 
-### `supabase/functions/whatsapp-ai/index.ts`
+- O `selectedEmployee` ja existe no state; sera usado para controlar qual funcionario esta ativo no painel.
 
-1. **Nova função `identificarPorAparencia`**: Lógica completa de busca + análise visual
-2. **Nova tool `identificar_funcionario_por_aparencia`**: Adicionada em `toolDefinitions`
-3. **`executeTool`**: Novo case para a tool, passando a configuração de IA
-4. **`executeTool`**: Assinatura atualizada para receber `iaConfig` (já disponível no handler)
-5. **Handler principal**: Atualização para suportar `_sendMultipleImages` — quando múltiplos funcionários correspondem, o handler envia cada foto em sequência antes do texto
-6. **System Prompt**: Nova instrução para usar a tool quando perguntas sobre aparência física forem feitas
+- Remover o select de "Todos os funcionarios" - o padrao sera o primeiro da lista.
 
----
+- Adicionar botoes de navegacao (Anterior/Proximo) no rodape do painel para avancar entre funcionarios.
 
-## Exemplos de Uso
+- O campo de adicionar variavel permanece igual (digitar codigo + Enter, ou Enter vazio abre picker), mas agora em uma unica linha para proventos e outra para descontos, com um `Select` inline para escolher o tipo ao inves de ter dois blocos separados.
 
-- *"quem tem cabelo loiro no setor de atendimento?"*
-- *"qual funcionário da cozinha usa óculos?"*
-- *"tem alguém com barba no restaurante?"*
-- *"quem tem tatuagem visível?"*
-- *"me mostra os funcionários de uniforme azul"*
+**Simplificacao do input de variavel:**
+- Unificar proventos e descontos em um unico campo "Adicionar variavel" com um select de tipo (Provento/Desconto) ao lado. Isso reduz a duplicacao visual.
+
+**Resumo fixo:**
+- Mover o resumo geral para um header sticky compacto mostrando: total de funcionarios preenchidos, total proventos, total descontos, total liquido - tudo em uma unica linha.
+
+### Logica (sem mudancas):
+- Toda a logica de `lancamentos`, `handleBuscarVariavel`, `handleSelectVariavelFromPicker`, `handleSubmit`, draft/restore permanece identica.
+- Apenas a apresentacao visual e reorganizada.
 
