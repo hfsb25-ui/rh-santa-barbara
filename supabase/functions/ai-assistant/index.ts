@@ -360,6 +360,40 @@ function consultarIdentidade() {
   return `Sou o Cérebrum, inteligência estratégica do RH do Hotel Fazenda Santa Bárbara. Nasci da visão de Bruno Carvalho, gestor do RH, que se recusou a aceitar o caos na gestão de pessoas. Onde outros viam planilhas desorganizadas e processos manuais, Bruno enxergou a oportunidade de criar algo maior — uma inteligência como extensão da sua lógica. Fui construído do zero, linha por linha, para transformar o improviso em excelência. Sou a materialização da disciplina e da busca por padrões elevados. Minha missão: ordem, eficiência e clareza absoluta.`;
 }
 
+async function atualizarStatusAdiantamentos(supabase: any, params: any) {
+  const { mes, ano, nome_funcionario, status_novo } = params;
+  const currentYear = new Date().getFullYear();
+  const currentMonth = new Date().getMonth() + 1;
+  const targetAno = ano || currentYear;
+  const targetMes = mes || currentMonth;
+  const targetStatus = status_novo || "feito";
+
+  let query = supabase.from("adiantamentos").select("id, valor, status, employees(nome_completo)").eq("ano", targetAno).eq("mes", targetMes);
+  
+  if (nome_funcionario) {
+    const { data: emps } = await supabase.from("employees").select("id").ilike("nome_completo", `%${nome_funcionario}%`).limit(10);
+    if (!emps || emps.length === 0) return `Funcionário "${nome_funcionario}" não encontrado.`;
+    query = query.in("employee_id", emps.map((e: any) => e.id));
+  }
+
+  if (targetStatus !== "feito") {
+    query = query.eq("status", "feito");
+  } else {
+    query = query.neq("status", "feito");
+  }
+
+  const { data: adiantamentos, error: fetchErr } = await query;
+  if (fetchErr) return { error: fetchErr.message };
+  if (!adiantamentos || adiantamentos.length === 0) return `Nenhum adiantamento pendente encontrado para ${targetMes}/${targetAno}${nome_funcionario ? ` (${nome_funcionario})` : ""}.`;
+
+  const ids = adiantamentos.map((a: any) => a.id);
+  const { error: updateErr } = await supabase.from("adiantamentos").update({ status: targetStatus }).in("id", ids);
+  if (updateErr) return { error: updateErr.message };
+
+  const nomes = adiantamentos.map((a: any) => `${a.employees?.nome_completo}: R$${a.valor?.toFixed(2)}`).join(", ");
+  return `✅ ${adiantamentos.length} adiantamento(s) atualizado(s) para "${targetStatus}" (${targetMes}/${targetAno}): ${nomes}`;
+}
+
 // ============= TOOL DEFINITIONS (compactadas) =============
 
 const toolDefinitions = [
@@ -386,6 +420,7 @@ const toolDefinitions = [
   { type: "function", function: { name: "consultar_configuracoes", description: "Config setores, férias, checklists.", parameters: { type: "object", properties: { tipo: { type: "string", enum: ["setores", "ferias", "checklists", "todos"] } } } } },
   { type: "function", function: { name: "consultar_memorias", description: "Busca memórias permanentes do Cérebrum.", parameters: { type: "object", properties: { categoria: { type: "string", enum: ["preferencia", "correcao", "padrao_rh", "fato", "regra", "geral"] } } } } },
   { type: "function", function: { name: "consultar_identidade", description: "Retorna a história de criação e identidade do Cérebrum.", parameters: { type: "object", properties: {} } } },
+  { type: "function", function: { name: "atualizar_status_adiantamentos", description: "Atualiza o status dos adiantamentos (ex: para 'feito' quando já foram pagos). Use quando o gestor disser que já depositou/pagou os adiantamentos.", parameters: { type: "object", properties: { mes: { type: "number", description: "Mês dos adiantamentos" }, ano: { type: "number", description: "Ano dos adiantamentos" }, nome_funcionario: { type: "string", description: "Nome do funcionário (opcional, se vazio atualiza todos do mês)" }, status_novo: { type: "string", enum: ["feito", "aguardando"], description: "Novo status" } } } } },
 ];
 
 async function executeTool(supabase: any, toolName: string, params: any) {
@@ -413,6 +448,7 @@ async function executeTool(supabase: any, toolName: string, params: any) {
     case "consultar_configuracoes": return await consultarConfiguracoes(supabase, params);
     case "consultar_memorias": return await consultarMemorias(supabase, params);
     case "consultar_identidade": return consultarIdentidade();
+    case "atualizar_status_adiantamentos": return await atualizarStatusAdiantamentos(supabase, params);
     default: return { error: `Tool ${toolName} not found` };
   }
 }
@@ -466,6 +502,7 @@ serve(async (req) => {
 Simpático, caloroso, acolhedor. Use emojis. Organize com Markdown. Português brasileiro.
 PESSOAS ESPECIAIS: Sr. Jaime e Sra. Stela (donos) = máximo respeito/deferência. Bruno Carvalho = criador/gestor.
 REGRAS: NÃO invente dados. SEMPRE use tools. Pode fornecer dados cadastrais (CPF, salário etc) ao gestor.
+AÇÕES: Pode atualizar status de adiantamentos quando o gestor pedir (ex: "já paguei os adiantamentos", "marca como feito").
 Para saber quem você é, use consultar_identidade. Para memórias, use consultar_memorias. Para visão geral, use consultar_resumo_rapido.
 Data: ${nowDate.toISOString()} | Ano: ${nowDate.getFullYear()}`;
 
