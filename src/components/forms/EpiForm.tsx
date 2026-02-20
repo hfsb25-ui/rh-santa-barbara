@@ -38,6 +38,8 @@ const EpiForm = ({ employeeId, onSaved, onCancel }: EpiFormProps) => {
     employeeName: string;
     employeeCpf: string;
     employeeRole: string;
+    empresaNome: string | null;
+    empresaCnpj: string | null;
   } | null>(null);
   const [stockItems, setStockItems] = useState<any[]>([]);
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
@@ -86,9 +88,22 @@ const EpiForm = ({ employeeId, onSaved, onCancel }: EpiFormProps) => {
     // Get employee data for PDF
     const { data: employee } = await supabase
       .from("employees")
-      .select("nome_completo, cpf, cargo")
+      .select("nome_completo, cpf, cargo, empresa_id")
       .eq("id", employeeId)
       .single();
+
+    // Get company data
+    let empresaNome: string | null = null;
+    let empresaCnpj: string | null = null;
+    if (employee?.empresa_id) {
+      const { data: empresa } = await supabase
+        .from("empresas")
+        .select("nome, cnpj")
+        .eq("id", employee.empresa_id)
+        .single();
+      empresaNome = empresa?.nome || null;
+      empresaCnpj = empresa?.cnpj || null;
+    }
 
     // Get current user
     const { data: { user } } = await supabase.auth.getUser();
@@ -164,6 +179,8 @@ const EpiForm = ({ employeeId, onSaved, onCancel }: EpiFormProps) => {
       employeeName: employee?.nome_completo || "",
       employeeCpf: employee?.cpf || "",
       employeeRole: employee?.cargo || "",
+      empresaNome,
+      empresaCnpj,
     });
     setShowSignatureDialog(true);
   };
@@ -216,6 +233,8 @@ const EpiForm = ({ employeeId, onSaved, onCancel }: EpiFormProps) => {
           dataEntrega: item.data_entrega,
           observacoes: item.observacoes,
           assinatura: epiData?.assinatura_funcionario || signature,
+          empresaNome: lastInsertedData.empresaNome,
+          empresaCnpj: lastInsertedData.empresaCnpj,
         });
       }
       

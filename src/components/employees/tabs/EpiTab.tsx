@@ -72,7 +72,7 @@ const EpiTab = ({ employeeId }: EpiTabProps) => {
   const handleReprintReceipt = async (epi: any) => {
     const { data: employee } = await supabase
       .from("employees")
-      .select("nome_completo, cpf, cargo")
+      .select("nome_completo, cpf, cargo, empresa_id")
       .eq("id", employeeId)
       .single();
 
@@ -88,6 +88,18 @@ const EpiTab = ({ employeeId }: EpiTabProps) => {
       return;
     }
 
+    let empresaNome: string | null = null;
+    let empresaCnpj: string | null = null;
+    if (employee.empresa_id) {
+      const { data: empresa } = await supabase
+        .from("empresas")
+        .select("nome, cnpj")
+        .eq("id", employee.empresa_id)
+        .single();
+      empresaNome = empresa?.nome || null;
+      empresaCnpj = empresa?.cnpj || null;
+    }
+
     generateEpiReceipt({
       employeeName: employee.nome_completo,
       employeeCpf: employee.cpf || "Não informado",
@@ -101,6 +113,8 @@ const EpiTab = ({ employeeId }: EpiTabProps) => {
       dataEntrega: epi.data_entrega,
       observacoes: epi.observacoes,
       assinatura: epi.assinatura_funcionario,
+      empresaNome,
+      empresaCnpj,
     });
 
     toast.success("Recibo gerado com sucesso!");
