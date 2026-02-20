@@ -414,6 +414,15 @@ const LancamentoFolhaForm = ({ employees, empresaId, mes, ano, tipoFolha, onSucc
   const goToPrev = () => { if (canGoPrev) setSelectedEmployee(employees[currentIndex - 1].id); };
   const goToNext = () => { if (canGoNext) setSelectedEmployee(employees[currentIndex + 1].id); };
 
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "F8") { e.preventDefault(); goToPrev(); }
+      if (e.key === "F9") { e.preventDefault(); goToNext(); }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [currentIndex, employees]);
+
   const filteredEmployees = employees.filter(emp =>
     emp.nome_completo.toLowerCase().includes(searchEmployee.toLowerCase())
   );
