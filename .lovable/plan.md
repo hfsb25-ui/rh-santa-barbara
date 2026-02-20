@@ -1,81 +1,61 @@
 
-# Reformulacao do Holerite - Padrao Nacional
+# Importacao de XML de Nota Fiscal para Entrada no Estoque
 
 ## Objetivo
 
-Redesenhar o recibo de pagamento (holerite) seguindo o padrao nacional brasileiro de contracheque, tanto na visualizacao (preview no dialog) quanto na geracao do PDF.
+Criar uma funcionalidade que permite ao usuario fazer upload de um arquivo XML de Nota Fiscal Eletronica (NF-e) e, a partir dos itens listados na nota, dar entrada automatica no estoque de EPIs e Uniformes.
 
-## Layout Padrao Nacional
+## Como funciona
 
-O holerite brasileiro padrao segue esta estrutura:
+1. O usuario clica em um botao "Importar NF-e" na pagina de Estoque
+2. Seleciona o arquivo XML da nota fiscal
+3. O sistema le o XML e extrai os produtos (descricao, quantidade, valor unitario, NCM)
+4. Os itens sao exibidos em uma tabela de preview onde o usuario pode:
+   - Classificar cada item como "EPI" ou "Uniforme" (ou ignorar)
+   - Ajustar campos como tamanho, cor, CA (para EPIs), etc.
+5. Ao confirmar, o sistema:
+   - Verifica se ja existe um item no estoque com a mesma descricao
+   - Se existir, incrementa a quantidade
+   - Se nao existir, cria um novo registro
+   - Registra a movimentacao no historico com o numero da NF-e como referencia
 
-```text
-+----------------------------------------------------------+--------+
-| RECIBO DE PAGAMENTO DE SALARIO                           |        |
-| Empresa: [Nome da Empresa]                               |        |
-| CNPJ: [XX.XXX.XXX/XXXX-XX]  Endereco: [...]             |        |
-+----------------------------------------------------------+        |
-| Cod | Nome Funcionario          | CPF: XXX.XXX.XXX-XX   |        |
-| Cargo: [...]  Admissao: [...]  Setor: [...]              | D      |
-+------+---------------------+-----+------------+---------+ E      |
-| Cod. | Descricao           | Ref | Proventos  |Descontos| C      |
-+------+---------------------+-----+------------+---------+ L      |
-| 001  | Salario Base        | 30d | 2.500,00   |         | A      |
-| 003  | Hora Extra 50%      | 10h |   375,00   |         | R      |
-| 051  | INSS                |  9% |            |  258,75 | A      |
-| 060  | Vale Transporte     |  6% |            |  150,00 | C      |
-|      |                     |     |            |         | A      |
-|      |                     |     |            |         | O      |
-+------+---------------------+-----+------------+---------+        |
-| TOTAL DE VENCIMENTOS: 2.875,00  | TOTAL DESCONTOS: 408,75| Ass.  |
-+----------------------------------+------------------------+        |
-| VALOR LIQUIDO:                              R$ 2.466,25  | Data  |
-+----------------------------------------------------------+--------+
-| Sal.Base | Sal.Contr | INSS | Base FGTS | FGTS | IRRF | Faixa  |
-| 2.500    | 2.875     | 259  | 2.875     | 230  | 0,00 |  -     |
-+----------------------------------------------------------+--------+
-```
+## Estrutura do XML NF-e (padrao brasileiro)
 
-## Mudancas no arquivo `src/components/payroll/HoleriteDialog.tsx`
+O XML da NF-e segue o padrao nacional e contem os produtos dentro da tag `<det>` -> `<prod>`, com campos como:
+- `xProd` (descricao do produto)
+- `qCom` (quantidade)
+- `vUnCom` (valor unitario)
+- `NCM` (codigo NCM)
+- `uCom` (unidade)
+- `nNF` (numero da nota)
 
-### 1. Cabecalho da Empresa (novo)
-- Bloco superior com nome da empresa em destaque, CNPJ formatado e endereco
-- Se houver logo, exibir a esquerda do nome
-- Titulo "RECIBO DE PAGAMENTO DE SALARIO" centralizado acima
+## Mudancas
 
-### 2. Dados do Funcionario (reformulado)
-- Linha 1: Nome completo (destaque) | CPF formatado
-- Linha 2: Cargo | Data Admissao | Setor | Periodo (mes/ano)
-- Layout mais limpo, sem campos vazios desnecessarios (remover Emp., Local, Secao, Fl., Dependentes que estao todos com "-")
+### 1. Novo componente: `src/components/stock/ImportNfeDialog.tsx`
+- Dialog com area de upload de arquivo XML
+- Parser de XML usando `DOMParser` nativo do browser (nao precisa de biblioteca extra)
+- Tabela de preview dos itens extraidos com colunas: Descricao, Qtd, Valor, Tipo (EPI/Uniforme/Ignorar)
+- Campos editaveis para cada item: tamanho, cor, CA, marca/modelo
+- Botao de confirmar importacao
 
-### 3. Tabela de Eventos (melhorada)
-- 5 colunas bem definidas com bordas solidas: Cod | Descricao | Referencia | Proventos | Descontos
-- Linhas alternadas com fundo levemente cinza para legibilidade
-- Minimo de 12 linhas vazias para manter o formato padrao
-- Bordas completas ao redor de cada celula
+### 2. Alteracao: `src/pages/Stock.tsx`
+- Adicionar botao "Importar NF-e" ao lado do titulo da pagina
+- Integrar o novo dialog de importacao
+- Ao confirmar importacao, atualizar as listas de estoque
 
-### 4. Rodape de Totais (reformulado)
-- Linha de totais com fundo cinza: "TOTAL VENCIMENTOS" a esquerda | "TOTAL DESCONTOS" a direita
-- Linha de valor liquido destacada com fundo mais escuro e fonte maior: "VALOR LIQUIDO: R$ X.XXX,XX"
+### 3. Logica de entrada no estoque
+- Para cada item classificado como EPI:
+  - Buscar no `estoque_epis` por `tipo_epi` similar
+  - Se encontrar, fazer UPDATE somando a quantidade
+  - Se nao encontrar, INSERT novo registro
+  - Registrar movimentacao em `historico_estoque_epis` com motivo "Entrada via NF-e [numero]"
+- Para cada item classificado como Uniforme:
+  - Mesma logica usando `estoque_uniformes` e `historico_estoque_uniformes`
 
-### 5. Base de Calculos (mantida)
-- Mesma estrutura atual, porem com bordas mais limpas e alinhamento melhorado
+## Detalhes Tecnicos
 
-### 6. Barra Lateral de Assinatura (melhorada)
-- Manter a barra lateral direita mas com layout mais limpo
-- Texto vertical "DECLARO TER RECEBIDO..." 
-- Linha para assinatura e data
-
-### 7. PDF (sincronizado)
-- A funcao `generatePDF` sera reescrita para espelhar exatamente o novo layout
-- Usar `jspdf-autotable` para a tabela de eventos (ja instalado no projeto), garantindo bordas, alinhamento e linhas alternadas corretas
-- Cabecalho com logo (se disponivel), nome empresa, CNPJ e endereco
-- Mesma estrutura visual do preview
-
-## Resumo das melhorias visuais
-- Remover campos inuteis (Emp, Local, Secao, Fl, Dependentes)
-- Adicionar dados da empresa no cabecalho
-- Bordas solidas e bem definidas em toda a tabela
-- Linhas zebradas para legibilidade
-- Fonte mais legivel e espacamento adequado
-- Layout profissional seguindo o padrao CLT
+- **Parser XML**: Usar `DOMParser` nativo do browser, sem dependencias externas
+- **Validacao**: Verificar se o XML e uma NF-e valida checando a presenca da tag `<nfeProc>` ou `<NFe>`
+- **Matching**: Tentativa de match automatico com itens existentes por nome similar (case-insensitive), mas usuario pode ajustar manualmente
+- **Historico**: Todas as entradas registradas com referencia ao numero da NF-e para rastreabilidade
+- **Nenhuma migracao necessaria**: Os campos existentes nas tabelas `estoque_epis` e `estoque_uniformes` ja atendem os dados necessarios
