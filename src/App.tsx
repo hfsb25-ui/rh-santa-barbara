@@ -70,7 +70,7 @@ const App = () => {
               <Route path="/contracts" element={<AppLayout><Contracts /></AppLayout>} />
               <Route path="/managers" element={<AppLayout><Managers /></AppLayout>} />
               <Route path="/salary-adjustment" element={<AppLayout><SalaryAdjustment /></AppLayout>} />
-              <Route path="/vagas" element={<AppLayout><Vagas /></AppLayout>} />
+              <Route path="/vagas" element={<Vagas />} />
               <Route path="/vaga/:id" element={<AppLayout><VagaDetalhes /></AppLayout>} />
               <Route path="/recrutamento" element={<AppLayout><Recrutamento /></AppLayout>} />
               <Route path="/recrutamento/vaga/:id/candidaturas" element={<AppLayout><CandidaturasVaga /></AppLayout>} />
