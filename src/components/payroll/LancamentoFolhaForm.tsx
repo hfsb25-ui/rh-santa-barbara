@@ -779,53 +779,56 @@ const LancamentoFolhaForm = ({ employees, empresaId, mes, ano, tipoFolha, onSucc
 
                     {/* Adicionar provento por código */}
                     <div className="flex items-center gap-2 pt-2">
-                      <Popover 
-                        open={openVariavelPicker === `${emp.id}-provento`} 
-                        onOpenChange={(open) => setOpenVariavelPicker(open ? `${emp.id}-provento` : null)}
-                      >
-                        <PopoverTrigger asChild>
-                          <Input
-                            placeholder="Código"
-                            value={codigoBusca[`${emp.id}-provento`] || ""}
-                            onChange={(e) => setCodigoBusca(prev => ({ ...prev, [`${emp.id}-provento`]: e.target.value }))}
-                            className="w-24"
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter") {
-                                e.preventDefault();
-                                handleBuscarVariavel(emp.id, "provento");
-                              }
-                            }}
-                          />
-                        </PopoverTrigger>
-                        <PopoverContent className="w-[280px] p-0" align="start">
-                          <Command>
-                            <CommandInput placeholder="Buscar variável..." />
-                            <CommandList>
-                              <CommandEmpty>Nenhuma variável encontrada</CommandEmpty>
-                              <CommandGroup heading="Proventos">
-                                {variaveis
-                                  .filter(v => v.tipo === "provento" && !lancamentos[emp.id]?.itens[v.id])
-                                  .map(v => (
-                                    <CommandItem
-                                      key={v.id}
-                                      value={`${v.nome} ${v.codigo || ""}`}
-                                      onSelect={() => handleSelectVariavelFromPicker(emp.id, "provento", v)}
-                                    >
-                                      <div className="flex items-center gap-2 w-full">
-                                        {v.codigo && (
-                                          <Badge variant="outline" className="font-mono text-xs">
-                                            {v.codigo}
-                                          </Badge>
-                                        )}
-                                        <span className="text-sm">{v.nome}</span>
-                                      </div>
-                                    </CommandItem>
-                                  ))}
-                              </CommandGroup>
-                            </CommandList>
-                          </Command>
-                        </PopoverContent>
-                      </Popover>
+                      <div className="relative">
+                        <Input
+                          placeholder="Código"
+                          value={codigoBusca[`${emp.id}-provento`] || ""}
+                          onChange={(e) => setCodigoBusca(prev => ({ ...prev, [`${emp.id}-provento`]: e.target.value }))}
+                          className="w-24"
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              handleBuscarVariavel(emp.id, "provento");
+                            }
+                          }}
+                        />
+                        <Popover 
+                          open={openVariavelPicker === `${emp.id}-provento`} 
+                          onOpenChange={(open) => setOpenVariavelPicker(open ? `${emp.id}-provento` : null)}
+                        >
+                          <PopoverTrigger asChild>
+                            <span className="absolute inset-0 pointer-events-none" />
+                          </PopoverTrigger>
+                          <PopoverContent className="w-[280px] p-0" align="start">
+                            <Command>
+                              <CommandInput placeholder="Buscar variável..." />
+                              <CommandList>
+                                <CommandEmpty>Nenhuma variável encontrada</CommandEmpty>
+                                <CommandGroup heading="Proventos">
+                                  {variaveis
+                                    .filter(v => v.tipo === "provento" && !lancamentos[emp.id]?.itens[v.id])
+                                    .map(v => (
+                                      <CommandItem
+                                        key={v.id}
+                                        value={`${v.nome} ${v.codigo || ""}`}
+                                        onSelect={() => handleSelectVariavelFromPicker(emp.id, "provento", v)}
+                                      >
+                                        <div className="flex items-center gap-2 w-full">
+                                          {v.codigo && (
+                                            <Badge variant="outline" className="font-mono text-xs">
+                                              {v.codigo}
+                                            </Badge>
+                                          )}
+                                          <span className="text-sm">{v.nome}</span>
+                                        </div>
+                                      </CommandItem>
+                                    ))}
+                                </CommandGroup>
+                              </CommandList>
+                            </Command>
+                          </PopoverContent>
+                        </Popover>
+                      </div>
                       <Input
                         type="number"
                         step="0.01"
@@ -898,53 +901,56 @@ const LancamentoFolhaForm = ({ employees, empresaId, mes, ano, tipoFolha, onSucc
 
                     {/* Adicionar desconto por código */}
                     <div className="flex items-center gap-2 pt-2">
-                      <Popover 
-                        open={openVariavelPicker === `${emp.id}-desconto`} 
-                        onOpenChange={(open) => setOpenVariavelPicker(open ? `${emp.id}-desconto` : null)}
-                      >
-                        <PopoverTrigger asChild>
-                          <Input
-                            placeholder="Código"
-                            value={codigoBusca[`${emp.id}-desconto`] || ""}
-                            onChange={(e) => setCodigoBusca(prev => ({ ...prev, [`${emp.id}-desconto`]: e.target.value }))}
-                            className="w-24"
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter") {
-                                e.preventDefault();
-                                handleBuscarVariavel(emp.id, "desconto");
-                              }
-                            }}
-                          />
-                        </PopoverTrigger>
-                        <PopoverContent className="w-[280px] p-0" align="start">
-                          <Command>
-                            <CommandInput placeholder="Buscar variável..." />
-                            <CommandList>
-                              <CommandEmpty>Nenhuma variável encontrada</CommandEmpty>
-                              <CommandGroup heading="Descontos">
-                                {variaveis
-                                  .filter(v => v.tipo === "desconto" && !lancamentos[emp.id]?.itens[v.id])
-                                  .map(v => (
-                                    <CommandItem
-                                      key={v.id}
-                                      value={`${v.nome} ${v.codigo || ""}`}
-                                      onSelect={() => handleSelectVariavelFromPicker(emp.id, "desconto", v)}
-                                    >
-                                      <div className="flex items-center gap-2 w-full">
-                                        {v.codigo && (
-                                          <Badge variant="outline" className="font-mono text-xs">
-                                            {v.codigo}
-                                          </Badge>
-                                        )}
-                                        <span className="text-sm">{v.nome}</span>
-                                      </div>
-                                    </CommandItem>
-                                  ))}
-                              </CommandGroup>
-                            </CommandList>
-                          </Command>
-                        </PopoverContent>
-                      </Popover>
+                      <div className="relative">
+                        <Input
+                          placeholder="Código"
+                          value={codigoBusca[`${emp.id}-desconto`] || ""}
+                          onChange={(e) => setCodigoBusca(prev => ({ ...prev, [`${emp.id}-desconto`]: e.target.value }))}
+                          className="w-24"
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              handleBuscarVariavel(emp.id, "desconto");
+                            }
+                          }}
+                        />
+                        <Popover 
+                          open={openVariavelPicker === `${emp.id}-desconto`} 
+                          onOpenChange={(open) => setOpenVariavelPicker(open ? `${emp.id}-desconto` : null)}
+                        >
+                          <PopoverTrigger asChild>
+                            <span className="absolute inset-0 pointer-events-none" />
+                          </PopoverTrigger>
+                          <PopoverContent className="w-[280px] p-0" align="start">
+                            <Command>
+                              <CommandInput placeholder="Buscar variável..." />
+                              <CommandList>
+                                <CommandEmpty>Nenhuma variável encontrada</CommandEmpty>
+                                <CommandGroup heading="Descontos">
+                                  {variaveis
+                                    .filter(v => v.tipo === "desconto" && !lancamentos[emp.id]?.itens[v.id])
+                                    .map(v => (
+                                      <CommandItem
+                                        key={v.id}
+                                        value={`${v.nome} ${v.codigo || ""}`}
+                                        onSelect={() => handleSelectVariavelFromPicker(emp.id, "desconto", v)}
+                                      >
+                                        <div className="flex items-center gap-2 w-full">
+                                          {v.codigo && (
+                                            <Badge variant="outline" className="font-mono text-xs">
+                                              {v.codigo}
+                                            </Badge>
+                                          )}
+                                          <span className="text-sm">{v.nome}</span>
+                                        </div>
+                                      </CommandItem>
+                                    ))}
+                                </CommandGroup>
+                              </CommandList>
+                            </Command>
+                          </PopoverContent>
+                        </Popover>
+                      </div>
                       <Input
                         type="number"
                         step="0.01"
