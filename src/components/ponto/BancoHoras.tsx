@@ -21,7 +21,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Loader2, Plus, RefreshCw, Trash2, Clock, History } from "lucide-react";
+import { Loader2, Plus, RefreshCw, Trash2, Clock, History, Users } from "lucide-react";
 import { format, startOfMonth, endOfMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
@@ -131,7 +131,7 @@ export function BancoHoras() {
         .upsert({
           employee_id: selectedEmployee,
           saldo_horas: novoSaldo,
-        });
+        }, { onConflict: 'employee_id' });
 
       if (bancoError) throw bancoError;
 
@@ -178,7 +178,7 @@ export function BancoHoras() {
         .upsert({
           employee_id: selectedEmployee,
           saldo_horas: 0,
-        });
+        }, { onConflict: 'employee_id' });
 
       if (bancoError) throw bancoError;
 
@@ -209,6 +209,98 @@ export function BancoHoras() {
     },
   });
 
+  const adicionarTodosMutation = useMutation({
+    mutationFn: async () => {
+      if (!employees || employees.length === 0) throw new Error("Nenhum funcionário encontrado");
+      if (!selectedMonth) throw new Error("Selecione um mês");
+
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Usuário não autenticado");
+
+      const [year, month] = selectedMonth.split("-");
+      const startDate = format(startOfMonth(new Date(parseInt(year), parseInt(month) - 1)), "yyyy-MM-dd");
+      const endDate = format(endOfMonth(new Date(parseInt(year), parseInt(month) - 1)), "yyyy-MM-dd");
+
+      let successCount = 0;
+      let errorCount = 0;
+
+      for (const emp of employees) {
+        try {
+          // Buscar registros do mês
+          const { data: registros } = await supabase
+            .from("registros_ponto")
+            .select("*")
+            .eq("employee_id", emp.id)
+            .gte("data", startDate)
+            .lte("data", endDate);
+
+          const { data: config } = await supabase
+            .from("configuracao_horas_trabalho")
+            .select("*")
+            .eq("employee_id", emp.id)
+            .maybeSingle();
+
+          const horasDiarias = config?.horas_diarias_esperadas || 8.00;
+          const diasUteis = registros?.filter(r => r.tipo_dia === "normal").length || 0;
+          const horasEsperadas = diasUteis * horasDiarias;
+          const horasTrabalhadas = registros?.reduce((sum, r) => sum + (r.horas_trabalhadas || 0), 0) || 0;
+          const saldoMesEmp = horasTrabalhadas - horasEsperadas;
+
+          if (saldoMesEmp === 0) continue;
+
+          // Buscar saldo atual
+          const { data: bancoAtual } = await supabase
+            .from("banco_horas")
+            .select("saldo_horas")
+            .eq("employee_id", emp.id)
+            .maybeSingle();
+
+          const saldoAtual = bancoAtual?.saldo_horas || 0;
+          const novoSaldo = saldoAtual + saldoMesEmp;
+
+          const { error: bancoError } = await supabase
+            .from("banco_horas")
+            .upsert({
+              employee_id: emp.id,
+              saldo_horas: novoSaldo,
+            }, { onConflict: 'employee_id' });
+
+          if (bancoError) throw bancoError;
+
+          await supabase
+            .from("historico_banco_horas")
+            .insert({
+              employee_id: emp.id,
+              tipo_movimentacao: "adicao",
+              horas: saldoMesEmp,
+              saldo_anterior: saldoAtual,
+              saldo_novo: novoSaldo,
+              mes_referencia: selectedMonth,
+              observacao: observacao || "Adição em lote",
+              created_by: user.id,
+            });
+
+          successCount++;
+        } catch (err) {
+          console.error(`Erro ao processar ${emp.nome_completo}:`, err);
+          errorCount++;
+        }
+      }
+
+      return { successCount, errorCount };
+    },
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ["banco-horas"] });
+      queryClient.invalidateQueries({ queryKey: ["historico-banco-horas"] });
+      toast.success(`Saldo adicionado para ${result.successCount} funcionário(s)${result.errorCount > 0 ? `. ${result.errorCount} erro(s).` : ""}`);
+      setObservacao("");
+    },
+    onError: (error) => {
+      console.error("Erro ao adicionar saldo em lote:", error);
+      toast.error("Erro ao adicionar saldo em lote");
+    },
+  });
+
   return (
     <div className="space-y-6">
       <div>
@@ -223,6 +315,10 @@ export function BancoHoras() {
           <TabsTrigger value="gerenciar" className="flex items-center gap-2">
             <Clock className="h-4 w-4" />
             Gerenciar Banco
+          </TabsTrigger>
+          <TabsTrigger value="lote" className="flex items-center gap-2">
+            <Users className="h-4 w-4" />
+            Adicionar Todos
           </TabsTrigger>
           <TabsTrigger value="historico" className="flex items-center gap-2">
             <History className="h-4 w-4" />
@@ -369,6 +465,75 @@ export function BancoHoras() {
               </Card>
             </>
           )}
+        </TabsContent>
+
+        <TabsContent value="lote" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Adicionar Saldo de Todos os Funcionários</CardTitle>
+              <CardDescription>
+                Calcule e adicione o saldo do mês selecionado ao banco de horas de todos os funcionários ativos de uma vez
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="month-lote">Selecione o Mês</Label>
+                <Input
+                  id="month-lote"
+                  type="month"
+                  value={selectedMonth}
+                  onChange={(e) => setSelectedMonth(e.target.value)}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="observacao-lote">Observação (opcional)</Label>
+                <Textarea
+                  id="observacao-lote"
+                  placeholder="Observação para todos os registros"
+                  value={observacao}
+                  onChange={(e) => setObservacao(e.target.value)}
+                />
+              </div>
+
+              <div className="p-4 border rounded-lg bg-muted/50">
+                <p className="text-sm text-muted-foreground">
+                  <strong>{employees?.length || 0}</strong> funcionários ativos serão processados.
+                  O saldo de horas do mês <strong>{selectedMonth}</strong> será calculado e adicionado ao banco de cada um.
+                </p>
+              </div>
+
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    className="w-full"
+                    disabled={adicionarTodosMutation.isPending || !employees?.length}
+                  >
+                    {adicionarTodosMutation.isPending ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <Users className="mr-2 h-4 w-4" />
+                    )}
+                    Adicionar Saldo de Todos
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Confirmar Adição em Lote</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Tem certeza que deseja adicionar o saldo do mês {selectedMonth} ao banco de horas de todos os {employees?.length || 0} funcionários ativos?
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                    <AlertDialogAction onClick={() => adicionarTodosMutation.mutate()}>
+                      Confirmar
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="historico" className="space-y-6">
