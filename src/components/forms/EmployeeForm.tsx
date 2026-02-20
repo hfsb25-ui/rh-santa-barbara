@@ -289,6 +289,22 @@ const EmployeeForm = ({ employeeId, initialData, onSaved, onCancel }: EmployeeFo
           if (uploadedUrl) fotoUrl = uploadedUrl;
         }
 
+        // Verificar se houve alteração de salário para registrar no histórico
+        const oldSalary = initialData?.salario ? parseFloat(String(initialData.salario)) : null;
+        const newSalary = data.salario;
+        if (oldSalary != null && newSalary != null && oldSalary !== newSalary && oldSalary > 0) {
+          const percentual = ((newSalary - oldSalary) / oldSalary) * 100;
+          const { data: userData } = await supabase.auth.getUser();
+          await supabase.from("historico_reajustes_salariais").insert({
+            employee_id: employeeId,
+            salario_anterior: oldSalary,
+            salario_novo: newSalary,
+            percentual_reajuste: percentual,
+            justificativa: "Reajuste via edição do perfil do funcionário",
+            aplicado_por: userData?.user?.id ?? null,
+          });
+        }
+
         const { error } = await supabase
           .from("employees")
           .update({ ...data, foto_url: fotoUrl })
