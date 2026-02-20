@@ -2476,6 +2476,30 @@ export type Database = {
           },
         ]
       }
+      nfe_vinculos_estoque: {
+        Row: {
+          created_at: string
+          descricao_nfe: string
+          estoque_item_id: string
+          id: string
+          tipo: string
+        }
+        Insert: {
+          created_at?: string
+          descricao_nfe: string
+          estoque_item_id: string
+          id?: string
+          tipo: string
+        }
+        Update: {
+          created_at?: string
+          descricao_nfe?: string
+          estoque_item_id?: string
+          id?: string
+          tipo?: string
+        }
+        Relationships: []
+      }
       notas_avaliacao: {
         Row: {
           avaliacao_id: string

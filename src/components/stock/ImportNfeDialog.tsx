@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Upload, FileText, AlertCircle, Check, Link } from "lucide-react";
+import { Upload, FileText, Check, Link } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -17,11 +17,12 @@ interface NfeItem {
   ncm: string;
   unidade: string;
   tipo: "epi" | "uniforme" | "ignorar";
-  vinculadoId: string; // "" = novo item, "novo" = criar novo, or existing item id
+  vinculadoId: string;
   tamanho: string;
   cor: string;
   ca: string;
   marcaModelo: string;
+  autoVinculado: boolean;
 }
 
 interface ExistingItem {
@@ -30,6 +31,12 @@ interface ExistingItem {
   tipo: "epi" | "uniforme";
   detalhes: string;
   quantidade_estoque: number;
+}
+
+interface SavedVinculo {
+  descricao_nfe: string;
+  tipo: string;
+  estoque_item_id: string;
 }
 
 interface ImportNfeDialogProps {
@@ -46,6 +53,7 @@ const ImportNfeDialog = ({ open, onOpenChange, onImported }: ImportNfeDialogProp
   const [step, setStep] = useState<"upload" | "preview">("upload");
   const [existingEpis, setExistingEpis] = useState<ExistingItem[]>([]);
   const [existingUniformes, setExistingUniformes] = useState<ExistingItem[]>([]);
+  const [savedVinculos, setSavedVinculos] = useState<SavedVinculo[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -55,9 +63,10 @@ const ImportNfeDialog = ({ open, onOpenChange, onImported }: ImportNfeDialogProp
   }, [open]);
 
   const fetchExistingItems = async () => {
-    const [episRes, uniformesRes] = await Promise.all([
+    const [episRes, uniformesRes, vinculosRes] = await Promise.all([
       supabase.from("estoque_epis").select("*").order("tipo_epi"),
       supabase.from("estoque_uniformes").select("*").order("tipo_uniforme"),
+      supabase.from("nfe_vinculos_estoque").select("*"),
     ]);
 
     if (episRes.data) {
@@ -83,6 +92,10 @@ const ImportNfeDialog = ({ open, onOpenChange, onImported }: ImportNfeDialogProp
         }))
       );
     }
+
+    if (vinculosRes.data) {
+      setSavedVinculos(vinculosRes.data as SavedVinculo[]);
+    }
   };
 
   const resetState = () => {
@@ -96,6 +109,27 @@ const ImportNfeDialog = ({ open, onOpenChange, onImported }: ImportNfeDialogProp
   const handleClose = (val: boolean) => {
     if (!val) resetState();
     onOpenChange(val);
+  };
+
+  const applyVinculos = (parsed: NfeItem[], vinculos: SavedVinculo[], epis: ExistingItem[], uniformes: ExistingItem[]): NfeItem[] => {
+    return parsed.map((item) => {
+      const vinculo = vinculos.find(
+        (v) => v.descricao_nfe.toLowerCase() === item.descricao.toLowerCase()
+      );
+      if (!vinculo) return item;
+
+      // Verify the linked item still exists
+      const allItems = vinculo.tipo === "epi" ? epis : uniformes;
+      const exists = allItems.some((ei) => ei.id === vinculo.estoque_item_id);
+      if (!exists) return item;
+
+      return {
+        ...item,
+        tipo: vinculo.tipo as "epi" | "uniforme",
+        vinculadoId: vinculo.estoque_item_id,
+        autoVinculado: true,
+      };
+    });
   };
 
   const parseXml = (xmlText: string) => {
@@ -120,7 +154,7 @@ const ImportNfeDialog = ({ open, onOpenChange, onImported }: ImportNfeDialogProp
     setNfeNumero(nNF);
 
     const detTags = doc.getElementsByTagNameNS("*", "det");
-    const parsed: NfeItem[] = [];
+    let parsed: NfeItem[] = [];
 
     for (let i = 0; i < detTags.length; i++) {
       const det = detTags[i];
@@ -142,6 +176,7 @@ const ImportNfeDialog = ({ open, onOpenChange, onImported }: ImportNfeDialogProp
         cor: "",
         ca: "",
         marcaModelo: "",
+        autoVinculado: false,
       });
     }
 
@@ -150,9 +185,19 @@ const ImportNfeDialog = ({ open, onOpenChange, onImported }: ImportNfeDialogProp
       return;
     }
 
+    // Auto-apply saved vinculos
+    parsed = applyVinculos(parsed, savedVinculos, existingEpis, existingUniformes);
+    const autoCount = parsed.filter((p) => p.autoVinculado).length;
+
     setItems(parsed);
     setStep("preview");
-    toast.success(`${parsed.length} produto(s) encontrado(s) na NF-e nº ${nNF}`);
+
+    const msg = `${parsed.length} produto(s) encontrado(s) na NF-e nº ${nNF}`;
+    if (autoCount > 0) {
+      toast.success(`${msg} — ${autoCount} vinculado(s) automaticamente`);
+    } else {
+      toast.success(msg);
+    }
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -175,7 +220,7 @@ const ImportNfeDialog = ({ open, onOpenChange, onImported }: ImportNfeDialogProp
 
   const updateItem = (index: number, updates: Partial<NfeItem>) => {
     setItems((prev) =>
-      prev.map((item) => (item.index === index ? { ...item, ...updates } : item))
+      prev.map((item) => (item.index === index ? { ...item, ...updates, autoVinculado: false } : item))
     );
   };
 
@@ -189,6 +234,35 @@ const ImportNfeDialog = ({ open, onOpenChange, onImported }: ImportNfeDialogProp
 
   const getExistingItemsForType = (tipo: "epi" | "uniforme"): ExistingItem[] => {
     return tipo === "epi" ? existingEpis : existingUniformes;
+  };
+
+  const saveVinculos = async (importedItems: NfeItem[]) => {
+    const vinculosToSave = importedItems.filter(
+      (i) => i.tipo !== "ignorar" && i.vinculadoId && i.vinculadoId !== "novo"
+    );
+
+    for (const item of vinculosToSave) {
+      // Upsert: if descricao already exists, update; otherwise insert
+      const existing = savedVinculos.find(
+        (v) => v.descricao_nfe.toLowerCase() === item.descricao.toLowerCase()
+      );
+
+      if (existing) {
+        // Update if different
+        if (existing.estoque_item_id !== item.vinculadoId || existing.tipo !== item.tipo) {
+          await supabase
+            .from("nfe_vinculos_estoque")
+            .update({ estoque_item_id: item.vinculadoId, tipo: item.tipo })
+            .ilike("descricao_nfe", item.descricao);
+        }
+      } else {
+        await supabase.from("nfe_vinculos_estoque").insert({
+          descricao_nfe: item.descricao,
+          tipo: item.tipo,
+          estoque_item_id: item.vinculadoId,
+        });
+      }
+    }
   };
 
   const handleImport = async () => {
@@ -209,6 +283,9 @@ const ImportNfeDialog = ({ open, onOpenChange, onImported }: ImportNfeDialogProp
         }
       }
 
+      // Save vinculos for future imports
+      await saveVinculos(itemsToImport);
+
       toast.success(`${itemsToImport.length} item(ns) importado(s) com sucesso via NF-e nº ${nfeNumero}`);
       handleClose(false);
       onImported();
@@ -222,7 +299,6 @@ const ImportNfeDialog = ({ open, onOpenChange, onImported }: ImportNfeDialogProp
   const importEpi = async (item: NfeItem) => {
     const qty = Math.round(item.quantidade);
 
-    // If linked to existing item
     if (item.vinculadoId && item.vinculadoId !== "novo") {
       const { data: record } = await supabase
         .from("estoque_epis")
@@ -230,7 +306,7 @@ const ImportNfeDialog = ({ open, onOpenChange, onImported }: ImportNfeDialogProp
         .eq("id", item.vinculadoId)
         .single();
 
-      if (!record) throw new Error(`EPI vinculado não encontrado`);
+      if (!record) throw new Error("EPI vinculado não encontrado");
 
       const newQty = record.quantidade_estoque + qty;
       await supabase
@@ -249,7 +325,6 @@ const ImportNfeDialog = ({ open, onOpenChange, onImported }: ImportNfeDialogProp
       return;
     }
 
-    // Create new
     const { data: inserted, error } = await supabase
       .from("estoque_epis")
       .insert({
@@ -278,7 +353,6 @@ const ImportNfeDialog = ({ open, onOpenChange, onImported }: ImportNfeDialogProp
   const importUniforme = async (item: NfeItem) => {
     const qty = Math.round(item.quantidade);
 
-    // If linked to existing item
     if (item.vinculadoId && item.vinculadoId !== "novo") {
       const { data: record } = await supabase
         .from("estoque_uniformes")
@@ -286,7 +360,7 @@ const ImportNfeDialog = ({ open, onOpenChange, onImported }: ImportNfeDialogProp
         .eq("id", item.vinculadoId)
         .single();
 
-      if (!record) throw new Error(`Uniforme vinculado não encontrado`);
+      if (!record) throw new Error("Uniforme vinculado não encontrado");
 
       const newQty = record.quantidade_estoque + qty;
       await supabase
@@ -305,7 +379,6 @@ const ImportNfeDialog = ({ open, onOpenChange, onImported }: ImportNfeDialogProp
       return;
     }
 
-    // Create new
     const { data: inserted, error } = await supabase
       .from("estoque_uniformes")
       .insert({
@@ -331,6 +404,7 @@ const ImportNfeDialog = ({ open, onOpenChange, onImported }: ImportNfeDialogProp
   };
 
   const selectedCount = items.filter((i) => i.tipo !== "ignorar").length;
+  const autoVinculadoCount = items.filter((i) => i.autoVinculado).length;
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
@@ -374,6 +448,12 @@ const ImportNfeDialog = ({ open, onOpenChange, onImported }: ImportNfeDialogProp
               <Badge variant="outline">{fileName}</Badge>
               <Badge variant="secondary">{items.length} produto(s)</Badge>
               <Badge>{selectedCount} selecionado(s)</Badge>
+              {autoVinculadoCount > 0 && (
+                <Badge variant="outline" className="border-primary text-primary">
+                  <Link className="h-3 w-3 mr-1" />
+                  {autoVinculadoCount} vinculado(s) automaticamente
+                </Badge>
+              )}
             </div>
 
             <div className="border rounded-lg overflow-auto">
@@ -399,7 +479,14 @@ const ImportNfeDialog = ({ open, onOpenChange, onImported }: ImportNfeDialogProp
 
                     return (
                       <TableRow key={item.index} className={item.tipo === "ignorar" ? "opacity-50" : ""}>
-                        <TableCell className="font-medium text-xs">{item.descricao}</TableCell>
+                        <TableCell className="font-medium text-xs">
+                          <div className="flex items-center gap-1">
+                            {item.autoVinculado && (
+                              <Link className="h-3 w-3 text-primary shrink-0" />
+                            )}
+                            {item.descricao}
+                          </div>
+                        </TableCell>
                         <TableCell>{item.quantidade}</TableCell>
                         <TableCell>
                           {item.valorUnitario.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
@@ -498,7 +585,7 @@ const ImportNfeDialog = ({ open, onOpenChange, onImported }: ImportNfeDialogProp
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Link className="h-4 w-4" />
               <span>
-                Vincule itens da NF-e a produtos já existentes no estoque para somar a quantidade, mesmo com nomes diferentes.
+                Os vínculos são salvos automaticamente. Na próxima importação, itens com a mesma descrição serão vinculados ao mesmo produto.
               </span>
             </div>
           </div>
