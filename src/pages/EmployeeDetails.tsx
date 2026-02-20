@@ -34,6 +34,7 @@ import ExamesMedicosTab from "@/components/employees/tabs/ExamesMedicosTab";
 import AvaliacoesTab from "@/components/employees/tabs/AvaliacoesTab";
 import { ChecklistTab } from "@/components/employees/tabs/ChecklistTab";
 import { VariaveisFixasTab } from "@/components/employees/tabs/VariaveisFixasTab";
+import { HoleritesTab } from "@/components/employees/tabs/HoleritesTab";
 
 const EmployeeDetails = () => {
   const { id } = useParams();
@@ -185,6 +186,7 @@ const EmployeeDetails = () => {
             <TabsTrigger value="faltas" className="flex-shrink-0">Faltas</TabsTrigger>
             <TabsTrigger value="arquivos" className="flex-shrink-0">Arquivos</TabsTrigger>
             <TabsTrigger value="reajustes" className="flex-shrink-0">Histórico Salarial</TabsTrigger>
+            <TabsTrigger value="holerites" className="flex-shrink-0">Holerites</TabsTrigger>
             <TabsTrigger value="variaveis" className="flex-shrink-0">Variáveis Fixas</TabsTrigger>
             <TabsTrigger value="exames" className="flex-shrink-0">Exames Médicos</TabsTrigger>
             <TabsTrigger value="avaliacoes" className="flex-shrink-0">Avaliações</TabsTrigger>
@@ -221,6 +223,10 @@ const EmployeeDetails = () => {
 
           <TabsContent value="reajustes">
             <SalaryHistoryTab employeeId={id!} />
+          </TabsContent>
+
+          <TabsContent value="holerites">
+            <HoleritesTab employeeId={id!} />
           </TabsContent>
 
           <TabsContent value="variaveis">
