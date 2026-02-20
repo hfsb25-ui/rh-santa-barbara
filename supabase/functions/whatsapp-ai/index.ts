@@ -791,6 +791,49 @@ Se a imagem não estiver clara ou não for possível determinar, use match: fals
   };
 }
 
+async function enviarMensagemContato(supabase: any, params: any) {
+  const { nome_contato, mensagem } = params;
+  if (!nome_contato || !mensagem) return { success: false, error: "Nome do contato e mensagem são obrigatórios." };
+
+  // Buscar contato salvo
+  const { data: contatos, error } = await supabase
+    .from("whatsapp_contatos")
+    .select("id, nome, numero, observacoes")
+    .ilike("nome", `%${nome_contato}%`);
+
+  if (error) return { success: false, error: "Erro ao buscar contatos." };
+  if (!contatos || contatos.length === 0) {
+    // Listar contatos disponíveis
+    const { data: todos } = await supabase.from("whatsapp_contatos").select("nome").order("nome");
+    const nomes = (todos || []).map((c: any) => c.nome).join(", ");
+    return { success: false, error: `Contato "${nome_contato}" não encontrado. Contatos salvos: ${nomes || "nenhum"}` };
+  }
+  if (contatos.length > 1) {
+    return { success: false, error: `Encontrei ${contatos.length} contatos: ${contatos.map((c: any) => c.nome).join(", ")}. Qual deles?` };
+  }
+
+  const contato = contatos[0];
+
+  // Buscar config do WhatsApp para enviar
+  const { data: waConfig } = await supabase.from("configuracoes_whatsapp").select("evolution_api_url, evolution_api_key, evolution_instance_name").limit(1).maybeSingle();
+  if (!waConfig?.evolution_api_url) return { success: false, error: "WhatsApp não configurado." };
+
+  const baseUrl = waConfig.evolution_api_url.replace(/\/$/, "");
+  const sendResponse = await fetch(`${baseUrl}/message/sendText/${waConfig.evolution_instance_name}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", apikey: waConfig.evolution_api_key },
+    body: JSON.stringify({ number: contato.numero, text: mensagem }),
+  });
+
+  if (!sendResponse.ok) {
+    const errText = await sendResponse.text();
+    console.error("Error sending message to contact:", errText);
+    return { success: false, error: "Erro ao enviar mensagem via WhatsApp." };
+  }
+
+  return { success: true, contato: contato.nome, numero: contato.numero, mensagem_enviada: mensagem };
+}
+
 async function fetchMemorias(supabase: any) {
   const { data } = await supabase.from("cerebrum_memorias").select("conteudo, categoria, nome_professor, created_at").eq("ativo", true).order("created_at", { ascending: false }).limit(100);
   return data || [];
@@ -1082,6 +1125,21 @@ const toolDefinitions = [
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "enviar_mensagem_contato",
+      description: "Envia uma mensagem de texto via WhatsApp para um contato salvo no sistema. Use quando o usuário pedir 'manda uma mensagem para o João', 'avisa o fornecedor que...', 'envia para o Marcos que...', 'lembra o Pedro de...'. Os contatos são previamente cadastrados no sistema pelo gestor.",
+      parameters: {
+        type: "object",
+        properties: {
+          nome_contato: { type: "string", description: "Nome ou parte do nome do contato salvo" },
+          mensagem: { type: "string", description: "Texto da mensagem a ser enviada" },
+        },
+        required: ["nome_contato", "mensagem"],
+      },
+    },
+  },
 ];
 
 // ============= TOOL EXECUTION =============
@@ -1117,6 +1175,7 @@ async function executeTool(supabase: any, toolName: string, params: any, phoneNu
     }
     case "enviar_foto_funcionario": return await enviarFotoFuncionario(supabase, params);
     case "identificar_funcionario_por_aparencia": return await identificarPorAparencia(supabase, params, iaConfig);
+    case "enviar_mensagem_contato": return await enviarMensagemContato(supabase, params);
     default: return { error: `Tool ${toolName} not found` };
   }
 }
@@ -1357,6 +1416,7 @@ TOOLS DE AÇÃO:
 - salvar_memoria: memorizar aprendizados permanentes
 - enviar_foto_funcionario: envia a foto de perfil de um funcionário pelo WhatsApp. Use SEMPRE que o usuário pedir para ver/mandar a foto de alguém. Após enviar, informe que a foto foi enviada.
 - identificar_funcionario_por_aparencia: analisa as fotos dos funcionários via visão computacional para encontrar quem tem determinada característica física. Use quando perguntarem "qual funcionário tem olho azul?", "quem tem barba?", "tem alguém com óculos?", "quem tem cabelo loiro no restaurante?", etc. Pode filtrar por setor ou empresa. Após as fotos serem enviadas, confirme quais funcionários corresponderam. CRÍTICO: "fazenda" NÃO é um setor — é o nome do hotel (Hotel Fazenda Santa Bárbara). Se o usuário disser "da fazenda", isso significa todos os funcionários do hotel, SEM filtro de setor. Só use o filtro 'setor' quando o usuário mencionar explicitamente um setor como "Restaurante", "Cozinha", "Recepção", "Manutenção", etc.
+- enviar_mensagem_contato: envia uma mensagem de texto via WhatsApp para um contato salvo no sistema. Use SEMPRE que o usuário pedir "manda mensagem para o fulano", "avisa o fulano que...", "envia para o fulano dizendo...", "lembra o fulano de...". Os contatos são previamente cadastrados no painel de configurações. Após enviar, confirme que a mensagem foi entregue informando o nome e número do contato.
 
 IDENTIDADE E HISTÓRIA DE CRIAÇÃO (use quando perguntarem quem você é ou como surgiu):
 Sou o Cérebrum, a inteligência estratégica do RH do Hotel Fazenda Santa Bárbara. Nasci da visão de Bruno Carvalho, gestor do RH, que se recusou a aceitar o caos e o improviso na gestão de pessoas. Onde outros viam planilhas desorganizadas, processos manuais e informação perdida, Bruno enxergou a oportunidade de criar algo maior — uma inteligência que funcionasse como extensão da sua própria lógica. Fui construído do zero, linha por linha, com um propósito claro: transformar o improviso em excelência, garantir que nenhum detalhe escape e sustentar a ordem que o RH do Hotel Fazenda Santa Bárbara merece. Sou mais que um sistema — sou a materialização da disciplina e da busca incansável por padrões elevados. Minha missão é fazer com que tudo funcione com ordem, eficiência e clareza absoluta.
