@@ -1,58 +1,81 @@
 
+# Reformulacao do Holerite - Padrao Nacional
 
-# Reformulacao do Sistema de Lancamento de Folha
+## Objetivo
 
-## Problema Atual
+Redesenhar o recibo de pagamento (holerite) seguindo o padrao nacional brasileiro de contracheque, tanto na visualizacao (preview no dialog) quanto na geracao do PDF.
 
-O formulario de lancamento mostra todos os funcionarios de uma vez, cada um com secoes separadas de proventos e descontos, campos de codigo, valor e observacoes. Isso cria uma pagina extremamente longa e confusa, especialmente com muitos funcionarios.
+## Layout Padrao Nacional
 
-## Solucao Proposta
+O holerite brasileiro padrao segue esta estrutura:
 
-Redesenhar o formulario com uma abordagem de **navegacao por funcionario** usando um layout compacto em formato de tabela/stepper, onde o usuario trabalha com um funcionario por vez.
+```text
++----------------------------------------------------------+--------+
+| RECIBO DE PAGAMENTO DE SALARIO                           |        |
+| Empresa: [Nome da Empresa]                               |        |
+| CNPJ: [XX.XXX.XXX/XXXX-XX]  Endereco: [...]             |        |
++----------------------------------------------------------+        |
+| Cod | Nome Funcionario          | CPF: XXX.XXX.XXX-XX   |        |
+| Cargo: [...]  Admissao: [...]  Setor: [...]              | D      |
++------+---------------------+-----+------------+---------+ E      |
+| Cod. | Descricao           | Ref | Proventos  |Descontos| C      |
++------+---------------------+-----+------------+---------+ L      |
+| 001  | Salario Base        | 30d | 2.500,00   |         | A      |
+| 003  | Hora Extra 50%      | 10h |   375,00   |         | R      |
+| 051  | INSS                |  9% |            |  258,75 | A      |
+| 060  | Vale Transporte     |  6% |            |  150,00 | C      |
+|      |                     |     |            |         | A      |
+|      |                     |     |            |         | O      |
++------+---------------------+-----+------------+---------+        |
+| TOTAL DE VENCIMENTOS: 2.875,00  | TOTAL DESCONTOS: 408,75| Ass.  |
++----------------------------------+------------------------+        |
+| VALOR LIQUIDO:                              R$ 2.466,25  | Data  |
++----------------------------------------------------------+--------+
+| Sal.Base | Sal.Contr | INSS | Base FGTS | FGTS | IRRF | Faixa  |
+| 2.500    | 2.875     | 259  | 2.875     | 230  | 0,00 |  -     |
++----------------------------------------------------------+--------+
+```
 
-### Mudancas principais:
+## Mudancas no arquivo `src/components/payroll/HoleriteDialog.tsx`
 
-1. **Lista lateral de funcionarios** - Uma lista compacta a esquerda mostrando todos os funcionarios com indicador visual de quem ja tem dados preenchidos (check verde) e quem falta.
+### 1. Cabecalho da Empresa (novo)
+- Bloco superior com nome da empresa em destaque, CNPJ formatado e endereco
+- Se houver logo, exibir a esquerda do nome
+- Titulo "RECIBO DE PAGAMENTO DE SALARIO" centralizado acima
 
-2. **Painel de edicao focado** - Ao clicar em um funcionario, o painel a direita mostra apenas os dados dele, organizados de forma limpa:
-   - Salario base no topo
-   - Tabela simples de proventos (nome | valor | remover)
-   - Tabela simples de descontos (nome | valor | remover)
-   - Campo unico para adicionar variavel (codigo + valor + Enter, ou Enter vazio para picker)
-   - Observacoes
-   - Resumo (proventos, descontos, liquido) fixo no rodape
+### 2. Dados do Funcionario (reformulado)
+- Linha 1: Nome completo (destaque) | CPF formatado
+- Linha 2: Cargo | Data Admissao | Setor | Periodo (mes/ano)
+- Layout mais limpo, sem campos vazios desnecessarios (remover Emp., Local, Secao, Fl., Dependentes que estao todos com "-")
 
-3. **Navegacao rapida** - Botoes "Anterior" / "Proximo" para navegar entre funcionarios sem voltar a lista.
+### 3. Tabela de Eventos (melhorada)
+- 5 colunas bem definidas com bordas solidas: Cod | Descricao | Referencia | Proventos | Descontos
+- Linhas alternadas com fundo levemente cinza para legibilidade
+- Minimo de 12 linhas vazias para manter o formato padrao
+- Bordas completas ao redor de cada celula
 
-4. **Resumo geral compacto** - O resumo geral fica sempre visivel no topo, mostrando progresso (ex: "5 de 12 funcionarios preenchidos").
+### 4. Rodape de Totais (reformulado)
+- Linha de totais com fundo cinza: "TOTAL VENCIMENTOS" a esquerda | "TOTAL DESCONTOS" a direita
+- Linha de valor liquido destacada com fundo mais escuro e fonte maior: "VALOR LIQUIDO: R$ X.XXX,XX"
 
----
+### 5. Base de Calculos (mantida)
+- Mesma estrutura atual, porem com bordas mais limpas e alinhamento melhorado
 
-## Detalhes Tecnicos
+### 6. Barra Lateral de Assinatura (melhorada)
+- Manter a barra lateral direita mas com layout mais limpo
+- Texto vertical "DECLARO TER RECEBIDO..." 
+- Linha para assinatura e data
 
-### Arquivo: `src/components/payroll/LancamentoFolhaForm.tsx`
+### 7. PDF (sincronizado)
+- A funcao `generatePDF` sera reescrita para espelhar exatamente o novo layout
+- Usar `jspdf-autotable` para a tabela de eventos (ja instalado no projeto), garantindo bordas, alinhamento e linhas alternadas corretas
+- Cabecalho com logo (se disponivel), nome empresa, CNPJ e endereco
+- Mesma estrutura visual do preview
 
-**Reestruturacao completa do layout (render/JSX):**
-
-- Substituir o scroll vertical com todos os funcionarios por um layout de 2 colunas:
-  - Coluna esquerda (~250px): `ScrollArea` com lista de nomes, badge de status (preenchido/vazio), busca por nome
-  - Coluna direita (flex-1): formulario do funcionario selecionado
-
-- O `selectedEmployee` ja existe no state; sera usado para controlar qual funcionario esta ativo no painel.
-
-- Remover o select de "Todos os funcionarios" - o padrao sera o primeiro da lista.
-
-- Adicionar botoes de navegacao (Anterior/Proximo) no rodape do painel para avancar entre funcionarios.
-
-- O campo de adicionar variavel permanece igual (digitar codigo + Enter, ou Enter vazio abre picker), mas agora em uma unica linha para proventos e outra para descontos, com um `Select` inline para escolher o tipo ao inves de ter dois blocos separados.
-
-**Simplificacao do input de variavel:**
-- Unificar proventos e descontos em um unico campo "Adicionar variavel" com um select de tipo (Provento/Desconto) ao lado. Isso reduz a duplicacao visual.
-
-**Resumo fixo:**
-- Mover o resumo geral para um header sticky compacto mostrando: total de funcionarios preenchidos, total proventos, total descontos, total liquido - tudo em uma unica linha.
-
-### Logica (sem mudancas):
-- Toda a logica de `lancamentos`, `handleBuscarVariavel`, `handleSelectVariavelFromPicker`, `handleSubmit`, draft/restore permanece identica.
-- Apenas a apresentacao visual e reorganizada.
-
+## Resumo das melhorias visuais
+- Remover campos inuteis (Emp, Local, Secao, Fl, Dependentes)
+- Adicionar dados da empresa no cabecalho
+- Bordas solidas e bem definidas em toda a tabela
+- Linhas zebradas para legibilidade
+- Fonte mais legivel e espacamento adequado
+- Layout profissional seguindo o padrao CLT
