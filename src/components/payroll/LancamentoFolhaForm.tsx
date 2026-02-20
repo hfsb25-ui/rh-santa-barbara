@@ -10,7 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from "@/components/ui/command";
-import { Copy, TrendingUp, TrendingDown, Plus, X, Loader2, Users, Search, Save } from "lucide-react";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Copy, TrendingUp, TrendingDown, Plus, X, Loader2, Search, Save, ChevronLeft, ChevronRight, Check, Circle } from "lucide-react";
 import { toast } from "sonner";
 
 interface Employee {
@@ -66,7 +67,7 @@ const LancamentoFolhaForm = ({ employees, empresaId, mes, ano, tipoFolha, onSucc
   const [variaveis, setVariaveis] = useState<Variavel[]>([]);
   const [lancamentos, setLancamentos] = useState<Record<string, LancamentoData>>({});
   const [loading, setLoading] = useState(false);
-  const [selectedEmployee, setSelectedEmployee] = useState<string>("all");
+  const [selectedEmployee, setSelectedEmployee] = useState<string>(employees[0]?.id || "");
   const [codigoBusca, setCodigoBusca] = useState<Record<string, string>>({});
   const [valorBusca, setValorBusca] = useState<Record<string, number>>({});
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
@@ -74,10 +75,11 @@ const LancamentoFolhaForm = ({ employees, empresaId, mes, ano, tipoFolha, onSucc
   const [showRestoreDialog, setShowRestoreDialog] = useState(false);
   const [savedDraft, setSavedDraft] = useState<SavedDraftData | null>(null);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
+  const [searchEmployee, setSearchEmployee] = useState("");
+  const [addVarTipo, setAddVarTipo] = useState<"provento" | "desconto">("provento");
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isInitializedRef = useRef(false);
 
-  // Rescisão state
   const [rescisaoData, setRescisaoData] = useState<Record<string, {
     tipo_rescisao: string;
     aviso_previo_cumprido: boolean;
@@ -89,13 +91,11 @@ const LancamentoFolhaForm = ({ employees, empresaId, mes, ano, tipoFolha, onSucc
 
   const saveDraft = useCallback(() => {
     if (!isInitializedRef.current) return;
-    
     const draftData: SavedDraftData = {
       lancamentos,
       selectedEmployee,
       savedAt: new Date().toISOString(),
     };
-    
     try {
       localStorage.setItem(getStorageKey(), JSON.stringify(draftData));
       setLastSaved(new Date());
@@ -113,15 +113,13 @@ const LancamentoFolhaForm = ({ employees, empresaId, mes, ano, tipoFolha, onSucc
     }
   }, [getStorageKey]);
 
-  // Check for saved draft on mount
   useEffect(() => {
     const checkForDraft = () => {
       try {
         const savedData = localStorage.getItem(getStorageKey());
         if (savedData) {
           const parsed: SavedDraftData = JSON.parse(savedData);
-          // Check if draft has actual data
-          const hasData = Object.values(parsed.lancamentos).some(l => 
+          const hasData = Object.values(parsed.lancamentos).some(l =>
             l.salario_base > 0 || Object.keys(l.itens).length > 0 || l.observacoes
           );
           if (hasData) {
@@ -133,62 +131,32 @@ const LancamentoFolhaForm = ({ employees, empresaId, mes, ano, tipoFolha, onSucc
       } catch (error) {
         console.error("Erro ao verificar rascunho:", error);
       }
-      // No valid draft, initialize normally
       initializeLancamentos();
       isInitializedRef.current = true;
     };
-    
     checkForDraft();
   }, [getStorageKey]);
 
-  // Auto-save with debounce
   useEffect(() => {
     if (!isInitializedRef.current) return;
-    
-    if (saveTimeoutRef.current) {
-      clearTimeout(saveTimeoutRef.current);
-    }
-    
-    saveTimeoutRef.current = setTimeout(() => {
-      saveDraft();
-    }, 1000); // Save after 1 second of inactivity
-    
-    return () => {
-      if (saveTimeoutRef.current) {
-        clearTimeout(saveTimeoutRef.current);
-      }
-    };
+    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+    saveTimeoutRef.current = setTimeout(() => { saveDraft(); }, 1000);
+    return () => { if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current); };
   }, [lancamentos, selectedEmployee, saveDraft]);
 
-  useEffect(() => {
-    fetchVariaveis();
-  }, [empresaId]);
+  useEffect(() => { fetchVariaveis(); }, [empresaId]);
 
   const fetchVariaveis = async () => {
-    let query = supabase
-      .from("variaveis_folha")
-      .select("*")
-      .eq("ativo", true)
-      .order("tipo")
-      .order("nome");
-
-    // Quando a tela estiver em "todas as empresas", não podemos filtrar por empresa_id = 'all'
-    // (isso faz a variável não aparecer). Nesse caso, buscamos todas as variáveis ativas.
+    let query = supabase.from("variaveis_folha").select("*").eq("ativo", true).order("tipo").order("nome");
     if (empresaId && empresaId !== "all") {
       query = query.or(`empresa_id.eq.${empresaId},empresa_id.is.null`);
     }
-
     const { data, error } = await query;
-
-    if (error) {
-      console.error("Erro ao carregar variáveis:", error);
-      return;
-    }
+    if (error) { console.error("Erro ao carregar variáveis:", error); return; }
     setVariaveis(data || []);
   };
 
   const initializeLancamentos = async () => {
-    // Fetch fixed variables for all employees
     const { data: variaveisFixas } = await supabase
       .from("variaveis_fixas_funcionario")
       .select("employee_id, variavel_id, valor")
@@ -197,38 +165,29 @@ const LancamentoFolhaForm = ({ employees, empresaId, mes, ano, tipoFolha, onSucc
 
     const initial: Record<string, LancamentoData> = {};
     employees.forEach(emp => {
-      // Get fixed variables for this employee
       const fixedItems: Record<string, number> = {};
       variaveisFixas?.filter(vf => vf.employee_id === emp.id).forEach(vf => {
         fixedItems[vf.variavel_id] = Number(vf.valor);
       });
-
-      initial[emp.id] = {
-        salario_base: emp.salario || 0,
-        observacoes: "",
-        itens: fixedItems,
-      };
+      initial[emp.id] = { salario_base: emp.salario || 0, observacoes: "", itens: fixedItems };
     });
     setLancamentos(initial);
   };
 
   const handleRestoreDraft = () => {
     if (savedDraft) {
-      // Merge saved draft with current employees (in case employees changed)
       const merged: Record<string, LancamentoData> = {};
       employees.forEach(emp => {
         if (savedDraft.lancamentos[emp.id]) {
           merged[emp.id] = savedDraft.lancamentos[emp.id];
         } else {
-          merged[emp.id] = {
-            salario_base: emp.salario || 0,
-            observacoes: "",
-            itens: {},
-          };
+          merged[emp.id] = { salario_base: emp.salario || 0, observacoes: "", itens: {} };
         }
       });
       setLancamentos(merged);
-      setSelectedEmployee(savedDraft.selectedEmployee);
+      if (savedDraft.selectedEmployee && employees.find(e => e.id === savedDraft.selectedEmployee)) {
+        setSelectedEmployee(savedDraft.selectedEmployee);
+      }
       toast.success("Rascunho restaurado com sucesso!");
     }
     setShowRestoreDialog(false);
@@ -246,22 +205,14 @@ const LancamentoFolhaForm = ({ employees, empresaId, mes, ano, tipoFolha, onSucc
   const handleCopiarMesAnterior = async () => {
     const mesAnterior = mes === 1 ? 12 : mes - 1;
     const anoAnterior = mes === 1 ? ano - 1 : ano;
-
     try {
       const { data: pagamentosAnteriores, error: pagError } = await supabase
-        .from("folha_pagamento")
-        .select("*, folha_pagamento_itens(*)")
-        .eq("empresa_id", empresaId)
-        .eq("mes", mesAnterior)
-        .eq("ano", anoAnterior);
-
+        .from("folha_pagamento").select("*, folha_pagamento_itens(*)")
+        .eq("empresa_id", empresaId).eq("mes", mesAnterior).eq("ano", anoAnterior);
       if (pagError) throw pagError;
-
       if (!pagamentosAnteriores || pagamentosAnteriores.length === 0) {
-        toast.info("Nenhum lançamento encontrado no mês anterior");
-        return;
+        toast.info("Nenhum lançamento encontrado no mês anterior"); return;
       }
-
       const newLancamentos = { ...lancamentos };
       pagamentosAnteriores.forEach((pag: any) => {
         if (newLancamentos[pag.employee_id]) {
@@ -272,13 +223,11 @@ const LancamentoFolhaForm = ({ employees, empresaId, mes, ano, tipoFolha, onSucc
             }).reduce((sum: number, i: any) => sum + i.valor, 0) || 0),
             observacoes: pag.observacoes || "",
             itens: pag.folha_pagamento_itens?.reduce((acc: Record<string, number>, item: any) => {
-              acc[item.variavel_id] = item.valor;
-              return acc;
+              acc[item.variavel_id] = item.valor; return acc;
             }, {}) || {},
           };
         }
       });
-
       setLancamentos(newLancamentos);
       toast.success("Dados do mês anterior copiados!");
     } catch (error) {
@@ -288,62 +237,31 @@ const LancamentoFolhaForm = ({ employees, empresaId, mes, ano, tipoFolha, onSucc
   };
 
   const handleValueChange = (empId: string, field: "salario_base" | "observacoes", value: any) => {
-    setLancamentos(prev => ({
-      ...prev,
-      [empId]: {
-        ...prev[empId],
-        [field]: value,
-      }
-    }));
+    setLancamentos(prev => ({ ...prev, [empId]: { ...prev[empId], [field]: value } }));
   };
 
   const handleItemChange = (empId: string, variavelId: string, valor: number) => {
     setLancamentos(prev => ({
-      ...prev,
-      [empId]: {
-        ...prev[empId],
-        itens: {
-          ...prev[empId].itens,
-          [variavelId]: valor,
-        }
-      }
+      ...prev, [empId]: { ...prev[empId], itens: { ...prev[empId].itens, [variavelId]: valor } }
     }));
   };
 
   const calcularTotais = (empId: string) => {
     const lancamento = lancamentos[empId];
     if (!lancamento) return { proventos: 0, descontos: 0, liquido: 0 };
-
     let totalProventos = lancamento.salario_base;
     let totalDescontos = 0;
-
     Object.entries(lancamento.itens).forEach(([varId, valor]) => {
       const variavel = variaveis.find(v => v.id === varId);
-      if (variavel?.tipo === "provento") {
-        totalProventos += valor;
-      } else if (variavel?.tipo === "desconto") {
-        totalDescontos += valor;
-      }
+      if (variavel?.tipo === "provento") totalProventos += valor;
+      else if (variavel?.tipo === "desconto") totalDescontos += valor;
     });
-
-    return {
-      proventos: totalProventos,
-      descontos: totalDescontos,
-      liquido: totalProventos - totalDescontos,
-    };
+    return { proventos: totalProventos, descontos: totalDescontos, liquido: totalProventos - totalDescontos };
   };
 
   const getResumoGeral = () => {
-    let totalProventos = 0;
-    let totalDescontos = 0;
-    let totalLiquido = 0;
-    let funcionariosComDados = 0;
-
-    const employeesToProcess = selectedEmployee === "all" 
-      ? employees 
-      : employees.filter(e => e.id === selectedEmployee);
-
-    employeesToProcess.forEach(emp => {
+    let totalProventos = 0, totalDescontos = 0, totalLiquido = 0, funcionariosComDados = 0;
+    employees.forEach(emp => {
       const totais = calcularTotais(emp.id);
       if (totais.proventos > 0 || totais.descontos > 0) {
         totalProventos += totais.proventos;
@@ -352,7 +270,6 @@ const LancamentoFolhaForm = ({ employees, empresaId, mes, ano, tipoFolha, onSucc
         funcionariosComDados++;
       }
     });
-
     return { totalProventos, totalDescontos, totalLiquido, funcionariosComDados };
   };
 
@@ -360,15 +277,9 @@ const LancamentoFolhaForm = ({ employees, empresaId, mes, ano, tipoFolha, onSucc
     setLoading(true);
     let sucessos = 0;
     let erros = 0;
-
     try {
-      const employeesToProcess = selectedEmployee === "all" 
-        ? employees 
-        : employees.filter(e => e.id === selectedEmployee);
-
-      // Validar dados de rescisão
       if (tipoFolha === "rescisao") {
-        const semTipo = employeesToProcess.filter(emp => {
+        const semTipo = employees.filter(emp => {
           const lancamento = lancamentos[emp.id];
           if (!lancamento) return false;
           const totais = calcularTotais(emp.id);
@@ -377,166 +288,75 @@ const LancamentoFolhaForm = ({ employees, empresaId, mes, ano, tipoFolha, onSucc
         });
         if (semTipo.length > 0) {
           toast.error(`Preencha o tipo de rescisão para: ${semTipo.map(e => e.nome_completo).join(", ")}`);
-          setLoading(false);
-          setShowConfirmDialog(false);
-          return;
+          setLoading(false); setShowConfirmDialog(false); return;
         }
       }
-
-      for (const emp of employeesToProcess) {
+      for (const emp of employees) {
         const lancamento = lancamentos[emp.id];
         if (!lancamento) continue;
-
         const totais = calcularTotais(emp.id);
-        
         if (totais.proventos === 0 && totais.descontos === 0) continue;
-
         try {
           const { data: existingPag } = await supabase
-            .from("folha_pagamento")
-            .select("id")
-            .eq("employee_id", emp.id)
-            .eq("mes", mes)
-            .eq("ano", ano)
-            .eq("tipo_folha", tipoFolha)
-            .maybeSingle();
-
+            .from("folha_pagamento").select("id")
+            .eq("employee_id", emp.id).eq("mes", mes).eq("ano", ano).eq("tipo_folha", tipoFolha).maybeSingle();
           let pagamentoId: string;
           const rescisaoInfo = tipoFolha === "rescisao" ? rescisaoData[emp.id] : null;
-
           if (existingPag) {
-
-              const updateData: any = {
-                valor_bruto: totais.proventos,
-                desconto: totais.descontos,
-                descontos: 0,
-                valor_liquido: totais.liquido,
-                observacoes: lancamento.observacoes || null,
-              };
-              if (rescisaoInfo) {
-                updateData.tipo_rescisao = rescisaoInfo.tipo_rescisao || null;
-                updateData.aviso_previo_cumprido = rescisaoInfo.aviso_previo_cumprido;
-              }
-
-              const { data: updatedPag, error: updateError } = await supabase
-              .from("folha_pagamento")
-              .update(updateData)
-              .eq("id", existingPag.id)
-              .select()
-              .single();
-
+            const updateData: any = {
+              valor_bruto: totais.proventos, desconto: totais.descontos, descontos: 0,
+              valor_liquido: totais.liquido, observacoes: lancamento.observacoes || null,
+            };
+            if (rescisaoInfo) {
+              updateData.tipo_rescisao = rescisaoInfo.tipo_rescisao || null;
+              updateData.aviso_previo_cumprido = rescisaoInfo.aviso_previo_cumprido;
+            }
+            const { data: updatedPag, error: updateError } = await supabase
+              .from("folha_pagamento").update(updateData).eq("id", existingPag.id).select().single();
             if (updateError) throw updateError;
             pagamentoId = updatedPag.id;
           } else {
             const { data: newPag, error: insertError } = await supabase
-              .from("folha_pagamento")
-              .insert({
-                employee_id: emp.id,
-                empresa_id: empresaId,
-                mes,
-                ano,
-                tipo_folha: tipoFolha,
-                valor_bruto: totais.proventos,
-                desconto: totais.descontos,
-                descontos: 0,
-                valor_liquido: totais.liquido,
-                observacoes: lancamento.observacoes || null,
-                ...(rescisaoInfo ? {
-                  tipo_rescisao: rescisaoInfo.tipo_rescisao || null,
-                  aviso_previo_cumprido: rescisaoInfo.aviso_previo_cumprido,
-                } : {}),
-              } as any)
-              .select()
-              .single();
-
+              .from("folha_pagamento").insert({
+                employee_id: emp.id, empresa_id: empresaId, mes, ano, tipo_folha: tipoFolha,
+                valor_bruto: totais.proventos, desconto: totais.descontos, descontos: 0,
+                valor_liquido: totais.liquido, observacoes: lancamento.observacoes || null,
+                ...(rescisaoInfo ? { tipo_rescisao: rescisaoInfo.tipo_rescisao || null, aviso_previo_cumprido: rescisaoInfo.aviso_previo_cumprido } : {}),
+              } as any).select().single();
             if (insertError) throw insertError;
             pagamentoId = newPag.id;
           }
-
-          await supabase
-            .from("folha_pagamento_itens")
-            .delete()
-            .eq("folha_pagamento_id", pagamentoId);
-
+          await supabase.from("folha_pagamento_itens").delete().eq("folha_pagamento_id", pagamentoId);
           const itensParaInserir = Object.entries(lancamento.itens)
             .filter(([_, valor]) => valor > 0)
-            .map(([varId, valor]) => ({
-              folha_pagamento_id: pagamentoId,
-              variavel_id: varId,
-              valor,
-            }));
-
+            .map(([varId, valor]) => ({ folha_pagamento_id: pagamentoId, variavel_id: varId, valor }));
           if (itensParaInserir.length > 0) {
-            const { error: itensError } = await supabase
-              .from("folha_pagamento_itens")
-              .insert(itensParaInserir);
+            const { error: itensError } = await supabase.from("folha_pagamento_itens").insert(itensParaInserir);
             if (itensError) throw itensError;
           }
-
           sucessos++;
-        } catch (err) {
-          console.error(`Erro ao processar ${emp.nome_completo}:`, err);
-          erros++;
-        }
+        } catch (err) { console.error(`Erro ao processar ${emp.nome_completo}:`, err); erros++; }
       }
-
-      if (sucessos > 0) {
-        clearDraft(); // Clear saved draft after successful submission
-        toast.success(`${sucessos} pagamento(s) lançado(s) com sucesso!`);
-        onSuccess(mes, ano);
-      }
-      if (erros > 0) {
-        toast.error(`${erros} pagamento(s) com erro`);
-      }
-      if (sucessos === 0 && erros === 0) {
-        toast.warning("Nenhum pagamento para lançar. Verifique os valores.");
-      }
-    } catch (error) {
-      console.error("Erro ao lançar pagamentos:", error);
-      toast.error("Erro ao lançar pagamentos");
-    } finally {
-      setLoading(false);
-      setShowConfirmDialog(false);
-    }
+      if (sucessos > 0) { clearDraft(); toast.success(`${sucessos} pagamento(s) lançado(s) com sucesso!`); onSuccess(mes, ano); }
+      if (erros > 0) toast.error(`${erros} pagamento(s) com erro`);
+      if (sucessos === 0 && erros === 0) toast.warning("Nenhum pagamento para lançar. Verifique os valores.");
+    } catch (error) { console.error("Erro ao lançar pagamentos:", error); toast.error("Erro ao lançar pagamentos"); }
+    finally { setLoading(false); setShowConfirmDialog(false); }
   };
 
-  const handleCancel = () => {
-    clearDraft();
-    onCancel();
-  };
+  const handleCancel = () => { clearDraft(); onCancel(); };
 
   const handleBuscarVariavel = (empId: string, tipo: "provento" | "desconto") => {
     const codigo = codigoBusca[`${empId}-${tipo}`]?.trim();
     const valor = valorBusca[`${empId}-${tipo}`] || 0;
-
-    if (!codigo) {
-      // Open variable picker when code is empty
-      setOpenVariavelPicker(`${empId}-${tipo}`);
-      return;
-    }
-
-    const variavel = variaveis.find(v => 
-      v.codigo?.toLowerCase() === codigo.toLowerCase() && v.tipo === tipo
-    );
-
+    if (!codigo) { setOpenVariavelPicker(`${empId}-${tipo}`); return; }
+    const variavel = variaveis.find(v => v.codigo?.toLowerCase() === codigo.toLowerCase() && v.tipo === tipo);
     if (!variavel) {
       const variavelOutroTipo = variaveis.find(v => v.codigo?.toLowerCase() === codigo.toLowerCase());
-      if (variavelOutroTipo) {
-        toast.error(
-          `O código "${codigo}" está cadastrado como ${variavelOutroTipo.tipo}. Adicione na seção correta.`
-        );
-        return;
-      }
-
-      toast.error(`Variável com código "${codigo}" não encontrada`);
-      return;
+      if (variavelOutroTipo) { toast.error(`O código "${codigo}" está cadastrado como ${variavelOutroTipo.tipo}. Adicione na seção correta.`); return; }
+      toast.error(`Variável com código "${codigo}" não encontrada`); return;
     }
-
-    if (valor <= 0) {
-      toast.error("Digite um valor maior que zero");
-      return;
-    }
-
+    if (valor <= 0) { toast.error("Digite um valor maior que zero"); return; }
     handleItemChange(empId, variavel.id, valor);
     setCodigoBusca(prev => ({ ...prev, [`${empId}-${tipo}`]: "" }));
     setValorBusca(prev => ({ ...prev, [`${empId}-${tipo}`]: 0 }));
@@ -546,7 +366,6 @@ const LancamentoFolhaForm = ({ employees, empresaId, mes, ano, tipoFolha, onSucc
   const handleSelectVariavelFromPicker = (empId: string, tipo: "provento" | "desconto", variavel: Variavel) => {
     const valor = valorBusca[`${empId}-${tipo}`] || 0;
     if (valor <= 0) {
-      // Set the code and close picker, let user fill the value
       setCodigoBusca(prev => ({ ...prev, [`${empId}-${tipo}`]: variavel.codigo || variavel.nome }));
       setOpenVariavelPicker(null);
       toast.info(`"${variavel.nome}" selecionado. Digite o valor e pressione Enter.`);
@@ -563,13 +382,7 @@ const LancamentoFolhaForm = ({ employees, empresaId, mes, ano, tipoFolha, onSucc
     setLancamentos(prev => {
       const newItens = { ...prev[empId].itens };
       delete newItens[variavelId];
-      return {
-        ...prev,
-        [empId]: {
-          ...prev[empId],
-          itens: newItens,
-        }
-      };
+      return { ...prev, [empId]: { ...prev[empId], itens: newItens } };
     });
   };
 
@@ -585,428 +398,338 @@ const LancamentoFolhaForm = ({ employees, empresaId, mes, ano, tipoFolha, onSucc
       .filter(Boolean) as (Variavel & { valor: number })[];
   };
 
-  const employeesToShow = selectedEmployee === "all" 
-    ? employees 
-    : employees.filter(e => e.id === selectedEmployee);
+  const empHasData = (empId: string) => {
+    const lancamento = lancamentos[empId];
+    if (!lancamento) return false;
+    const totais = calcularTotais(empId);
+    return totais.proventos > 0 || totais.descontos > 0;
+  };
 
   const resumoGeral = getResumoGeral();
 
+  // Navigation helpers
+  const currentIndex = employees.findIndex(e => e.id === selectedEmployee);
+  const canGoPrev = currentIndex > 0;
+  const canGoNext = currentIndex < employees.length - 1;
+  const goToPrev = () => { if (canGoPrev) setSelectedEmployee(employees[currentIndex - 1].id); };
+  const goToNext = () => { if (canGoNext) setSelectedEmployee(employees[currentIndex + 1].id); };
+
+  const filteredEmployees = employees.filter(emp =>
+    emp.nome_completo.toLowerCase().includes(searchEmployee.toLowerCase())
+  );
+
+  const emp = employees.find(e => e.id === selectedEmployee);
+  const lancamento = emp ? lancamentos[emp.id] : null;
+  const totais = emp ? calcularTotais(emp.id) : { proventos: 0, descontos: 0, liquido: 0 };
+  const itensAdicionados = emp ? getVariaveisComValor(emp.id) : [];
+  const proventosAdicionados = itensAdicionados.filter(v => v.tipo === "provento");
+  const descontosAdicionados = itensAdicionados.filter(v => v.tipo === "desconto");
+
+  const formatCurrency = (val: number) => `R$ ${val.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`;
+
   return (
-    <div className="space-y-4">
-      {/* Header com filtros */}
-      <div className="flex flex-wrap gap-4 items-center justify-between bg-muted/30 p-4 rounded-lg">
-        <div>
-          <h3 className="text-lg font-semibold">
-            Lançamentos - {new Date(ano, mes - 1).toLocaleString("pt-BR", { month: "long", year: "numeric" })}
+    <div className="flex flex-col h-full">
+      {/* Sticky Summary Header */}
+      <div className="flex flex-wrap items-center justify-between gap-3 p-3 bg-muted/30 rounded-lg mb-3">
+        <div className="flex items-center gap-4">
+          <h3 className="text-sm font-semibold">
+            {new Date(ano, mes - 1).toLocaleString("pt-BR", { month: "long", year: "numeric" })}
           </h3>
-          <p className="text-sm text-muted-foreground">
-            {employeesToShow.length} funcionário(s) selecionado(s)
-          </p>
+          <Badge variant="outline" className="font-normal">
+            {resumoGeral.funcionariosComDados} de {employees.length} preenchidos
+          </Badge>
         </div>
-
-        <div className="flex gap-2 items-center">
-          <Select value={selectedEmployee} onValueChange={setSelectedEmployee}>
-            <SelectTrigger className="w-[220px]">
-              <Users className="w-4 h-4 mr-2" />
-              <SelectValue placeholder="Selecionar funcionário" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos os funcionários</SelectItem>
-              {employees.map(emp => (
-                <SelectItem key={emp.id} value={emp.id}>
-                  {emp.nome_completo}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          <Button variant="outline" onClick={handleCopiarMesAnterior}>
-            <Copy className="w-4 h-4 mr-2" />
-            Copiar Mês Anterior
+        <div className="flex items-center gap-3 text-sm">
+          <span className="text-green-600 font-medium">Prov: {formatCurrency(resumoGeral.totalProventos)}</span>
+          <span className="text-red-600 font-medium">Desc: {formatCurrency(resumoGeral.totalDescontos)}</span>
+          <span className="text-primary font-bold">Líq: {formatCurrency(resumoGeral.totalLiquido)}</span>
+          <Button variant="outline" size="sm" onClick={handleCopiarMesAnterior}>
+            <Copy className="w-3 h-3 mr-1" /> Copiar Mês Anterior
           </Button>
         </div>
       </div>
 
-      {/* Resumo geral */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 bg-muted/20 rounded-lg">
-        <div>
-          <p className="text-sm text-muted-foreground">Funcionários com dados</p>
-          <p className="text-xl font-bold">{resumoGeral.funcionariosComDados}</p>
-        </div>
-        <div>
-          <p className="text-sm text-muted-foreground">Total Proventos</p>
-          <p className="text-xl font-bold text-green-600">
-            R$ {resumoGeral.totalProventos.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
-          </p>
-        </div>
-        <div>
-          <p className="text-sm text-muted-foreground">Total Descontos</p>
-          <p className="text-xl font-bold text-red-600">
-            R$ {resumoGeral.totalDescontos.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
-          </p>
-        </div>
-        <div>
-          <p className="text-sm text-muted-foreground">Total Líquido</p>
-          <p className="text-xl font-bold text-primary">
-            R$ {resumoGeral.totalLiquido.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
-          </p>
-        </div>
-      </div>
-
-      {/* Lista de funcionários */}
-      <div className="space-y-4 max-h-[50vh] overflow-y-auto pr-2">
-        {employeesToShow.map(emp => {
-          const totais = calcularTotais(emp.id);
-          const lancamento = lancamentos[emp.id];
-          if (!lancamento) return null;
-
-          const itensAdicionados = getVariaveisComValor(emp.id);
-          const proventosAdicionados = itensAdicionados.filter(v => v.tipo === "provento");
-          const descontosAdicionados = itensAdicionados.filter(v => v.tipo === "desconto");
-
-          return (
-            <div key={emp.id} className="p-4 border rounded-lg space-y-4 bg-card">
-              {/* Cabeçalho do funcionário */}
-              <div className="flex justify-between items-start">
-                <div>
-                  <p className="font-semibold text-lg">{emp.nome_completo}</p>
-                  <p className="text-sm text-muted-foreground">{emp.cargo} {emp.setor ? `• ${emp.setor}` : ''}</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-sm text-muted-foreground">Valor em Mãos</p>
-                  <p className={`text-xl font-bold ${totais.liquido >= 0 ? 'text-green-600' : 'text-destructive'}`}>
-                    R$ {totais.liquido.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
-                  </p>
-                </div>
-              </div>
-
-              {/* Campos de Rescisão */}
-              {tipoFolha === "rescisao" && (
-                <div className="p-3 bg-muted/40 rounded-lg space-y-3 border border-dashed">
-                  <p className="font-semibold text-sm">Dados da Rescisão</p>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <div className="space-y-1">
-                      <Label className="text-sm">Tipo de Rescisão</Label>
-                      <Select
-                        value={rescisaoData[emp.id]?.tipo_rescisao || ""}
-                        onValueChange={(v) => setRescisaoData(prev => ({
-                          ...prev,
-                          [emp.id]: { ...prev[emp.id], tipo_rescisao: v, aviso_previo_cumprido: prev[emp.id]?.aviso_previo_cumprido ?? false }
-                        }))}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione o tipo" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {TIPO_RESCISAO_OPTIONS.map(opt => (
-                            <SelectItem key={opt.value} value={opt.value}>
-                              {opt.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-1">
-                      <Label className="text-sm">Aviso Prévio</Label>
-                      <Select
-                        value={rescisaoData[emp.id]?.aviso_previo_cumprido ? "sim" : "nao"}
-                        onValueChange={(v) => setRescisaoData(prev => ({
-                          ...prev,
-                          [emp.id]: { ...prev[emp.id], tipo_rescisao: prev[emp.id]?.tipo_rescisao || "", aviso_previo_cumprido: v === "sim" }
-                        }))}
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="sim">Cumprido</SelectItem>
-                          <SelectItem value="nao">Não cumprido / Indenizado</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Grid de proventos e descontos */}
-              <div className="grid md:grid-cols-2 gap-4">
-                {/* Proventos */}
-                <div className="space-y-2">
-                  <Label className="flex items-center gap-2">
-                    <TrendingUp className="w-4 h-4 text-green-600" />
-                    Proventos
-                  </Label>
-
-                  <div className="space-y-2">
-                    {/* Salário base */}
-                    <div className="flex items-center gap-2">
-                      <Label className="w-28 text-sm">Salário Base</Label>
-                      <Input
-                        type="number"
-                        step="0.01"
-                        value={lancamento.salario_base}
-                        onChange={(e) => handleValueChange(emp.id, "salario_base", parseFloat(e.target.value) || 0)}
-                        className="flex-1"
-                      />
-                    </div>
-
-                    {/* Proventos adicionados */}
-                    {proventosAdicionados.map(v => (
-                      <div key={v.id} className="flex items-center gap-2">
-                        {v.codigo && (
-                          <Badge variant="outline" className="font-mono text-xs">
-                            {v.codigo}
-                          </Badge>
-                        )}
-                        <Label className="flex-1 text-sm truncate" title={v.nome}>{v.nome}</Label>
-                        <Input
-                          type="number"
-                          step="0.01"
-                          value={v.valor}
-                          onChange={(e) => handleItemChange(emp.id, v.id, parseFloat(e.target.value) || 0)}
-                          className="w-28"
-                        />
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                          onClick={() => handleRemoveItem(emp.id, v.id)}
-                        >
-                          <X className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    ))}
-
-                    {/* Adicionar provento por código */}
-                    <div className="flex items-center gap-2 pt-2">
-                      <div className="relative">
-                        <Input
-                          placeholder="Código"
-                          value={codigoBusca[`${emp.id}-provento`] || ""}
-                          onChange={(e) => setCodigoBusca(prev => ({ ...prev, [`${emp.id}-provento`]: e.target.value }))}
-                          className="w-24"
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") {
-                              e.preventDefault();
-                              handleBuscarVariavel(emp.id, "provento");
-                            }
-                          }}
-                        />
-                        <Popover 
-                          open={openVariavelPicker === `${emp.id}-provento`} 
-                          onOpenChange={(open) => setOpenVariavelPicker(open ? `${emp.id}-provento` : null)}
-                        >
-                          <PopoverTrigger asChild>
-                            <span className="absolute inset-0 pointer-events-none" />
-                          </PopoverTrigger>
-                          <PopoverContent className="w-[280px] p-0" align="start">
-                            <Command>
-                              <CommandInput placeholder="Buscar variável..." />
-                              <CommandList>
-                                <CommandEmpty>Nenhuma variável encontrada</CommandEmpty>
-                                <CommandGroup heading="Proventos">
-                                  {variaveis
-                                    .filter(v => v.tipo === "provento" && !lancamentos[emp.id]?.itens[v.id])
-                                    .map(v => (
-                                      <CommandItem
-                                        key={v.id}
-                                        value={`${v.nome} ${v.codigo || ""}`}
-                                        onSelect={() => handleSelectVariavelFromPicker(emp.id, "provento", v)}
-                                      >
-                                        <div className="flex items-center gap-2 w-full">
-                                          {v.codigo && (
-                                            <Badge variant="outline" className="font-mono text-xs">
-                                              {v.codigo}
-                                            </Badge>
-                                          )}
-                                          <span className="text-sm">{v.nome}</span>
-                                        </div>
-                                      </CommandItem>
-                                    ))}
-                                </CommandGroup>
-                              </CommandList>
-                            </Command>
-                          </PopoverContent>
-                        </Popover>
-                      </div>
-                      <Input
-                        type="number"
-                        step="0.01"
-                        placeholder="Valor"
-                        value={valorBusca[`${emp.id}-provento`] || ""}
-                        onChange={(e) => setValorBusca(prev => ({ ...prev, [`${emp.id}-provento`]: parseFloat(e.target.value) || 0 }))}
-                        className="flex-1"
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") {
-                            e.preventDefault();
-                            handleBuscarVariavel(emp.id, "provento");
-                          }
-                        }}
-                      />
-                      <Button 
-                        variant="outline" 
-                        size="icon"
-                        onClick={() => handleBuscarVariavel(emp.id, "provento")}
-                      >
-                        <Plus className="w-4 h-4" />
-                      </Button>
-                    </div>
-
-                    <div className="flex justify-between pt-2 border-t">
-                      <span className="font-semibold text-green-600">Total:</span>
-                      <span className="font-semibold text-green-600">
-                        R$ {totais.proventos.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Descontos */}
-                <div className="space-y-2">
-                  <Label className="flex items-center gap-2">
-                    <TrendingDown className="w-4 h-4 text-red-600" />
-                    Descontos
-                  </Label>
-
-                  <div className="space-y-2">
-                    {descontosAdicionados.length === 0 ? (
-                      <p className="text-sm text-muted-foreground italic py-2">Nenhum desconto adicionado</p>
+      {/* Two-column layout */}
+      <div className="flex gap-3 flex-1 min-h-0">
+        {/* Sidebar - Employee List */}
+        <div className="w-[250px] shrink-0 border rounded-lg flex flex-col bg-card">
+          <div className="p-2 border-b">
+            <div className="relative">
+              <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+              <Input
+                placeholder="Buscar..."
+                value={searchEmployee}
+                onChange={e => setSearchEmployee(e.target.value)}
+                className="h-8 pl-7 text-sm"
+              />
+            </div>
+          </div>
+          <ScrollArea className="flex-1">
+            <div className="p-1">
+              {filteredEmployees.map(e => {
+                const hasData = empHasData(e.id);
+                const isActive = e.id === selectedEmployee;
+                return (
+                  <button
+                    key={e.id}
+                    onClick={() => setSelectedEmployee(e.id)}
+                    className={`w-full text-left px-2.5 py-2 rounded-md text-sm flex items-center gap-2 transition-colors ${
+                      isActive ? "bg-primary/10 text-primary font-medium" : "hover:bg-muted/50"
+                    }`}
+                  >
+                    {hasData ? (
+                      <Check className="w-3.5 h-3.5 text-green-600 shrink-0" />
                     ) : (
-                      descontosAdicionados.map(v => (
-                        <div key={v.id} className="flex items-center gap-2">
-                          {v.codigo && (
-                            <Badge variant="outline" className="font-mono text-xs">
-                              {v.codigo}
-                            </Badge>
-                          )}
-                          <Label className="flex-1 text-sm truncate" title={v.nome}>{v.nome}</Label>
-                          <Input
-                            type="number"
-                            step="0.01"
-                            value={v.valor}
-                            onChange={(e) => handleItemChange(emp.id, v.id, parseFloat(e.target.value) || 0)}
-                            className="w-28"
-                          />
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                            onClick={() => handleRemoveItem(emp.id, v.id)}
-                          >
-                            <X className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      ))
+                      <Circle className="w-3.5 h-3.5 text-muted-foreground/40 shrink-0" />
                     )}
+                    <span className="truncate">{e.nome_completo}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </ScrollArea>
+        </div>
 
-                    {/* Adicionar desconto por código */}
-                    <div className="flex items-center gap-2 pt-2">
-                      <div className="relative">
-                        <Input
-                          placeholder="Código"
-                          value={codigoBusca[`${emp.id}-desconto`] || ""}
-                          onChange={(e) => setCodigoBusca(prev => ({ ...prev, [`${emp.id}-desconto`]: e.target.value }))}
-                          className="w-24"
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") {
-                              e.preventDefault();
-                              handleBuscarVariavel(emp.id, "desconto");
-                            }
-                          }}
-                        />
-                        <Popover 
-                          open={openVariavelPicker === `${emp.id}-desconto`} 
-                          onOpenChange={(open) => setOpenVariavelPicker(open ? `${emp.id}-desconto` : null)}
-                        >
-                          <PopoverTrigger asChild>
-                            <span className="absolute inset-0 pointer-events-none" />
-                          </PopoverTrigger>
-                          <PopoverContent className="w-[280px] p-0" align="start">
-                            <Command>
-                              <CommandInput placeholder="Buscar variável..." />
-                              <CommandList>
-                                <CommandEmpty>Nenhuma variável encontrada</CommandEmpty>
-                                <CommandGroup heading="Descontos">
-                                  {variaveis
-                                    .filter(v => v.tipo === "desconto" && !lancamentos[emp.id]?.itens[v.id])
-                                    .map(v => (
-                                      <CommandItem
-                                        key={v.id}
-                                        value={`${v.nome} ${v.codigo || ""}`}
-                                        onSelect={() => handleSelectVariavelFromPicker(emp.id, "desconto", v)}
-                                      >
-                                        <div className="flex items-center gap-2 w-full">
-                                          {v.codigo && (
-                                            <Badge variant="outline" className="font-mono text-xs">
-                                              {v.codigo}
-                                            </Badge>
-                                          )}
-                                          <span className="text-sm">{v.nome}</span>
-                                        </div>
-                                      </CommandItem>
-                                    ))}
-                                </CommandGroup>
-                              </CommandList>
-                            </Command>
-                          </PopoverContent>
-                        </Popover>
-                      </div>
-                      <Input
-                        type="number"
-                        step="0.01"
-                        placeholder="Valor"
-                        value={valorBusca[`${emp.id}-desconto`] || ""}
-                        onChange={(e) => setValorBusca(prev => ({ ...prev, [`${emp.id}-desconto`]: parseFloat(e.target.value) || 0 }))}
-                        className="flex-1"
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") {
-                            e.preventDefault();
-                            handleBuscarVariavel(emp.id, "desconto");
-                          }
-                        }}
-                      />
-                      <Button 
-                        variant="outline" 
-                        size="icon"
-                        onClick={() => handleBuscarVariavel(emp.id, "desconto")}
-                      >
-                        <Plus className="w-4 h-4" />
-                      </Button>
-                    </div>
-
-                    <div className="flex justify-between pt-2 border-t">
-                      <span className="font-semibold text-red-600">Total:</span>
-                      <span className="font-semibold text-red-600">
-                        R$ {totais.descontos.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Observações */}
+        {/* Main Panel - Selected Employee */}
+        {emp && lancamento ? (
+          <div className="flex-1 border rounded-lg flex flex-col bg-card min-h-0">
+            {/* Employee header */}
+            <div className="flex items-center justify-between p-4 border-b">
               <div>
-                <Label>Observações</Label>
-                <Textarea
-                  value={lancamento.observacoes}
-                  onChange={(e) => handleValueChange(emp.id, "observacoes", e.target.value)}
-                  rows={2}
-                  placeholder="Observações opcionais..."
-                  className="mt-1"
-                />
+                <p className="font-semibold text-lg">{emp.nome_completo}</p>
+                <p className="text-sm text-muted-foreground">{emp.cargo}{emp.setor ? ` • ${emp.setor}` : ""}</p>
+              </div>
+              <div className="text-right">
+                <p className="text-xs text-muted-foreground">Valor em Mãos</p>
+                <p className={`text-xl font-bold ${totais.liquido >= 0 ? "text-green-600" : "text-destructive"}`}>
+                  {formatCurrency(totais.liquido)}
+                </p>
               </div>
             </div>
-          );
-        })}
+
+            {/* Scrollable content */}
+            <ScrollArea className="flex-1 p-4">
+              <div className="space-y-4">
+                {/* Rescisão fields */}
+                {tipoFolha === "rescisao" && (
+                  <div className="p-3 bg-muted/40 rounded-lg space-y-3 border border-dashed">
+                    <p className="font-semibold text-sm">Dados da Rescisão</p>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <Label className="text-sm">Tipo de Rescisão</Label>
+                        <Select
+                          value={rescisaoData[emp.id]?.tipo_rescisao || ""}
+                          onValueChange={(v) => setRescisaoData(prev => ({
+                            ...prev, [emp.id]: { ...prev[emp.id], tipo_rescisao: v, aviso_previo_cumprido: prev[emp.id]?.aviso_previo_cumprido ?? false }
+                          }))}
+                        >
+                          <SelectTrigger><SelectValue placeholder="Selecione o tipo" /></SelectTrigger>
+                          <SelectContent>
+                            {TIPO_RESCISAO_OPTIONS.map(opt => (
+                              <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-sm">Aviso Prévio</Label>
+                        <Select
+                          value={rescisaoData[emp.id]?.aviso_previo_cumprido ? "sim" : "nao"}
+                          onValueChange={(v) => setRescisaoData(prev => ({
+                            ...prev, [emp.id]: { ...prev[emp.id], tipo_rescisao: prev[emp.id]?.tipo_rescisao || "", aviso_previo_cumprido: v === "sim" }
+                          }))}
+                        >
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="sim">Cumprido</SelectItem>
+                            <SelectItem value="nao">Não cumprido / Indenizado</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Salário base */}
+                <div className="flex items-center gap-3">
+                  <Label className="text-sm w-24 shrink-0">Salário Base</Label>
+                  <Input
+                    type="number" step="0.01"
+                    value={lancamento.salario_base}
+                    onChange={(e) => handleValueChange(emp.id, "salario_base", parseFloat(e.target.value) || 0)}
+                    className="max-w-[200px]"
+                  />
+                </div>
+
+                {/* Proventos table */}
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2 text-green-600">
+                    <TrendingUp className="w-4 h-4" /> Proventos
+                  </Label>
+                  {proventosAdicionados.length > 0 ? (
+                    <div className="border rounded-md overflow-hidden">
+                      {proventosAdicionados.map(v => (
+                        <div key={v.id} className="flex items-center gap-2 px-3 py-1.5 border-b last:border-b-0 hover:bg-muted/30">
+                          {v.codigo && <Badge variant="outline" className="font-mono text-xs shrink-0">{v.codigo}</Badge>}
+                          <span className="text-sm flex-1 truncate">{v.nome}</span>
+                          <Input
+                            type="number" step="0.01" value={v.valor}
+                            onChange={(e) => handleItemChange(emp.id, v.id, parseFloat(e.target.value) || 0)}
+                            className="w-28 h-8"
+                          />
+                          <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive" onClick={() => handleRemoveItem(emp.id, v.id)}>
+                            <X className="w-3.5 h-3.5" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground italic">Nenhum provento adicionado</p>
+                  )}
+                  <div className="flex justify-end text-sm font-semibold text-green-600">
+                    Total: {formatCurrency(totais.proventos)}
+                  </div>
+                </div>
+
+                {/* Descontos table */}
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2 text-red-600">
+                    <TrendingDown className="w-4 h-4" /> Descontos
+                  </Label>
+                  {descontosAdicionados.length > 0 ? (
+                    <div className="border rounded-md overflow-hidden">
+                      {descontosAdicionados.map(v => (
+                        <div key={v.id} className="flex items-center gap-2 px-3 py-1.5 border-b last:border-b-0 hover:bg-muted/30">
+                          {v.codigo && <Badge variant="outline" className="font-mono text-xs shrink-0">{v.codigo}</Badge>}
+                          <span className="text-sm flex-1 truncate">{v.nome}</span>
+                          <Input
+                            type="number" step="0.01" value={v.valor}
+                            onChange={(e) => handleItemChange(emp.id, v.id, parseFloat(e.target.value) || 0)}
+                            className="w-28 h-8"
+                          />
+                          <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive" onClick={() => handleRemoveItem(emp.id, v.id)}>
+                            <X className="w-3.5 h-3.5" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground italic">Nenhum desconto adicionado</p>
+                  )}
+                  <div className="flex justify-end text-sm font-semibold text-red-600">
+                    Total: {formatCurrency(totais.descontos)}
+                  </div>
+                </div>
+
+                {/* Unified add variable */}
+                <div className="p-3 bg-muted/20 rounded-lg space-y-2">
+                  <Label className="text-sm font-medium">Adicionar variável</Label>
+                  <div className="flex items-center gap-2">
+                    <Select value={addVarTipo} onValueChange={(v: "provento" | "desconto") => setAddVarTipo(v)}>
+                      <SelectTrigger className="w-[130px] h-9">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="provento">Provento</SelectItem>
+                        <SelectItem value="desconto">Desconto</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <div className="relative">
+                      <Input
+                        placeholder="Código"
+                        value={codigoBusca[`${emp.id}-${addVarTipo}`] || ""}
+                        onChange={(e) => setCodigoBusca(prev => ({ ...prev, [`${emp.id}-${addVarTipo}`]: e.target.value }))}
+                        className="w-28 h-9"
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") { e.preventDefault(); handleBuscarVariavel(emp.id, addVarTipo); }
+                        }}
+                      />
+                      <Popover
+                        open={openVariavelPicker === `${emp.id}-${addVarTipo}`}
+                        onOpenChange={(open) => setOpenVariavelPicker(open ? `${emp.id}-${addVarTipo}` : null)}
+                      >
+                        <PopoverTrigger asChild>
+                          <span className="absolute inset-0 pointer-events-none" />
+                        </PopoverTrigger>
+                        <PopoverContent className="w-[280px] p-0" align="start">
+                          <Command>
+                            <CommandInput placeholder="Buscar variável..." />
+                            <CommandList>
+                              <CommandEmpty>Nenhuma variável encontrada</CommandEmpty>
+                              <CommandGroup heading={addVarTipo === "provento" ? "Proventos" : "Descontos"}>
+                                {variaveis
+                                  .filter(v => v.tipo === addVarTipo && !lancamentos[emp.id]?.itens[v.id])
+                                  .map(v => (
+                                    <CommandItem
+                                      key={v.id}
+                                      value={`${v.nome} ${v.codigo || ""}`}
+                                      onSelect={() => handleSelectVariavelFromPicker(emp.id, addVarTipo, v)}
+                                    >
+                                      <div className="flex items-center gap-2 w-full">
+                                        {v.codigo && <Badge variant="outline" className="font-mono text-xs">{v.codigo}</Badge>}
+                                        <span className="text-sm">{v.nome}</span>
+                                      </div>
+                                    </CommandItem>
+                                  ))}
+                              </CommandGroup>
+                            </CommandList>
+                          </Command>
+                        </PopoverContent>
+                      </Popover>
+                    </div>
+                    <Input
+                      type="number" step="0.01" placeholder="Valor"
+                      value={valorBusca[`${emp.id}-${addVarTipo}`] || ""}
+                      onChange={(e) => setValorBusca(prev => ({ ...prev, [`${emp.id}-${addVarTipo}`]: parseFloat(e.target.value) || 0 }))}
+                      className="flex-1 h-9"
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") { e.preventDefault(); handleBuscarVariavel(emp.id, addVarTipo); }
+                      }}
+                    />
+                    <Button variant="outline" size="icon" className="h-9 w-9" onClick={() => handleBuscarVariavel(emp.id, addVarTipo)}>
+                      <Plus className="w-4 h-4" />
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">Digite o código + valor e pressione Enter, ou Enter vazio para buscar</p>
+                </div>
+
+                {/* Observações */}
+                <div>
+                  <Label className="text-sm">Observações</Label>
+                  <Textarea
+                    value={lancamento.observacoes}
+                    onChange={(e) => handleValueChange(emp.id, "observacoes", e.target.value)}
+                    rows={2}
+                    placeholder="Observações opcionais..."
+                    className="mt-1"
+                  />
+                </div>
+              </div>
+            </ScrollArea>
+
+            {/* Footer with navigation */}
+            <div className="flex items-center justify-between p-3 border-t bg-muted/10">
+              <Button variant="outline" size="sm" onClick={goToPrev} disabled={!canGoPrev}>
+                <ChevronLeft className="w-4 h-4 mr-1" /> Anterior
+              </Button>
+              <span className="text-xs text-muted-foreground">{currentIndex + 1} / {employees.length}</span>
+              <Button variant="outline" size="sm" onClick={goToNext} disabled={!canGoNext}>
+                Próximo <ChevronRight className="w-4 h-4 ml-1" />
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <div className="flex-1 border rounded-lg flex items-center justify-center text-muted-foreground">
+            Selecione um funcionário
+          </div>
+        )}
       </div>
 
-      {/* Botões de ação */}
-      <Separator />
+      {/* Action buttons */}
+      <Separator className="my-3" />
       <div className="flex justify-between items-center">
         <div className="flex items-center gap-4">
-          <Button variant="outline" onClick={handleCancel} disabled={loading}>
-            Cancelar
-          </Button>
+          <Button variant="outline" onClick={handleCancel} disabled={loading}>Cancelar</Button>
           {lastSaved && (
             <span className="text-xs text-muted-foreground flex items-center gap-1">
               <Save className="w-3 h-3" />
@@ -1014,16 +737,13 @@ const LancamentoFolhaForm = ({ employees, empresaId, mes, ano, tipoFolha, onSucc
             </span>
           )}
         </div>
-        <Button 
-          onClick={() => setShowConfirmDialog(true)} 
-          disabled={loading || resumoGeral.funcionariosComDados === 0}
-        >
+        <Button onClick={() => setShowConfirmDialog(true)} disabled={loading || resumoGeral.funcionariosComDados === 0}>
           {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
           Lançar Pagamentos
         </Button>
       </div>
 
-      {/* Dialog de confirmação */}
+      {/* Confirm dialog */}
       <AlertDialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -1032,63 +752,42 @@ const LancamentoFolhaForm = ({ employees, empresaId, mes, ano, tipoFolha, onSucc
               <div className="space-y-4">
                 <p>Você está prestes a lançar pagamentos com os seguintes totais:</p>
                 <div className="grid grid-cols-2 gap-2 p-4 bg-muted rounded-lg">
-                  <span>Funcionários:</span>
-                  <span className="font-semibold">{resumoGeral.funcionariosComDados}</span>
-                  <span>Total Proventos:</span>
-                  <span className="font-semibold text-green-600">
-                    R$ {resumoGeral.totalProventos.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
-                  </span>
-                  <span>Total Descontos:</span>
-                  <span className="font-semibold text-red-600">
-                    R$ {resumoGeral.totalDescontos.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
-                  </span>
-                  <span>Total Líquido:</span>
-                  <span className="font-semibold text-primary">
-                    R$ {resumoGeral.totalLiquido.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
-                  </span>
+                  <span>Funcionários:</span><span className="font-semibold">{resumoGeral.funcionariosComDados}</span>
+                  <span>Total Proventos:</span><span className="font-semibold text-green-600">{formatCurrency(resumoGeral.totalProventos)}</span>
+                  <span>Total Descontos:</span><span className="font-semibold text-red-600">{formatCurrency(resumoGeral.totalDescontos)}</span>
+                  <span>Total Líquido:</span><span className="font-semibold text-primary">{formatCurrency(resumoGeral.totalLiquido)}</span>
                 </div>
-                <p className="text-sm text-muted-foreground">
-                  Esta ação irá criar ou atualizar os registros de pagamento para o período selecionado.
-                </p>
+                <p className="text-sm text-muted-foreground">Esta ação irá criar ou atualizar os registros de pagamento para o período selecionado.</p>
               </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={loading}>Cancelar</AlertDialogCancel>
             <AlertDialogAction onClick={handleSubmit} disabled={loading}>
-              {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-              Confirmar
+              {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />} Confirmar
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Dialog para restaurar rascunho */}
+      {/* Restore draft dialog */}
       <AlertDialog open={showRestoreDialog} onOpenChange={setShowRestoreDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Rascunho Encontrado</AlertDialogTitle>
             <AlertDialogDescription asChild>
               <div className="space-y-2">
-                <p>
-                  Foi encontrado um rascunho salvo automaticamente para este período.
-                </p>
+                <p>Foi encontrado um rascunho salvo automaticamente para este período.</p>
                 {savedDraft && (
-                  <p className="text-sm text-muted-foreground">
-                    Salvo em: {new Date(savedDraft.savedAt).toLocaleString("pt-BR")}
-                  </p>
+                  <p className="text-sm text-muted-foreground">Salvo em: {new Date(savedDraft.savedAt).toLocaleString("pt-BR")}</p>
                 )}
                 <p>Deseja restaurar os dados do rascunho ou começar do zero?</p>
               </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={handleDiscardDraft}>
-              Começar do Zero
-            </AlertDialogCancel>
-            <AlertDialogAction onClick={handleRestoreDraft}>
-              Restaurar Rascunho
-            </AlertDialogAction>
+            <AlertDialogCancel onClick={handleDiscardDraft}>Começar do Zero</AlertDialogCancel>
+            <AlertDialogAction onClick={handleRestoreDraft}>Restaurar Rascunho</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
