@@ -1,11 +1,11 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Upload, FileText, AlertCircle, Check } from "lucide-react";
+import { Upload, FileText, AlertCircle, Check, Link } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -17,10 +17,19 @@ interface NfeItem {
   ncm: string;
   unidade: string;
   tipo: "epi" | "uniforme" | "ignorar";
+  vinculadoId: string; // "" = novo item, "novo" = criar novo, or existing item id
   tamanho: string;
   cor: string;
   ca: string;
   marcaModelo: string;
+}
+
+interface ExistingItem {
+  id: string;
+  nome: string;
+  tipo: "epi" | "uniforme";
+  detalhes: string;
+  quantidade_estoque: number;
 }
 
 interface ImportNfeDialogProps {
@@ -35,7 +44,46 @@ const ImportNfeDialog = ({ open, onOpenChange, onImported }: ImportNfeDialogProp
   const [fileName, setFileName] = useState("");
   const [importing, setImporting] = useState(false);
   const [step, setStep] = useState<"upload" | "preview">("upload");
+  const [existingEpis, setExistingEpis] = useState<ExistingItem[]>([]);
+  const [existingUniformes, setExistingUniformes] = useState<ExistingItem[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (open) {
+      fetchExistingItems();
+    }
+  }, [open]);
+
+  const fetchExistingItems = async () => {
+    const [episRes, uniformesRes] = await Promise.all([
+      supabase.from("estoque_epis").select("*").order("tipo_epi"),
+      supabase.from("estoque_uniformes").select("*").order("tipo_uniforme"),
+    ]);
+
+    if (episRes.data) {
+      setExistingEpis(
+        episRes.data.map((e) => ({
+          id: e.id,
+          nome: e.tipo_epi,
+          tipo: "epi" as const,
+          detalhes: [e.marca_modelo, e.tamanho, e.ca ? `CA: ${e.ca}` : ""].filter(Boolean).join(" | "),
+          quantidade_estoque: e.quantidade_estoque,
+        }))
+      );
+    }
+
+    if (uniformesRes.data) {
+      setExistingUniformes(
+        uniformesRes.data.map((u) => ({
+          id: u.id,
+          nome: u.tipo_uniforme,
+          tipo: "uniforme" as const,
+          detalhes: [u.tamanho, u.cor].filter(Boolean).join(" | "),
+          quantidade_estoque: u.quantidade_estoque,
+        }))
+      );
+    }
+  };
 
   const resetState = () => {
     setItems([]);
@@ -89,6 +137,7 @@ const ImportNfeDialog = ({ open, onOpenChange, onImported }: ImportNfeDialogProp
         ncm: getText("NCM"),
         unidade: getText("uCom"),
         tipo: "ignorar",
+        vinculadoId: "",
         tamanho: "",
         cor: "",
         ca: "",
@@ -124,10 +173,22 @@ const ImportNfeDialog = ({ open, onOpenChange, onImported }: ImportNfeDialogProp
     reader.readAsText(file);
   };
 
-  const updateItem = (index: number, field: keyof NfeItem, value: string) => {
+  const updateItem = (index: number, updates: Partial<NfeItem>) => {
     setItems((prev) =>
-      prev.map((item) => (item.index === index ? { ...item, [field]: value } : item))
+      prev.map((item) => (item.index === index ? { ...item, ...updates } : item))
     );
+  };
+
+  const handleTipoChange = (index: number, tipo: string) => {
+    updateItem(index, { tipo: tipo as NfeItem["tipo"], vinculadoId: "" });
+  };
+
+  const handleVinculoChange = (index: number, vinculadoId: string) => {
+    updateItem(index, { vinculadoId });
+  };
+
+  const getExistingItemsForType = (tipo: "epi" | "uniforme"): ExistingItem[] => {
+    return tipo === "epi" ? existingEpis : existingUniformes;
   };
 
   const handleImport = async () => {
@@ -159,17 +220,19 @@ const ImportNfeDialog = ({ open, onOpenChange, onImported }: ImportNfeDialogProp
   };
 
   const importEpi = async (item: NfeItem) => {
-    // Try to find existing
-    const { data: existing } = await supabase
-      .from("estoque_epis")
-      .select("*")
-      .ilike("tipo_epi", item.descricao)
-      .limit(1);
+    const qty = Math.round(item.quantidade);
 
-    if (existing && existing.length > 0) {
-      const record = existing[0];
-      const newQty = record.quantidade_estoque + Math.round(item.quantidade);
+    // If linked to existing item
+    if (item.vinculadoId && item.vinculadoId !== "novo") {
+      const { data: record } = await supabase
+        .from("estoque_epis")
+        .select("*")
+        .eq("id", item.vinculadoId)
+        .single();
 
+      if (!record) throw new Error(`EPI vinculado não encontrado`);
+
+      const newQty = record.quantidade_estoque + qty;
       await supabase
         .from("estoque_epis")
         .update({ quantidade_estoque: newQty })
@@ -177,51 +240,55 @@ const ImportNfeDialog = ({ open, onOpenChange, onImported }: ImportNfeDialogProp
 
       await supabase.from("historico_estoque_epis").insert({
         estoque_epi_id: record.id,
-        quantidade: Math.round(item.quantidade),
+        quantidade: qty,
         quantidade_anterior: record.quantidade_estoque,
         quantidade_nova: newQty,
         tipo_movimentacao: "entrada",
         motivo: `Entrada via NF-e nº ${nfeNumero}`,
       });
-    } else {
-      const qty = Math.round(item.quantidade);
-      const { data: inserted, error } = await supabase
-        .from("estoque_epis")
-        .insert({
-          tipo_epi: item.descricao,
-          quantidade_estoque: qty,
-          quantidade_minima: 10,
-          tamanho: item.tamanho || null,
-          ca: item.ca || null,
-          marca_modelo: item.marcaModelo || null,
-        })
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      await supabase.from("historico_estoque_epis").insert({
-        estoque_epi_id: inserted.id,
-        quantidade: qty,
-        quantidade_anterior: 0,
-        quantidade_nova: qty,
-        tipo_movimentacao: "entrada",
-        motivo: `Entrada via NF-e nº ${nfeNumero}`,
-      });
+      return;
     }
+
+    // Create new
+    const { data: inserted, error } = await supabase
+      .from("estoque_epis")
+      .insert({
+        tipo_epi: item.descricao,
+        quantidade_estoque: qty,
+        quantidade_minima: 10,
+        tamanho: item.tamanho || null,
+        ca: item.ca || null,
+        marca_modelo: item.marcaModelo || null,
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    await supabase.from("historico_estoque_epis").insert({
+      estoque_epi_id: inserted.id,
+      quantidade: qty,
+      quantidade_anterior: 0,
+      quantidade_nova: qty,
+      tipo_movimentacao: "entrada",
+      motivo: `Entrada via NF-e nº ${nfeNumero}`,
+    });
   };
 
   const importUniforme = async (item: NfeItem) => {
-    const { data: existing } = await supabase
-      .from("estoque_uniformes")
-      .select("*")
-      .ilike("tipo_uniforme", item.descricao)
-      .limit(1);
+    const qty = Math.round(item.quantidade);
 
-    if (existing && existing.length > 0) {
-      const record = existing[0];
-      const newQty = record.quantidade_estoque + Math.round(item.quantidade);
+    // If linked to existing item
+    if (item.vinculadoId && item.vinculadoId !== "novo") {
+      const { data: record } = await supabase
+        .from("estoque_uniformes")
+        .select("*")
+        .eq("id", item.vinculadoId)
+        .single();
 
+      if (!record) throw new Error(`Uniforme vinculado não encontrado`);
+
+      const newQty = record.quantidade_estoque + qty;
       await supabase
         .from("estoque_uniformes")
         .update({ quantidade_estoque: newQty })
@@ -229,44 +296,45 @@ const ImportNfeDialog = ({ open, onOpenChange, onImported }: ImportNfeDialogProp
 
       await supabase.from("historico_estoque_uniformes").insert({
         estoque_uniforme_id: record.id,
-        quantidade: Math.round(item.quantidade),
+        quantidade: qty,
         quantidade_anterior: record.quantidade_estoque,
         quantidade_nova: newQty,
         tipo_movimentacao: "entrada",
         motivo: `Entrada via NF-e nº ${nfeNumero}`,
       });
-    } else {
-      const qty = Math.round(item.quantidade);
-      const { data: inserted, error } = await supabase
-        .from("estoque_uniformes")
-        .insert({
-          tipo_uniforme: item.descricao,
-          quantidade_estoque: qty,
-          quantidade_minima: 10,
-          tamanho: item.tamanho || "Único",
-          cor: item.cor || null,
-        })
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      await supabase.from("historico_estoque_uniformes").insert({
-        estoque_uniforme_id: inserted.id,
-        quantidade: qty,
-        quantidade_anterior: 0,
-        quantidade_nova: qty,
-        tipo_movimentacao: "entrada",
-        motivo: `Entrada via NF-e nº ${nfeNumero}`,
-      });
+      return;
     }
+
+    // Create new
+    const { data: inserted, error } = await supabase
+      .from("estoque_uniformes")
+      .insert({
+        tipo_uniforme: item.descricao,
+        quantidade_estoque: qty,
+        quantidade_minima: 10,
+        tamanho: item.tamanho || "Único",
+        cor: item.cor || null,
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    await supabase.from("historico_estoque_uniformes").insert({
+      estoque_uniforme_id: inserted.id,
+      quantidade: qty,
+      quantidade_anterior: 0,
+      quantidade_nova: qty,
+      tipo_movimentacao: "entrada",
+      motivo: `Entrada via NF-e nº ${nfeNumero}`,
+    });
   };
 
   const selectedCount = items.filter((i) => i.tipo !== "ignorar").length;
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <FileText className="h-5 w-5" />
@@ -301,7 +369,7 @@ const ImportNfeDialog = ({ open, onOpenChange, onImported }: ImportNfeDialogProp
 
         {step === "preview" && (
           <div className="space-y-4">
-            <div className="flex items-center gap-4 text-sm">
+            <div className="flex items-center gap-4 text-sm flex-wrap">
               <Badge variant="outline">NF-e nº {nfeNumero}</Badge>
               <Badge variant="outline">{fileName}</Badge>
               <Badge variant="secondary">{items.length} produto(s)</Badge>
@@ -312,10 +380,11 @@ const ImportNfeDialog = ({ open, onOpenChange, onImported }: ImportNfeDialogProp
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="min-w-[200px]">Descrição</TableHead>
+                    <TableHead className="min-w-[180px]">Descrição NF-e</TableHead>
                     <TableHead className="w-20">Qtd</TableHead>
                     <TableHead className="w-24">Valor Un.</TableHead>
                     <TableHead className="w-32">Tipo</TableHead>
+                    <TableHead className="min-w-[220px]">Vincular a item existente</TableHead>
                     <TableHead className="w-28">Tamanho</TableHead>
                     <TableHead className="w-28">Cor</TableHead>
                     <TableHead className="w-28">CA</TableHead>
@@ -323,78 +392,113 @@ const ImportNfeDialog = ({ open, onOpenChange, onImported }: ImportNfeDialogProp
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {items.map((item) => (
-                    <TableRow key={item.index} className={item.tipo === "ignorar" ? "opacity-50" : ""}>
-                      <TableCell className="font-medium text-xs">{item.descricao}</TableCell>
-                      <TableCell>{item.quantidade}</TableCell>
-                      <TableCell>
-                        {item.valorUnitario.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
-                      </TableCell>
-                      <TableCell>
-                        <Select
-                          value={item.tipo}
-                          onValueChange={(v) => updateItem(item.index, "tipo", v)}
-                        >
-                          <SelectTrigger className="h-8 text-xs">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="ignorar">Ignorar</SelectItem>
-                            <SelectItem value="epi">EPI</SelectItem>
-                            <SelectItem value="uniforme">Uniforme</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </TableCell>
-                      <TableCell>
-                        {item.tipo !== "ignorar" && (
-                          <Input
-                            className="h-8 text-xs"
-                            placeholder="Tamanho"
-                            value={item.tamanho}
-                            onChange={(e) => updateItem(item.index, "tamanho", e.target.value)}
-                          />
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        {item.tipo !== "ignorar" && (
-                          <Input
-                            className="h-8 text-xs"
-                            placeholder="Cor"
-                            value={item.cor}
-                            onChange={(e) => updateItem(item.index, "cor", e.target.value)}
-                          />
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        {item.tipo === "epi" && (
-                          <Input
-                            className="h-8 text-xs"
-                            placeholder="CA"
-                            value={item.ca}
-                            onChange={(e) => updateItem(item.index, "ca", e.target.value)}
-                          />
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        {item.tipo === "epi" && (
-                          <Input
-                            className="h-8 text-xs"
-                            placeholder="Marca"
-                            value={item.marcaModelo}
-                            onChange={(e) => updateItem(item.index, "marcaModelo", e.target.value)}
-                          />
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                  {items.map((item) => {
+                    const existingItems = item.tipo !== "ignorar" ? getExistingItemsForType(item.tipo) : [];
+                    const isLinked = item.vinculadoId && item.vinculadoId !== "novo";
+                    const isNew = item.tipo !== "ignorar" && (!item.vinculadoId || item.vinculadoId === "novo");
+
+                    return (
+                      <TableRow key={item.index} className={item.tipo === "ignorar" ? "opacity-50" : ""}>
+                        <TableCell className="font-medium text-xs">{item.descricao}</TableCell>
+                        <TableCell>{item.quantidade}</TableCell>
+                        <TableCell>
+                          {item.valorUnitario.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                        </TableCell>
+                        <TableCell>
+                          <Select
+                            value={item.tipo}
+                            onValueChange={(v) => handleTipoChange(item.index, v)}
+                          >
+                            <SelectTrigger className="h-8 text-xs">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="ignorar">Ignorar</SelectItem>
+                              <SelectItem value="epi">EPI</SelectItem>
+                              <SelectItem value="uniforme">Uniforme</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </TableCell>
+                        <TableCell>
+                          {item.tipo !== "ignorar" && (
+                            <Select
+                              value={item.vinculadoId || "novo"}
+                              onValueChange={(v) => handleVinculoChange(item.index, v)}
+                            >
+                              <SelectTrigger className={`h-8 text-xs ${isLinked ? "border-primary" : ""}`}>
+                                <SelectValue placeholder="Criar novo" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="novo">
+                                  <span className="flex items-center gap-1">
+                                    ➕ Criar novo item
+                                  </span>
+                                </SelectItem>
+                                {existingItems.map((ei) => (
+                                  <SelectItem key={ei.id} value={ei.id}>
+                                    <span className="flex flex-col">
+                                      <span className="font-medium">{ei.nome}</span>
+                                      {ei.detalhes && (
+                                        <span className="text-muted-foreground text-[10px]">{ei.detalhes} • Estoque: {ei.quantidade_estoque}</span>
+                                      )}
+                                    </span>
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {isNew && (
+                            <Input
+                              className="h-8 text-xs"
+                              placeholder="Tamanho"
+                              value={item.tamanho}
+                              onChange={(e) => updateItem(item.index, { tamanho: e.target.value })}
+                            />
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {isNew && (
+                            <Input
+                              className="h-8 text-xs"
+                              placeholder="Cor"
+                              value={item.cor}
+                              onChange={(e) => updateItem(item.index, { cor: e.target.value })}
+                            />
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {isNew && item.tipo === "epi" && (
+                            <Input
+                              className="h-8 text-xs"
+                              placeholder="CA"
+                              value={item.ca}
+                              onChange={(e) => updateItem(item.index, { ca: e.target.value })}
+                            />
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {isNew && item.tipo === "epi" && (
+                            <Input
+                              className="h-8 text-xs"
+                              placeholder="Marca"
+                              value={item.marcaModelo}
+                              onChange={(e) => updateItem(item.index, { marcaModelo: e.target.value })}
+                            />
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
               </Table>
             </div>
 
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <AlertCircle className="h-4 w-4" />
+              <Link className="h-4 w-4" />
               <span>
-                Itens com descrição igual a um já existente no estoque terão a quantidade somada automaticamente.
+                Vincule itens da NF-e a produtos já existentes no estoque para somar a quantidade, mesmo com nomes diferentes.
               </span>
             </div>
           </div>
