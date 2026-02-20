@@ -135,25 +135,28 @@ const GestorDashboard = ({ user }: GestorDashboardProps) => {
         const nonDismissedEmployees = employees.filter((e: any) => e.status !== "demitido");
         const employeeIds = nonDismissedEmployees.map((e: any) => e.id);
         
-        // Calcular primeiro e último dia do mês atual
-        const now = new Date();
-        const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split("T")[0];
-        const lastDayOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split("T")[0];
-        const todayStr = now.toISOString().split("T")[0];
+        const todayStr = new Date().toISOString().split("T")[0];
 
-        // Contar apenas férias em gozo no mês atual (que estejam ativas hoje)
-        const { count: onVacationCount } = await supabase
+        // Contar férias em gozo ativas HOJE (dinâmico)
+        const { data: vacationData } = await supabase
           .from("ferias")
-          .select("*", { count: "exact", head: true })
+          .select("employee_id")
           .in("employee_id", employeeIds)
           .lte("periodo_gozo_inicio", todayStr)
           .gte("periodo_gozo_fim", todayStr);
 
+        const onVacationIds = new Set(vacationData?.map((v: any) => v.employee_id) || []);
+        const onVacationCount = onVacationIds.size;
+        const onLeaveCount = nonDismissedEmployees.filter((e: any) => e.status === "afastado").length;
+
+        // Ativos = total - férias dinâmicas - afastados
+        const activeCount = nonDismissedEmployees.length - onVacationCount - onLeaveCount;
+
         setStats({
           totalEmployees: nonDismissedEmployees.length,
-          activeEmployees: nonDismissedEmployees.filter((e: any) => e.status === "ativo").length,
-          onVacation: onVacationCount || 0,
-          onLeave: nonDismissedEmployees.filter((e: any) => e.status === "afastado").length,
+          activeEmployees: activeCount,
+          onVacation: onVacationCount,
+          onLeave: onLeaveCount,
         });
       } else {
         setStats({
