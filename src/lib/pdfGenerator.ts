@@ -13,6 +13,8 @@ export interface EpiReceiptData {
   tamanho?: string | null;
   finalidade?: string | null;
   assinatura?: string | null;
+  empresaNome?: string | null;
+  empresaCnpj?: string | null;
 }
 
 export interface UniformReceiptData {
@@ -25,6 +27,8 @@ export interface UniformReceiptData {
   dataEntrega: string;
   observacoes?: string | null;
   assinatura?: string | null;
+  empresaNome?: string | null;
+  empresaCnpj?: string | null;
 }
 
 export const generateEpiReceipt = (data: EpiReceiptData) => {
@@ -33,9 +37,17 @@ export const generateEpiReceipt = (data: EpiReceiptData) => {
   let yPosition = 20;
 
   // Header
+  const companyName = data.empresaNome || "Empresa";
   doc.setFontSize(16);
   doc.setFont("helvetica", "bold");
-  doc.text("Hotel Fazenda Santa Bárbara", pageWidth / 2, yPosition, { align: "center" });
+  doc.text(companyName, pageWidth / 2, yPosition, { align: "center" });
+  
+  if (data.empresaCnpj) {
+    yPosition += 6;
+    doc.setFontSize(9);
+    doc.setFont("helvetica", "normal");
+    doc.text(`CNPJ: ${data.empresaCnpj}`, pageWidth / 2, yPosition, { align: "center" });
+  }
   
   yPosition += 10;
   doc.setFontSize(12);
@@ -46,7 +58,7 @@ export const generateEpiReceipt = (data: EpiReceiptData) => {
   doc.setFont("helvetica", "normal");
   
   // Introduction
-  const introText = `Eu, ${data.employeeName}, CPF nº ${data.employeeCpf}, colaborador(a) do Hotel Fazenda Santa Bárbara, exercendo a função de ${data.employeeRole}, declaro que recebi nesta data os Equipamentos de Proteção Individual (EPIs) descritos abaixo:`;
+  const introText = `Eu, ${data.employeeName}, CPF nº ${data.employeeCpf}, colaborador(a) ${companyName ? `da empresa ${companyName}` : ""}, exercendo a função de ${data.employeeRole}, declaro que recebi nesta data os Equipamentos de Proteção Individual (EPIs) descritos abaixo:`;
   const splitIntro = doc.splitTextToSize(introText, pageWidth - 40);
   doc.text(splitIntro, 20, yPosition);
   yPosition += splitIntro.length * 5 + 10;
@@ -154,12 +166,21 @@ export const generateUniformReceipt = (data: UniformReceiptData) => {
   let yPosition = 20;
 
   // Header
+  const companyName = data.empresaNome || "Empresa";
   doc.setFontSize(16);
   doc.setFont("helvetica", "bold");
-  doc.text("Hotel Fazenda Santa Bárbara", pageWidth / 2, yPosition, { align: "center" });
+  doc.text(companyName, pageWidth / 2, yPosition, { align: "center" });
+  
+  if (data.empresaCnpj) {
+    yPosition += 6;
+    doc.setFontSize(9);
+    doc.setFont("helvetica", "normal");
+    doc.text(`CNPJ: ${data.empresaCnpj}`, pageWidth / 2, yPosition, { align: "center" });
+  }
   
   yPosition += 10;
   doc.setFontSize(12);
+  doc.setFont("helvetica", "bold");
   doc.text("RECIBO DE ENTREGA DE UNIFORME", pageWidth / 2, yPosition, { align: "center" });
   
   yPosition += 15;
@@ -167,7 +188,7 @@ export const generateUniformReceipt = (data: UniformReceiptData) => {
   doc.setFont("helvetica", "normal");
   
   // Introduction
-  const introText = `Eu, ${data.employeeName}, CPF nº ${data.employeeCpf}, colaborador(a) do Hotel Fazenda Santa Bárbara, exercendo a função de ${data.employeeRole}, declaro que recebi nesta data os uniformes descritos abaixo:`;
+  const introText = `Eu, ${data.employeeName}, CPF nº ${data.employeeCpf}, colaborador(a) ${companyName ? `da empresa ${companyName}` : ""}, exercendo a função de ${data.employeeRole}, declaro que recebi nesta data os uniformes descritos abaixo:`;
   const splitIntro = doc.splitTextToSize(introText, pageWidth - 40);
   doc.text(splitIntro, 20, yPosition);
   yPosition += splitIntro.length * 5 + 10;

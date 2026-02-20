@@ -72,13 +72,25 @@ const UniformTab = ({ employeeId }: UniformTabProps) => {
   const handleReprintReceipt = async (uniforme: any) => {
     const { data: employee } = await supabase
       .from("employees")
-      .select("nome_completo, cpf, cargo")
+      .select("nome_completo, cpf, cargo, empresa_id")
       .eq("id", employeeId)
       .single();
 
     if (!employee) {
       toast.error("Erro ao buscar dados do funcionário");
       return;
+    }
+
+    let empresaNome: string | null = null;
+    let empresaCnpj: string | null = null;
+    if (employee.empresa_id) {
+      const { data: empresa } = await supabase
+        .from("empresas")
+        .select("nome, cnpj")
+        .eq("id", employee.empresa_id)
+        .single();
+      empresaNome = empresa?.nome || null;
+      empresaCnpj = empresa?.cnpj || null;
     }
 
     generateUniformReceipt({
@@ -91,6 +103,8 @@ const UniformTab = ({ employeeId }: UniformTabProps) => {
       dataEntrega: uniforme.data_entrega,
       observacoes: uniforme.observacoes,
       assinatura: uniforme.assinatura_funcionario,
+      empresaNome,
+      empresaCnpj,
     });
 
     toast.success("Recibo gerado com sucesso!");

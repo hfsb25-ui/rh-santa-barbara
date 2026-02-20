@@ -18,6 +18,7 @@ interface Employee {
   cargo: string;
   cpf: string | null;
   setor: string | null;
+  empresa_id: string | null;
 }
 
 interface StockItem {
@@ -53,7 +54,7 @@ const UniformDistributionBatch = () => {
   const fetchEmployees = async () => {
     const { data } = await supabase
       .from("employees")
-      .select("id, nome_completo, cargo, cpf, setor")
+      .select("id, nome_completo, cargo, cpf, setor, empresa_id")
       .eq("status", "ativo")
       .order("nome_completo");
     
@@ -194,6 +195,19 @@ const UniformDistributionBatch = () => {
       })
       .eq("id", currentDistribution.id);
 
+    // Get company data
+    let empresaNome: string | null = null;
+    let empresaCnpj: string | null = null;
+    if (currentDistribution.employee.empresa_id) {
+      const { data: empresa } = await supabase
+        .from("empresas")
+        .select("nome, cnpj")
+        .eq("id", currentDistribution.employee.empresa_id)
+        .single();
+      empresaNome = empresa?.nome || null;
+      empresaCnpj = empresa?.cnpj || null;
+    }
+
     // Generate receipt
     generateUniformReceipt({
       employeeName: currentDistribution.employee.nome_completo,
@@ -205,6 +219,8 @@ const UniformDistributionBatch = () => {
       dataEntrega: currentDistribution.data_entrega,
       observacoes: currentDistribution.observacoes,
       assinatura: signatureData,
+      empresaNome,
+      empresaCnpj,
     });
 
     moveToNextEmployee();
