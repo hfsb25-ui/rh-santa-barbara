@@ -29,3 +29,6 @@ verify_jwt = false
 
 [functions.whatsapp-ai]
 verify_jwt = false
+
+[functions.consulta-judicial]
+verify_jwt = false
