@@ -87,8 +87,7 @@ export function WhatsAppSettings() {
       const { data, error } = await supabase
         .from("whatsapp_conversas" as any)
         .select("*")
-        .order("created_at", { ascending: false })
-        .limit(2000);
+        .order("created_at", { ascending: false });
 
       if (error) throw error;
 
