@@ -207,110 +207,183 @@ const HoleriteDialog = ({ open, onOpenChange, pagamento, empresaId }: HoleriteDi
 
     const doc = new jsPDF({ format: "a4", orientation: "portrait" });
     const pw = doc.internal.pageSize.getWidth();
-    const ml = 8;
-    const sigW = 22;
-    const mr = sigW + 6;
+    const ph = doc.internal.pageSize.getHeight();
+    const ml = 10;
+    const mr = 10;
     const cw = pw - ml - mr;
-    let y = 10;
+    let y = 12;
 
     const salarioBase = getSalarioBase();
     const { rows, totalProventos, totalDescontos } = getTableData();
     const fgts = salarioBase.valor * 0.08;
 
-    // ===== TITULO =====
-    doc.setFontSize(11);
-    doc.setFont("helvetica", "bold");
-    doc.text("RECIBO DE PAGAMENTO DE SALÁRIO", ml + cw / 2, y, { align: "center" });
-    y += 5;
+    // ===== BORDA EXTERNA DO RECIBO =====
+    doc.setDrawColor(40, 40, 40);
+    doc.setLineWidth(0.6);
 
-    // ===== EMPRESA =====
-    doc.setDrawColor(0);
-    doc.setLineWidth(0.4);
-    doc.rect(ml, y, cw, 14);
+    // ===== CABEÇALHO EMPRESA =====
+    doc.setFillColor(33, 37, 41);
+    doc.rect(ml, y, cw, 18, "F");
+    doc.setFontSize(13);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(255, 255, 255);
+    doc.text(empresa.nome.toUpperCase(), ml + cw / 2, y + 7, { align: "center" });
+    doc.setFontSize(8);
+    doc.setFont("helvetica", "normal");
+    doc.text(`CNPJ: ${formatCNPJ(empresa.cnpj)}`, ml + cw / 2, y + 12, { align: "center" });
+    if (empresa.endereco) {
+      doc.text(empresa.endereco, ml + cw / 2, y + 16, { align: "center" });
+    }
+    doc.setTextColor(0, 0, 0);
+    y += 20;
+
+    // ===== TÍTULO DO RECIBO =====
+    doc.setFillColor(240, 240, 240);
+    doc.rect(ml, y, cw, 8, "F");
+    doc.setDrawColor(200, 200, 200);
+    doc.rect(ml, y, cw, 8);
     doc.setFontSize(10);
     doc.setFont("helvetica", "bold");
-    doc.text(empresa.nome.toUpperCase(), ml + 3, y + 5);
-    doc.setFontSize(7);
-    doc.setFont("helvetica", "normal");
-    doc.text(`CNPJ: ${formatCNPJ(empresa.cnpj)}`, ml + 3, y + 9);
-    if (empresa.endereco) {
-      doc.text(`Endereço: ${empresa.endereco}`, ml + 3, y + 12);
-    }
+    doc.setTextColor(33, 37, 41);
+    doc.text("RECIBO DE PAGAMENTO DE SALÁRIO", ml + cw / 2, y + 5.5, { align: "center" });
     doc.setFontSize(8);
-    doc.setFont("helvetica", "bold");
-    doc.text(getMesAnoStr(), ml + cw - 3, y + 5, { align: "right" });
-    y += 14;
-
-    // ===== FUNCIONÁRIO =====
-    doc.rect(ml, y, cw, 12);
-    doc.setFontSize(8);
-    doc.setFont("helvetica", "bold");
-    doc.text(employee.nome_completo.toUpperCase(), ml + 3, y + 4);
     doc.setFont("helvetica", "normal");
-    doc.setFontSize(7);
-    doc.text(`CPF: ${formatCPF(employee.cpf)}`, ml + cw - 3, y + 4, { align: "right" });
-    doc.text(`Cargo: ${employee.cargo || "-"}`, ml + 3, y + 8);
-    doc.text(`Admissão: ${formatDate(employee.data_admissao)}`, ml + 55, y + 8);
-    doc.text(`Setor: ${employee.setor || "-"}`, ml + 105, y + 8);
-    doc.text(`Período: ${getMesAnoStr()}`, ml + cw - 3, y + 8, { align: "right" });
-    y += 12;
+    doc.text(getMesAnoStr(), ml + cw - 4, y + 5.5, { align: "right" });
+    y += 10;
 
-    // ===== TABELA =====
+    // ===== DADOS DO FUNCIONÁRIO =====
+    doc.setDrawColor(180, 180, 180);
+    doc.setLineWidth(0.3);
+    doc.rect(ml, y, cw, 18);
+
+    // Linha separadora horizontal no meio
+    doc.line(ml, y + 9, ml + cw, y + 9);
+
+    // Primeira linha: Nome e CPF
+    doc.setFontSize(7);
+    doc.setTextColor(120, 120, 120);
+    doc.text("NOME DO FUNCIONÁRIO", ml + 3, y + 3.5);
+    doc.text("CPF", ml + cw - 40, y + 3.5);
+    doc.setFontSize(9);
+    doc.setTextColor(0, 0, 0);
+    doc.setFont("helvetica", "bold");
+    doc.text(employee.nome_completo.toUpperCase(), ml + 3, y + 7.5);
+    doc.setFont("helvetica", "normal");
+    doc.text(formatCPF(employee.cpf), ml + cw - 40, y + 7.5);
+
+    // Separador vertical
+    doc.line(ml + cw - 45, y, ml + cw - 45, y + 9);
+
+    // Segunda linha: Cargo, Admissão, Setor, Período
+    const colW = cw / 4;
+    const labels2 = ["CARGO", "ADMISSÃO", "SETOR", "PERÍODO"];
+    const values2 = [employee.cargo || "-", formatDate(employee.data_admissao), employee.setor || "-", getMesAnoStr()];
+
+    labels2.forEach((label, i) => {
+      const x = ml + i * colW + 3;
+      doc.setFontSize(6.5);
+      doc.setTextColor(120, 120, 120);
+      doc.text(label, x, y + 12.5);
+      doc.setFontSize(8);
+      doc.setTextColor(0, 0, 0);
+      doc.setFont("helvetica", "bold");
+      doc.text(values2[i], x, y + 16.5);
+      doc.setFont("helvetica", "normal");
+      if (i > 0) {
+        doc.line(ml + i * colW, y + 9, ml + i * colW, y + 18);
+      }
+    });
+    y += 20;
+
+    // ===== TABELA DE EVENTOS =====
     const tableBody = rows.map(r => [r.cod, r.desc, r.ref, r.prov, r.desc2]);
 
     autoTable(doc, {
       startY: y,
-      head: [["Cód.", "Descrição", "Ref.", "Proventos", "Descontos"]],
+      head: [["Cód.", "Descrição", "Referência", "Proventos (R$)", "Descontos (R$)"]],
       body: tableBody,
       theme: "grid",
       styles: {
-        fontSize: 7,
-        cellPadding: 1.5,
-        lineColor: [0, 0, 0],
+        fontSize: 7.5,
+        cellPadding: { top: 2, bottom: 2, left: 2, right: 2 },
+        lineColor: [180, 180, 180],
         lineWidth: 0.3,
-        textColor: [0, 0, 0],
+        textColor: [30, 30, 30],
+        font: "helvetica",
       },
       headStyles: {
-        fillColor: [230, 230, 230],
-        textColor: [0, 0, 0],
+        fillColor: [33, 37, 41],
+        textColor: [255, 255, 255],
         fontStyle: "bold",
         halign: "center",
+        fontSize: 7.5,
       },
       columnStyles: {
-        0: { cellWidth: 14, halign: "center" },
-        1: { cellWidth: cw * 0.38 },
-        2: { cellWidth: 18, halign: "center" },
-        3: { cellWidth: 28, halign: "right" },
-        4: { cellWidth: 28, halign: "right" },
+        0: { cellWidth: 16, halign: "center" },
+        1: { cellWidth: cw * 0.40 },
+        2: { cellWidth: 22, halign: "center" },
+        3: { cellWidth: 30, halign: "right" },
+        4: { cellWidth: 30, halign: "right" },
       },
       tableWidth: cw,
       margin: { left: ml },
-      alternateRowStyles: { fillColor: [245, 245, 245] },
+      alternateRowStyles: { fillColor: [248, 249, 250] },
+      didParseCell: (data: any) => {
+        // Highlight provento values in green
+        if (data.section === 'body' && data.column.index === 3 && data.cell.text[0]) {
+          data.cell.styles.textColor = [21, 87, 36];
+          data.cell.styles.fontStyle = 'bold';
+        }
+        // Highlight desconto values in red
+        if (data.section === 'body' && data.column.index === 4 && data.cell.text[0]) {
+          data.cell.styles.textColor = [153, 27, 27];
+          data.cell.styles.fontStyle = 'bold';
+        }
+      },
     });
 
     y = (doc as any).lastAutoTable.finalY;
 
     // ===== TOTAIS =====
-    doc.setFillColor(230, 230, 230);
-    doc.rect(ml, y, cw, 6, "FD");
+    doc.setDrawColor(180, 180, 180);
+    doc.setLineWidth(0.3);
+    doc.setFillColor(240, 240, 240);
+    doc.rect(ml, y, cw / 2, 8, "FD");
+    doc.rect(ml + cw / 2, y, cw / 2, 8, "FD");
+
     doc.setFontSize(8);
     doc.setFont("helvetica", "bold");
-    doc.text("TOTAL VENCIMENTOS:", ml + 3, y + 4);
-    doc.text(formatCurrency(totalProventos), ml + cw / 2 - 5, y + 4, { align: "right" });
-    doc.text("TOTAL DESCONTOS:", ml + cw / 2 + 5, y + 4);
-    doc.text(formatCurrency(totalDescontos), ml + cw - 3, y + 4, { align: "right" });
-    y += 6;
+    doc.setTextColor(30, 30, 30);
+    doc.text("TOTAL VENCIMENTOS", ml + 4, y + 5);
+    doc.setTextColor(21, 87, 36);
+    doc.text(`R$ ${formatCurrency(totalProventos)}`, ml + cw / 2 - 4, y + 5, { align: "right" });
+
+    doc.setTextColor(30, 30, 30);
+    doc.text("TOTAL DESCONTOS", ml + cw / 2 + 4, y + 5);
+    doc.setTextColor(153, 27, 27);
+    doc.text(`R$ ${formatCurrency(totalDescontos)}`, ml + cw - 4, y + 5, { align: "right" });
+    y += 8;
 
     // ===== VALOR LÍQUIDO =====
-    doc.setFillColor(200, 200, 200);
-    doc.rect(ml, y, cw, 7, "FD");
-    doc.setFontSize(10);
-    doc.text("VALOR LÍQUIDO:", ml + 3, y + 5);
-    doc.text(`R$ ${formatCurrency(pagamento.valor_liquido)}`, ml + cw - 3, y + 5, { align: "right" });
-    y += 10;
+    doc.setFillColor(33, 37, 41);
+    doc.rect(ml, y, cw, 10, "F");
+    doc.setFontSize(11);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(255, 255, 255);
+    doc.text("VALOR LÍQUIDO:", ml + 6, y + 7);
+    doc.setFontSize(13);
+    doc.text(`R$ ${formatCurrency(pagamento.valor_liquido)}`, ml + cw - 6, y + 7, { align: "right" });
+    doc.setTextColor(0, 0, 0);
+    y += 12;
 
     // ===== BASE DE CÁLCULOS =====
-    const bLabels = ["Sal.Base", "Sal.Contr.", "INSS", "Base FGTS", "FGTS Mês", "Base IRRF", "Faixa IRRF"];
+    doc.setFontSize(7);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(100, 100, 100);
+    doc.text("BASES DE CÁLCULO", ml, y + 3);
+    y += 5;
+
+    const bLabels = ["Sal. Base", "Sal. Contr.", "INSS", "Base FGTS", "FGTS Mês", "Base IRRF", "Faixa IRRF"];
     const bValues = [
       formatCurrency(salarioBase.valor),
       formatCurrency(totalProventos),
@@ -326,43 +399,93 @@ const HoleriteDialog = ({ open, onOpenChange, pagamento, empresaId }: HoleriteDi
       head: [bLabels],
       body: [bValues],
       theme: "grid",
-      styles: { fontSize: 6, cellPadding: 1.5, lineColor: [0, 0, 0], lineWidth: 0.3, textColor: [0, 0, 0] },
-      headStyles: { fillColor: [230, 230, 230], textColor: [0, 0, 0], fontStyle: "bold", halign: "center" },
+      styles: {
+        fontSize: 6.5,
+        cellPadding: { top: 1.5, bottom: 1.5, left: 1, right: 1 },
+        lineColor: [180, 180, 180],
+        lineWidth: 0.2,
+        textColor: [50, 50, 50],
+      },
+      headStyles: {
+        fillColor: [240, 240, 240],
+        textColor: [80, 80, 80],
+        fontStyle: "bold",
+        halign: "center",
+        fontSize: 6,
+      },
       bodyStyles: { halign: "center" },
       tableWidth: cw,
       margin: { left: ml },
     });
 
-    y = (doc as any).lastAutoTable.finalY + 5;
+    y = (doc as any).lastAutoTable.finalY + 8;
 
-    // ===== CORTE =====
-    doc.setLineDashPattern([2, 2], 0);
+    // ===== LINHA DE CORTE =====
+    doc.setDrawColor(160, 160, 160);
+    doc.setLineDashPattern([3, 2], 0);
     doc.setLineWidth(0.3);
     doc.line(ml, y, ml + cw, y);
-    doc.setFontSize(5);
-    doc.setFont("helvetica", "normal");
-    doc.text("✂ corte aqui", ml + cw / 2, y + 3, { align: "center" });
     doc.setLineDashPattern([], 0);
-
-    // ===== BARRA LATERAL ASSINATURA =====
-    const barraX = pw - sigW - 2;
-    const barraTop = 10;
-    const barraH = y - barraTop - 2;
-    doc.setLineWidth(0.4);
-    doc.rect(barraX, barraTop, sigW, barraH);
-
-    doc.setFontSize(5.5);
-    doc.setFont("helvetica", "bold");
-    doc.text("DECLARO TER RECEBIDO A IMPORTÂNCIA LÍQUIDA DISCRIMINADA NESTE RECIBO", barraX + 5, barraTop + 5, {
-      angle: 90,
-      maxWidth: barraH - 30,
-    });
-
+    doc.setFontSize(6);
+    doc.setTextColor(160, 160, 160);
     doc.setFont("helvetica", "normal");
-    doc.setFontSize(5);
-    doc.text("Assinatura:", barraX + 11, barraTop + 5, { angle: 90 });
-    doc.line(barraX + 13, barraTop + 5, barraX + 13, barraTop + barraH - 25);
-    doc.text("___/___/______", barraX + 17, barraTop + barraH - 20, { angle: 90 });
+    doc.text("corte aqui", ml + cw / 2, y + 3, { align: "center" });
+    y += 6;
+
+    // ===== VIA DO EMPREGADOR (COMPROVANTE) =====
+    doc.setTextColor(0, 0, 0);
+    doc.setFontSize(7);
+    doc.setFont("helvetica", "bold");
+    doc.text("VIA DO EMPREGADOR", ml + cw / 2, y + 3, { align: "center" });
+    y += 6;
+
+    // Mini cabeçalho empresa
+    doc.setFillColor(33, 37, 41);
+    doc.rect(ml, y, cw, 8, "F");
+    doc.setFontSize(9);
+    doc.setTextColor(255, 255, 255);
+    doc.text(empresa.nome.toUpperCase(), ml + 4, y + 5.5);
+    doc.setFontSize(7);
+    doc.text(`CNPJ: ${formatCNPJ(empresa.cnpj)}`, ml + cw - 4, y + 5.5, { align: "right" });
+    doc.setTextColor(0, 0, 0);
+    y += 10;
+
+    // Info resumida do funcionário
+    doc.setDrawColor(180, 180, 180);
+    doc.setLineWidth(0.3);
+    doc.rect(ml, y, cw, 10);
+    doc.setFontSize(7.5);
+    doc.setFont("helvetica", "bold");
+    doc.text(employee.nome_completo.toUpperCase(), ml + 3, y + 4);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(7);
+    doc.text(`CPF: ${formatCPF(employee.cpf)}  |  Cargo: ${employee.cargo || "-"}  |  Período: ${getMesAnoStr()}`, ml + 3, y + 8);
+    doc.setFont("helvetica", "bold");
+    doc.text(`Líquido: R$ ${formatCurrency(pagamento.valor_liquido)}`, ml + cw - 4, y + 6, { align: "right" });
+    y += 12;
+
+    // Declaração e assinatura
+    doc.setFontSize(7);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(60, 60, 60);
+    doc.text("Declaro ter recebido a importância líquida discriminada neste recibo.", ml + 3, y + 3);
+    y += 10;
+
+    // Linha assinatura funcionário
+    doc.setDrawColor(100, 100, 100);
+    doc.line(ml + 3, y + 10, ml + cw / 2 - 10, y + 10);
+    doc.setFontSize(6.5);
+    doc.setTextColor(100, 100, 100);
+    doc.text("Assinatura do Funcionário", ml + 3, y + 14);
+
+    // Linha data
+    doc.line(ml + cw / 2 + 10, y + 10, ml + cw - 3, y + 10);
+    doc.text("Data: ____/____/________", ml + cw / 2 + 10, y + 14);
+
+    // ===== BORDA EXTERNA =====
+    doc.setDrawColor(40, 40, 40);
+    doc.setLineWidth(0.5);
+    doc.rect(ml - 1, 10, cw + 2, y + 18 - 10);
 
     const nomeArquivo = `holerite-${employee.nome_completo.replace(/\s+/g, "-").toLowerCase()}-${MESES[pagamento.mes].toLowerCase()}-${pagamento.ano}.pdf`;
     doc.save(nomeArquivo);
