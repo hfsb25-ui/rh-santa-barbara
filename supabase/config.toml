@@ -32,3 +32,9 @@ verify_jwt = false
 
 [functions.consulta-judicial]
 verify_jwt = false
+
+[functions.whatsapp-daily-reminder]
+verify_jwt = false
+
+[functions.whatsapp-event-reminder]
+verify_jwt = false

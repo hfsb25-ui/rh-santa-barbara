@@ -79,15 +79,31 @@ serve(async (req) => {
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-    // Try to get API key from DB first, fallback to env
+    // Try to get API key and provider config from DB first, fallback to env
     let GOOGLE_GEMINI_API_KEY = Deno.env.get("GOOGLE_GEMINI_API_KEY");
-    const { data: iaConfig } = await supabase.from("configuracoes_ia").select("google_gemini_api_key, modelo").limit(1).maybeSingle();
+    let OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
+    const { data: iaConfig } = await supabase.from("configuracoes_ia").select("google_gemini_api_key, openai_api_key, modelo, provedor").limit(1).maybeSingle();
     if (iaConfig?.google_gemini_api_key) {
       GOOGLE_GEMINI_API_KEY = iaConfig.google_gemini_api_key;
     }
-    const aiModel = iaConfig?.modelo || "gemini-2.0-flash";
+    if ((iaConfig as any)?.openai_api_key) {
+      OPENAI_API_KEY = (iaConfig as any).openai_api_key;
+    }
+    const provedor = (iaConfig as any)?.provedor || "gemini";
+    const aiModel = iaConfig?.modelo || (provedor === "openai" ? "gpt-4o-mini" : "gemini-2.0-flash");
 
-    if (!GOOGLE_GEMINI_API_KEY) throw new Error("GOOGLE_GEMINI_API_KEY not configured");
+    // Determine API URL and key based on provider
+    let aiApiUrl: string;
+    let aiApiKey: string;
+    if (provedor === "openai") {
+      if (!OPENAI_API_KEY) throw new Error("OPENAI_API_KEY not configured");
+      aiApiUrl = "https://api.openai.com/v1/chat/completions";
+      aiApiKey = OPENAI_API_KEY;
+    } else {
+      if (!GOOGLE_GEMINI_API_KEY) throw new Error("GOOGLE_GEMINI_API_KEY not configured");
+      aiApiUrl = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
+      aiApiKey = GOOGLE_GEMINI_API_KEY;
+    }
 
     const { data: config } = await supabase
       .from("configuracoes_whatsapp")
@@ -196,10 +212,10 @@ INSTRUÇÕES:
 
         const systemPrompt = `${instructions}\n${historyContext}\n\n${context}`;
 
-        const aiResponse = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
+        const aiResponse = await fetch(aiApiUrl, {
           method: "POST",
           headers: {
-            Authorization: `Bearer ${GOOGLE_GEMINI_API_KEY}`,
+            Authorization: `Bearer ${aiApiKey}`,
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
