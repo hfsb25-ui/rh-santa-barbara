@@ -1,61 +1,63 @@
 
-# Importacao de XML de Nota Fiscal para Entrada no Estoque
+
+# Consulta Judicial de Colaboradores por CPF
 
 ## Objetivo
+Criar uma página que permite buscar automaticamente se colaboradores estão envolvidos em processos judiciais, usando o CPF para consulta em fontes externas via busca inteligente com IA.
 
-Criar uma funcionalidade que permite ao usuario fazer upload de um arquivo XML de Nota Fiscal Eletronica (NF-e) e, a partir dos itens listados na nota, dar entrada automatica no estoque de EPIs e Uniformes.
+## Abordagem Técnica
 
-## Como funciona
+A API pública do DATAJUD (CNJ) **não permite busca por CPF** diretamente (apenas por número de processo). Para contornar isso, usaremos o **Perplexity** (disponível como conector) para fazer buscas web inteligentes por processos judiciais associados ao nome + CPF do colaborador em fontes públicas (JusBrasil, Escavador, tribunais estaduais, etc.).
 
-1. O usuario clica em um botao "Importar NF-e" na pagina de Estoque
-2. Seleciona o arquivo XML da nota fiscal
-3. O sistema le o XML e extrai os produtos (descricao, quantidade, valor unitario, NCM)
-4. Os itens sao exibidos em uma tabela de preview onde o usuario pode:
-   - Classificar cada item como "EPI" ou "Uniforme" (ou ignorar)
-   - Ajustar campos como tamanho, cor, CA (para EPIs), etc.
-5. Ao confirmar, o sistema:
-   - Verifica se ja existe um item no estoque com a mesma descricao
-   - Se existir, incrementa a quantidade
-   - Se nao existir, cria um novo registro
-   - Registra a movimentacao no historico com o numero da NF-e como referencia
+## Componentes
 
-## Estrutura do XML NF-e (padrao brasileiro)
+### 1. Edge Function: `consulta-judicial`
+- Recebe `employee_id` ou `cpf` + `nome`
+- Usa Perplexity (modelo `sonar`) para buscar: `"processos judiciais CPF {cpf} {nome_completo}"`
+- Retorna resultados estruturados (processos encontrados, tribunal, tipo, status)
+- Salva o resultado da consulta no banco para histórico
 
-O XML da NF-e segue o padrao nacional e contem os produtos dentro da tag `<det>` -> `<prod>`, com campos como:
-- `xProd` (descricao do produto)
-- `qCom` (quantidade)
-- `vUnCom` (valor unitario)
-- `NCM` (codigo NCM)
-- `uCom` (unidade)
-- `nNF` (numero da nota)
+### 2. Tabela: `consultas_judiciais`
+| Coluna | Tipo | Descrição |
+|---|---|---|
+| id | uuid (PK) | Identificador |
+| employee_id | uuid (FK) | Colaborador consultado |
+| data_consulta | timestamp | Quando foi feita |
+| resultado | jsonb | Resultado bruto da busca |
+| processos_encontrados | integer | Quantidade |
+| resumo | text | Resumo gerado pela IA |
+| consultado_por | uuid | Quem solicitou |
 
-## Mudancas
+RLS restrito ao papel `gestor`.
 
-### 1. Novo componente: `src/components/stock/ImportNfeDialog.tsx`
-- Dialog com area de upload de arquivo XML
-- Parser de XML usando `DOMParser` nativo do browser (nao precisa de biblioteca extra)
-- Tabela de preview dos itens extraidos com colunas: Descricao, Qtd, Valor, Tipo (EPI/Uniforme/Ignorar)
-- Campos editaveis para cada item: tamanho, cor, CA, marca/modelo
-- Botao de confirmar importacao
+### 3. Página: `src/pages/ConsultaJudicial.tsx`
+- Header com título "Consulta Judicial"
+- Lista de colaboradores com botão "Consultar" ao lado de cada um
+- Campo de busca para filtrar por nome/CPF
+- Botão "Consultar Todos" para varredura em lote
+- Resultados exibidos em cards com badges: "Sem processos" (verde), "Processos encontrados" (vermelho)
+- Histórico de consultas anteriores
+- Coluna mostrando última consulta e resultado
 
-### 2. Alteracao: `src/pages/Stock.tsx`
-- Adicionar botao "Importar NF-e" ao lado do titulo da pagina
-- Integrar o novo dialog de importacao
-- Ao confirmar importacao, atualizar as listas de estoque
+### 4. Navegação
+- Adicionar "Consulta Judicial" no sidebar, grupo **Documentos**, ícone `Scale`
+- Rota `/consulta-judicial` no App.tsx
 
-### 3. Logica de entrada no estoque
-- Para cada item classificado como EPI:
-  - Buscar no `estoque_epis` por `tipo_epi` similar
-  - Se encontrar, fazer UPDATE somando a quantidade
-  - Se nao encontrar, INSERT novo registro
-  - Registrar movimentacao em `historico_estoque_epis` com motivo "Entrada via NF-e [numero]"
-- Para cada item classificado como Uniforme:
-  - Mesma logica usando `estoque_uniformes` e `historico_estoque_uniformes`
+## Fluxo do Usuário
+1. Acessa a página "Consulta Judicial"
+2. Vê a lista de colaboradores ativos com CPF
+3. Clica "Consultar" em um colaborador específico (ou "Consultar Todos")
+4. O sistema envia o CPF + nome para a edge function
+5. A edge function usa Perplexity para buscar processos judiciais
+6. O resultado é salvo no banco e exibido na tela
+7. Consultas anteriores ficam no histórico
 
-## Detalhes Tecnicos
+## Pré-requisito
+- Conectar o **Perplexity** ao projeto (conector disponível)
 
-- **Parser XML**: Usar `DOMParser` nativo do browser, sem dependencias externas
-- **Validacao**: Verificar se o XML e uma NF-e valida checando a presenca da tag `<nfeProc>` ou `<NFe>`
-- **Matching**: Tentativa de match automatico com itens existentes por nome similar (case-insensitive), mas usuario pode ajustar manualmente
-- **Historico**: Todas as entradas registradas com referencia ao numero da NF-e para rastreabilidade
-- **Nenhuma migracao necessaria**: Os campos existentes nas tabelas `estoque_epis` e `estoque_uniformes` ja atendem os dados necessarios
+## Detalhes Técnicos
+- Busca individual: ~3s por colaborador
+- Busca em lote: processamento sequencial com feedback de progresso
+- Cache de resultados: não refaz busca se já foi feita nos últimos 30 dias (configurável)
+- Resultados salvos como JSONB para flexibilidade
+
