@@ -857,6 +857,54 @@ export type Database = {
         }
         Relationships: []
       }
+      consultas_judiciais: {
+        Row: {
+          consultado_por: string | null
+          created_at: string
+          data_consulta: string
+          employee_id: string
+          id: string
+          processos_encontrados: number
+          resultado: Json | null
+          resumo: string | null
+        }
+        Insert: {
+          consultado_por?: string | null
+          created_at?: string
+          data_consulta?: string
+          employee_id: string
+          id?: string
+          processos_encontrados?: number
+          resultado?: Json | null
+          resumo?: string | null
+        }
+        Update: {
+          consultado_por?: string | null
+          created_at?: string
+          data_consulta?: string
+          employee_id?: string
+          id?: string
+          processos_encontrados?: number
+          resultado?: Json | null
+          resumo?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "consultas_judiciais_consultado_por_fkey"
+            columns: ["consultado_por"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "consultas_judiciais_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cracha_templates: {
         Row: {
           altura: number
