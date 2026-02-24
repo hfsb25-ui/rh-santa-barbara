@@ -71,7 +71,7 @@ async function createAdiantamento(supabase: any, params: any) {
   const now = new Date();
   const { data, error } = await supabase.from("adiantamentos").insert({
     employee_id: matched.id, empresa_id: matched.empresa_id,
-    valor: parseFloat(valor), forma_pagamento: forma_pagamento || "Dinheiro",
+    valor: parseFloat(valor), forma_pagamento: (forma_pagamento || "dinheiro").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/transferencia|transferência/i, "transferencia").replace(/pix/i, "pix").replace(/dinheiro/i, "dinheiro").replace(/emprestimo|empréstimo/i, "emprestimo").replace(/consumo/i, "consumo").replace(/em.?maos|em.?mãos/i, "em_maos").replace(/em.?conta/i, "em_conta"),
     mes: now.getMonth() + 1, ano: now.getFullYear(),
   }).select("*, employees(nome_completo)").single();
 
@@ -834,6 +834,40 @@ async function enviarMensagemContato(supabase: any, params: any) {
   return { success: true, contato: contato.nome, numero: contato.numero, mensagem_enviada: mensagem };
 }
 
+async function atualizarStatusAdiantamentos(supabase: any, params: any) {
+  const { mes, ano, nome_funcionario, status_novo } = params;
+  const currentYear = new Date().getFullYear();
+  const currentMonth = new Date().getMonth() + 1;
+  const targetAno = ano || currentYear;
+  const targetMes = mes || currentMonth;
+  const targetStatus = status_novo || "feito";
+
+  let query = supabase.from("adiantamentos").select("id, valor, status, employees(nome_completo)").eq("ano", targetAno).eq("mes", targetMes);
+  
+  if (nome_funcionario) {
+    const { data: emps } = await supabase.from("employees").select("id").ilike("nome_completo", `%${nome_funcionario}%`).limit(10);
+    if (!emps || emps.length === 0) return `Funcionário "${nome_funcionario}" não encontrado.`;
+    query = query.in("employee_id", emps.map((e: any) => e.id));
+  }
+
+  if (targetStatus !== "feito") {
+    query = query.eq("status", "feito");
+  } else {
+    query = query.neq("status", "feito");
+  }
+
+  const { data: adiantamentos, error: fetchErr } = await query;
+  if (fetchErr) return { error: fetchErr.message };
+  if (!adiantamentos || adiantamentos.length === 0) return `Nenhum adiantamento pendente encontrado para ${targetMes}/${targetAno}${nome_funcionario ? ` (${nome_funcionario})` : ""}.`;
+
+  const ids = adiantamentos.map((a: any) => a.id);
+  const { error: updateErr } = await supabase.from("adiantamentos").update({ status: targetStatus }).in("id", ids);
+  if (updateErr) return { error: updateErr.message };
+
+  const nomes = adiantamentos.map((a: any) => `${a.employees?.nome_completo}: R$${a.valor?.toFixed(2)}`).join(", ");
+  return `✅ ${adiantamentos.length} adiantamento(s) atualizado(s) para "${targetStatus}" (${targetMes}/${targetAno}): ${nomes}`;
+}
+
 async function fetchMemorias(supabase: any) {
   const { data } = await supabase.from("cerebrum_memorias").select("conteudo, categoria, nome_professor, created_at").eq("ativo", true).order("created_at", { ascending: false }).limit(100);
   return data || [];
@@ -1140,6 +1174,22 @@ const toolDefinitions = [
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "atualizar_status_adiantamentos",
+      description: "Atualiza o status dos adiantamentos salariais (ex: para 'feito' quando já foram pagos/depositados). Use quando o gestor disser que já depositou, já pagou, já fez os adiantamentos, ou pedir para marcar como feito/pago.",
+      parameters: {
+        type: "object",
+        properties: {
+          mes: { type: "number", description: "Mês dos adiantamentos (1-12)" },
+          ano: { type: "number", description: "Ano dos adiantamentos" },
+          nome_funcionario: { type: "string", description: "Nome do funcionário (opcional, se vazio atualiza todos do mês)" },
+          status_novo: { type: "string", enum: ["feito", "aguardando"], description: "Novo status" },
+        },
+      },
+    },
+  },
 ];
 
 // ============= TOOL EXECUTION =============
@@ -1176,6 +1226,7 @@ async function executeTool(supabase: any, toolName: string, params: any, phoneNu
     case "enviar_foto_funcionario": return await enviarFotoFuncionario(supabase, params);
     case "identificar_funcionario_por_aparencia": return await identificarPorAparencia(supabase, params, iaConfig);
     case "enviar_mensagem_contato": return await enviarMensagemContato(supabase, params);
+    case "atualizar_status_adiantamentos": return await atualizarStatusAdiantamentos(supabase, params);
     default: return { error: `Tool ${toolName} not found` };
   }
 }
