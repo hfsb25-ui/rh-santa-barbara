@@ -25,6 +25,7 @@ import {
   BarChart3,
   Settings,
   Bot,
+  Scale,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
@@ -92,6 +93,7 @@ const menuGroups = [
       { title: "Contratos", url: "/contracts", icon: FileSignature },
       { title: "TACs", url: "/tacs", icon: FileWarning },
       { title: "Crachás", url: "/crachas", icon: IdCard },
+      { title: "Consulta Judicial", url: "/consulta-judicial", icon: Scale },
     ],
   },
   {
