@@ -431,7 +431,7 @@ export function WhatsAppSettings() {
                     </button>
 
                     {expandedNumber === phoneNumber && (
-                      <ScrollArea className="max-h-[600px] border-t">
+                      <div className="max-h-[600px] overflow-y-auto border-t">
                         <div className="p-3 space-y-2">
                           {msgs.map((msg) => (
                             <div
@@ -463,7 +463,7 @@ export function WhatsAppSettings() {
                             </div>
                           ))}
                         </div>
-                      </ScrollArea>
+                      </div>
                     )}
                   </div>
                 ))}
