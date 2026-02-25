@@ -18,6 +18,7 @@ const TIPO_DIA_OPTIONS = [
   { value: "ferias", label: "Férias" },
   { value: "atestado", label: "Atestado" },
   { value: "dsr", label: "DSR" },
+  { value: "compensacao", label: "Compensação" },
 ];
 
 interface DayRecord {
@@ -148,6 +149,7 @@ export function LancamentoPontoLote() {
   };
 
   const calculateHours = (record: DayRecord) => {
+    if (record.tipoDia === "compensacao") return record.horasTrabalhadas; // handled separately
     if (record.tipoDia !== "normal" || !record.horaEntrada || !record.horaSaida) return 0;
     
     const [entradaH, entradaM] = record.horaEntrada.split(":").map(Number);
@@ -165,11 +167,20 @@ export function LancamentoPontoLote() {
     return parseFloat((totalMinutos / 60).toFixed(2));
   };
 
-  const updateRecord = (index: number, field: keyof DayRecord, value: any) => {
+  const updateRecord = async (index: number, field: keyof DayRecord, value: any) => {
     const updated = [...records];
     updated[index] = { ...updated[index], [field]: value };
     
-    if (field !== "horasTrabalhadas") {
+    if (field === "tipoDia" && value === "compensacao") {
+      // Buscar horas previstas do funcionário
+      const { data: config } = await supabase
+        .from("configuracao_horas_trabalho")
+        .select("horas_diarias_esperadas")
+        .eq("employee_id", selectedEmployee)
+        .maybeSingle();
+      const horasPrevistas = config?.horas_diarias_esperadas ?? 8;
+      updated[index].horasTrabalhadas = -horasPrevistas;
+    } else if (field !== "horasTrabalhadas") {
       updated[index].horasTrabalhadas = calculateHours(updated[index]);
     }
     
