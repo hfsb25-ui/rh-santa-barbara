@@ -17,6 +17,7 @@ const TIPO_DIA_OPTIONS = [
   { value: "ferias", label: "Férias" },
   { value: "atestado", label: "Atestado" },
   { value: "dsr", label: "DSR" },
+  { value: "compensacao", label: "Compensação" },
 ];
 
 export function LancamentoPonto() {
@@ -104,7 +105,20 @@ export function LancamentoPonto() {
     mutationFn: async () => {
       const { data: { user } } = await supabase.auth.getUser();
       
-      const horasTrabalhadas = tipoDia === "normal" ? parseFloat(calculateHours().toString()) : 0;
+      // Para compensação, buscar horas previstas e colocar negativo
+      let horasTrabalhadas = 0;
+      if (tipoDia === "normal") {
+        horasTrabalhadas = parseFloat(calculateHours().toString());
+      } else if (tipoDia === "compensacao") {
+        // Buscar horas diárias esperadas do funcionário
+        const { data: config } = await supabase
+          .from("configuracao_horas_trabalho")
+          .select("horas_diarias_esperadas")
+          .eq("employee_id", selectedEmployee)
+          .maybeSingle();
+        const horasPrevistas = config?.horas_diarias_esperadas ?? 8;
+        horasTrabalhadas = -horasPrevistas;
+      }
       
       const { error } = await supabase
         .from("registros_ponto")
