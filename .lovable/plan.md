@@ -1,63 +1,33 @@
 
 
-# Consulta Judicial de Colaboradores por CPF
+## Plano: Busca automática de dados por CPF via CPFHub.io
 
-## Objetivo
-Criar uma página que permite buscar automaticamente se colaboradores estão envolvidos em processos judiciais, usando o CPF para consulta em fontes externas via busca inteligente com IA.
+### Resumo
 
-## Abordagem Técnica
+Ao digitar o CPF na aba Documentação e clicar "Buscar", o sistema consulta a API do CPFHub.io e preenche automaticamente os campos encontrados (nome completo, data de nascimento).
 
-A API pública do DATAJUD (CNJ) **não permite busca por CPF** diretamente (apenas por número de processo). Para contornar isso, usaremos o **Perplexity** (disponível como conector) para fazer buscas web inteligentes por processos judiciais associados ao nome + CPF do colaborador em fontes públicas (JusBrasil, Escavador, tribunais estaduais, etc.).
+### Implementação
 
-## Componentes
+1. **Solicitar chave de API** — Você precisará fornecer sua chave de API do CPFHub.io, que será armazenada de forma segura no backend.
 
-### 1. Edge Function: `consulta-judicial`
-- Recebe `employee_id` ou `cpf` + `nome`
-- Usa Perplexity (modelo `sonar`) para buscar: `"processos judiciais CPF {cpf} {nome_completo}"`
-- Retorna resultados estruturados (processos encontrados, tribunal, tipo, status)
-- Salva o resultado da consulta no banco para histórico
+2. **Nova edge function `cpf-lookup`** — Recebe o CPF, chama `GET https://api.cpfhub.io/cpf/{cpf}` com o header `x-api-key`, e retorna os dados (nome, data de nascimento, situação cadastral).
 
-### 2. Tabela: `consultas_judiciais`
-| Coluna | Tipo | Descrição |
-|---|---|---|
-| id | uuid (PK) | Identificador |
-| employee_id | uuid (FK) | Colaborador consultado |
-| data_consulta | timestamp | Quando foi feita |
-| resultado | jsonb | Resultado bruto da busca |
-| processos_encontrados | integer | Quantidade |
-| resumo | text | Resumo gerado pela IA |
-| consultado_por | uuid | Quem solicitou |
+3. **Alteração em `DocumentacaoTab.tsx`** — Adicionar botão "Buscar" ao lado do campo CPF. Recebe prop `onCpfLookup` e `cpfLoading`.
 
-RLS restrito ao papel `gestor`.
+4. **Alteração em `EmployeeForm.tsx`** — Implementar `handleCpfLookup` que:
+   - Chama a edge function com o CPF
+   - Mapeia os dados retornados para `formValues` (nome_completo, data_nascimento)
+   - Só preenche campos vazios (não sobrescreve dados já digitados)
+   - Mostra toast de sucesso/erro
 
-### 3. Página: `src/pages/ConsultaJudicial.tsx`
-- Header com título "Consulta Judicial"
-- Lista de colaboradores com botão "Consultar" ao lado de cada um
-- Campo de busca para filtrar por nome/CPF
-- Botão "Consultar Todos" para varredura em lote
-- Resultados exibidos em cards com badges: "Sem processos" (verde), "Processos encontrados" (vermelho)
-- Histórico de consultas anteriores
-- Coluna mostrando última consulta e resultado
+5. **Config** — Adicionar `[functions.cpf-lookup] verify_jwt = false` no `config.toml`.
 
-### 4. Navegação
-- Adicionar "Consulta Judicial" no sidebar, grupo **Documentos**, ícone `Scale`
-- Rota `/consulta-judicial` no App.tsx
+### Campos preenchidos automaticamente
 
-## Fluxo do Usuário
-1. Acessa a página "Consulta Judicial"
-2. Vê a lista de colaboradores ativos com CPF
-3. Clica "Consultar" em um colaborador específico (ou "Consultar Todos")
-4. O sistema envia o CPF + nome para a edge function
-5. A edge function usa Perplexity para buscar processos judiciais
-6. O resultado é salvo no banco e exibido na tela
-7. Consultas anteriores ficam no histórico
+- `nome_completo` — Nome retornado pela API
+- `data_nascimento` — Data de nascimento (convertida para formato yyyy-MM-dd)
 
-## Pré-requisito
-- Conectar o **Perplexity** ao projeto (conector disponível)
+### Próximo passo
 
-## Detalhes Técnicos
-- Busca individual: ~3s por colaborador
-- Busca em lote: processamento sequencial com feedback de progresso
-- Cache de resultados: não refaz busca se já foi feita nos últimos 30 dias (configurável)
-- Resultados salvos como JSONB para flexibilidade
+Preciso que você forneça sua chave de API do CPFHub.io para armazená-la de forma segura no backend. Você já tem a chave?
 
