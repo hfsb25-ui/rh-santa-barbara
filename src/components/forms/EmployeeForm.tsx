@@ -508,7 +508,10 @@ const EmployeeForm = ({ employeeId, initialData, onSaved, onCancel }: EmployeeFo
                 isEditing={!!employeeId}
                 formValues={formValues}
                 onFormChange={handleFormChange}
+                onCpfLookup={handleCpfLookup}
+                cpfLoading={cpfLoading}
               />
+            </TabsContent>
             </TabsContent>
 
             <TabsContent value="endereco" className="mt-6">
