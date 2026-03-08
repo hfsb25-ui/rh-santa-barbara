@@ -21,6 +21,7 @@ interface EmployeeFormProps {
 
 const EmployeeForm = ({ employeeId, initialData, onSaved, onCancel }: EmployeeFormProps) => {
   const [loading, setLoading] = useState(false);
+  const [cpfLoading, setCpfLoading] = useState(false);
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(initialData?.foto_url || null);
   const [selectedStatus, setSelectedStatus] = useState<string>(initialData?.status || "ativo");
@@ -224,6 +225,70 @@ const EmployeeForm = ({ employeeId, initialData, onSaved, onCancel }: EmployeeFo
     } catch (error: any) {
       console.error("Erro ao criar checklist de admissão:", error);
       toast.error("Erro ao criar checklist de admissão: " + error.message);
+    }
+  };
+
+  const handleCpfLookup = async () => {
+    const cpf = formValues.cpf;
+    if (!cpf) {
+      toast.error("Digite o CPF antes de buscar");
+      return;
+    }
+
+    setCpfLoading(true);
+    try {
+      const { data: result, error } = await supabase.functions.invoke('cpf-lookup', {
+        body: { cpf }
+      });
+
+      if (error) {
+        toast.error("Erro ao consultar CPF: " + error.message);
+        return;
+      }
+
+      if (result?.error) {
+        toast.error(result.error);
+        return;
+      }
+
+      const apiData = result?.data;
+      if (!apiData) {
+        toast.error("Nenhum dado retornado para este CPF");
+        return;
+      }
+
+      console.log("CPF lookup data:", apiData);
+
+      // Map API fields to form - only fill empty fields
+      const updates: Record<string, string> = {};
+
+      const nome = apiData.nome || apiData.name || apiData.nome_completo;
+      if (nome && !formValues.nome_completo) {
+        updates.nome_completo = nome;
+      }
+
+      const nascimento = apiData.data_nascimento || apiData.nascimento || apiData.birth_date || apiData.date_of_birth;
+      if (nascimento && !formValues.data_nascimento) {
+        // Try to convert to yyyy-MM-dd
+        let dateFormatted = nascimento;
+        if (/^\d{2}\/\d{2}\/\d{4}$/.test(nascimento)) {
+          const [dd, mm, yyyy] = nascimento.split("/");
+          dateFormatted = `${yyyy}-${mm}-${dd}`;
+        }
+        updates.data_nascimento = dateFormatted;
+      }
+
+      if (Object.keys(updates).length > 0) {
+        setFormValues(prev => ({ ...prev, ...updates }));
+        toast.success(`Dados encontrados! ${Object.keys(updates).length} campo(s) preenchido(s)`);
+      } else {
+        toast.info("CPF encontrado, mas os campos já estão preenchidos");
+      }
+    } catch (err: any) {
+      console.error("CPF lookup error:", err);
+      toast.error("Erro ao consultar CPF");
+    } finally {
+      setCpfLoading(false);
     }
   };
 
@@ -443,6 +508,8 @@ const EmployeeForm = ({ employeeId, initialData, onSaved, onCancel }: EmployeeFo
                 isEditing={!!employeeId}
                 formValues={formValues}
                 onFormChange={handleFormChange}
+                onCpfLookup={handleCpfLookup}
+                cpfLoading={cpfLoading}
               />
             </TabsContent>
 
