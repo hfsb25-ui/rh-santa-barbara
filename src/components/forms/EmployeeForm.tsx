@@ -21,6 +21,7 @@ interface EmployeeFormProps {
 
 const EmployeeForm = ({ employeeId, initialData, onSaved, onCancel }: EmployeeFormProps) => {
   const [loading, setLoading] = useState(false);
+  const [cpfLoading, setCpfLoading] = useState(false);
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(initialData?.foto_url || null);
   const [selectedStatus, setSelectedStatus] = useState<string>(initialData?.status || "ativo");

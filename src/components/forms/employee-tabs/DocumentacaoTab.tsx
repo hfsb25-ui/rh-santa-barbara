@@ -1,6 +1,8 @@
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Search, Loader2 } from "lucide-react";
 import { ESTADOS_BRASILEIROS } from "./DadosPessoaisTab";
 
 interface DocumentacaoTabProps {
@@ -8,9 +10,11 @@ interface DocumentacaoTabProps {
   isEditing: boolean;
   formValues: Record<string, string>;
   onFormChange: (field: string, value: string) => void;
+  onCpfLookup?: () => void;
+  cpfLoading?: boolean;
 }
 
-const DocumentacaoTab = ({ initialData, isEditing, formValues, onFormChange }: DocumentacaoTabProps) => {
+const DocumentacaoTab = ({ initialData, isEditing, formValues, onFormChange, onCpfLookup, cpfLoading }: DocumentacaoTabProps) => {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
       <div>
@@ -25,13 +29,31 @@ const DocumentacaoTab = ({ initialData, isEditing, formValues, onFormChange }: D
 
       <div>
         <Label>CPF {!isEditing && "*"}</Label>
-        <Input 
-          name="cpf" 
-          value={formValues.cpf || ""}
-          onChange={(e) => onFormChange("cpf", e.target.value)}
-          required={!isEditing}
-          placeholder="000.000.000-00"
-        />
+        <div className="flex gap-2">
+          <Input 
+            name="cpf" 
+            value={formValues.cpf || ""}
+            onChange={(e) => onFormChange("cpf", e.target.value)}
+            required={!isEditing}
+            placeholder="000.000.000-00"
+          />
+          {onCpfLookup && (
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              onClick={onCpfLookup}
+              disabled={cpfLoading || !formValues.cpf}
+              title="Buscar dados pelo CPF"
+            >
+              {cpfLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Search className="h-4 w-4" />
+              )}
+            </Button>
+          )}
+        </div>
       </div>
 
       <div>
