@@ -512,7 +512,6 @@ const EmployeeForm = ({ employeeId, initialData, onSaved, onCancel }: EmployeeFo
                 cpfLoading={cpfLoading}
               />
             </TabsContent>
-            </TabsContent>
 
             <TabsContent value="endereco" className="mt-6">
               <EnderecoTab 
