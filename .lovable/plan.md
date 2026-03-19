@@ -1,63 +1,35 @@
 
 
-# Consulta Judicial de Colaboradores por CPF
+## Plano: Lista de Tarefas no Dashboard
 
-## Objetivo
-Criar uma página que permite buscar automaticamente se colaboradores estão envolvidos em processos judiciais, usando o CPF para consulta em fontes externas via busca inteligente com IA.
+### O que será feito
 
-## Abordagem Técnica
+Criar um sistema de lista de tarefas (to-do list) para gestores, com persistência no banco de dados, exibido como um card no dashboard.
 
-A API pública do DATAJUD (CNJ) **não permite busca por CPF** diretamente (apenas por número de processo). Para contornar isso, usaremos o **Perplexity** (disponível como conector) para fazer buscas web inteligentes por processos judiciais associados ao nome + CPF do colaborador em fontes públicas (JusBrasil, Escavador, tribunais estaduais, etc.).
+### Funcionalidades
 
-## Componentes
+- Criar, editar, marcar como concluída e excluir tarefas
+- Prioridade (alta, média, baixa) com indicação visual por cor
+- Data de vencimento opcional
+- Tarefas ordenadas: pendentes primeiro (por prioridade/data), concluídas por último
+- Card compacto no dashboard com opção de expandir
 
-### 1. Edge Function: `consulta-judicial`
-- Recebe `employee_id` ou `cpf` + `nome`
-- Usa Perplexity (modelo `sonar`) para buscar: `"processos judiciais CPF {cpf} {nome_completo}"`
-- Retorna resultados estruturados (processos encontrados, tribunal, tipo, status)
-- Salva o resultado da consulta no banco para histórico
+### Implementação
 
-### 2. Tabela: `consultas_judiciais`
-| Coluna | Tipo | Descrição |
-|---|---|---|
-| id | uuid (PK) | Identificador |
-| employee_id | uuid (FK) | Colaborador consultado |
-| data_consulta | timestamp | Quando foi feita |
-| resultado | jsonb | Resultado bruto da busca |
-| processos_encontrados | integer | Quantidade |
-| resumo | text | Resumo gerado pela IA |
-| consultado_por | uuid | Quem solicitou |
+1. **Nova tabela `tarefas`** — Campos: id, user_id, titulo, descricao, prioridade (alta/media/baixa), data_vencimento, concluida, concluida_em, created_at. RLS: cada usuário vê/gerencia apenas suas próprias tarefas.
 
-RLS restrito ao papel `gestor`.
+2. **Novo componente `TaskList.tsx`** — Card com:
+   - Input para adicionar tarefa rapidamente (título + Enter)
+   - Lista de tarefas com checkbox para marcar concluída
+   - Badge de prioridade colorido
+   - Botão de excluir
+   - Contador de tarefas pendentes no header
 
-### 3. Página: `src/pages/ConsultaJudicial.tsx`
-- Header com título "Consulta Judicial"
-- Lista de colaboradores com botão "Consultar" ao lado de cada um
-- Campo de busca para filtrar por nome/CPF
-- Botão "Consultar Todos" para varredura em lote
-- Resultados exibidos em cards com badges: "Sem processos" (verde), "Processos encontrados" (vermelho)
-- Histórico de consultas anteriores
-- Coluna mostrando última consulta e resultado
+3. **Integração no `GestorDashboard.tsx`** — Adicionar o card de tarefas na área do dashboard, visível logo no topo ou em posição de destaque.
 
-### 4. Navegação
-- Adicionar "Consulta Judicial" no sidebar, grupo **Documentos**, ícone `Scale`
-- Rota `/consulta-judicial` no App.tsx
+### Detalhes técnicos
 
-## Fluxo do Usuário
-1. Acessa a página "Consulta Judicial"
-2. Vê a lista de colaboradores ativos com CPF
-3. Clica "Consultar" em um colaborador específico (ou "Consultar Todos")
-4. O sistema envia o CPF + nome para a edge function
-5. A edge function usa Perplexity para buscar processos judiciais
-6. O resultado é salvo no banco e exibido na tela
-7. Consultas anteriores ficam no histórico
-
-## Pré-requisito
-- Conectar o **Perplexity** ao projeto (conector disponível)
-
-## Detalhes Técnicos
-- Busca individual: ~3s por colaborador
-- Busca em lote: processamento sequencial com feedback de progresso
-- Cache de resultados: não refaz busca se já foi feita nos últimos 30 dias (configurável)
-- Resultados salvos como JSONB para flexibilidade
+- **Migração SQL**: Criar tabela `tarefas` com RLS (usuário autenticado gerencia suas próprias tarefas)
+- **Novo arquivo**: `src/components/dashboard/TaskList.tsx`
+- **Alteração**: `src/components/dashboard/GestorDashboard.tsx` — importar e renderizar o TaskList
 
