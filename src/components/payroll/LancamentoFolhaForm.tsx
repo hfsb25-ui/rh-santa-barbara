@@ -77,7 +77,7 @@ const LancamentoFolhaForm = ({ employees, empresaId, mes, ano, tipoFolha, onSucc
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [searchEmployee, setSearchEmployee] = useState("");
   const [addVarTipo, setAddVarTipo] = useState<"provento" | "desconto">("provento");
-  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isInitializedRef = useRef(false);
 
   const [rescisaoData, setRescisaoData] = useState<Record<string, {
