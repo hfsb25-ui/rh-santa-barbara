@@ -61,6 +61,7 @@ import { BirthdayListDialog } from "@/components/dashboard/BirthdayListDialog";
 import { PendingChecklistsAlert } from "@/components/dashboard/PendingChecklistsAlert";
 import { ExperiencePeriodAlerts } from "@/components/dashboard/ExperiencePeriodAlerts";
 import EventoNotifications from "@/components/dashboard/EventoNotifications";
+import TaskList from "@/components/dashboard/TaskList";
 import { toast } from "sonner";
 
 interface GestorDashboardProps {
