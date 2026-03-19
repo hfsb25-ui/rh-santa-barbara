@@ -3093,6 +3093,45 @@ export type Database = {
           },
         ]
       }
+      tarefas: {
+        Row: {
+          concluida: boolean
+          concluida_em: string | null
+          created_at: string
+          data_vencimento: string | null
+          descricao: string | null
+          id: string
+          prioridade: string
+          titulo: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          concluida?: boolean
+          concluida_em?: string | null
+          created_at?: string
+          data_vencimento?: string | null
+          descricao?: string | null
+          id?: string
+          prioridade?: string
+          titulo: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          concluida?: boolean
+          concluida_em?: string | null
+          created_at?: string
+          data_vencimento?: string | null
+          descricao?: string | null
+          id?: string
+          prioridade?: string
+          titulo?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       uniformes: {
         Row: {
           assinatura_funcionario: string | null
