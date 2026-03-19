@@ -62,6 +62,7 @@ import { PendingChecklistsAlert } from "@/components/dashboard/PendingChecklists
 import { ExperiencePeriodAlerts } from "@/components/dashboard/ExperiencePeriodAlerts";
 import EventoNotifications from "@/components/dashboard/EventoNotifications";
 import TaskList from "@/components/dashboard/TaskList";
+import NavigationSearch from "@/components/dashboard/NavigationSearch";
 import { toast } from "sonner";
 
 interface GestorDashboardProps {
@@ -536,6 +537,9 @@ const GestorDashboard = ({ user }: GestorDashboardProps) => {
 
   return (
     <div className="space-y-8">
+        {/* Navigation Search */}
+        <NavigationSearch />
+
         {/* Navigation Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <TabsList className="inline-flex lg:grid w-full lg:grid-cols-4 overflow-x-auto tabs-scroll">
