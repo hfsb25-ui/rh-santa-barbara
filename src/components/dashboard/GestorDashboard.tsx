@@ -62,6 +62,7 @@ import { PendingChecklistsAlert } from "@/components/dashboard/PendingChecklists
 import { ExperiencePeriodAlerts } from "@/components/dashboard/ExperiencePeriodAlerts";
 import EventoNotifications from "@/components/dashboard/EventoNotifications";
 import TaskList from "@/components/dashboard/TaskList";
+import NavigationSearch from "@/components/dashboard/NavigationSearch";
 import { toast } from "sonner";
 
 interface GestorDashboardProps {
