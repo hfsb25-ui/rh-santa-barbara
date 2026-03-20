@@ -127,6 +127,12 @@ const EmployeeDetails = () => {
             Voltar
           </Button>
           <div className="flex gap-2">
+            {employee.status === "demitido" && (
+              <Button variant="outline" onClick={() => setShowReadmitDialog(true)}>
+                <RotateCcw className="w-4 h-4 mr-2" />
+                Readmitir
+              </Button>
+            )}
             <GenerateContractButton employee={employee} />
             <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
             <DialogTrigger asChild>
