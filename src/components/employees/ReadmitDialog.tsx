@@ -26,6 +26,7 @@ const ReadmitDialog = ({ open, onOpenChange, employee, onSuccess }: ReadmitDialo
   const [iniciarChecklist, setIniciarChecklist] = useState(false);
   const [empresas, setEmpresas] = useState<any[]>([]);
   const [setores, setSetores] = useState<any[]>([]);
+  const [funcoes, setFuncoes] = useState<any[]>([]);
 
   useEffect(() => {
     if (open) {
