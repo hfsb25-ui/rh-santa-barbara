@@ -170,8 +170,17 @@ const ReadmitDialog = ({ open, onOpenChange, employee, onSuccess }: ReadmitDialo
           </div>
 
           <div className="space-y-2">
-            <Label>Cargo</Label>
-            <Input value={cargo} onChange={(e) => setCargo(e.target.value)} />
+            <Label>Cargo / Função</Label>
+            <Select value={cargo} onValueChange={setCargo}>
+              <SelectTrigger>
+                <SelectValue placeholder="Selecione a função" />
+              </SelectTrigger>
+              <SelectContent>
+                {funcoes.map((f) => (
+                  <SelectItem key={f.id} value={f.nome}>{f.nome}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="space-y-2">
