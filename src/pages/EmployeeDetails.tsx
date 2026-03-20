@@ -36,6 +36,7 @@ import { ChecklistTab } from "@/components/employees/tabs/ChecklistTab";
 import { VariaveisFixasTab } from "@/components/employees/tabs/VariaveisFixasTab";
 import ReadmitDialog from "@/components/employees/ReadmitDialog";
 import { HoleritesTab } from "@/components/employees/tabs/HoleritesTab";
+import HistoricoTimelineTab from "@/components/employees/tabs/HistoricoTimelineTab";
 
 const EmployeeDetails = () => {
   const { id } = useParams();
