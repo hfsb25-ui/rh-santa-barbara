@@ -34,6 +34,7 @@ import ExamesMedicosTab from "@/components/employees/tabs/ExamesMedicosTab";
 import AvaliacoesTab from "@/components/employees/tabs/AvaliacoesTab";
 import { ChecklistTab } from "@/components/employees/tabs/ChecklistTab";
 import { VariaveisFixasTab } from "@/components/employees/tabs/VariaveisFixasTab";
+import ReadmitDialog from "@/components/employees/ReadmitDialog";
 import { HoleritesTab } from "@/components/employees/tabs/HoleritesTab";
 
 const EmployeeDetails = () => {
