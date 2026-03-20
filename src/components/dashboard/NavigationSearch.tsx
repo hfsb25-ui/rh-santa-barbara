@@ -40,6 +40,7 @@ const allMenuItems = [
   { title: "Relatórios", url: "/relatorios", icon: BarChart3, keywords: "reports exportar" },
   { title: "Configurações", url: "/settings", icon: Settings, keywords: "config preferências sistema" },
   { title: "Inteligência Artificial", url: "/ai-insights", icon: Bot, keywords: "ia cerebrum ai chat" },
+  { title: "Info. Contabilidade", url: "/contabilidade", icon: Calculator, keywords: "contabilidade contador informações mensal" },
 ];
 
 export default function NavigationSearch() {
