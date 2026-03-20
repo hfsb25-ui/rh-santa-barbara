@@ -16,7 +16,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { ArrowLeft, Edit, Loader2, Trash2 } from "lucide-react";
+import { ArrowLeft, Edit, Loader2, Trash2, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 
 import EmployeeInfo from "@/components/employees/EmployeeInfo";
@@ -34,6 +34,7 @@ import ExamesMedicosTab from "@/components/employees/tabs/ExamesMedicosTab";
 import AvaliacoesTab from "@/components/employees/tabs/AvaliacoesTab";
 import { ChecklistTab } from "@/components/employees/tabs/ChecklistTab";
 import { VariaveisFixasTab } from "@/components/employees/tabs/VariaveisFixasTab";
+import ReadmitDialog from "@/components/employees/ReadmitDialog";
 import { HoleritesTab } from "@/components/employees/tabs/HoleritesTab";
 
 const EmployeeDetails = () => {
@@ -43,6 +44,7 @@ const EmployeeDetails = () => {
   const [employee, setEmployee] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [showEditDialog, setShowEditDialog] = useState(false);
+  const [showReadmitDialog, setShowReadmitDialog] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
@@ -125,6 +127,12 @@ const EmployeeDetails = () => {
             Voltar
           </Button>
           <div className="flex gap-2">
+            {employee.status === "demitido" && (
+              <Button variant="outline" onClick={() => setShowReadmitDialog(true)}>
+                <RotateCcw className="w-4 h-4 mr-2" />
+                Readmitir
+              </Button>
+            )}
             <GenerateContractButton employee={employee} />
             <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
             <DialogTrigger asChild>
@@ -245,6 +253,13 @@ const EmployeeDetails = () => {
             <ChecklistTab employeeId={id!} isManager={true} />
           </TabsContent>
         </Tabs>
+
+        <ReadmitDialog
+          open={showReadmitDialog}
+          onOpenChange={setShowReadmitDialog}
+          employee={employee}
+          onSuccess={fetchEmployee}
+        />
       </div>
     </div>
   );
