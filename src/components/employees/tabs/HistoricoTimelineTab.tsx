@@ -126,7 +126,7 @@ const HistoricoTimelineTab = ({ employeeId, employee }: HistoricoTimelineTabProp
           date: f.data,
           type: "falta",
           title: "Falta",
-          description: `${f.justificativa ? "Justificada" : "Não justificada"}${f.motivo ? ` — ${f.motivo}` : ""}`,
+          description: `${f.justificada ? "Justificada" : "Não justificada"}${f.motivo ? ` — ${f.motivo}` : ""}`,
           icon: <Clock className="w-4 h-4 text-white" />,
           color: typeConfig.falta.color,
         });
