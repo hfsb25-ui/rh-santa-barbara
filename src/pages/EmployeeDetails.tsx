@@ -44,6 +44,7 @@ const EmployeeDetails = () => {
   const [employee, setEmployee] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [showEditDialog, setShowEditDialog] = useState(false);
+  const [showReadmitDialog, setShowReadmitDialog] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
