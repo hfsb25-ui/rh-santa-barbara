@@ -2362,6 +2362,57 @@ export type Database = {
           },
         ]
       }
+      informacoes_contabilidade: {
+        Row: {
+          ano: number
+          created_at: string
+          employee_id: string | null
+          empresa_id: string | null
+          id: string
+          mes: number
+          observacoes: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          ano: number
+          created_at?: string
+          employee_id?: string | null
+          empresa_id?: string | null
+          id?: string
+          mes: number
+          observacoes: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          ano?: number
+          created_at?: string
+          employee_id?: string | null
+          empresa_id?: string | null
+          id?: string
+          mes?: number
+          observacoes?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "informacoes_contabilidade_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "informacoes_contabilidade_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       login_history: {
         Row: {
           employee_id: string | null

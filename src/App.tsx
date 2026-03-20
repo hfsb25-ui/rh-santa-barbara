@@ -38,6 +38,7 @@ import Crachas from "./pages/Crachas";
 import Eventos from "./pages/Eventos";
 import AIInsights from "./pages/AIInsights";
 import ConsultaJudicial from "./pages/ConsultaJudicial";
+import Contabilidade from "./pages/Contabilidade";
 import AppLayout from "./components/layout/AppLayout";
 import { FloatingAIChat } from "./components/ai/FloatingAIChat";
 
@@ -90,6 +91,7 @@ const App = () => {
               <Route path="/eventos" element={<AppLayout><Eventos /></AppLayout>} />
               <Route path="/ai-insights" element={<AppLayout><AIInsights /></AppLayout>} />
               <Route path="/consulta-judicial" element={<AppLayout><ConsultaJudicial /></AppLayout>} />
+              <Route path="/contabilidade" element={<AppLayout><Contabilidade /></AppLayout>} />
 
               <Route path="*" element={<NotFound />} />
             </Routes>

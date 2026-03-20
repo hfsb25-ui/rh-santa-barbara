@@ -26,6 +26,7 @@ import {
   Settings,
   Bot,
   Scale,
+  Calculator,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
@@ -106,6 +107,12 @@ const menuGroups = [
     label: "Saúde",
     items: [
       { title: "Saúde Ocupacional", url: "/saude-ocupacional", icon: Activity },
+    ],
+  },
+  {
+    label: "Contabilidade",
+    items: [
+      { title: "Info. Contabilidade", url: "/contabilidade", icon: Calculator },
     ],
   },
   {

@@ -7,7 +7,7 @@ import {
   Award, GraduationCap, ClipboardList, CalendarDays, Search as SearchIcon,
   UserPlus, Receipt, TrendingUp, DollarSign, Wallet, FileSignature,
   FileWarning, IdCard, Package, Activity, Building2, BarChart3, Settings,
-  Bot, Scale,
+  Bot, Scale, Calculator,
 } from "lucide-react";
 
 const allMenuItems = [
@@ -40,6 +40,7 @@ const allMenuItems = [
   { title: "Relatórios", url: "/relatorios", icon: BarChart3, keywords: "reports exportar" },
   { title: "Configurações", url: "/settings", icon: Settings, keywords: "config preferências sistema" },
   { title: "Inteligência Artificial", url: "/ai-insights", icon: Bot, keywords: "ia cerebrum ai chat" },
+  { title: "Info. Contabilidade", url: "/contabilidade", icon: Calculator, keywords: "contabilidade contador informações mensal" },
 ];
 
 export default function NavigationSearch() {
