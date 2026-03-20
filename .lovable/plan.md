@@ -1,35 +1,37 @@
 
 
-## Plano: Lista de Tarefas no Dashboard
+## Plano: Readmissão de Funcionário Demitido
 
-### O que será feito
+### Resumo
 
-Criar um sistema de lista de tarefas (to-do list) para gestores, com persistência no banco de dados, exibido como um card no dashboard.
+Adicionar um botão "Readmitir" na página de detalhes do funcionário demitido. Ao clicar, abre um dialog onde o gestor define a nova data de admissão, cargo, setor e salário. O sistema reativa o registro existente (mantendo todo o histórico) e opcionalmente inicia um novo checklist de admissão.
 
-### Funcionalidades
+### Como funciona
 
-- Criar, editar, marcar como concluída e excluir tarefas
-- Prioridade (alta, média, baixa) com indicação visual por cor
-- Data de vencimento opcional
-- Tarefas ordenadas: pendentes primeiro (por prioridade/data), concluídas por último
-- Card compacto no dashboard com opção de expandir
+1. Na página de detalhes (`EmployeeDetails.tsx`), quando o funcionário tem status "demitido", exibir botão **"Readmitir"** (ícone de refresh/undo)
+2. Ao clicar, abre dialog com campos:
+   - Nova data de admissão (obrigatório)
+   - Cargo (pré-preenchido com o atual)
+   - Setor (pré-preenchido com o atual)
+   - Empresa (pré-preenchido com a atual)
+   - Novo salário (pré-preenchido com o anterior)
+   - Checkbox: "Iniciar checklist de admissão?"
+3. Ao confirmar:
+   - Atualiza o status para "ativo" (ou "em_admissao" se checklist marcado)
+   - Atualiza `data_admissao` com a nova data
+   - Limpa `data_desligamento`
+   - Atualiza cargo/setor/salário se alterados
+   - Se checklist marcado, cria automaticamente o processo de onboarding
 
-### Implementação
+### Vantagem
 
-1. **Nova tabela `tarefas`** — Campos: id, user_id, titulo, descricao, prioridade (alta/media/baixa), data_vencimento, concluida, concluida_em, created_at. RLS: cada usuário vê/gerencia apenas suas próprias tarefas.
+Todo o histórico do funcionário (EPIs, férias, faltas, avaliações, arquivos, holerites) permanece intacto. Não é necessário recadastrar nada.
 
-2. **Novo componente `TaskList.tsx`** — Card com:
-   - Input para adicionar tarefa rapidamente (título + Enter)
-   - Lista de tarefas com checkbox para marcar concluída
-   - Badge de prioridade colorido
-   - Botão de excluir
-   - Contador de tarefas pendentes no header
+### Implementação técnica
 
-3. **Integração no `GestorDashboard.tsx`** — Adicionar o card de tarefas na área do dashboard, visível logo no topo ou em posição de destaque.
+1. **Novo componente `ReadmitDialog.tsx`** — Dialog com formulário de readmissão e lógica de update no banco
+2. **Alteração em `EmployeeDetails.tsx`** — Renderizar botão "Readmitir" condicionalmente quando `employee.status === "demitido"`
+3. **Alteração em `EmployeeInfo.tsx`** — Exibir badge visual diferenciado para funcionário readmitido (opcional)
 
-### Detalhes técnicos
-
-- **Migração SQL**: Criar tabela `tarefas` com RLS (usuário autenticado gerencia suas próprias tarefas)
-- **Novo arquivo**: `src/components/dashboard/TaskList.tsx`
-- **Alteração**: `src/components/dashboard/GestorDashboard.tsx` — importar e renderizar o TaskList
+Nenhuma alteração de banco de dados é necessária — a tabela `employees` já possui todos os campos necessários.
 
