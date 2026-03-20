@@ -253,6 +253,13 @@ const EmployeeDetails = () => {
             <ChecklistTab employeeId={id!} isManager={true} />
           </TabsContent>
         </Tabs>
+
+        <ReadmitDialog
+          open={showReadmitDialog}
+          onOpenChange={setShowReadmitDialog}
+          employee={employee}
+          onSuccess={fetchEmployee}
+        />
       </div>
     </div>
   );
