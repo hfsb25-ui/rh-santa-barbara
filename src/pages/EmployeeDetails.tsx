@@ -254,6 +254,10 @@ const EmployeeDetails = () => {
           <TabsContent value="checklist">
             <ChecklistTab employeeId={id!} isManager={true} />
           </TabsContent>
+
+          <TabsContent value="historico">
+            <HistoricoTimelineTab employeeId={id!} employee={employee} />
+          </TabsContent>
         </Tabs>
 
         <ReadmitDialog
