@@ -38,6 +38,7 @@ import Crachas from "./pages/Crachas";
 import Eventos from "./pages/Eventos";
 import AIInsights from "./pages/AIInsights";
 import ConsultaJudicial from "./pages/ConsultaJudicial";
+import Contabilidade from "./pages/Contabilidade";
 import AppLayout from "./components/layout/AppLayout";
 import { FloatingAIChat } from "./components/ai/FloatingAIChat";
 
