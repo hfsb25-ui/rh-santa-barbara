@@ -36,6 +36,7 @@ import { ChecklistTab } from "@/components/employees/tabs/ChecklistTab";
 import { VariaveisFixasTab } from "@/components/employees/tabs/VariaveisFixasTab";
 import ReadmitDialog from "@/components/employees/ReadmitDialog";
 import { HoleritesTab } from "@/components/employees/tabs/HoleritesTab";
+import HistoricoTimelineTab from "@/components/employees/tabs/HistoricoTimelineTab";
 
 const EmployeeDetails = () => {
   const { id } = useParams();
@@ -199,6 +200,7 @@ const EmployeeDetails = () => {
             <TabsTrigger value="exames" className="flex-shrink-0">Exames Médicos</TabsTrigger>
             <TabsTrigger value="avaliacoes" className="flex-shrink-0">Avaliações</TabsTrigger>
             <TabsTrigger value="checklist" className="flex-shrink-0">Checklist</TabsTrigger>
+            <TabsTrigger value="historico" className="flex-shrink-0">Histórico</TabsTrigger>
           </TabsList>
 
           <TabsContent value="epis">
@@ -251,6 +253,10 @@ const EmployeeDetails = () => {
 
           <TabsContent value="checklist">
             <ChecklistTab employeeId={id!} isManager={true} />
+          </TabsContent>
+
+          <TabsContent value="historico">
+            <HistoricoTimelineTab employeeId={id!} employee={employee} />
           </TabsContent>
         </Tabs>
 
