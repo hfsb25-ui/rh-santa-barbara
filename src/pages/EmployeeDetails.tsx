@@ -200,6 +200,7 @@ const EmployeeDetails = () => {
             <TabsTrigger value="exames" className="flex-shrink-0">Exames Médicos</TabsTrigger>
             <TabsTrigger value="avaliacoes" className="flex-shrink-0">Avaliações</TabsTrigger>
             <TabsTrigger value="checklist" className="flex-shrink-0">Checklist</TabsTrigger>
+            <TabsTrigger value="historico" className="flex-shrink-0">Histórico</TabsTrigger>
           </TabsList>
 
           <TabsContent value="epis">
