@@ -110,6 +110,12 @@ const menuGroups = [
     ],
   },
   {
+    label: "Contabilidade",
+    items: [
+      { title: "Info. Contabilidade", url: "/contabilidade", icon: Calculator },
+    ],
+  },
+  {
     label: "Admin",
     items: [
       { title: "Empresas", url: "/companies", icon: Building2 },
