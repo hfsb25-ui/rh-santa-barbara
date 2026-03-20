@@ -16,7 +16,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { ArrowLeft, Edit, Loader2, Trash2 } from "lucide-react";
+import { ArrowLeft, Edit, Loader2, Trash2, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 
 import EmployeeInfo from "@/components/employees/EmployeeInfo";
