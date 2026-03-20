@@ -26,6 +26,7 @@ const ReadmitDialog = ({ open, onOpenChange, employee, onSuccess }: ReadmitDialo
   const [iniciarChecklist, setIniciarChecklist] = useState(false);
   const [empresas, setEmpresas] = useState<any[]>([]);
   const [setores, setSetores] = useState<any[]>([]);
+  const [funcoes, setFuncoes] = useState<any[]>([]);
 
   useEffect(() => {
     if (open) {
@@ -40,12 +41,14 @@ const ReadmitDialog = ({ open, onOpenChange, employee, onSuccess }: ReadmitDialo
   }, [open, employee]);
 
   const fetchOptions = async () => {
-    const [empresasRes, setoresRes] = await Promise.all([
+    const [empresasRes, setoresRes, funcoesRes] = await Promise.all([
       supabase.from("empresas").select("id, nome").order("nome"),
       supabase.from("setores").select("id, nome").order("nome"),
+      supabase.from("funcoes").select("id, nome").order("nome"),
     ]);
     setEmpresas(empresasRes.data || []);
     setSetores(setoresRes.data || []);
+    setFuncoes(funcoesRes.data || []);
   };
 
   const handleSubmit = async () => {
@@ -167,8 +170,17 @@ const ReadmitDialog = ({ open, onOpenChange, employee, onSuccess }: ReadmitDialo
           </div>
 
           <div className="space-y-2">
-            <Label>Cargo</Label>
-            <Input value={cargo} onChange={(e) => setCargo(e.target.value)} />
+            <Label>Cargo / Função</Label>
+            <Select value={cargo} onValueChange={setCargo}>
+              <SelectTrigger>
+                <SelectValue placeholder="Selecione a função" />
+              </SelectTrigger>
+              <SelectContent>
+                {funcoes.map((f) => (
+                  <SelectItem key={f.id} value={f.nome}>{f.nome}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="space-y-2">
