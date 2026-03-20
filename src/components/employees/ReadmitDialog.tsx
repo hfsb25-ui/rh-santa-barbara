@@ -41,12 +41,14 @@ const ReadmitDialog = ({ open, onOpenChange, employee, onSuccess }: ReadmitDialo
   }, [open, employee]);
 
   const fetchOptions = async () => {
-    const [empresasRes, setoresRes] = await Promise.all([
+    const [empresasRes, setoresRes, funcoesRes] = await Promise.all([
       supabase.from("empresas").select("id, nome").order("nome"),
       supabase.from("setores").select("id, nome").order("nome"),
+      supabase.from("funcoes").select("id, nome").order("nome"),
     ]);
     setEmpresas(empresasRes.data || []);
     setSetores(setoresRes.data || []);
+    setFuncoes(funcoesRes.data || []);
   };
 
   const handleSubmit = async () => {
