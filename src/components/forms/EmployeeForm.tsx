@@ -427,7 +427,10 @@ const EmployeeForm = ({ employeeId, initialData, onSaved, onCancel }: EmployeeFo
 
         if (employeeError) {
           console.error("Erro ao inserir funcionário:", employeeError);
-          toast.error("Erro ao salvar funcionário: " + employeeError.message);
+          const errorMsg = employeeError.message.includes("row-level security")
+            ? "Sem permissão. Apenas gestores podem cadastrar funcionários."
+            : "Erro ao salvar funcionário: " + employeeError.message;
+          toast.error(errorMsg);
           setLoading(false);
           return;
         }
