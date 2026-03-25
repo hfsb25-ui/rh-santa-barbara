@@ -38,7 +38,7 @@ Deno.serve(async (req) => {
     const cpfLimpo = cpf.replace(/\D/g, '')
     const email = `funcionario.${cpfLimpo}@rhsantabarbara.app`
 
-    // Criar usuário usando service role key
+    // Tentar criar usuário usando service role key
     const { data: authData, error: authError } = await supabaseClient.auth.admin.createUser({
       email: email,
       password: senha,
@@ -50,13 +50,38 @@ Deno.serve(async (req) => {
     })
 
     if (authError) {
+      // Se o usuário já existe, buscar e retornar o existente
+      if (authError.message.includes('already been registered')) {
+        const { data: users, error: listError } = await supabaseClient.auth.admin.listUsers()
+        if (listError) {
+          return new Response(
+            JSON.stringify({ error: 'Erro ao buscar usuário existente' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          )
+        }
+        const existingUser = users.users.find(u => u.email === email)
+        if (existingUser) {
+          // Atualizar senha do usuário existente
+          const { data: updated, error: updateError } = await supabaseClient.auth.admin.updateUserById(
+            existingUser.id,
+            { password: senha, user_metadata: { nome_completo: nome_completo, role: 'funcionario' } }
+          )
+          if (updateError) {
+            return new Response(
+              JSON.stringify({ error: updateError.message }),
+              { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            )
+          }
+          return new Response(
+            JSON.stringify({ user: updated.user }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          )
+        }
+      }
       console.error('Erro ao criar usuário:', authError)
       return new Response(
         JSON.stringify({ error: authError.message }),
-        { 
-          status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        }
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
