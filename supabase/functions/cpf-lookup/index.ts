@@ -53,8 +53,8 @@ Deno.serve(async (req) => {
       const errorText = await response.text();
       console.error(`CPFHub API error: ${response.status} - ${errorText}`);
       return new Response(
-        JSON.stringify({ error: `Erro na consulta: ${response.status === 404 ? "CPF não encontrado" : "Falha na API"}` }),
-        { status: response.status, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ success: false, error: response.status === 404 ? "CPF não encontrado na base de dados" : `Erro na consulta ao CPFHub (${response.status})` }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
