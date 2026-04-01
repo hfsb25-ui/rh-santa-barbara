@@ -56,7 +56,8 @@ export function NovoChecklistDialog({
       setSelectedEmployeeData(emp);
       
       if (tipo === "desligamento" && emp?.data_admissao) {
-        const dias = calcularDiasAviso(emp.data_admissao);
+        // Pedido de demissão: sempre 30 dias. Dispensa: proporcional ao tempo de serviço.
+        const dias = tipoDesligamento === "pedido_demissao" ? 30 : calcularDiasAviso(emp.data_admissao);
         setDiasAviso(dias);
         setDataFimAviso(addDays(new Date(), dias));
       }
@@ -65,7 +66,7 @@ export function NovoChecklistDialog({
         fetchEmpresa(emp.empresa_id);
       }
     }
-  }, [selectedEmployee, employees, tipo]);
+  }, [selectedEmployee, employees, tipo, tipoDesligamento]);
 
   const fetchEmpresa = async (empresaId: string) => {
     const { data } = await supabase
