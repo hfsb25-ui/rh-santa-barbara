@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { LogOut, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { useInactivityLock } from "@/hooks/useInactivityLock";
+import LockScreen from "./LockScreen";
 
 interface AppLayoutProps {
   children: React.ReactNode;
