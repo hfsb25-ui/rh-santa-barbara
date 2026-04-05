@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { LogOut, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { useInactivityLock } from "@/hooks/useInactivityLock";
+import LockScreen from "./LockScreen";
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -21,6 +23,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
   const [selectedEmpresa, setSelectedEmpresa] = useState<string>("all");
   const [empresas, setEmpresas] = useState<Array<{ id: string; nome: string; logo_url?: string }>>([]);
   const [companyLogo, setCompanyLogo] = useState<string | null>(null);
+  const { isLocked, unlock } = useInactivityLock(5 * 60 * 1000);
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
@@ -71,6 +74,10 @@ export default function AppLayout({ children }: AppLayoutProps) {
     if (error) toast.error("Erro ao sair");
     else navigate("/auth");
   };
+
+  if (isLocked && user?.email) {
+    return <LockScreen userEmail={user.email} onUnlock={unlock} />;
+  }
 
   if (loading) {
     return (
