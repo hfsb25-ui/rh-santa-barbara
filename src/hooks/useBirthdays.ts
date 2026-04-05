@@ -31,7 +31,7 @@ export const useBirthdays = (empresaId?: string, setorId?: string) => {
       let query = supabase
         .from("employees")
         .select("id, nome_completo, cargo, setor, data_nascimento, foto_url, empresa_id")
-        .eq("status", "ativo")
+        .in("status", ["ativo", "ferias"])
         .not("data_nascimento", "is", null);
 
       if (empresaId && empresaId !== "all") {

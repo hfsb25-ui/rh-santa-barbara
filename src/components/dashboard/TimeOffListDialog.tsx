@@ -64,7 +64,7 @@ const TimeOffListDialog = ({ open, onOpenChange }: TimeOffListDialogProps) => {
       const { data: employeesData, error: employeesError } = await supabase
         .from("employees")
         .select("id, nome_completo, cargo, setor, tipo_contrato, quantidade_folgas, ultima_alteracao_folgas")
-        .eq("status", "ativo")
+        .in("status", ["ativo", "ferias"])
         .order("nome_completo");
 
       if (employeesError) throw employeesError;

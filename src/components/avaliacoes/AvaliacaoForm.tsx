@@ -81,7 +81,7 @@ export default function AvaliacaoForm({ avaliacao, onClose, onSuccess }: Avaliac
       const { data, error } = await supabase
         .from("employees")
         .select("id, nome_completo, cargo, setor")
-        .eq("status", "ativo")
+        .in("status", ["ativo", "ferias"])
         .order("nome_completo");
 
       if (error) throw error;

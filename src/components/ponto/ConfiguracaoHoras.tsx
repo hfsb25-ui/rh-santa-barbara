@@ -46,7 +46,7 @@ export function ConfiguracaoHoras() {
       const { data: empData, error: empError } = await supabase
         .from("employees")
         .select("id, nome_completo, cargo, setor, empresa_id, tipo_contrato")
-        .eq("status", "ativo")
+        .in("status", ["ativo", "ferias"])
         .order("nome_completo");
       
       if (empError) throw empError;

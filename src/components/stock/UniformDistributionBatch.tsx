@@ -55,7 +55,7 @@ const UniformDistributionBatch = () => {
     const { data } = await supabase
       .from("employees")
       .select("id, nome_completo, cargo, cpf, setor, empresa_id")
-      .eq("status", "ativo")
+      .in("status", ["ativo", "ferias"])
       .order("nome_completo");
     
     setEmployees(data || []);

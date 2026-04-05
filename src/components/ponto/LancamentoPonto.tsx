@@ -65,7 +65,7 @@ export function LancamentoPonto() {
       let query = supabase
         .from("employees")
         .select("id, nome_completo, cargo, empresa_id, setor")
-        .eq("status", "ativo");
+        .in("status", ["ativo", "ferias"]);
       
       if (filterEmpresa && filterEmpresa !== "all") {
         query = query.eq("empresa_id", filterEmpresa);

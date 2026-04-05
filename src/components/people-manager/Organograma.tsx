@@ -50,7 +50,7 @@ export default function Organograma() {
       let query = supabase
         .from("employees")
         .select("*")
-        .eq("status", "ativo")
+        .in("status", ["ativo", "ferias"])
         .order("nome_completo");
       
       if (selectedCompany !== "all") {

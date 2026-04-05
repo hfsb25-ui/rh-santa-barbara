@@ -19,7 +19,7 @@ export default function ComplianceDocuments() {
       const { data, error } = await supabase
         .from("employees")
         .select("*")
-        .eq("status", "ativo")
+        .in("status", ["ativo", "ferias"])
         .order("nome_completo");
       if (error) throw error;
       return data;

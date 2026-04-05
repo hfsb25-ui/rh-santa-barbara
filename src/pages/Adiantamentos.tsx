@@ -137,7 +137,7 @@ const Adiantamentos = () => {
         supabase
           .from("employees")
           .select("id, nome_completo, cargo, setor, empresa_id, tipo_contrato")
-          .eq("status", "ativo")
+          .in("status", ["ativo", "ferias"])
           .order("nome_completo"),
         supabase
           .from("empresas")

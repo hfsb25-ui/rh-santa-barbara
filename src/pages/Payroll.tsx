@@ -168,7 +168,7 @@ const Payroll = () => {
       let query = supabase
         .from("employees")
         .select("id, nome_completo, cargo, setor, salario, tipo_contrato")
-        .eq("status", "ativo");
+        .in("status", ["ativo", "ferias"]);
 
       if (selectedEmpresa && selectedEmpresa !== "all") {
         query = query.eq("empresa_id", selectedEmpresa);

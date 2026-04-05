@@ -190,7 +190,7 @@ export function RelatoriosPonto() {
       let query = supabase
         .from("employees")
         .select("id, nome_completo, cargo, setor")
-        .eq("status", "ativo");
+        .in("status", ["ativo", "ferias"]);
 
       if (filterSetor && filterSetor !== "all") {
         query = query.eq("setor", filterSetor);

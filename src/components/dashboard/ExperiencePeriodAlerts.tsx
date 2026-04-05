@@ -80,7 +80,7 @@ export const ExperiencePeriodAlerts = ({ selectedEmpresa }: ExperiencePeriodAler
       let query = supabase
         .from("employees")
         .select("id, nome_completo, cargo, setor, data_admissao")
-        .eq("status", "ativo")
+        .in("status", ["ativo", "ferias"])
         .not("data_admissao", "is", null);
 
       if (selectedEmpresa && selectedEmpresa !== "all") {
