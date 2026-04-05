@@ -87,7 +87,7 @@ export function ExportVacationDialog({ open, onOpenChange, filters }: ExportVaca
     let employeesQuery = supabase
       .from("employees")
       .select("id, nome_completo, setor, tipo_contrato, empresa_id, empresas(nome)")
-      .eq("status", "ativo");
+      .in("status", ["ativo", "ferias"]);
 
     if (empresaId !== "all") {
       employeesQuery = employeesQuery.eq("empresa_id", empresaId);

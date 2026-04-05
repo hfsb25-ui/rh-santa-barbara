@@ -40,7 +40,7 @@ export default function Contabilidade() {
   const { data: employees } = useQuery({
     queryKey: ["employees-contabilidade", empresaId],
     queryFn: async () => {
-      let q = supabase.from("employees").select("id, nome_completo, empresa_id").eq("status", "ativo").order("nome_completo");
+      let q = supabase.from("employees").select("id, nome_completo, empresa_id").in("status", ["ativo", "ferias"]).order("nome_completo");
       if (empresaId) q = q.eq("empresa_id", empresaId);
       const { data, error } = await q;
       if (error) throw error;
