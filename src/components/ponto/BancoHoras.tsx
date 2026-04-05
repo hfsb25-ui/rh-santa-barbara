@@ -38,7 +38,7 @@ export function BancoHoras() {
       const { data, error } = await supabase
         .from("employees")
         .select("id, nome_completo, cargo, setor")
-        .eq("status", "ativo")
+        .in("status", ["ativo", "ferias"])
         .order("nome_completo");
       
       if (error) throw error;
