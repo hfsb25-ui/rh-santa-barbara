@@ -75,6 +75,10 @@ export default function AppLayout({ children }: AppLayoutProps) {
     else navigate("/auth");
   };
 
+  if (isLocked && user?.email) {
+    return <LockScreen userEmail={user.email} onUnlock={unlock} />;
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
