@@ -40,7 +40,7 @@ export const ProximasAvaliacoes = () => {
         let query = supabase
           .from("employees")
           .select("id", { count: "exact", head: true })
-          .eq("status", "ativo");
+          .in("status", ["ativo", "ferias"]);
 
         if (ciclo.empresa_id) query = query.eq("empresa_id", ciclo.empresa_id);
         if (ciclo.setor_id) query = query.eq("setor", ciclo.setor_id);

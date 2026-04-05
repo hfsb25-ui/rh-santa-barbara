@@ -140,7 +140,7 @@ export function useFinanceiroData(filters: FinanceiroFilters) {
       let employeesQuery = supabase
         .from("employees")
         .select("id, nome_completo, setor, tipo_contrato, salario, status, empresa_id")
-        .eq("status", "ativo");
+        .in("status", ["ativo", "ferias"]);
 
       if (filters.empresa !== "all") {
         employeesQuery = employeesQuery.eq("empresa_id", filters.empresa);

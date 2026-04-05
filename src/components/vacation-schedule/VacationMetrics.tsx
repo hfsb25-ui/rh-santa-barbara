@@ -56,7 +56,7 @@ export function VacationMetrics({ filters }: VacationMetricsProps) {
     let employeesQuery = supabase
       .from("employees")
       .select("id, nome_completo, setor, empresa_id, data_admissao")
-      .eq("status", "ativo");
+      .in("status", ["ativo", "ferias"]);
 
     if (filters.empresa && filters.empresa !== "all") {
       employeesQuery = employeesQuery.eq("empresa_id", filters.empresa);

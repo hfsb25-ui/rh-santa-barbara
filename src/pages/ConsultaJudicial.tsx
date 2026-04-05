@@ -49,7 +49,7 @@ export default function ConsultaJudicial() {
       supabase
         .from("employees")
         .select("id, nome_completo, cpf, cargo, setor, status")
-        .eq("status", "ativo")
+        .in("status", ["ativo", "ferias"])
         .not("cpf", "is", null)
         .order("nome_completo"),
       supabase

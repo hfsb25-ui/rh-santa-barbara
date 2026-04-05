@@ -85,7 +85,7 @@ const EventoForm = ({ evento, onSaved, onCancel, initialDate }: EventoFormProps)
     const { data } = await supabase
       .from("employees")
       .select("id, nome_completo")
-      .eq("status", "ativo")
+      .in("status", ["ativo", "ferias"])
       .order("nome_completo");
     setEmployees(data || []);
   };

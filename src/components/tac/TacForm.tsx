@@ -59,7 +59,7 @@ const TacForm = ({ onSuccess }: TacFormProps) => {
     const { data } = await supabase
       .from("employees")
       .select("id, nome_completo, cargo, setor, empresa_id, empresas(nome)")
-      .eq("status", "ativo")
+      .in("status", ["ativo", "ferias"])
       .order("nome_completo");
 
     if (data) {

@@ -69,7 +69,7 @@ export function EstatisticasTreinamento() {
       const { data: funcionarios } = await supabase
         .from("employees")
         .select("id, nome_completo, setor, cargo, empresa_id")
-        .eq("status", "ativo");
+        .in("status", ["ativo", "ferias"]);
 
       // Buscar todo o progresso
       const { data: progresso } = await supabase

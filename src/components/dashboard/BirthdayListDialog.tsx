@@ -151,7 +151,7 @@ export const BirthdayListDialog = ({
   const totalEmployeesQuery = supabase
     .from("employees")
     .select("id", { count: "exact", head: true })
-    .eq("status", "ativo");
+    .in("status", ["ativo", "ferias"]);
 
   useEffect(() => {
     const getTotal = async () => {

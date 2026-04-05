@@ -56,7 +56,7 @@ export function SectorWorkforceConfig() {
     const { data: employeesData } = await supabase
       .from("employees")
       .select("setor")
-      .eq("status", "ativo");
+      .in("status", ["ativo", "ferias"]);
 
     // Count employees per sector
     const employeeCount: Record<string, number> = {};

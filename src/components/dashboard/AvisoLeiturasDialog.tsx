@@ -74,7 +74,7 @@ const AvisoLeiturasDialog = ({ aviso, open, onOpenChange }: AvisoLeiturasDialogP
     if (!aviso) return;
 
     try {
-      let query = supabase.from("employees").select("id", { count: "exact", head: true }).eq("status", "ativo");
+      let query = supabase.from("employees").select("id", { count: "exact", head: true }).in("status", ["ativo", "ferias"]);
 
       if (aviso.tipo_destinatario === "setor" && aviso.setores?.length > 0) {
         query = query.in("setor", aviso.setores);

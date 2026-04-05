@@ -113,7 +113,7 @@ const EditAvisoDialog = ({ aviso, open, onOpenChange, onSuccess }: EditAvisoDial
     const { data } = await supabase
       .from("employees")
       .select("id, nome_completo, setor")
-      .eq("status", "ativo")
+      .in("status", ["ativo", "ferias"])
       .order("nome_completo");
     if (data) setFuncionarios(data);
   };
