@@ -93,7 +93,6 @@ export default function AppLayout({ children }: AppLayoutProps) {
     );
   }
 
-  // Funcionário dashboard doesn't use sidebar
   if (userRole !== "gestor") {
     return <>{children}</>;
   }
@@ -104,16 +103,19 @@ export default function AppLayout({ children }: AppLayoutProps) {
         <AppSidebar />
         <div className="flex-1 flex flex-col min-w-0">
           {/* Header */}
-          <header className="h-14 border-b bg-card flex items-center justify-between px-2 sm:px-4 shrink-0 z-20">
-            <div className="flex items-center gap-2">
+          <header className="h-16 bg-card shadow-sm flex items-center justify-between px-4 sm:px-6 shrink-0 z-20">
+            <div className="flex items-center gap-3">
               <SidebarTrigger />
               {companyLogo && (
-                <img src={companyLogo} alt="Logo" className="w-7 h-7 object-contain hidden sm:block" />
+                <img src={companyLogo} alt="Logo" className="w-8 h-8 object-contain hidden sm:block" />
               )}
+              <span className="text-sm font-medium text-muted-foreground hidden md:block">
+                Olá, Gestor
+              </span>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
               <Select value={selectedEmpresa} onValueChange={setSelectedEmpresa}>
-                <SelectTrigger className="w-[140px] sm:w-[220px] text-xs sm:text-sm">
+                <SelectTrigger className="w-[140px] sm:w-[220px] text-xs sm:text-sm bg-muted/50 border-0">
                   <SelectValue placeholder="Empresa" />
                 </SelectTrigger>
                 <SelectContent>
@@ -123,14 +125,14 @@ export default function AppLayout({ children }: AppLayoutProps) {
                   ))}
                 </SelectContent>
               </Select>
-              <Button variant="ghost" size="icon" onClick={handleLogout}>
+              <Button variant="ghost" size="icon" onClick={handleLogout} className="text-muted-foreground hover:text-foreground">
                 <LogOut className="w-4 h-4" />
               </Button>
             </div>
           </header>
 
           {/* Main content */}
-          <main className="flex-1 overflow-auto p-6">
+          <main className="flex-1 overflow-auto p-4 sm:p-6 lg:p-8">
             {typeof children === "function"
               ? (children as any)({ selectedEmpresa, empresas, user })
               : children}

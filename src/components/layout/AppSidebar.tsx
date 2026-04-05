@@ -142,24 +142,26 @@ export function AppSidebar() {
 
   return (
     <Sidebar collapsible="icon">
-      <SidebarHeader className="border-b border-sidebar-border p-3">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center shrink-0">
-            <Bot className="w-4 h-4 text-primary-foreground" />
+      <SidebarHeader className="p-4 border-b border-sidebar-border">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center shrink-0 shadow-lg">
+            <Bot className="w-5 h-5 text-primary-foreground" />
           </div>
           {!collapsed && (
             <div className="flex flex-col">
-              <span className="text-sm font-bold text-sidebar-foreground">Cérebrum</span>
-              <span className="text-xs text-sidebar-foreground/60">Sistema de RH</span>
+              <span className="text-sm font-bold text-sidebar-foreground tracking-wide">Cérebrum</span>
+              <span className="text-[11px] text-sidebar-foreground/50 font-medium">Sistema de RH</span>
             </div>
           )}
         </div>
       </SidebarHeader>
 
-      <SidebarContent>
+      <SidebarContent className="px-2 py-2">
         {menuGroups.map((group) => (
-          <SidebarGroup key={group.label}>
-            <SidebarGroupLabel>{group.label}</SidebarGroupLabel>
+          <SidebarGroup key={group.label} className="py-1">
+            <SidebarGroupLabel className="text-[10px] uppercase tracking-widest text-sidebar-foreground/40 font-semibold px-3 mb-1">
+              {group.label}
+            </SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
                 {group.items.map((item) => (
@@ -172,11 +174,11 @@ export function AppSidebar() {
                       <NavLink
                         to={item.url}
                         end
-                        className="flex items-center gap-2"
+                        className="flex items-center gap-3 rounded-lg px-3 py-2 text-sidebar-foreground/70 transition-all duration-200 hover:text-sidebar-foreground hover:bg-sidebar-accent"
                         activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
                       >
                         <item.icon className="h-4 w-4 shrink-0" />
-                        <span>{item.title}</span>
+                        <span className="text-[13px]">{item.title}</span>
                       </NavLink>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
@@ -187,9 +189,9 @@ export function AppSidebar() {
         ))}
       </SidebarContent>
 
-      <SidebarFooter className="border-t border-sidebar-border p-2">
+      <SidebarFooter className="border-t border-sidebar-border p-3">
         {!collapsed && (
-          <p className="text-xs text-sidebar-foreground/50 text-center">
+          <p className="text-[11px] text-sidebar-foreground/40 text-center font-medium">
             RH Santa Bárbara
           </p>
         )}

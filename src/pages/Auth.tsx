@@ -4,11 +4,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 import { toast } from "sonner";
 import { User, Session } from "@supabase/supabase-js";
-import { Briefcase } from "lucide-react";
+import { Briefcase, Bot } from "lucide-react";
 
 const Auth = () => {
   const navigate = useNavigate();
@@ -60,11 +59,8 @@ const Auth = () => {
     setLoading(true);
 
     try {
-      // Formatar CPF para criar email no mesmo formato da edge function
       const cpfLimpo = cpf.replace(/\D/g, '')
       const email = `funcionario.${cpfLimpo}@rhsantabarbara.app`;
-      
-      console.log("Tentando login com:", { cpf: cpfLimpo, email });
       
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
@@ -72,14 +68,12 @@ const Auth = () => {
       });
 
       if (error) {
-        console.error("Erro de login:", error);
         toast.error("Erro ao fazer login", {
           description: "CPF ou senha incorretos. Verifique se o funcionário foi cadastrado no sistema.",
         });
         return;
       }
 
-      // Registrar login no histórico
       if (data.user) {
         const { data: employeeData } = await supabase
           .from("employees")
@@ -105,30 +99,51 @@ const Auth = () => {
     }
   };
 
-
-
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 via-background to-secondary/5 p-4">
-      <Card className="w-full max-w-md shadow-xl">
-        <CardHeader className="text-center space-y-2">
-          {companyLogo ? (
-            <div className="mx-auto mb-2">
-              <img src={companyLogo} alt="Logo da Empresa" className="w-16 h-16 object-contain" />
-            </div>
-          ) : (
-            <div className="mx-auto w-12 h-12 bg-primary rounded-full flex items-center justify-center mb-2">
-              <Briefcase className="w-6 h-6 text-primary-foreground" />
-            </div>
-          )}
-          <CardTitle className="text-2xl">Sistema de RH</CardTitle>
-          <CardDescription>
-            Gerencie funcionários, EPIs, férias e muito mais
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleLogin} className="space-y-4 mt-4">
+    <div className="min-h-screen flex">
+      {/* Left panel - Branding */}
+      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-primary via-primary/90 to-secondary items-center justify-center p-12 relative overflow-hidden">
+        <div className="absolute inset-0 opacity-10">
+          <div className="absolute top-20 left-20 w-64 h-64 rounded-full bg-white/20 blur-3xl" />
+          <div className="absolute bottom-20 right-20 w-96 h-96 rounded-full bg-white/10 blur-3xl" />
+        </div>
+        <div className="relative z-10 text-center space-y-8">
+          <div className="w-20 h-20 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center mx-auto shadow-2xl">
+            <Bot className="w-10 h-10 text-white" />
+          </div>
+          <div className="space-y-3">
+            <h1 className="text-4xl font-bold text-white tracking-tight">Cérebrum</h1>
+            <p className="text-lg text-white/70 max-w-sm mx-auto leading-relaxed">
+              Sistema inteligente de gestão de recursos humanos
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Right panel - Form */}
+      <div className="flex-1 flex items-center justify-center bg-background p-6 sm:p-12">
+        <div className="w-full max-w-sm space-y-8">
+          {/* Mobile logo */}
+          <div className="lg:hidden text-center space-y-3">
+            {companyLogo ? (
+              <img src={companyLogo} alt="Logo" className="w-14 h-14 object-contain mx-auto" />
+            ) : (
+              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center mx-auto shadow-lg">
+                <Bot className="w-7 h-7 text-white" />
+              </div>
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <h2 className="text-2xl font-bold text-foreground">Bem-vindo</h2>
+            <p className="text-muted-foreground text-sm">
+              Entre com suas credenciais para acessar o sistema
+            </p>
+          </div>
+
+          <form onSubmit={handleLogin} className="space-y-5">
             <div className="space-y-2">
-              <Label htmlFor="cpf">CPF</Label>
+              <Label htmlFor="cpf" className="text-sm font-medium">CPF</Label>
               <Input
                 id="cpf"
                 type="text"
@@ -136,10 +151,11 @@ const Auth = () => {
                 value={cpf}
                 onChange={(e) => setCpf(e.target.value)}
                 required
+                className="h-11 bg-card border-0 shadow-sm"
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password">Senha</Label>
+              <Label htmlFor="password" className="text-sm font-medium">Senha</Label>
               <Input
                 id="password"
                 type="password"
@@ -147,14 +163,19 @@ const Auth = () => {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
+                className="h-11 bg-card border-0 shadow-sm"
               />
             </div>
-            <Button type="submit" className="w-full" disabled={loading}>
+            <Button type="submit" className="w-full h-11 text-sm font-medium shadow-md" disabled={loading}>
               {loading ? "Entrando..." : "Entrar"}
             </Button>
           </form>
-        </CardContent>
-      </Card>
+
+          <p className="text-center text-xs text-muted-foreground/60">
+            RH Santa Bárbara © {new Date().getFullYear()}
+          </p>
+        </div>
+      </div>
     </div>
   );
 };

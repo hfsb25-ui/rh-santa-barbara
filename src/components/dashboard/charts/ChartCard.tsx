@@ -41,20 +41,20 @@ const ChartCard = ({ title, icon, children, showExport = true, showFullscreen = 
   return (
     <Card ref={chartRef}>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-        <CardTitle className="flex items-center gap-2 text-base font-semibold">
+        <CardTitle className="flex items-center gap-2 text-sm font-semibold text-muted-foreground">
           {icon}
           {title}
         </CardTitle>
         <div className="flex gap-1">
           {showExport && (
-            <Button variant="ghost" size="sm" onClick={handleExport}>
+            <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground" onClick={handleExport}>
               <Download className="w-4 h-4" />
             </Button>
           )}
           {showFullscreen && (
             <Dialog>
               <DialogTrigger asChild>
-                <Button variant="ghost" size="sm">
+                <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
                   <Maximize2 className="w-4 h-4" />
                 </Button>
               </DialogTrigger>
