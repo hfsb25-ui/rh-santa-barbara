@@ -1,52 +1,72 @@
+## Plano: Indicadores Estratégicos no Dashboard
 
+Adicionar uma nova aba **"Estratégico"** no Dashboard do Gestor, agrupando todos os indicadores propostos em seções claras. Isso evita poluir as abas atuais (Visão Geral, Gráficos, Estoque, Frequência) e mantém a hierarquia visual limpa.
 
-## Plano: Tela de Lock Screen
+### Nova Aba: "Estratégico"
 
-### Visão Geral
+Posicionada entre **Gráficos** e **Estoque**, contendo 7 seções organizadas em cards:
 
-Criar uma tela de bloqueio (lock screen) que aparece quando o sistema detecta inatividade do usuário. Após um período sem interação, a tela escurece com efeito blur, mostrando hora, data e avatar do usuário. Para desbloquear, o usuário digita a senha.
+#### 1. Pessoas & Turnover
+- **Taxa de Retenção (12 meses)** — % de funcionários ativos vs admitidos no último ano
+- **Tempo Médio de Casa** — média de anos por funcionário ativo
+- **Evolução de Headcount** — gráfico de linha (admissões vs demissões nos últimos 12 meses)
+- **Turnover Mensal** — % de saídas/total
 
-### Funcionamento
+#### 2. Férias & Compliance Trabalhista
+- **Férias Vencidas (11+ meses sem gozar)** — lista crítica com nome, dias em aberto e badge vermelho
+- **Férias a Vencer (próximos 60 dias)** — alerta amarelo
+- **ASO Vencidos / a Vencer** — exames ocupacionais (do módulo Saúde Ocupacional)
+
+#### 3. Absenteísmo
+- **Taxa de Absenteísmo Geral** (últimos 30 dias) — total de faltas / dias úteis trabalhados
+- **Absenteísmo por Setor** — barras horizontais
+- **Top 5 funcionários com mais faltas** (últimos 90 dias)
+
+#### 4. Folha & Custo
+- **Custo Total da Folha (mês atual)** — somatório do `valor_bruto`
+- **Custo Médio por Funcionário**
+- **Adiantamentos Pendentes** — quantidade e valor "Aguardando"
+- **Variação % vs mês anterior**
+
+#### 5. TACs & Disciplinar
+- **Funcionários Reincidentes** (2+ TACs) — lista com badge laranja
+- **TACs por tipo de ocorrência** — distribuição
+- **TACs aplicadas no mês**
+
+#### 6. Treinamentos & Performance
+- **Taxa de Conclusão de Treinamentos Obrigatórios** — % por setor
+- **Funcionários sem treinamento obrigatório completo** — alerta
+- **Nota Média de Avaliações** (último ciclo)
+
+#### 7. Recrutamento
+- **Vagas Abertas vs Candidaturas Recebidas**
+- **Tempo Médio para Preenchimento** (dias entre abertura e contratação)
+
+### Componente Principal
+
+`src/components/dashboard/IndicadoresEstrategicos.tsx` — componente único que faz queries paralelas via `useQuery` e renderiza todas as 7 seções. Cada seção é um sub-componente para manter o arquivo organizado:
 
 ```text
-Usuário logado → Inatividade (5 min) → Lock Screen exibe
-                                         ↓
-                              Usuário digita senha → Valida → Desbloqueia
-                                         ↓ (erro)
-                              Mostra erro, tenta novamente
-                              Botão "Trocar conta" → /auth
+IndicadoresEstrategicos.tsx
+├── PessoasTurnoverSection
+├── FeriasComplianceSection
+├── AbsenteismoSection
+├── FolhaCustoSection
+├── TacsDisciplinarSection
+├── TreinamentosSection
+└── RecrutamentoSection
 ```
 
-### Componentes
+### Detalhes Técnicos
 
-#### 1. `src/components/layout/LockScreen.tsx` (novo)
-- Overlay fullscreen com backdrop blur e fundo escuro semi-transparente
-- Relógio digital grande (hora e data em português)
-- Avatar/ícone do usuário com nome
-- Campo de senha para desbloquear
-- Botão "Trocar conta" que redireciona para /auth
-- Animação suave de entrada (fade + slide up)
-
-#### 2. `src/hooks/useInactivityLock.ts` (novo)
-- Hook que monitora mouse, teclado e toque
-- Timer configurável (padrão: 5 minutos)
-- Estado `isLocked` controlado pelo hook
-- Reset do timer a cada interação
-- Função `unlock(password)` que valida a senha no backend
-
-#### 3. `src/components/layout/AppLayout.tsx` (editar)
-- Integrar o hook `useInactivityLock`
-- Renderizar `<LockScreen>` quando `isLocked === true`
-
-### Design Visual
-- Fundo com gradiente escuro + blur do conteúdo por trás
-- Relógio em fonte grande e leve (light weight)
-- Data formatada em português ("Domingo, 5 de Abril")
-- Input de senha centralizado, minimalista, sem borda
-- Transição suave ao bloquear/desbloquear
+- **Filtros**: a aba respeita o `empresa_id` selecionado no `DashboardFilters` global (multi-empresa)
+- **Exclusões**: funcionários com status `Demitido` excluídos de métricas (regra existente)
+- **Datas**: usar helpers de `src/lib/date.ts` (formato YYYY-MM-DD)
+- **Visual**: paleta Indigo/Slate, `shadow-elegant`, `rounded-xl`, ícones do lucide-react
+- **Responsivo**: grid 1 col (mobile) → 2 cols (tablet) → 3-4 cols (desktop)
+- **Loading**: Skeleton em cada card durante fetch
+- **Tabelas**: `employees`, `ferias`, `faltas`, `folha_pagamento`, `adiantamentos`, `tacs` (via consulta), `cursos` + `aulas_concluidas`, `avaliacoes_desempenho`, `vagas` + `candidaturas`, `encaminhamentos_medicos`
 
 ### Arquivos
-- `src/hooks/useInactivityLock.ts` — novo
-- `src/components/layout/LockScreen.tsx` — novo
-- `src/components/layout/AppLayout.tsx` — integrar lock screen
-
+- **Novo**: `src/components/dashboard/IndicadoresEstrategicos.tsx`
+- **Editado**: `src/components/dashboard/GestorDashboard.tsx` — adicionar TabsTrigger "Estratégico" e TabsContent renderizando o novo componente
