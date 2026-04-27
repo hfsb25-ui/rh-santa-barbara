@@ -4,8 +4,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { User, FileText, MapPin, Briefcase } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { User, FileText, MapPin, Briefcase, Landmark } from "lucide-react";
 import ChangePasswordDialog from "./ChangePasswordDialog";
+import { gerarSolicitacaoContaSalario } from "@/lib/pdfGeneratorContaSalario";
+import { toast } from "sonner";
 
 interface EmployeeInfoProps {
   employee: any;
@@ -165,6 +168,48 @@ const EmployeeInfo = ({ employee }: EmployeeInfoProps) => {
               <InfoRow label="RG - Data de Emissão" value={formatDate(employee.rg_data_emissao)} />
               <InfoRow label="RG - UF de Emissão" value={employee.rg_uf} />
               <InfoRow label="Telefone" value={employee.telefone} />
+            </div>
+            <div className="mt-6 pt-4 border-t">
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full"
+                onClick={async () => {
+                  if (!employee.empresa_id) {
+                    toast.error("Funcionário sem empresa vinculada.");
+                    return;
+                  }
+                  const { data: empresa, error } = await supabase
+                    .from("empresas")
+                    .select("nome, cnpj, numero_convenio_bancario")
+                    .eq("id", employee.empresa_id)
+                    .maybeSingle();
+                  if (error || !empresa) {
+                    toast.error("Não foi possível carregar dados da empresa.");
+                    return;
+                  }
+                  if (!empresa.numero_convenio_bancario) {
+                    toast.error("Configure o número do convênio bancário da empresa para gerar a solicitação.");
+                    return;
+                  }
+                  gerarSolicitacaoContaSalario({
+                    funcionario: {
+                      nome_completo: employee.nome_completo,
+                      cpf: employee.cpf,
+                      cargo: employee.cargo,
+                    },
+                    empresa: {
+                      nome: empresa.nome,
+                      cnpj: empresa.cnpj,
+                      numero_convenio_bancario: empresa.numero_convenio_bancario,
+                    },
+                  });
+                  toast.success("Solicitação gerada com sucesso!");
+                }}
+              >
+                <Landmark className="h-4 w-4 mr-2" />
+                Gerar Solicitação de Abertura de Conta Salário
+              </Button>
             </div>
           </TabsContent>
 
