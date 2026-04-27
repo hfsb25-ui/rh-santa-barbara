@@ -63,6 +63,7 @@ import { ExperiencePeriodAlerts } from "@/components/dashboard/ExperiencePeriodA
 import EventoNotifications from "@/components/dashboard/EventoNotifications";
 import TaskList from "@/components/dashboard/TaskList";
 import NavigationSearch from "@/components/dashboard/NavigationSearch";
+import IndicadoresEstrategicos from "@/components/dashboard/IndicadoresEstrategicos";
 import { toast } from "sonner";
 
 interface GestorDashboardProps {
