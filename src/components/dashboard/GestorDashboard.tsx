@@ -543,7 +543,7 @@ const GestorDashboard = ({ user }: GestorDashboardProps) => {
 
         {/* Navigation Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="inline-flex lg:grid w-full lg:grid-cols-4 overflow-x-auto tabs-scroll">
+          <TabsList className="inline-flex lg:grid w-full lg:grid-cols-5 overflow-x-auto tabs-scroll">
             <TabsTrigger value="overview" className="flex items-center gap-2 flex-shrink-0 min-w-fit">
               <LayoutDashboard className="w-4 h-4" />
               Visão Geral
@@ -551,6 +551,10 @@ const GestorDashboard = ({ user }: GestorDashboardProps) => {
             <TabsTrigger value="charts" className="flex items-center gap-2 flex-shrink-0 min-w-fit">
               <BarChart3 className="w-4 h-4" />
               Gráficos
+            </TabsTrigger>
+            <TabsTrigger value="estrategico" className="flex items-center gap-2 flex-shrink-0 min-w-fit">
+              <Activity className="w-4 h-4" />
+              Estratégico
             </TabsTrigger>
             <TabsTrigger value="stock" className="flex items-center gap-2 flex-shrink-0 min-w-fit">
               <Package className="w-4 h-4" />
