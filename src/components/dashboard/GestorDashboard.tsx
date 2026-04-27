@@ -850,6 +850,11 @@ const GestorDashboard = ({ user }: GestorDashboardProps) => {
             ) : null}
           </TabsContent>
 
+          {/* Estratégico Tab */}
+          <TabsContent value="estrategico" className="space-y-6">
+            <IndicadoresEstrategicos selectedEmpresa={selectedEmpresa} />
+          </TabsContent>
+
 
           {/* Stock Tab */}
           <TabsContent value="stock" className="space-y-6">
