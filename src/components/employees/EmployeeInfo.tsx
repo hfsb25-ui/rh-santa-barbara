@@ -4,8 +4,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { User, FileText, MapPin, Briefcase } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { User, FileText, MapPin, Briefcase, Landmark } from "lucide-react";
 import ChangePasswordDialog from "./ChangePasswordDialog";
+import { gerarSolicitacaoContaSalario } from "@/lib/pdfGeneratorContaSalario";
+import { toast } from "sonner";
 
 interface EmployeeInfoProps {
   employee: any;
