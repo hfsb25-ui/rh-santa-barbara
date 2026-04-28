@@ -67,7 +67,7 @@ export function EtiquetasPonto() {
           empresa_id,
           empresas (nome)
         `)
-        .in("status", ["ativo", "ferias"])
+        .neq("status", "demitido")
         .order("nome_completo");
 
       if (empresaFilter !== "all") {
