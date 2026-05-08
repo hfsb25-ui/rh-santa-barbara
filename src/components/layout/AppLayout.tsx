@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { User } from "@supabase/supabase-js";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
@@ -10,6 +10,8 @@ import { LogOut, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useInactivityLock } from "@/hooks/useInactivityLock";
 import LockScreen from "./LockScreen";
+import { useUserPermissions } from "@/hooks/useUserPermissions";
+import { moduleKeyFromPath } from "@/lib/modules";
 
 interface AppLayoutProps {
   children: React.ReactNode;
