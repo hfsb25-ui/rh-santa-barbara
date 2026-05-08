@@ -104,14 +104,16 @@ export default function AppLayout({ children }: AppLayoutProps) {
     );
   }
 
-  if (userRole !== "gestor") {
+  if (userRole !== "gestor" && userRole !== "admin_parcial") {
     return <>{children}</>;
   }
+
+  const isPartial = userRole === "admin_parcial";
 
   return (
     <SidebarProvider>
       <div className="min-h-screen flex w-full">
-        <AppSidebar />
+        <AppSidebar allowedModules={isPartial ? allowedModules : null} />
         <div className="flex-1 flex flex-col min-w-0">
           {/* Header */}
           <header className="h-16 bg-card shadow-sm flex items-center justify-between px-4 sm:px-6 shrink-0 z-20">
@@ -121,7 +123,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
                 <img src={companyLogo} alt="Logo" className="w-8 h-8 object-contain hidden sm:block" />
               )}
               <span className="text-sm font-medium text-muted-foreground hidden md:block">
-                Olá, Gestor
+                Olá, {isPartial ? "Administrador" : "Gestor"}
               </span>
             </div>
             <div className="flex items-center gap-3">
