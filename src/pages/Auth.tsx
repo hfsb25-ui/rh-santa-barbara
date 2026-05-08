@@ -60,16 +60,20 @@ const Auth = () => {
 
     try {
       const cpfLimpo = cpf.replace(/\D/g, '')
-      const email = `funcionario.${cpfLimpo}@rhsantabarbara.app`;
-      
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
+      const prefixes = ["funcionario", "gestor", "admin"];
+      let data: any = null;
+      let lastError: any = null;
 
-      if (error) {
+      for (const prefix of prefixes) {
+        const email = `${prefix}.${cpfLimpo}@rhsantabarbara.app`;
+        const { data: d, error } = await supabase.auth.signInWithPassword({ email, password });
+        if (!error) { data = d; break; }
+        lastError = error;
+      }
+
+      if (!data) {
         toast.error("Erro ao fazer login", {
-          description: "CPF ou senha incorretos. Verifique se o funcionário foi cadastrado no sistema.",
+          description: "CPF ou senha incorretos. Verifique se o usuário foi cadastrado no sistema.",
         });
         return;
       }
