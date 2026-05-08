@@ -135,12 +135,57 @@ const menuGroups = [
   },
 ];
 
-export function AppSidebar() {
+interface AppSidebarProps {
+  /** quando passado, filtra os itens do menu pelos módulos permitidos (admin_parcial). null = mostra tudo (gestor) */
+  allowedModules?: Set<string> | null;
+}
+
+// mapeia url -> module key (precisa bater com src/lib/modules.ts)
+const urlToModuleKey: Record<string, string> = {
+  "/dashboard": "dashboard",
+  "/managers": "managers",
+  "/admin-users": "managers", // admin_parcial nunca vê isso (gerenciado por gestor)
+  "/funcoes": "funcoes",
+  "/people-manager": "people-manager",
+  "/controle-ponto": "controle-ponto",
+  "/vacation-schedule": "vacation-schedule",
+  "/avaliacoes": "avaliacoes",
+  "/treinamentos": "treinamentos",
+  "/plano-admissao-desligamento": "plano-admissao-desligamento",
+  "/eventos": "eventos",
+  "/vagas": "vagas",
+  "/recrutamento": "recrutamento",
+  "/payroll": "payroll",
+  "/salary-adjustment": "salary-adjustment",
+  "/adiantamentos": "adiantamentos",
+  "/financeiro": "financeiro",
+  "/contracts": "contracts",
+  "/tacs": "tacs",
+  "/crachas": "crachas",
+  "/consulta-judicial": "consulta-judicial",
+  "/stock": "stock",
+  "/saude-ocupacional": "saude-ocupacional",
+  "/contabilidade": "contabilidade",
+  "/companies": "companies",
+  "/sectors": "sectors",
+  "/turnover": "turnover",
+  "/relatorios": "relatorios",
+  "/settings": "settings",
+  "/ai-insights": "ai-insights",
+};
+
+export function AppSidebar({ allowedModules = null }: AppSidebarProps) {
   const { state } = useSidebar();
   const location = useLocation();
   const collapsed = state === "collapsed";
 
   const isActive = (url: string) => location.pathname === url;
+  const canSee = (url: string) => {
+    if (!allowedModules) return true;
+    if (url === "/admin-users") return false; // só gestor cadastra
+    const key = urlToModuleKey[url];
+    return key ? allowedModules.has(key) : true;
+  };
 
   return (
     <Sidebar collapsible="icon">
