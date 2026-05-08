@@ -58,6 +58,7 @@ const menuGroups = [
     items: [
       { title: "Funcionários", url: "/dashboard", icon: Users, hash: "#funcionarios" },
       { title: "Gestores", url: "/managers", icon: Shield },
+      { title: "Administradores", url: "/admin-users", icon: ShieldCheck },
       { title: "Funções", url: "/funcoes", icon: Briefcase },
       { title: "People Manager", url: "/people-manager", icon: UsersRound },
     ],
