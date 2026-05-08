@@ -45,13 +45,17 @@ export default function AppLayout({ children }: AppLayoutProps) {
   // Bloqueio de rota para admin_parcial
   useEffect(() => {
     if (userRole !== "admin_parcial") return;
+    // /admin-users é exclusivo de gestor
+    if (location.pathname === "/admin-users") {
+      navigate("/dashboard", { replace: true });
+      return;
+    }
     const key = moduleKeyFromPath(location.pathname);
     if (key && !allowedModules.has(key)) {
-      // redireciona para o primeiro módulo permitido (ou dashboard se permitido)
       const fallback = allowedModules.has("dashboard")
         ? "/dashboard"
         : Array.from(allowedModules)[0];
-      if (fallback && fallback !== key) {
+      if (fallback) {
         navigate(fallback.startsWith("/") ? fallback : `/${fallback}`, { replace: true });
       }
     }
