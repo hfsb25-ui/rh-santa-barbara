@@ -78,6 +78,27 @@ export type Database = {
           },
         ]
       }
+      admin_module_permissions: {
+        Row: {
+          created_at: string
+          id: string
+          module_key: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          module_key: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          module_key?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       afastamentos: {
         Row: {
           cid: string | null
@@ -3512,7 +3533,7 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "gestor" | "funcionario"
+      app_role: "gestor" | "funcionario" | "admin_parcial"
       candidatura_status:
         | "nova"
         | "em_analise"
@@ -3672,7 +3693,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["gestor", "funcionario"],
+      app_role: ["gestor", "funcionario", "admin_parcial"],
       candidatura_status: [
         "nova",
         "em_analise",

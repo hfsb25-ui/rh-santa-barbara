@@ -27,6 +27,7 @@ import {
   Bot,
   Scale,
   Calculator,
+  ShieldCheck,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
@@ -57,6 +58,7 @@ const menuGroups = [
     items: [
       { title: "Funcionários", url: "/dashboard", icon: Users, hash: "#funcionarios" },
       { title: "Gestores", url: "/managers", icon: Shield },
+      { title: "Administradores", url: "/admin-users", icon: ShieldCheck },
       { title: "Funções", url: "/funcoes", icon: Briefcase },
       { title: "People Manager", url: "/people-manager", icon: UsersRound },
     ],
@@ -133,12 +135,57 @@ const menuGroups = [
   },
 ];
 
-export function AppSidebar() {
+interface AppSidebarProps {
+  /** quando passado, filtra os itens do menu pelos módulos permitidos (admin_parcial). null = mostra tudo (gestor) */
+  allowedModules?: Set<string> | null;
+}
+
+// mapeia url -> module key (precisa bater com src/lib/modules.ts)
+const urlToModuleKey: Record<string, string> = {
+  "/dashboard": "dashboard",
+  "/managers": "managers",
+  "/admin-users": "managers", // admin_parcial nunca vê isso (gerenciado por gestor)
+  "/funcoes": "funcoes",
+  "/people-manager": "people-manager",
+  "/controle-ponto": "controle-ponto",
+  "/vacation-schedule": "vacation-schedule",
+  "/avaliacoes": "avaliacoes",
+  "/treinamentos": "treinamentos",
+  "/plano-admissao-desligamento": "plano-admissao-desligamento",
+  "/eventos": "eventos",
+  "/vagas": "vagas",
+  "/recrutamento": "recrutamento",
+  "/payroll": "payroll",
+  "/salary-adjustment": "salary-adjustment",
+  "/adiantamentos": "adiantamentos",
+  "/financeiro": "financeiro",
+  "/contracts": "contracts",
+  "/tacs": "tacs",
+  "/crachas": "crachas",
+  "/consulta-judicial": "consulta-judicial",
+  "/stock": "stock",
+  "/saude-ocupacional": "saude-ocupacional",
+  "/contabilidade": "contabilidade",
+  "/companies": "companies",
+  "/sectors": "sectors",
+  "/turnover": "turnover",
+  "/relatorios": "relatorios",
+  "/settings": "settings",
+  "/ai-insights": "ai-insights",
+};
+
+export function AppSidebar({ allowedModules = null }: AppSidebarProps) {
   const { state } = useSidebar();
   const location = useLocation();
   const collapsed = state === "collapsed";
 
   const isActive = (url: string) => location.pathname === url;
+  const canSee = (url: string) => {
+    if (!allowedModules) return true;
+    if (url === "/admin-users") return false; // só gestor cadastra
+    const key = urlToModuleKey[url];
+    return key ? allowedModules.has(key) : true;
+  };
 
   return (
     <Sidebar collapsible="icon">
@@ -157,14 +204,17 @@ export function AppSidebar() {
       </SidebarHeader>
 
       <SidebarContent className="px-2 py-2">
-        {menuGroups.map((group) => (
+        {menuGroups.map((group) => {
+          const visibleItems = group.items.filter((it) => canSee(it.url));
+          if (visibleItems.length === 0) return null;
+          return (
           <SidebarGroup key={group.label} className="py-1">
             <SidebarGroupLabel className="text-[10px] uppercase tracking-widest text-sidebar-foreground/40 font-semibold px-3 mb-1">
               {group.label}
             </SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
-                {group.items.map((item) => (
+                {visibleItems.map((item) => (
                   <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton
                       asChild
@@ -186,7 +236,8 @@ export function AppSidebar() {
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
-        ))}
+          );
+        })}
       </SidebarContent>
 
       <SidebarFooter className="border-t border-sidebar-border p-3">

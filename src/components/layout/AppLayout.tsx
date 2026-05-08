@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { User } from "@supabase/supabase-js";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
@@ -10,6 +10,8 @@ import { LogOut, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useInactivityLock } from "@/hooks/useInactivityLock";
 import LockScreen from "./LockScreen";
+import { useUserPermissions } from "@/hooks/useUserPermissions";
+import { moduleKeyFromPath } from "@/lib/modules";
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -17,13 +19,14 @@ interface AppLayoutProps {
 
 export default function AppLayout({ children }: AppLayoutProps) {
   const navigate = useNavigate();
+  const location = useLocation();
   const [user, setUser] = useState<User | null>(null);
-  const [userRole, setUserRole] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
   const [selectedEmpresa, setSelectedEmpresa] = useState<string>("all");
   const [empresas, setEmpresas] = useState<Array<{ id: string; nome: string; logo_url?: string }>>([]);
   const [companyLogo, setCompanyLogo] = useState<string | null>(null);
   const { isLocked, unlock } = useInactivityLock(5 * 60 * 1000);
+  const { role: userRole, allowedModules, loading: permLoading } = useUserPermissions(user?.id);
+  const loading = !user || permLoading;
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
@@ -39,19 +42,24 @@ export default function AppLayout({ children }: AppLayoutProps) {
     return () => subscription.unsubscribe();
   }, [navigate]);
 
+  // Bloqueio de rota para admin_parcial
   useEffect(() => {
-    if (!user) return;
-    const fetchRole = async () => {
-      const { data } = await supabase
-        .from("user_roles")
-        .select("role")
-        .eq("user_id", user.id)
-        .maybeSingle();
-      setUserRole(data?.role || null);
-      setLoading(false);
-    };
-    fetchRole();
-  }, [user]);
+    if (userRole !== "admin_parcial") return;
+    // /admin-users é exclusivo de gestor
+    if (location.pathname === "/admin-users") {
+      navigate("/dashboard", { replace: true });
+      return;
+    }
+    const key = moduleKeyFromPath(location.pathname);
+    if (key && !allowedModules.has(key)) {
+      const fallback = allowedModules.has("dashboard")
+        ? "/dashboard"
+        : Array.from(allowedModules)[0];
+      if (fallback) {
+        navigate(fallback.startsWith("/") ? fallback : `/${fallback}`, { replace: true });
+      }
+    }
+  }, [userRole, allowedModules, location.pathname, navigate]);
 
   useEffect(() => {
     const fetchEmpresas = async () => {
@@ -100,14 +108,16 @@ export default function AppLayout({ children }: AppLayoutProps) {
     );
   }
 
-  if (userRole !== "gestor") {
+  if (userRole !== "gestor" && userRole !== "admin_parcial") {
     return <>{children}</>;
   }
+
+  const isPartial = userRole === "admin_parcial";
 
   return (
     <SidebarProvider>
       <div className="min-h-screen flex w-full">
-        <AppSidebar />
+        <AppSidebar allowedModules={isPartial ? allowedModules : null} />
         <div className="flex-1 flex flex-col min-w-0">
           {/* Header */}
           <header className="h-16 bg-card shadow-sm flex items-center justify-between px-4 sm:px-6 shrink-0 z-20">
@@ -117,7 +127,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
                 <img src={companyLogo} alt="Logo" className="w-8 h-8 object-contain hidden sm:block" />
               )}
               <span className="text-sm font-medium text-muted-foreground hidden md:block">
-                Olá, Gestor
+                Olá, {isPartial ? "Administrador" : "Gestor"}
               </span>
             </div>
             <div className="flex items-center gap-3">
