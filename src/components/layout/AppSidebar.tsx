@@ -204,14 +204,17 @@ export function AppSidebar({ allowedModules = null }: AppSidebarProps) {
       </SidebarHeader>
 
       <SidebarContent className="px-2 py-2">
-        {menuGroups.map((group) => (
+        {menuGroups.map((group) => {
+          const visibleItems = group.items.filter((it) => canSee(it.url));
+          if (visibleItems.length === 0) return null;
+          return (
           <SidebarGroup key={group.label} className="py-1">
             <SidebarGroupLabel className="text-[10px] uppercase tracking-widest text-sidebar-foreground/40 font-semibold px-3 mb-1">
               {group.label}
             </SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
-                {group.items.map((item) => (
+                {visibleItems.map((item) => (
                   <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton
                       asChild
@@ -233,7 +236,8 @@ export function AppSidebar({ allowedModules = null }: AppSidebarProps) {
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
-        ))}
+          );
+        })}
       </SidebarContent>
 
       <SidebarFooter className="border-t border-sidebar-border p-3">
