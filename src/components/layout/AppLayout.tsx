@@ -19,13 +19,14 @@ interface AppLayoutProps {
 
 export default function AppLayout({ children }: AppLayoutProps) {
   const navigate = useNavigate();
+  const location = useLocation();
   const [user, setUser] = useState<User | null>(null);
-  const [userRole, setUserRole] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
   const [selectedEmpresa, setSelectedEmpresa] = useState<string>("all");
   const [empresas, setEmpresas] = useState<Array<{ id: string; nome: string; logo_url?: string }>>([]);
   const [companyLogo, setCompanyLogo] = useState<string | null>(null);
   const { isLocked, unlock } = useInactivityLock(5 * 60 * 1000);
+  const { role: userRole, allowedModules, loading: permLoading } = useUserPermissions(user?.id);
+  const loading = !user || permLoading;
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
@@ -41,19 +42,20 @@ export default function AppLayout({ children }: AppLayoutProps) {
     return () => subscription.unsubscribe();
   }, [navigate]);
 
+  // Bloqueio de rota para admin_parcial
   useEffect(() => {
-    if (!user) return;
-    const fetchRole = async () => {
-      const { data } = await supabase
-        .from("user_roles")
-        .select("role")
-        .eq("user_id", user.id)
-        .maybeSingle();
-      setUserRole(data?.role || null);
-      setLoading(false);
-    };
-    fetchRole();
-  }, [user]);
+    if (userRole !== "admin_parcial") return;
+    const key = moduleKeyFromPath(location.pathname);
+    if (key && !allowedModules.has(key)) {
+      // redireciona para o primeiro módulo permitido (ou dashboard se permitido)
+      const fallback = allowedModules.has("dashboard")
+        ? "/dashboard"
+        : Array.from(allowedModules)[0];
+      if (fallback && fallback !== key) {
+        navigate(fallback.startsWith("/") ? fallback : `/${fallback}`, { replace: true });
+      }
+    }
+  }, [userRole, allowedModules, location.pathname, navigate]);
 
   useEffect(() => {
     const fetchEmpresas = async () => {
