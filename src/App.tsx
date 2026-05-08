@@ -17,6 +17,7 @@ import Payroll from "./pages/Payroll";
 import Funcoes from "./pages/Funcoes";
 import Contracts from "./pages/Contracts";
 import Managers from "./pages/Managers";
+import AdminUsers from "./pages/AdminUsers";
 import SalaryAdjustment from "./pages/SalaryAdjustment";
 import ControlePonto from "./pages/ControlePonto";
 import NotFound from "./pages/NotFound";
