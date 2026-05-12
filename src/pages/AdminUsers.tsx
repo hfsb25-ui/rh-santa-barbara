@@ -116,6 +116,7 @@ export default function AdminUsers() {
       )}
 
       <CreateAdminDialog open={openCreate} onOpenChange={setOpenCreate} onSaved={fetchAdmins} />
+      <PromoteEmployeeDialog open={openPromote} onOpenChange={setOpenPromote} onSaved={fetchAdmins} />
       <EditAdminDialog admin={editing} onOpenChange={(o) => !o && setEditing(null)} onSaved={fetchAdmins} />
     </div>
   );
