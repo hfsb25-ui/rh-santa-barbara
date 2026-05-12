@@ -50,10 +50,33 @@ export default function AdminUsers() {
 
   useEffect(() => { fetchAdmins(); }, []);
 
-  const handleDelete = async (userId: string) => {
-    if (!confirm("Remover este administrador? Essa ação revoga o acesso permanentemente.")) return;
-    const { error } = await supabase.functions.invoke("delete-user", { body: { user_id: userId } });
-    if (error) toast.error("Erro ao remover"); else { toast.success("Removido"); fetchAdmins(); }
+  const handleRevoke = async (userId: string) => {
+    if (!confirm("Revogar o acesso de administrador deste usuário? A conta de login será mantida, mas perderá os privilégios de admin.")) return;
+    // Verifica se o usuário também é funcionário cadastrado
+    const { data: emp } = await supabase
+      .from("employees")
+      .select("id")
+      .eq("user_id", userId)
+      .maybeSingle();
+    // Remove permissões de módulo
+    await supabase.from("admin_module_permissions").delete().eq("user_id", userId);
+    // Rebaixa papel: vira 'funcionario' se tem registro de funcionário, senão remove o papel
+    if (emp) {
+      const { error } = await supabase
+        .from("user_roles")
+        .update({ role: "funcionario" })
+        .eq("user_id", userId);
+      if (error) return toast.error("Erro ao revogar acesso");
+    } else {
+      const { error } = await supabase
+        .from("user_roles")
+        .delete()
+        .eq("user_id", userId)
+        .eq("role", "admin_parcial");
+      if (error) return toast.error("Erro ao revogar acesso");
+    }
+    toast.success("Acesso de administrador revogado");
+    fetchAdmins();
   };
 
   return (
