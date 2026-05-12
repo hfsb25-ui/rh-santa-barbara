@@ -21,6 +21,7 @@ export default function AdminUsers() {
   const [admins, setAdmins] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [openCreate, setOpenCreate] = useState(false);
+  const [openPromote, setOpenPromote] = useState(false);
   const [editing, setEditing] = useState<AdminUser | null>(null);
 
   const fetchAdmins = async () => {
