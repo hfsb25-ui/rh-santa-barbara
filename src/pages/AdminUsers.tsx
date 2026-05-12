@@ -68,9 +68,14 @@ export default function AdminUsers() {
             <p className="text-sm text-muted-foreground">Cadastre admins com acesso restrito a módulos específicos</p>
           </div>
         </div>
-        <Button onClick={() => setOpenCreate(true)}>
-          <Plus className="w-4 h-4 mr-2" /> Novo Administrador
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setOpenPromote(true)}>
+            <UserPlus className="w-4 h-4 mr-2" /> Promover funcionário
+          </Button>
+          <Button onClick={() => setOpenCreate(true)}>
+            <Plus className="w-4 h-4 mr-2" /> Novo Administrador
+          </Button>
+        </div>
       </div>
 
       {loading ? (
