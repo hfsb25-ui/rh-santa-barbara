@@ -223,3 +223,98 @@ function EditAdminDialog({ admin, onOpenChange, onSaved }: any) {
     </Dialog>
   );
 }
+
+function PromoteEmployeeDialog({ open, onOpenChange, onSaved }: any) {
+  const [employees, setEmployees] = useState<any[]>([]);
+  const [selected, setSelected] = useState<string>("");
+  const [search, setSearch] = useState("");
+  const [modules, setModules] = useState<string[]>(["dashboard"]);
+  const [loading, setLoading] = useState(false);
+  const [loadingList, setLoadingList] = useState(false);
+
+  useEffect(() => {
+    if (!open) return;
+    (async () => {
+      setLoadingList(true);
+      const { data } = await supabase
+        .from("employees")
+        .select("id, nome_completo, cargo, user_id, status")
+        .neq("status", "demitido")
+        .not("user_id", "is", null)
+        .order("nome_completo");
+      setEmployees(data || []);
+      setLoadingList(false);
+    })();
+  }, [open]);
+
+  const reset = () => { setSelected(""); setSearch(""); setModules(["dashboard"]); };
+
+  const submit = async () => {
+    if (!selected) return toast.error("Selecione um funcionário");
+    setLoading(true);
+    const { error } = await supabase.functions.invoke("promote-employee-admin", {
+      body: { employee_id: selected, modules },
+    });
+    setLoading(false);
+    if (error) return toast.error(error.message || "Erro ao promover");
+    toast.success("Funcionário promovido a administrador!");
+    reset(); onOpenChange(false); onSaved();
+  };
+
+  const filtered = employees.filter((e) =>
+    e.nome_completo?.toLowerCase().includes(search.toLowerCase()) ||
+    e.cargo?.toLowerCase().includes(search.toLowerCase())
+  );
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => { onOpenChange(o); if (!o) reset(); }}>
+      <DialogContent className="max-w-2xl">
+        <DialogHeader><DialogTitle>Promover Funcionário a Administrador</DialogTitle></DialogHeader>
+        <div className="space-y-3">
+          <div>
+            <Label>Buscar funcionário</Label>
+            <Input
+              placeholder="Nome ou cargo..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
+          <div>
+            <Label>Selecione um funcionário (apenas com login criado)</Label>
+            <div className="max-h-48 overflow-y-auto border rounded mt-1">
+              {loadingList ? (
+                <div className="p-4 text-center"><Loader2 className="w-4 h-4 animate-spin inline" /></div>
+              ) : filtered.length === 0 ? (
+                <div className="p-4 text-center text-sm text-muted-foreground">Nenhum funcionário encontrado</div>
+              ) : filtered.map((e) => (
+                <label key={e.id} className={`flex items-center gap-2 p-2 cursor-pointer hover:bg-accent ${selected === e.id ? "bg-accent" : ""}`}>
+                  <input
+                    type="radio"
+                    name="emp"
+                    checked={selected === e.id}
+                    onChange={() => setSelected(e.id)}
+                  />
+                  <div className="flex-1">
+                    <div className="text-sm font-medium">{e.nome_completo?.toUpperCase()}</div>
+                    <div className="text-xs text-muted-foreground">{e.cargo}</div>
+                  </div>
+                </label>
+              ))}
+            </div>
+          </div>
+          <div>
+            <Label>Módulos liberados</Label>
+            <div className="mt-2"><ModuleSelector value={modules} onChange={setModules} /></div>
+          </div>
+          <div className="text-xs text-muted-foreground bg-muted/50 p-2 rounded">
+            ℹ️ Ao promover, o funcionário perderá o acesso ao painel de funcionário e passará a ter acesso de administrador parcial aos módulos selecionados (mesmo login/senha).
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
+            <Button onClick={submit} disabled={loading}>{loading ? "Promovendo..." : "Promover"}</Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
