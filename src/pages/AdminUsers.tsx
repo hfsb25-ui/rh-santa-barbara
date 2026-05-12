@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { MODULES } from "@/lib/modules";
-import { Loader2, Plus, Trash2, Pencil, ShieldCheck } from "lucide-react";
+import { Loader2, Plus, Trash2, Pencil, ShieldCheck, UserPlus } from "lucide-react";
 
 interface AdminUser {
   user_id: string;
