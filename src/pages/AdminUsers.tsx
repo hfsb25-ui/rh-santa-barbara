@@ -128,7 +128,7 @@ export default function AdminUsers() {
                   <Button size="sm" variant="outline" onClick={() => setEditing(a)}>
                     <Pencil className="w-3.5 h-3.5" />
                   </Button>
-                  <Button size="sm" variant="outline" onClick={() => handleDelete(a.user_id)}>
+                  <Button size="sm" variant="outline" onClick={() => handleRevoke(a.user_id)} title="Revogar acesso de admin">
                     <Trash2 className="w-3.5 h-3.5 text-destructive" />
                   </Button>
                 </div>
