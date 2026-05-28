@@ -1,9 +1,11 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import { Loader2, AlertTriangle, Clock, Coffee, LogOut, Wallet } from "lucide-react";
 
 type Registro = {
@@ -22,7 +24,23 @@ function timeToMin(t: string | null) {
   return h * 60 + m;
 }
 
+function currentMonthStr() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function monthRange(ym: string) {
+  const [y, m] = ym.split("-").map(Number);
+  const start = `${y}-${String(m).padStart(2, "0")}-01`;
+  const lastDay = new Date(y, m, 0).getDate();
+  const end = `${y}-${String(m).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
+  return { start, end };
+}
+
 export function AlertasPonto() {
+  const [mes, setMes] = useState<string>(currentMonthStr());
+  const { start, end } = monthRange(mes);
+
   const { data: config, isLoading: lc } = useQuery({
     queryKey: ["alertas-ponto-config"],
     queryFn: async () => {
@@ -59,18 +77,15 @@ export function AlertasPonto() {
     },
   });
 
-  const janela = config?.janela_dias ?? 30;
   const { data: registros, isLoading: lr } = useQuery({
-    queryKey: ["alertas-ponto-registros", janela],
+    queryKey: ["alertas-ponto-registros", start, end],
     enabled: !!config,
     queryFn: async () => {
-      const desde = new Date();
-      desde.setDate(desde.getDate() - janela);
-      const desdeStr = desde.toISOString().split("T")[0];
       const { data, error } = await supabase
         .from("registros_ponto")
         .select("employee_id, data, hora_entrada, hora_saida, hora_inicio_intervalo, hora_fim_intervalo")
-        .gte("data", desdeStr);
+        .gte("data", start)
+        .lte("data", end);
       if (error) throw error;
       return data as Registro[];
     },
@@ -185,6 +200,11 @@ export function AlertasPonto() {
     alertas.saidasAnt.length +
     alertas.banco.length;
 
+  const mesLabel = new Date(`${mes}-01T00:00:00`).toLocaleDateString("pt-BR", {
+    month: "long",
+    year: "numeric",
+  });
+
   const Section = ({
     title,
     icon: Icon,
@@ -218,7 +238,7 @@ export function AlertasPonto() {
               <AlertTitle className="font-bold">{it.nome}</AlertTitle>
               <AlertDescription className="text-xs">
                 {it.cargo} · {it.setor} —{" "}
-                {it.detalhe || `${it.ocorrencias} ocorrência(s) nos últimos ${config.janela_dias} dias`}
+                {it.detalhe || `${it.ocorrencias} ocorrência(s) em ${mesLabel}`}
               </AlertDescription>
             </Alert>
           ))
@@ -229,14 +249,25 @@ export function AlertasPonto() {
 
   return (
     <div className="space-y-6">
+      <Card>
+        <CardContent className="pt-6 flex flex-col sm:flex-row sm:items-end gap-3">
+          <div className="space-y-2 flex-1 max-w-xs">
+            <Label>Mês de análise</Label>
+            <Input type="month" value={mes} onChange={(e) => setMes(e.target.value || currentMonthStr())} />
+          </div>
+          <p className="text-sm text-muted-foreground">
+            Exibindo alertas referentes a <strong className="capitalize">{mesLabel}</strong>.
+          </p>
+        </CardContent>
+      </Card>
+
       <Alert>
         <AlertTriangle className="w-4 h-4" />
         <AlertTitle>
           {total === 0 ? "Tudo em ordem" : `${total} alerta(s) detectado(s)`}
         </AlertTitle>
         <AlertDescription>
-          Análise dos últimos {config.janela_dias} dias · Recorrência ≥ {config.ocorrencias_minimas}{" "}
-          ocorrências.
+          Recorrência ≥ {config.ocorrencias_minimas} ocorrências no mês selecionado.
         </AlertDescription>
       </Alert>
 
