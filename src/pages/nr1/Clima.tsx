@@ -36,7 +36,7 @@ export default function NR1Clima() {
     if (!titulo.trim()) return;
     setLoading(true);
     const { data: { user } } = await supabase.auth.getUser();
-    const { error } = await supabase.from("nr1_pesquisas_clima").insert({
+    const { error } = await (supabase.from("nr1_pesquisas_clima") as any).insert({
       titulo: titulo.trim(),
       descricao: descricao.trim() || null,
       perguntas: PERGUNTAS_PADRAO,
@@ -50,7 +50,7 @@ export default function NR1Clima() {
 
   const gerarTokens = async (pesquisa: any, qtd: number) => {
     const rows = Array.from({ length: qtd }, () => ({ pesquisa_id: pesquisa.id }));
-    const { data, error } = await supabase.from("nr1_pesquisa_tokens").insert(rows).select("token");
+    const { data, error } = await (supabase.from("nr1_pesquisa_tokens") as any).insert(rows).select("token");
     if (error) { toast.error(error.message); return; }
     setTokensDialog({ pesquisa, tokens: (data || []).map((t: any) => t.token) });
   };
