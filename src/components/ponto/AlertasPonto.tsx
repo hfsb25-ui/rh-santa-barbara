@@ -313,7 +313,8 @@ export function AlertasPonto() {
     alertas.intervaloLongo.length +
     alertas.atrasos.length +
     alertas.saidasAnt.length +
-    alertas.banco.length;
+    alertas.banco.length +
+    alertas.saldoMes.length;
 
   const mesLabel = new Date(`${mes}-01T00:00:00`).toLocaleDateString("pt-BR", {
     month: "long",
