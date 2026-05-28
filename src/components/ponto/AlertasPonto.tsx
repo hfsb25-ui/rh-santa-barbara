@@ -117,11 +117,22 @@ export function AlertasPonto() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("registros_ponto")
-        .select("employee_id, data, hora_entrada, hora_saida, hora_inicio_intervalo, hora_fim_intervalo")
+        .select("employee_id, data, hora_entrada, hora_saida, hora_inicio_intervalo, hora_fim_intervalo, tipo_dia, horas_trabalhadas")
         .gte("data", start)
         .lte("data", end);
       if (error) throw error;
       return data as Registro[];
+    },
+  });
+
+  const { data: configHoras } = useQuery({
+    queryKey: ["alertas-ponto-config-horas"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("configuracao_horas_trabalho")
+        .select("employee_id, horas_diarias_esperadas");
+      if (error) throw error;
+      return data as { employee_id: string; horas_diarias_esperadas: number | null }[];
     },
   });
 
