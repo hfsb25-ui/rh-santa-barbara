@@ -6,7 +6,29 @@ import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Loader2, AlertTriangle, Clock, Coffee, LogOut, Wallet } from "lucide-react";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
+
+const TIPO_DIA_LABELS: Record<string, string> = {
+  normal: "Normal",
+  abonado: "Abonado",
+  falta: "Falta",
+  ferias: "Férias",
+  atestado: "Atestado",
+};
+
+function formatHoras(decimal: number | null | undefined): string {
+  if (!decimal) return "0h00min";
+  const isNeg = decimal < 0;
+  const abs = Math.abs(decimal);
+  const h = Math.floor(abs);
+  const m = Math.round((abs - h) * 60);
+  return `${isNeg ? "-" : ""}${h}h${String(m).padStart(2, "0")}min`;
+}
+
 
 type Registro = {
   employee_id: string;
