@@ -2671,6 +2671,60 @@ export type Database = {
           },
         ]
       }
+      nr1_acoes_preventivas: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          data_conclusao: string | null
+          descricao: string | null
+          evidencia_url: string | null
+          id: string
+          origem: string | null
+          origem_id: string | null
+          prazo: string | null
+          prioridade: string
+          responsavel_employee_id: string | null
+          setor_id: string | null
+          status: string
+          titulo: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          data_conclusao?: string | null
+          descricao?: string | null
+          evidencia_url?: string | null
+          id?: string
+          origem?: string | null
+          origem_id?: string | null
+          prazo?: string | null
+          prioridade?: string
+          responsavel_employee_id?: string | null
+          setor_id?: string | null
+          status?: string
+          titulo: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          data_conclusao?: string | null
+          descricao?: string | null
+          evidencia_url?: string | null
+          id?: string
+          origem?: string | null
+          origem_id?: string | null
+          prazo?: string | null
+          prioridade?: string
+          responsavel_employee_id?: string | null
+          setor_id?: string | null
+          status?: string
+          titulo?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       nr1_clima_respostas: {
         Row: {
           created_at: string
@@ -2702,6 +2756,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      nr1_config: {
+        Row: {
+          alerta_denuncias_qtd: number
+          alerta_lideranca_score: number
+          clima_score_minimo: number
+          created_at: string
+          id: string
+          observacoes: string | null
+          reciclagem_padrao_meses: number
+          updated_at: string
+        }
+        Insert: {
+          alerta_denuncias_qtd?: number
+          alerta_lideranca_score?: number
+          clima_score_minimo?: number
+          created_at?: string
+          id?: string
+          observacoes?: string | null
+          reciclagem_padrao_meses?: number
+          updated_at?: string
+        }
+        Update: {
+          alerta_denuncias_qtd?: number
+          alerta_lideranca_score?: number
+          clima_score_minimo?: number
+          created_at?: string
+          id?: string
+          observacoes?: string | null
+          reciclagem_padrao_meses?: number
+          updated_at?: string
+        }
+        Relationships: []
       }
       nr1_denuncias: {
         Row: {
@@ -2812,6 +2899,109 @@ export type Database = {
           },
         ]
       }
+      nr1_lideranca_pesquisas: {
+        Row: {
+          ativa: boolean
+          created_at: string
+          created_by: string | null
+          data_fim: string | null
+          data_inicio: string
+          id: string
+          lider_employee_id: string
+          titulo: string
+          updated_at: string
+        }
+        Insert: {
+          ativa?: boolean
+          created_at?: string
+          created_by?: string | null
+          data_fim?: string | null
+          data_inicio?: string
+          id?: string
+          lider_employee_id: string
+          titulo: string
+          updated_at?: string
+        }
+        Update: {
+          ativa?: boolean
+          created_at?: string
+          created_by?: string | null
+          data_fim?: string | null
+          data_inicio?: string
+          id?: string
+          lider_employee_id?: string
+          titulo?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      nr1_lideranca_respostas: {
+        Row: {
+          comentario: string | null
+          created_at: string
+          id: string
+          pesquisa_id: string
+          respostas: Json
+        }
+        Insert: {
+          comentario?: string | null
+          created_at?: string
+          id?: string
+          pesquisa_id: string
+          respostas: Json
+        }
+        Update: {
+          comentario?: string | null
+          created_at?: string
+          id?: string
+          pesquisa_id?: string
+          respostas?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "nr1_lideranca_respostas_pesquisa_id_fkey"
+            columns: ["pesquisa_id"]
+            isOneToOne: false
+            referencedRelation: "nr1_lideranca_pesquisas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      nr1_lideranca_tokens: {
+        Row: {
+          created_at: string
+          id: string
+          pesquisa_id: string
+          token: string
+          usado: boolean
+          usado_em: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          pesquisa_id: string
+          token?: string
+          usado?: boolean
+          usado_em?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          pesquisa_id?: string
+          token?: string
+          usado?: boolean
+          usado_em?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "nr1_lideranca_tokens_pesquisa_id_fkey"
+            columns: ["pesquisa_id"]
+            isOneToOne: false
+            referencedRelation: "nr1_lideranca_pesquisas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       nr1_pesquisa_tokens: {
         Row: {
           created_at: string
@@ -2889,6 +3079,146 @@ export type Database = {
           status?: string
           titulo?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      nr1_riscos: {
+        Row: {
+          categoria: string
+          created_at: string
+          created_by: string | null
+          data_identificacao: string
+          data_revisao: string | null
+          descricao: string
+          empresa_id: string | null
+          id: string
+          plano_acao: string | null
+          probabilidade: number
+          responsavel_employee_id: string | null
+          setor_id: string | null
+          severidade: number
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          categoria: string
+          created_at?: string
+          created_by?: string | null
+          data_identificacao?: string
+          data_revisao?: string | null
+          descricao: string
+          empresa_id?: string | null
+          id?: string
+          plano_acao?: string | null
+          probabilidade?: number
+          responsavel_employee_id?: string | null
+          setor_id?: string | null
+          severidade?: number
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          categoria?: string
+          created_at?: string
+          created_by?: string | null
+          data_identificacao?: string
+          data_revisao?: string | null
+          descricao?: string
+          empresa_id?: string | null
+          id?: string
+          plano_acao?: string | null
+          probabilidade?: number
+          responsavel_employee_id?: string | null
+          setor_id?: string | null
+          severidade?: number
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      nr1_treinamento_conclusoes: {
+        Row: {
+          certificado_url: string | null
+          created_at: string
+          data_conclusao: string
+          employee_id: string
+          id: string
+          nota: number | null
+          treinamento_id: string
+        }
+        Insert: {
+          certificado_url?: string | null
+          created_at?: string
+          data_conclusao?: string
+          employee_id: string
+          id?: string
+          nota?: number | null
+          treinamento_id: string
+        }
+        Update: {
+          certificado_url?: string | null
+          created_at?: string
+          data_conclusao?: string
+          employee_id?: string
+          id?: string
+          nota?: number | null
+          treinamento_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "nr1_treinamento_conclusoes_treinamento_id_fkey"
+            columns: ["treinamento_id"]
+            isOneToOne: false
+            referencedRelation: "nr1_treinamentos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      nr1_treinamentos: {
+        Row: {
+          ativo: boolean
+          carga_horaria: number | null
+          categoria: string
+          conteudo_url: string | null
+          created_at: string
+          created_by: string | null
+          descricao: string | null
+          id: string
+          obrigatorio: boolean
+          reciclagem_meses: number | null
+          titulo: string
+          updated_at: string
+          youtube_video_id: string | null
+        }
+        Insert: {
+          ativo?: boolean
+          carga_horaria?: number | null
+          categoria?: string
+          conteudo_url?: string | null
+          created_at?: string
+          created_by?: string | null
+          descricao?: string | null
+          id?: string
+          obrigatorio?: boolean
+          reciclagem_meses?: number | null
+          titulo: string
+          updated_at?: string
+          youtube_video_id?: string | null
+        }
+        Update: {
+          ativo?: boolean
+          carga_horaria?: number | null
+          categoria?: string
+          conteudo_url?: string | null
+          created_at?: string
+          created_by?: string | null
+          descricao?: string | null
+          id?: string
+          obrigatorio?: boolean
+          reciclagem_meses?: number | null
+          titulo?: string
+          updated_at?: string
+          youtube_video_id?: string | null
         }
         Relationships: []
       }
