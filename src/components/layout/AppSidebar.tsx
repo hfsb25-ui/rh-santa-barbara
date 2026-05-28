@@ -28,6 +28,15 @@ import {
   Scale,
   Calculator,
   ShieldCheck,
+  HeartPulse,
+  Smile,
+  Megaphone,
+  AlertTriangle,
+  BookOpenCheck,
+  ListChecks,
+  Star,
+  FileBarChart,
+  Settings2,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
@@ -133,6 +142,20 @@ const menuGroups = [
       { title: "Inteligência Artificial", url: "/ai-insights", icon: Bot },
     ],
   },
+  {
+    label: "NR-1 | Gestão Psicossocial",
+    items: [
+      { title: "Dashboard NR-1", url: "/nr1/dashboard", icon: HeartPulse },
+      { title: "Pesquisa de Clima", url: "/nr1/clima", icon: Smile },
+      { title: "Canal de Denúncias", url: "/nr1/denuncias", icon: Megaphone },
+      { title: "Gestão de Riscos", url: "/nr1/riscos", icon: AlertTriangle },
+      { title: "Treinamentos NR-1", url: "/nr1/treinamentos", icon: BookOpenCheck },
+      { title: "Ações Preventivas", url: "/nr1/acoes", icon: ListChecks },
+      { title: "Avaliação de Liderança", url: "/nr1/lideranca", icon: Star },
+      { title: "Relatórios NR-1", url: "/nr1/relatorios", icon: FileBarChart },
+      { title: "Configurações NR-1", url: "/nr1/config", icon: Settings2 },
+    ],
+  },
 ];
 
 interface AppSidebarProps {
@@ -172,6 +195,15 @@ const urlToModuleKey: Record<string, string> = {
   "/relatorios": "relatorios",
   "/settings": "settings",
   "/ai-insights": "ai-insights",
+  "/nr1/dashboard": "nr1-dashboard",
+  "/nr1/clima": "nr1-clima",
+  "/nr1/denuncias": "nr1-denuncias",
+  "/nr1/riscos": "nr1-riscos",
+  "/nr1/treinamentos": "nr1-treinamentos",
+  "/nr1/acoes": "nr1-acoes",
+  "/nr1/lideranca": "nr1-lideranca",
+  "/nr1/relatorios": "nr1-relatorios",
+  "/nr1/config": "nr1-config",
 };
 
 export function AppSidebar({ allowedModules = null }: AppSidebarProps) {
