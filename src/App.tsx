@@ -42,6 +42,7 @@ import ConsultaJudicial from "./pages/ConsultaJudicial";
 import Contabilidade from "./pages/Contabilidade";
 import NR1Dashboard from "./pages/nr1/Dashboard";
 import NR1PainelGerencial from "./pages/nr1/PainelGerencial";
+import NR1AuditoriaMT from "./pages/nr1/AuditoriaMT";
 import NR1Denuncias from "./pages/nr1/Denuncias";
 import NR1Clima from "./pages/nr1/Clima";
 import NR1Riscos from "./pages/nr1/Riscos";
@@ -125,6 +126,7 @@ const App = () => {
               <Route path="/lideranca/:token" element={<NR1LiderancaResponder />} />
               <Route path="/nr1/relatorios" element={<AppLayout><NR1Relatorios /></AppLayout>} />
               <Route path="/nr1/config" element={<AppLayout><NR1Config /></AppLayout>} />
+              <Route path="/nr1/auditoria" element={<AppLayout><NR1AuditoriaMT /></AppLayout>} />
 
 
               <Route path="*" element={<NotFound />} />
