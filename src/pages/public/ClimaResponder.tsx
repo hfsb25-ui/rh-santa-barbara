@@ -12,6 +12,7 @@ export default function ClimaResponder() {
   const [estado, setEstado] = useState<"validando" | "valido" | "invalido" | "enviado">("validando");
   const [pesquisa, setPesquisa] = useState<any>(null);
   const [tokenRow, setTokenRow] = useState<any>(null);
+  const [perguntasSorteadas, setPerguntasSorteadas] = useState<any[]>([]);
   const [valores, setValores] = useState<Record<string, number>>({});
   const [comentario, setComentario] = useState("");
   const [enviando, setEnviando] = useState(false);
@@ -25,13 +26,16 @@ export default function ClimaResponder() {
       const { data: p } = await (supabase.from("nr1_pesquisas_clima") as any)
         .select("*").eq("id", tk.pesquisa_id).maybeSingle();
       if (!p || p.status !== "ativa") return setEstado("invalido");
+      const todas: any[] = Array.isArray(p.perguntas) ? p.perguntas : [];
+      const qtd = Math.max(1, Math.min(p.qtd_sortear || todas.length, todas.length));
+      const sorteadas = [...todas].sort(() => Math.random() - 0.5).slice(0, qtd);
+      setPerguntasSorteadas(sorteadas);
       setTokenRow(tk); setPesquisa(p); setEstado("valido");
     })();
   }, [token]);
 
   const enviar = async () => {
-    const perguntas: any[] = pesquisa.perguntas || [];
-    const respostas = perguntas.map((q) => ({ pergunta_id: q.id, valor: valores[q.id] || 0 }));
+    const respostas = perguntasSorteadas.map((q) => ({ pergunta_id: q.id, valor: valores[q.id] || 0 }));
     if (respostas.some((r) => !r.valor)) return toast.error("Responda todas as perguntas");
     setEnviando(true);
     const { error } = await (supabase.from("nr1_clima_respostas") as any).insert({
@@ -44,6 +48,7 @@ export default function ClimaResponder() {
       .update({ usado: true, usado_em: new Date().toISOString() }).eq("id", tokenRow.id);
     setEstado("enviado");
   };
+
 
   if (estado === "validando")
     return <div className="min-h-screen flex items-center justify-center text-muted-foreground">Validando link...</div>;
@@ -66,9 +71,6 @@ export default function ClimaResponder() {
         </Card>
       </div>
     );
-
-  const perguntas: any[] = pesquisa.perguntas || [];
-
   return (
     <div className="min-h-screen bg-muted/30 py-10 px-4">
       <div className="max-w-2xl mx-auto space-y-4">
@@ -81,13 +83,18 @@ export default function ClimaResponder() {
           <p className="flex items-center gap-2 text-sm text-muted-foreground">
             <ShieldCheck className="h-4 w-4" /> Resposta 100% anônima. Nenhuma identificação é armazenada.
           </p>
+          <p className="text-xs text-muted-foreground mt-2">
+            {perguntasSorteadas.length} pergunta(s) sorteada(s) para você. Avalie de 1 a 10.
+          </p>
         </Card>
 
-        {perguntas.map((q) => (
+        {perguntasSorteadas.map((q, idx) => (
           <Card key={q.id} className="p-4">
-            <p className="mb-3 font-medium">{q.texto}</p>
-            <div className="flex gap-2 flex-wrap">
-              {[1, 2, 3, 4, 5].map((n) => (
+            <p className="mb-3 font-medium">
+              <span className="text-muted-foreground mr-2">{idx + 1}.</span>{q.texto}
+            </p>
+            <div className="grid grid-cols-5 sm:grid-cols-10 gap-2">
+              {Array.from({ length: 10 }, (_, i) => i + 1).map((n) => (
                 <Button
                   key={n}
                   size="sm"
@@ -99,10 +106,11 @@ export default function ClimaResponder() {
               ))}
             </div>
             <div className="flex justify-between text-xs text-muted-foreground mt-2">
-              <span>Discordo totalmente</span><span>Concordo totalmente</span>
+              <span>1 — Péssimo</span><span>10 — Excelente</span>
             </div>
           </Card>
         ))}
+
 
         <Card className="p-4">
           <p className="mb-2 font-medium">Comentário adicional (opcional)</p>
