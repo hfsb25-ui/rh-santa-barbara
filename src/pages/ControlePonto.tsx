@@ -41,8 +41,12 @@ export default function ControlePonto() {
           </div>
         </div>
 
-        <Tabs defaultValue="individual" className="space-y-6">
-          <TabsList className="inline-flex w-full overflow-x-auto tabs-scroll lg:grid lg:grid-cols-6">
+        <Tabs defaultValue="alertas" className="space-y-6">
+          <TabsList className="inline-flex w-full overflow-x-auto tabs-scroll lg:grid lg:grid-cols-8">
+            <TabsTrigger value="alertas" className="flex-shrink-0 flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4" />
+              <span className="hidden sm:inline">Alertas</span>
+            </TabsTrigger>
             <TabsTrigger value="individual" className="flex-shrink-0 flex items-center gap-2">
               <Calendar className="h-4 w-4" />
               <span className="hidden sm:inline">Lançamento Individual</span>
@@ -67,7 +71,17 @@ export default function ControlePonto() {
               <Tag className="h-4 w-4" />
               <span className="hidden sm:inline">Etiquetas</span>
             </TabsTrigger>
+            <TabsTrigger value="config-alertas" className="flex-shrink-0 flex items-center gap-2">
+              <Settings className="h-4 w-4" />
+              <span className="hidden sm:inline">Config. Alertas</span>
+            </TabsTrigger>
           </TabsList>
+
+          <TabsContent value="alertas">
+            <Card className="p-6">
+              <AlertasPonto />
+            </Card>
+          </TabsContent>
 
           <TabsContent value="individual">
             <Card className="p-6">
