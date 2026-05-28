@@ -146,6 +146,7 @@ const menuGroups = [
     label: "NR-1 | Gestão Psicossocial",
     items: [
       { title: "Dashboard NR-1", url: "/nr1/dashboard", icon: HeartPulse },
+      { title: "Painel Gerencial", url: "/nr1/painel", icon: BarChart3 },
       { title: "Pesquisa de Clima", url: "/nr1/clima", icon: Smile },
       { title: "Canal de Denúncias", url: "/nr1/denuncias", icon: Megaphone },
       { title: "Gestão de Riscos", url: "/nr1/riscos", icon: AlertTriangle },
@@ -196,6 +197,7 @@ const urlToModuleKey: Record<string, string> = {
   "/settings": "settings",
   "/ai-insights": "ai-insights",
   "/nr1/dashboard": "nr1-dashboard",
+  "/nr1/painel": "nr1-painel",
   "/nr1/clima": "nr1-clima",
   "/nr1/denuncias": "nr1-denuncias",
   "/nr1/riscos": "nr1-riscos",

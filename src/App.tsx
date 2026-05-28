@@ -41,6 +41,7 @@ import AIInsights from "./pages/AIInsights";
 import ConsultaJudicial from "./pages/ConsultaJudicial";
 import Contabilidade from "./pages/Contabilidade";
 import NR1Dashboard from "./pages/nr1/Dashboard";
+import NR1PainelGerencial from "./pages/nr1/PainelGerencial";
 import NR1Denuncias from "./pages/nr1/Denuncias";
 import NR1Clima from "./pages/nr1/Clima";
 import NR1Riscos from "./pages/nr1/Riscos";
@@ -109,6 +110,7 @@ const App = () => {
 
               {/* NR-1 | Gestão Psicossocial */}
               <Route path="/nr1/dashboard" element={<AppLayout><NR1Dashboard /></AppLayout>} />
+              <Route path="/nr1/painel" element={<AppLayout><NR1PainelGerencial /></AppLayout>} />
               <Route path="/nr1/denuncias" element={<AppLayout><NR1Denuncias /></AppLayout>} />
               <Route path="/nr1/clima" element={<AppLayout><NR1Clima /></AppLayout>} />
               <Route path="/nr1/riscos" element={<AppLayout><NR1Riscos /></AppLayout>} />
