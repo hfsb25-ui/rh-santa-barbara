@@ -40,6 +40,10 @@ import Eventos from "./pages/Eventos";
 import AIInsights from "./pages/AIInsights";
 import ConsultaJudicial from "./pages/ConsultaJudicial";
 import Contabilidade from "./pages/Contabilidade";
+import NR1Dashboard from "./pages/nr1/Dashboard";
+import NR1Denuncias from "./pages/nr1/Denuncias";
+import NR1Clima from "./pages/nr1/Clima";
+import NR1Placeholder from "./pages/nr1/Placeholder";
 import AppLayout from "./components/layout/AppLayout";
 import { FloatingAIChat } from "./components/ai/FloatingAIChat";
 
