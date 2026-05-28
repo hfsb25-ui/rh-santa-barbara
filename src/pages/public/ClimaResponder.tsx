@@ -71,9 +71,6 @@ export default function ClimaResponder() {
         </Card>
       </div>
     );
-
-  const perguntas: any[] = pesquisa.perguntas || [];
-
   return (
     <div className="min-h-screen bg-muted/30 py-10 px-4">
       <div className="max-w-2xl mx-auto space-y-4">
@@ -86,13 +83,18 @@ export default function ClimaResponder() {
           <p className="flex items-center gap-2 text-sm text-muted-foreground">
             <ShieldCheck className="h-4 w-4" /> Resposta 100% anônima. Nenhuma identificação é armazenada.
           </p>
+          <p className="text-xs text-muted-foreground mt-2">
+            {perguntasSorteadas.length} pergunta(s) sorteada(s) para você. Avalie de 1 a 10.
+          </p>
         </Card>
 
-        {perguntas.map((q) => (
+        {perguntasSorteadas.map((q, idx) => (
           <Card key={q.id} className="p-4">
-            <p className="mb-3 font-medium">{q.texto}</p>
-            <div className="flex gap-2 flex-wrap">
-              {[1, 2, 3, 4, 5].map((n) => (
+            <p className="mb-3 font-medium">
+              <span className="text-muted-foreground mr-2">{idx + 1}.</span>{q.texto}
+            </p>
+            <div className="grid grid-cols-5 sm:grid-cols-10 gap-2">
+              {Array.from({ length: 10 }, (_, i) => i + 1).map((n) => (
                 <Button
                   key={n}
                   size="sm"
@@ -104,10 +106,11 @@ export default function ClimaResponder() {
               ))}
             </div>
             <div className="flex justify-between text-xs text-muted-foreground mt-2">
-              <span>Discordo totalmente</span><span>Concordo totalmente</span>
+              <span>1 — Péssimo</span><span>10 — Excelente</span>
             </div>
           </Card>
         ))}
+
 
         <Card className="p-4">
           <p className="mb-2 font-medium">Comentário adicional (opcional)</p>
