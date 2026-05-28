@@ -3,13 +3,15 @@ import { useNavigate } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Calendar, Clock, Users, Wallet, ArrowLeft, Tag } from "lucide-react";
+import { Calendar, Clock, Users, Wallet, ArrowLeft, Tag, AlertTriangle, Settings } from "lucide-react";
 import { LancamentoPonto } from "@/components/ponto/LancamentoPonto";
 import { LancamentoPontoLote } from "@/components/ponto/LancamentoPontoLote";
 import { ConfiguracaoHoras } from "@/components/ponto/ConfiguracaoHoras";
 import { RelatoriosPonto } from "@/components/ponto/RelatoriosPonto";
 import { BancoHoras } from "@/components/ponto/BancoHoras";
 import { EtiquetasPonto } from "@/components/ponto/EtiquetasPonto";
+import { AlertasPonto } from "@/components/ponto/AlertasPonto";
+import { ConfiguracaoAlertasPonto } from "@/components/ponto/ConfiguracaoAlertasPonto";
 
 export default function ControlePonto() {
   const navigate = useNavigate();
