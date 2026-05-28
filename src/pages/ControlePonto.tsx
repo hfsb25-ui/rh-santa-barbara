@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -42,36 +41,36 @@ export default function ControlePonto() {
         </div>
 
         <Tabs defaultValue="alertas" className="space-y-6">
-          <TabsList className="inline-flex w-full overflow-x-auto tabs-scroll lg:grid lg:grid-cols-8">
-            <TabsTrigger value="alertas" className="flex-shrink-0 flex items-center gap-2">
+          <TabsList className="flex h-auto w-full flex-wrap justify-start gap-2 p-1">
+            <TabsTrigger value="alertas" className="flex min-w-fit items-center gap-2 whitespace-nowrap">
               <AlertTriangle className="h-4 w-4" />
               <span className="hidden sm:inline">Alertas</span>
             </TabsTrigger>
-            <TabsTrigger value="individual" className="flex-shrink-0 flex items-center gap-2">
+            <TabsTrigger value="individual" className="flex min-w-fit items-center gap-2 whitespace-nowrap">
               <Calendar className="h-4 w-4" />
               <span className="hidden sm:inline">Lançamento Individual</span>
             </TabsTrigger>
-            <TabsTrigger value="lote" className="flex-shrink-0 flex items-center gap-2">
+            <TabsTrigger value="lote" className="flex min-w-fit items-center gap-2 whitespace-nowrap">
               <Users className="h-4 w-4" />
               <span className="hidden sm:inline">Lançamento em Lote</span>
             </TabsTrigger>
-            <TabsTrigger value="configuracao" className="flex-shrink-0 flex items-center gap-2">
+            <TabsTrigger value="configuracao" className="flex min-w-fit items-center gap-2 whitespace-nowrap">
               <Clock className="h-4 w-4" />
               <span className="hidden sm:inline">Configuração de Horas</span>
             </TabsTrigger>
-            <TabsTrigger value="relatorios" className="flex-shrink-0 flex items-center gap-2">
+            <TabsTrigger value="relatorios" className="flex min-w-fit items-center gap-2 whitespace-nowrap">
               <Calendar className="h-4 w-4" />
               <span className="hidden sm:inline">Relatórios</span>
             </TabsTrigger>
-            <TabsTrigger value="banco" className="flex-shrink-0 flex items-center gap-2">
+            <TabsTrigger value="banco" className="flex min-w-fit items-center gap-2 whitespace-nowrap">
               <Wallet className="h-4 w-4" />
               <span className="hidden sm:inline">Banco de Horas</span>
             </TabsTrigger>
-            <TabsTrigger value="etiquetas" className="flex-shrink-0 flex items-center gap-2">
+            <TabsTrigger value="etiquetas" className="flex min-w-fit items-center gap-2 whitespace-nowrap">
               <Tag className="h-4 w-4" />
               <span className="hidden sm:inline">Etiquetas</span>
             </TabsTrigger>
-            <TabsTrigger value="config-alertas" className="flex-shrink-0 flex items-center gap-2">
+            <TabsTrigger value="config-alertas" className="flex min-w-fit items-center gap-2 whitespace-nowrap">
               <Settings className="h-4 w-4" />
               <span className="hidden sm:inline">Config. Alertas</span>
             </TabsTrigger>
