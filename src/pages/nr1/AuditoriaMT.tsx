@@ -55,8 +55,6 @@ export default function NR1AuditoriaMT() {
   const [empresaId, setEmpresaId] = useState<string>("all");
   const [inicio, setInicio] = useState<string>(daysAgoISO(365));
   const [fim, setFim] = useState<string>(todayISO());
-  const [respNome, setRespNome] = useState("");
-  const [respCargo, setRespCargo] = useState("");
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState<"pdf" | "xlsx" | null>(null);
   const [history, setHistory] = useState<any[]>([]);
@@ -177,8 +175,6 @@ export default function NR1AuditoriaMT() {
     cnpj: empresaAtual?.cnpj || null,
     periodo_inicio: inicio,
     periodo_fim: fim,
-    responsavel_nome: respNome,
-    responsavel_cargo: respCargo,
     kpis,
     gerado_em: new Date().toISOString(),
   });
@@ -193,8 +189,6 @@ export default function NR1AuditoriaMT() {
       empresa_id: empresaId === "all" ? null : empresaId,
       periodo_inicio: inicio,
       periodo_fim: fim,
-      responsavel_nome: respNome || null,
-      responsavel_cargo: respCargo || null,
       formato,
       hash_integridade: hash,
       gerado_por: u?.user?.id || null,
@@ -204,10 +198,6 @@ export default function NR1AuditoriaMT() {
   };
 
   const exportPDF = async () => {
-    if (!respNome.trim()) {
-      toast.error("Informe o responsável SST antes de gerar o documento.");
-      return;
-    }
     setGenerating("pdf");
     try {
       const metadata = buildMetadata();
@@ -247,8 +237,6 @@ export default function NR1AuditoriaMT() {
       linha("Empresa:", empresaAtual?.nome || "Todas as empresas");
       linha("CNPJ:", empresaAtual?.cnpj || "—");
       linha("Período auditado:", `${inicio} a ${fim}`);
-      linha("Responsável SST:", respNome);
-      linha("Cargo:", respCargo || "—");
       linha("Data de emissão:", new Date().toLocaleString("pt-BR"));
       linha("Hash de integridade:", hash);
 
@@ -409,16 +397,6 @@ export default function NR1AuditoriaMT() {
       doc.addPage();
       doc.setTextColor(0);
       doc.setFontSize(14);
-      doc.text("Declaração de Conformidade", 14, 20);
-      doc.setFontSize(10);
-      const decl =
-        "Declaro, para fins de comprovação junto à fiscalização do Ministério do Trabalho, que as informações contidas neste relatório refletem fielmente o gerenciamento de riscos psicossociais conduzido pela empresa no período auditado, conforme estabelecido pela Norma Regulamentadora NR-1.";
-      doc.text(doc.splitTextToSize(decl, pageW - 28), 14, 32);
-      doc.text(`Data: ${new Date().toLocaleDateString("pt-BR")}`, 14, 70);
-      doc.line(14, 100, 120, 100);
-      doc.text(respNome, 14, 106);
-      doc.text(respCargo || "Responsável SST", 14, 112);
-
       const filename = `auditoria-nr1-${inicio}_a_${fim}.pdf`;
       doc.save(filename);
       await registrarExport("pdf", hash, metadata);
@@ -431,10 +409,6 @@ export default function NR1AuditoriaMT() {
   };
 
   const exportExcel = async () => {
-    if (!respNome.trim()) {
-      toast.error("Informe o responsável SST antes de gerar o documento.");
-      return;
-    }
     setGenerating("xlsx");
     try {
       const metadata = buildMetadata();
@@ -447,8 +421,6 @@ export default function NR1AuditoriaMT() {
         ["Empresa", empresaAtual?.nome || "Todas as empresas"],
         ["CNPJ", empresaAtual?.cnpj || "—"],
         ["Período", `${inicio} a ${fim}`],
-        ["Responsável SST", respNome],
-        ["Cargo", respCargo || "—"],
         ["Gerado em", new Date().toLocaleString("pt-BR")],
         ["Hash de integridade", hash],
       ];
@@ -602,22 +574,6 @@ export default function NR1AuditoriaMT() {
               onChange={(e) => setFim(e.target.value)}
             />
           </div>
-          <div className="space-y-2">
-            <Label>Responsável SST *</Label>
-            <Input
-              value={respNome}
-              onChange={(e) => setRespNome(e.target.value)}
-              placeholder="Nome completo"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label>Cargo</Label>
-            <Input
-              value={respCargo}
-              onChange={(e) => setRespCargo(e.target.value)}
-              placeholder="Ex: Téc. Segurança do Trabalho"
-            />
-          </div>
           <div className="space-y-2 flex flex-col justify-end">
             <Label>&nbsp;</Label>
             <div className="flex gap-2">
@@ -711,11 +667,10 @@ export default function NR1AuditoriaMT() {
           </p>
         ) : (
           <Table>
-            <TableHeader>
+              <TableHeader>
               <TableRow>
                 <TableHead>Data</TableHead>
                 <TableHead>Período</TableHead>
-                <TableHead>Responsável</TableHead>
                 <TableHead>Formato</TableHead>
                 <TableHead>Hash</TableHead>
               </TableRow>
@@ -729,7 +684,6 @@ export default function NR1AuditoriaMT() {
                   <TableCell>
                     {h.periodo_inicio} a {h.periodo_fim}
                   </TableCell>
-                  <TableCell>{h.responsavel_nome || "—"}</TableCell>
                   <TableCell>
                     <Badge variant="outline">
                       {(h.formato || "").toUpperCase()}
