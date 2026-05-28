@@ -1,79 +1,54 @@
 ## Objetivo
+Adicionar uma aba **"Alertas"** na página **Controle de Ponto** que calcula automaticamente, a partir dos registros já existentes (`registros_ponto`, `banco_horas`, `configuracao_horas_trabalho`), funcionários com comportamento recorrente fora do padrão — tudo configurável pelo admin.
 
-Permitir a exportação de um **Pacote de Auditoria NR-1** completo, formatado conforme exigências do Ministério do Trabalho, com evidências documentais e estatísticas consolidadas para fiscalização.
+## Tipos de alertas
 
-## Escopo
+1. **Intervalo abaixo do mínimo** — funcionário tirou intervalo menor que X minutos em pelo menos N dias no período.
+2. **Intervalo acima do máximo** — intervalo maior que X minutos em pelo menos N dias.
+3. **Atraso recorrente** — hora de entrada após `hora_entrada_prevista + tolerância` em pelo menos N dias.
+4. **Saída antecipada recorrente** — hora de saída antes de `hora_saida_prevista - tolerância` em N dias (extra útil).
+5. **Banco de horas negativo / fora da faixa** — `saldo_horas` abaixo de um limite configurado (ex.: −10h) ou acima de um teto (ex.: +40h).
 
-Criar uma nova seção dentro do **Painel Gerencial NR-1** (ou nova página `/nr1/auditoria`) que gere um pacote completo com filtros por período (mês, trimestre, ano, customizado) e exportação em múltiplos formatos.
+Cada regra tem: **ativa/inativa**, **valor limite** (minutos/horas), **mínimo de ocorrências (N)**, **janela em dias** (ex.: últimos 30/60/90 dias) e **tolerância** quando aplicável.
 
-## Conteúdo do Pacote de Auditoria
+## Mudanças no banco
 
-**1. Capa institucional** — Empresa, CNPJ, período auditado, responsável SST, data de emissão.
+Nova tabela `configuracao_alertas_ponto` (single-row, gerida pelo admin):
+- `intervalo_min_minutos`, `intervalo_max_minutos`
+- `tolerancia_atraso_minutos`, `tolerancia_saida_minutos`
+- `banco_horas_min`, `banco_horas_max`
+- `ocorrencias_minimas` (default 3), `janela_dias` (default 30)
+- flags `alerta_intervalo_curto_ativo`, `alerta_intervalo_longo_ativo`, `alerta_atraso_ativo`, `alerta_saida_antecipada_ativo`, `alerta_banco_horas_ativo`
 
-**2. Sumário executivo** — KPIs consolidados (denúncias, clima, riscos, ações, treinamentos, liderança).
+RLS: leitura para `authenticated`, escrita só para `gestor`/`admin_parcial`. GRANTs explícitos.
 
-**3. Inventário de riscos psicossociais** — Lista completa com categoria, probabilidade × severidade, status, controles, data de identificação.
+## Mudanças no frontend
 
-**4. Plano de ação (evidência preventiva)** — Todas as ações com responsável, prazo, status, evidências, data de conclusão. Destaque para ações vinculadas a riscos altos.
+- **Novo componente** `src/components/ponto/AlertasPonto.tsx`:
+  - Busca configuração + `registros_ponto` da janela + `banco_horas` + `configuracao_horas_trabalho`.
+  - Calcula em memória os funcionários que disparam cada regra (contando ocorrências por employee).
+  - Renderiza cards/seções por tipo de alerta com nome do funcionário (UPPERCASE), nº de ocorrências, detalhes e link para o histórico de ponto.
+  - Filtros por empresa/setor reutilizando padrão existente.
 
-**5. Registro de treinamentos NR-1** — Catálogo + lista de colaboradores concluintes, datas, carga horária, certificados emitidos.
+- **Novo componente** `src/components/ponto/ConfiguracaoAlertasPonto.tsx`:
+  - Formulário com todos os limites e toggles, salvando em `configuracao_alertas_ponto`.
 
-**6. Canal de denúncias** — Estatísticas agregadas por categoria/setor/status, tempo médio de resolução, taxa de conclusão. **Sem dados identificadores** (mantém anonimato exigido).
+- **`src/pages/ControlePonto.tsx`**: adicionar duas abas — **"Alertas"** (com badge mostrando total de alertas) e **"Config. Alertas"** dentro da tab existente de configuração ou como aba separada.
 
-**7. Pesquisa de clima** — Notas médias por dimensão, evolução histórica, total de respondentes, sem identificação individual.
+- **`AppSidebar`/Dashboard**: opcional — badge no menu Controle de Ponto se houver alertas ativos (decisão pequena, posso incluir).
 
-**8. Avaliação de liderança** — Médias agregadas por categoria, total de respostas anônimas.
+## Detalhes técnicos
 
-**9. Indicadores de saúde organizacional** — Afastamentos no período, vínculo com riscos identificados.
+- Cálculo client-side via React Query (já é o padrão do módulo) — sem edge function necessária, dado o volume típico.
+- Intervalo em minutos = `EXTRACT(EPOCH FROM (hora_fim_intervalo - hora_inicio_intervalo))/60`, ignorando registros sem intervalo.
+- Atraso = `hora_entrada > hora_entrada_prevista + tolerancia`.
+- "Recorrência" = contagem de dias-evento por `employee_id` ≥ `ocorrencias_minimas` dentro de `janela_dias`.
+- Banco de horas: leitura direta de `banco_horas.saldo_horas`.
 
-**10. Trilha de evidências** — Lista de documentos, datas-chave e protocolos para comprovação.
+## Arquivos
+- `supabase/migrations/<novo>.sql` (tabela + RLS + GRANTs + seed da linha única)
+- `src/components/ponto/AlertasPonto.tsx` (novo)
+- `src/components/ponto/ConfiguracaoAlertasPonto.tsx` (novo)
+- `src/pages/ControlePonto.tsx` (nova aba)
 
-## Formatos de Exportação
-
-- **PDF de Auditoria** (oficial) — documento único, paginado, com cabeçalho/rodapé institucional, numeração, sumário, capa. Pronto para impressão e arquivamento.
-- **Excel Multi-aba** — uma aba por seção (Riscos, Ações, Treinamentos, Denúncias, Clima, Liderança, Resumo).
-- **Pacote ZIP completo** (opcional, fase 2) — PDF + Excel + CSVs brutos + JSON de metadados, para entrega em mídia digital ao auditor.
-
-## Funcionalidades
-
-- **Filtro por período** customizado (data início / data fim) além dos presets já existentes.
-- **Filtro por empresa** (para grupos com múltiplos CNPJs).
-- **Assinatura digital simples** — campo para nome/cargo do responsável SST, incluído no PDF.
-- **Hash de integridade** (SHA-256) gravado no rodapé do PDF para comprovar não-alteração.
-- **Registro de exportação** — toda geração fica salva em tabela `nr1_auditoria_exports` (período, usuário, data, hash) como evidência de governança.
-
-## Onde fica na UI
-
-```text
-NR-1 → Painel Gerencial
-         ├── Aba "Visão Geral"
-         ├── Aba "Denúncias"
-         ├── Aba "Clima"
-         ├── Aba "Riscos"
-         ├── Aba "Ações"
-         └── Aba "Auditoria MT"  ← NOVA
-                ├── Filtros (período / empresa / responsável)
-                ├── Pré-visualização das seções
-                ├── Botão: Gerar PDF de Auditoria
-                ├── Botão: Gerar Excel Multi-aba
-                └── Histórico de exportações
-```
-
-## Detalhes Técnicos
-
-- **Frontend**: novo componente `AuditoriaMT.tsx` na pasta `src/pages/nr1/` (ou aba dentro de `PainelGerencial.tsx`).
-- **PDF**: `jsPDF` + `jspdf-autotable` (já no projeto) com layout A4, cabeçalho institucional, sumário, paginação "Página X de Y".
-- **Excel**: `xlsx` (já no projeto), uma aba por seção com cabeçalhos formatados.
-- **Hash**: `crypto.subtle.digest('SHA-256', ...)` nativo do browser.
-- **Banco**: nova tabela `nr1_auditoria_exports` (período_inicio, período_fim, empresa_id, responsavel, hash, formato, gerado_por, created_at) com RLS para gestores.
-- **Anonimato preservado**: queries de denúncias/clima/liderança só retornam agregados ou removem campos identificadores antes da exportação.
-
-## Fora do escopo (sugestões futuras)
-
-- Envio automático por e-mail ao responsável SST.
-- Agendamento mensal automático via cron.
-- Assinatura digital com certificado ICP-Brasil.
-
----
-
-**Aprovar este plano** para implementar a aba "Auditoria MT" no Painel Gerencial com PDF oficial, Excel multi-aba, hash de integridade e registro de exportações.
+Confirma para eu implementar?

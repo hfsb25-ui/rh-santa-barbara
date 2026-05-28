@@ -649,6 +649,63 @@ export type Database = {
         }
         Relationships: []
       }
+      configuracao_alertas_ponto: {
+        Row: {
+          alerta_atraso_ativo: boolean
+          alerta_banco_horas_ativo: boolean
+          alerta_intervalo_curto_ativo: boolean
+          alerta_intervalo_longo_ativo: boolean
+          alerta_saida_antecipada_ativo: boolean
+          banco_horas_max: number
+          banco_horas_min: number
+          created_at: string
+          id: string
+          intervalo_max_minutos: number
+          intervalo_min_minutos: number
+          janela_dias: number
+          ocorrencias_minimas: number
+          tolerancia_atraso_minutos: number
+          tolerancia_saida_minutos: number
+          updated_at: string
+        }
+        Insert: {
+          alerta_atraso_ativo?: boolean
+          alerta_banco_horas_ativo?: boolean
+          alerta_intervalo_curto_ativo?: boolean
+          alerta_intervalo_longo_ativo?: boolean
+          alerta_saida_antecipada_ativo?: boolean
+          banco_horas_max?: number
+          banco_horas_min?: number
+          created_at?: string
+          id?: string
+          intervalo_max_minutos?: number
+          intervalo_min_minutos?: number
+          janela_dias?: number
+          ocorrencias_minimas?: number
+          tolerancia_atraso_minutos?: number
+          tolerancia_saida_minutos?: number
+          updated_at?: string
+        }
+        Update: {
+          alerta_atraso_ativo?: boolean
+          alerta_banco_horas_ativo?: boolean
+          alerta_intervalo_curto_ativo?: boolean
+          alerta_intervalo_longo_ativo?: boolean
+          alerta_saida_antecipada_ativo?: boolean
+          banco_horas_max?: number
+          banco_horas_min?: number
+          created_at?: string
+          id?: string
+          intervalo_max_minutos?: number
+          intervalo_min_minutos?: number
+          janela_dias?: number
+          ocorrencias_minimas?: number
+          tolerancia_atraso_minutos?: number
+          tolerancia_saida_minutos?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       configuracao_horas_trabalho: {
         Row: {
           created_at: string | null
