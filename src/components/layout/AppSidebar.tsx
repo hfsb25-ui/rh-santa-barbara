@@ -28,6 +28,15 @@ import {
   Scale,
   Calculator,
   ShieldCheck,
+  HeartPulse,
+  Smile,
+  Megaphone,
+  AlertTriangle,
+  BookOpenCheck,
+  ListChecks,
+  Star,
+  FileBarChart,
+  Settings2,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
