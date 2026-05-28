@@ -109,16 +109,7 @@ export function AlertasPonto() {
     },
   });
 
-  const { data: configHoras } = useQuery({
-    queryKey: ["alertas-ponto-config-horas"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("configuracao_horas_trabalho")
-        .select("employee_id, hora_entrada_prevista, hora_saida_prevista");
-      if (error) throw error;
-      return data;
-    },
-  });
+  // Horário padrão vem da configuração de alertas
 
   const { data: registros, isLoading: lr } = useQuery({
     queryKey: ["alertas-ponto-registros", start, end],
