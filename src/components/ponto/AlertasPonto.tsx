@@ -42,7 +42,7 @@ type Registro = {
 };
 type Config = any;
 
-type AlertType = "intervaloCurto" | "intervaloLongo" | "atrasos" | "saidasAnt" | "banco";
+type AlertType = "intervaloCurto" | "intervaloLongo" | "atrasos" | "saidasAnt" | "banco" | "saldoMes";
 
 function timeToMin(t: string | null) {
   if (!t) return null;
