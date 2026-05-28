@@ -154,6 +154,7 @@ const menuGroups = [
       { title: "Ações Preventivas", url: "/nr1/acoes", icon: ListChecks },
       { title: "Avaliação de Liderança", url: "/nr1/lideranca", icon: Star },
       { title: "Relatórios NR-1", url: "/nr1/relatorios", icon: FileBarChart },
+      { title: "Auditoria MT", url: "/nr1/auditoria", icon: ShieldCheck },
       { title: "Configurações NR-1", url: "/nr1/config", icon: Settings2 },
     ],
   },
@@ -205,6 +206,7 @@ const urlToModuleKey: Record<string, string> = {
   "/nr1/acoes": "nr1-acoes",
   "/nr1/lideranca": "nr1-lideranca",
   "/nr1/relatorios": "nr1-relatorios",
+  "/nr1/auditoria": "nr1-auditoria",
   "/nr1/config": "nr1-config",
 };
 
