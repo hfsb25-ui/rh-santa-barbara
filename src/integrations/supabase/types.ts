@@ -2725,6 +2725,48 @@ export type Database = {
         }
         Relationships: []
       }
+      nr1_auditoria_exports: {
+        Row: {
+          created_at: string
+          empresa_id: string | null
+          formato: string
+          gerado_por: string | null
+          hash_integridade: string | null
+          id: string
+          metadata: Json | null
+          periodo_fim: string | null
+          periodo_inicio: string | null
+          responsavel_cargo: string | null
+          responsavel_nome: string | null
+        }
+        Insert: {
+          created_at?: string
+          empresa_id?: string | null
+          formato: string
+          gerado_por?: string | null
+          hash_integridade?: string | null
+          id?: string
+          metadata?: Json | null
+          periodo_fim?: string | null
+          periodo_inicio?: string | null
+          responsavel_cargo?: string | null
+          responsavel_nome?: string | null
+        }
+        Update: {
+          created_at?: string
+          empresa_id?: string | null
+          formato?: string
+          gerado_por?: string | null
+          hash_integridade?: string | null
+          id?: string
+          metadata?: Json | null
+          periodo_fim?: string | null
+          periodo_inicio?: string | null
+          responsavel_cargo?: string | null
+          responsavel_nome?: string | null
+        }
+        Relationships: []
+      }
       nr1_clima_respostas: {
         Row: {
           created_at: string
