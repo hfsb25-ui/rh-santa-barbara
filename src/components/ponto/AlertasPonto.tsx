@@ -354,6 +354,56 @@ export function AlertasPonto() {
           variant="destructive"
         />
       </div>
+
+      <Dialog open={!!selected} onOpenChange={(o) => !o && setSelected(null)}>
+        <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Relatório de Ponto — {selected?.nome}</DialogTitle>
+            <DialogDescription className="capitalize">{mesLabel}</DialogDescription>
+          </DialogHeader>
+          {ld ? (
+            <div className="flex justify-center py-8">
+              <Loader2 className="w-8 h-8 animate-spin" />
+            </div>
+          ) : !detalhe || detalhe.length === 0 ? (
+            <p className="text-sm text-muted-foreground py-6 text-center">
+              Nenhum registro de ponto no mês selecionado.
+            </p>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Data</TableHead>
+                  <TableHead>Tipo</TableHead>
+                  <TableHead>Entrada</TableHead>
+                  <TableHead>Início Int.</TableHead>
+                  <TableHead>Fim Int.</TableHead>
+                  <TableHead>Saída</TableHead>
+                  <TableHead className="text-right">Horas</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {detalhe.map((r: any) => (
+                  <TableRow key={r.id}>
+                    <TableCell className="whitespace-nowrap">
+                      {format(new Date(r.data + "T00:00:00"), "dd/MM (EEE)", { locale: ptBR })}
+                    </TableCell>
+                    <TableCell>{TIPO_DIA_LABELS[r.tipo_dia] || r.tipo_dia}</TableCell>
+                    <TableCell>{r.hora_entrada || "-"}</TableCell>
+                    <TableCell>{r.hora_inicio_intervalo || "-"}</TableCell>
+                    <TableCell>{r.hora_fim_intervalo || "-"}</TableCell>
+                    <TableCell>{r.hora_saida || "-"}</TableCell>
+                    <TableCell className="text-right font-medium">
+                      {formatHoras(r.horas_trabalhadas)}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
+
 }
