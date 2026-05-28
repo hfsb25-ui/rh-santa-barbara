@@ -50,6 +50,8 @@ import NR1Lideranca from "./pages/nr1/Lideranca";
 import NR1LiderancaResponder from "./pages/nr1/LiderancaResponder";
 import NR1Relatorios from "./pages/nr1/Relatorios";
 import NR1Config from "./pages/nr1/Config";
+import ClimaResponderPublic from "./pages/public/ClimaResponder";
+import DenunciaPublica from "./pages/public/DenunciaPublica";
 import AppLayout from "./components/layout/AppLayout";
 import { FloatingAIChat } from "./components/ai/FloatingAIChat";
 
@@ -114,6 +116,11 @@ const App = () => {
               <Route path="/nr1/acoes" element={<AppLayout><NR1Acoes /></AppLayout>} />
               <Route path="/nr1/lideranca" element={<AppLayout><NR1Lideranca /></AppLayout>} />
               <Route path="/nr1/lideranca/responder/:token" element={<NR1LiderancaResponder />} />
+
+              {/* Públicas (sem login) */}
+              <Route path="/clima/:token" element={<ClimaResponderPublic />} />
+              <Route path="/denuncia" element={<DenunciaPublica />} />
+              <Route path="/lideranca/:token" element={<NR1LiderancaResponder />} />
               <Route path="/nr1/relatorios" element={<AppLayout><NR1Relatorios /></AppLayout>} />
               <Route path="/nr1/config" element={<AppLayout><NR1Config /></AppLayout>} />
 
