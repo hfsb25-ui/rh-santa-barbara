@@ -12,6 +12,7 @@ export default function ClimaResponder() {
   const [estado, setEstado] = useState<"validando" | "valido" | "invalido" | "enviado">("validando");
   const [pesquisa, setPesquisa] = useState<any>(null);
   const [tokenRow, setTokenRow] = useState<any>(null);
+  const [perguntasSorteadas, setPerguntasSorteadas] = useState<any[]>([]);
   const [valores, setValores] = useState<Record<string, number>>({});
   const [comentario, setComentario] = useState("");
   const [enviando, setEnviando] = useState(false);
@@ -25,13 +26,16 @@ export default function ClimaResponder() {
       const { data: p } = await (supabase.from("nr1_pesquisas_clima") as any)
         .select("*").eq("id", tk.pesquisa_id).maybeSingle();
       if (!p || p.status !== "ativa") return setEstado("invalido");
+      const todas: any[] = Array.isArray(p.perguntas) ? p.perguntas : [];
+      const qtd = Math.max(1, Math.min(p.qtd_sortear || todas.length, todas.length));
+      const sorteadas = [...todas].sort(() => Math.random() - 0.5).slice(0, qtd);
+      setPerguntasSorteadas(sorteadas);
       setTokenRow(tk); setPesquisa(p); setEstado("valido");
     })();
   }, [token]);
 
   const enviar = async () => {
-    const perguntas: any[] = pesquisa.perguntas || [];
-    const respostas = perguntas.map((q) => ({ pergunta_id: q.id, valor: valores[q.id] || 0 }));
+    const respostas = perguntasSorteadas.map((q) => ({ pergunta_id: q.id, valor: valores[q.id] || 0 }));
     if (respostas.some((r) => !r.valor)) return toast.error("Responda todas as perguntas");
     setEnviando(true);
     const { error } = await (supabase.from("nr1_clima_respostas") as any).insert({
@@ -44,6 +48,7 @@ export default function ClimaResponder() {
       .update({ usado: true, usado_em: new Date().toISOString() }).eq("id", tokenRow.id);
     setEstado("enviado");
   };
+
 
   if (estado === "validando")
     return <div className="min-h-screen flex items-center justify-center text-muted-foreground">Validando link...</div>;
