@@ -433,6 +433,14 @@ export function AlertasPonto() {
           variant="destructive"
           tipo="banco"
         />
+        <Section
+          title="Saldo negativo no mês"
+          icon={TrendingDown}
+          items={alertas.saldoMes}
+          description="Horas trabalhadas abaixo do esperado no mês selecionado"
+          variant="destructive"
+          tipo="saldoMes"
+        />
       </div>
 
       <Dialog open={!!selected} onOpenChange={(o) => !o && setSelected(null)}>
