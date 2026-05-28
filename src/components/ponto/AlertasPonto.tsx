@@ -6,7 +6,29 @@ import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Loader2, AlertTriangle, Clock, Coffee, LogOut, Wallet } from "lucide-react";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
+
+const TIPO_DIA_LABELS: Record<string, string> = {
+  normal: "Normal",
+  abonado: "Abonado",
+  falta: "Falta",
+  ferias: "Férias",
+  atestado: "Atestado",
+};
+
+function formatHoras(decimal: number | null | undefined): string {
+  if (!decimal) return "0h00min";
+  const isNeg = decimal < 0;
+  const abs = Math.abs(decimal);
+  const h = Math.floor(abs);
+  const m = Math.round((abs - h) * 60);
+  return `${isNeg ? "-" : ""}${h}h${String(m).padStart(2, "0")}min`;
+}
+
 
 type Registro = {
   employee_id: string;
@@ -39,7 +61,25 @@ function monthRange(ym: string) {
 
 export function AlertasPonto() {
   const [mes, setMes] = useState<string>(currentMonthStr());
+  const [selected, setSelected] = useState<{ id: string; nome: string } | null>(null);
   const { start, end } = monthRange(mes);
+
+  const { data: detalhe, isLoading: ld } = useQuery({
+    queryKey: ["alertas-ponto-detalhe", selected?.id, start, end],
+    enabled: !!selected,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("registros_ponto")
+        .select("*")
+        .eq("employee_id", selected!.id)
+        .gte("data", start)
+        .lte("data", end)
+        .order("data");
+      if (error) throw error;
+      return data;
+    },
+  });
+
 
   const { data: config, isLoading: lc } = useQuery({
     queryKey: ["alertas-ponto-config"],
@@ -234,14 +274,22 @@ export function AlertasPonto() {
           <p className="text-sm text-muted-foreground">Nenhuma ocorrência.</p>
         ) : (
           items.map((it) => (
-            <Alert key={it.employee_id} variant={variant}>
-              <AlertTitle className="font-bold">{it.nome}</AlertTitle>
-              <AlertDescription className="text-xs">
-                {it.cargo} · {it.setor} —{" "}
-                {it.detalhe || `${it.ocorrencias} ocorrência(s) em ${mesLabel}`}
-              </AlertDescription>
-            </Alert>
+            <button
+              key={it.employee_id}
+              type="button"
+              onClick={() => setSelected({ id: it.employee_id, nome: it.nome })}
+              className="w-full text-left transition hover:opacity-80 focus:outline-none focus:ring-2 focus:ring-ring rounded-lg"
+            >
+              <Alert variant={variant} className="cursor-pointer">
+                <AlertTitle className="font-bold">{it.nome}</AlertTitle>
+                <AlertDescription className="text-xs">
+                  {it.cargo} · {it.setor} —{" "}
+                  {it.detalhe || `${it.ocorrencias} ocorrência(s) em ${mesLabel}`}
+                </AlertDescription>
+              </Alert>
+            </button>
           ))
+
         )}
       </CardContent>
     </Card>
@@ -306,6 +354,56 @@ export function AlertasPonto() {
           variant="destructive"
         />
       </div>
+
+      <Dialog open={!!selected} onOpenChange={(o) => !o && setSelected(null)}>
+        <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Relatório de Ponto — {selected?.nome}</DialogTitle>
+            <DialogDescription className="capitalize">{mesLabel}</DialogDescription>
+          </DialogHeader>
+          {ld ? (
+            <div className="flex justify-center py-8">
+              <Loader2 className="w-8 h-8 animate-spin" />
+            </div>
+          ) : !detalhe || detalhe.length === 0 ? (
+            <p className="text-sm text-muted-foreground py-6 text-center">
+              Nenhum registro de ponto no mês selecionado.
+            </p>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Data</TableHead>
+                  <TableHead>Tipo</TableHead>
+                  <TableHead>Entrada</TableHead>
+                  <TableHead>Início Int.</TableHead>
+                  <TableHead>Fim Int.</TableHead>
+                  <TableHead>Saída</TableHead>
+                  <TableHead className="text-right">Horas</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {detalhe.map((r: any) => (
+                  <TableRow key={r.id}>
+                    <TableCell className="whitespace-nowrap">
+                      {format(new Date(r.data + "T00:00:00"), "dd/MM (EEE)", { locale: ptBR })}
+                    </TableCell>
+                    <TableCell>{TIPO_DIA_LABELS[r.tipo_dia] || r.tipo_dia}</TableCell>
+                    <TableCell>{r.hora_entrada || "-"}</TableCell>
+                    <TableCell>{r.hora_inicio_intervalo || "-"}</TableCell>
+                    <TableCell>{r.hora_fim_intervalo || "-"}</TableCell>
+                    <TableCell>{r.hora_saida || "-"}</TableCell>
+                    <TableCell className="text-right font-medium">
+                      {formatHoras(r.horas_trabalhadas)}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
+
 }
