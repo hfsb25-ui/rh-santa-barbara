@@ -43,7 +43,13 @@ import Contabilidade from "./pages/Contabilidade";
 import NR1Dashboard from "./pages/nr1/Dashboard";
 import NR1Denuncias from "./pages/nr1/Denuncias";
 import NR1Clima from "./pages/nr1/Clima";
-import NR1Placeholder from "./pages/nr1/Placeholder";
+import NR1Riscos from "./pages/nr1/Riscos";
+import NR1Treinamentos from "./pages/nr1/Treinamentos";
+import NR1Acoes from "./pages/nr1/Acoes";
+import NR1Lideranca from "./pages/nr1/Lideranca";
+import NR1LiderancaResponder from "./pages/nr1/LiderancaResponder";
+import NR1Relatorios from "./pages/nr1/Relatorios";
+import NR1Config from "./pages/nr1/Config";
 import AppLayout from "./components/layout/AppLayout";
 import { FloatingAIChat } from "./components/ai/FloatingAIChat";
 
@@ -103,12 +109,13 @@ const App = () => {
               <Route path="/nr1/dashboard" element={<AppLayout><NR1Dashboard /></AppLayout>} />
               <Route path="/nr1/denuncias" element={<AppLayout><NR1Denuncias /></AppLayout>} />
               <Route path="/nr1/clima" element={<AppLayout><NR1Clima /></AppLayout>} />
-              <Route path="/nr1/riscos" element={<AppLayout><NR1Placeholder titulo="Gestão de Riscos" /></AppLayout>} />
-              <Route path="/nr1/treinamentos" element={<AppLayout><NR1Placeholder titulo="Treinamentos NR-1" /></AppLayout>} />
-              <Route path="/nr1/acoes" element={<AppLayout><NR1Placeholder titulo="Ações Preventivas" /></AppLayout>} />
-              <Route path="/nr1/lideranca" element={<AppLayout><NR1Placeholder titulo="Avaliação de Liderança" /></AppLayout>} />
-              <Route path="/nr1/relatorios" element={<AppLayout><NR1Placeholder titulo="Relatórios NR-1" /></AppLayout>} />
-              <Route path="/nr1/config" element={<AppLayout><NR1Placeholder titulo="Configurações NR-1" /></AppLayout>} />
+              <Route path="/nr1/riscos" element={<AppLayout><NR1Riscos /></AppLayout>} />
+              <Route path="/nr1/treinamentos" element={<AppLayout><NR1Treinamentos /></AppLayout>} />
+              <Route path="/nr1/acoes" element={<AppLayout><NR1Acoes /></AppLayout>} />
+              <Route path="/nr1/lideranca" element={<AppLayout><NR1Lideranca /></AppLayout>} />
+              <Route path="/nr1/lideranca/responder/:token" element={<NR1LiderancaResponder />} />
+              <Route path="/nr1/relatorios" element={<AppLayout><NR1Relatorios /></AppLayout>} />
+              <Route path="/nr1/config" element={<AppLayout><NR1Config /></AppLayout>} />
 
 
               <Route path="*" element={<NotFound />} />
