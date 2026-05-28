@@ -142,6 +142,20 @@ const menuGroups = [
       { title: "Inteligência Artificial", url: "/ai-insights", icon: Bot },
     ],
   },
+  {
+    label: "NR-1 | Gestão Psicossocial",
+    items: [
+      { title: "Dashboard NR-1", url: "/nr1/dashboard", icon: HeartPulse },
+      { title: "Pesquisa de Clima", url: "/nr1/clima", icon: Smile },
+      { title: "Canal de Denúncias", url: "/nr1/denuncias", icon: Megaphone },
+      { title: "Gestão de Riscos", url: "/nr1/riscos", icon: AlertTriangle },
+      { title: "Treinamentos NR-1", url: "/nr1/treinamentos", icon: BookOpenCheck },
+      { title: "Ações Preventivas", url: "/nr1/acoes", icon: ListChecks },
+      { title: "Avaliação de Liderança", url: "/nr1/lideranca", icon: Star },
+      { title: "Relatórios NR-1", url: "/nr1/relatorios", icon: FileBarChart },
+      { title: "Configurações NR-1", url: "/nr1/config", icon: Settings2 },
+    ],
+  },
 ];
 
 interface AppSidebarProps {
