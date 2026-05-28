@@ -659,6 +659,8 @@ export type Database = {
           banco_horas_max: number
           banco_horas_min: number
           created_at: string
+          hora_entrada_padrao: string
+          hora_saida_padrao: string
           id: string
           intervalo_max_minutos: number
           intervalo_min_minutos: number
@@ -677,6 +679,8 @@ export type Database = {
           banco_horas_max?: number
           banco_horas_min?: number
           created_at?: string
+          hora_entrada_padrao?: string
+          hora_saida_padrao?: string
           id?: string
           intervalo_max_minutos?: number
           intervalo_min_minutos?: number
@@ -695,6 +699,8 @@ export type Database = {
           banco_horas_max?: number
           banco_horas_min?: number
           created_at?: string
+          hora_entrada_padrao?: string
+          hora_saida_padrao?: string
           id?: string
           intervalo_max_minutos?: number
           intervalo_min_minutos?: number
