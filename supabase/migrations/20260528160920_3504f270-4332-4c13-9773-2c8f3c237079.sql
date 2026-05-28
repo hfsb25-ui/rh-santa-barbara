@@ -1,0 +1,1 @@
+ALTER TABLE public.nr1_pesquisas_clima ADD COLUMN IF NOT EXISTS qtd_sortear integer;

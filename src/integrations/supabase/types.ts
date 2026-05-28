@@ -3089,6 +3089,7 @@ export type Database = {
           empresa_id: string | null
           id: string
           perguntas: Json
+          qtd_sortear: number | null
           setor_id: string | null
           status: string
           titulo: string
@@ -3103,6 +3104,7 @@ export type Database = {
           empresa_id?: string | null
           id?: string
           perguntas?: Json
+          qtd_sortear?: number | null
           setor_id?: string | null
           status?: string
           titulo: string
@@ -3117,6 +3119,7 @@ export type Database = {
           empresa_id?: string | null
           id?: string
           perguntas?: Json
+          qtd_sortear?: number | null
           setor_id?: string | null
           status?: string
           titulo?: string
