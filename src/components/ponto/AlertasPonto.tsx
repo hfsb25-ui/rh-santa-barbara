@@ -133,10 +133,7 @@ export function AlertasPonto() {
       return data;
     },
   });
-
-  const horasMap = useMemo(() => {
-    return new Map((configHoras || []).map((c: any) => [c.employee_id, c]));
-  }, [configHoras]);
+  const horasMap = useMemo(() => new Map<string, any>(), []);
 
   const alertas = useMemo(() => {
     if (!config || !employees || !registros) return null;
