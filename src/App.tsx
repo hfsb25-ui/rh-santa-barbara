@@ -99,6 +99,18 @@ const App = () => {
               <Route path="/consulta-judicial" element={<AppLayout><ConsultaJudicial /></AppLayout>} />
               <Route path="/contabilidade" element={<AppLayout><Contabilidade /></AppLayout>} />
 
+              {/* NR-1 | Gestão Psicossocial */}
+              <Route path="/nr1/dashboard" element={<AppLayout><NR1Dashboard /></AppLayout>} />
+              <Route path="/nr1/denuncias" element={<AppLayout><NR1Denuncias /></AppLayout>} />
+              <Route path="/nr1/clima" element={<AppLayout><NR1Clima /></AppLayout>} />
+              <Route path="/nr1/riscos" element={<AppLayout><NR1Placeholder titulo="Gestão de Riscos" /></AppLayout>} />
+              <Route path="/nr1/treinamentos" element={<AppLayout><NR1Placeholder titulo="Treinamentos NR-1" /></AppLayout>} />
+              <Route path="/nr1/acoes" element={<AppLayout><NR1Placeholder titulo="Ações Preventivas" /></AppLayout>} />
+              <Route path="/nr1/lideranca" element={<AppLayout><NR1Placeholder titulo="Avaliação de Liderança" /></AppLayout>} />
+              <Route path="/nr1/relatorios" element={<AppLayout><NR1Placeholder titulo="Relatórios NR-1" /></AppLayout>} />
+              <Route path="/nr1/config" element={<AppLayout><NR1Placeholder titulo="Configurações NR-1" /></AppLayout>} />
+
+
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>
