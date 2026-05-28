@@ -274,14 +274,22 @@ export function AlertasPonto() {
           <p className="text-sm text-muted-foreground">Nenhuma ocorrência.</p>
         ) : (
           items.map((it) => (
-            <Alert key={it.employee_id} variant={variant}>
-              <AlertTitle className="font-bold">{it.nome}</AlertTitle>
-              <AlertDescription className="text-xs">
-                {it.cargo} · {it.setor} —{" "}
-                {it.detalhe || `${it.ocorrencias} ocorrência(s) em ${mesLabel}`}
-              </AlertDescription>
-            </Alert>
+            <button
+              key={it.employee_id}
+              type="button"
+              onClick={() => setSelected({ id: it.employee_id, nome: it.nome })}
+              className="w-full text-left transition hover:opacity-80 focus:outline-none focus:ring-2 focus:ring-ring rounded-lg"
+            >
+              <Alert variant={variant} className="cursor-pointer">
+                <AlertTitle className="font-bold">{it.nome}</AlertTitle>
+                <AlertDescription className="text-xs">
+                  {it.cargo} · {it.setor} —{" "}
+                  {it.detalhe || `${it.ocorrencias} ocorrência(s) em ${mesLabel}`}
+                </AlertDescription>
+              </Alert>
+            </button>
           ))
+
         )}
       </CardContent>
     </Card>
