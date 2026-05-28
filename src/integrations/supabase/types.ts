@@ -2671,6 +2671,227 @@ export type Database = {
           },
         ]
       }
+      nr1_clima_respostas: {
+        Row: {
+          created_at: string
+          id: string
+          pesquisa_id: string
+          respostas: Json
+          setor: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          pesquisa_id: string
+          respostas?: Json
+          setor?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          pesquisa_id?: string
+          respostas?: Json
+          setor?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "nr1_clima_respostas_pesquisa_id_fkey"
+            columns: ["pesquisa_id"]
+            isOneToOne: false
+            referencedRelation: "nr1_pesquisas_clima"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      nr1_denuncias: {
+        Row: {
+          categoria: string
+          classificacao_gravidade: string | null
+          created_at: string
+          descricao: string
+          empresa_id: string | null
+          id: string
+          protocolo: string
+          setor: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          categoria: string
+          classificacao_gravidade?: string | null
+          created_at?: string
+          descricao: string
+          empresa_id?: string | null
+          id?: string
+          protocolo: string
+          setor?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          categoria?: string
+          classificacao_gravidade?: string | null
+          created_at?: string
+          descricao?: string
+          empresa_id?: string | null
+          id?: string
+          protocolo?: string
+          setor?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      nr1_denuncias_anexos: {
+        Row: {
+          created_at: string
+          denuncia_id: string
+          file_path: string
+          file_size: number | null
+          file_type: string | null
+          id: string
+        }
+        Insert: {
+          created_at?: string
+          denuncia_id: string
+          file_path: string
+          file_size?: number | null
+          file_type?: string | null
+          id?: string
+        }
+        Update: {
+          created_at?: string
+          denuncia_id?: string
+          file_path?: string
+          file_size?: number | null
+          file_type?: string | null
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "nr1_denuncias_anexos_denuncia_id_fkey"
+            columns: ["denuncia_id"]
+            isOneToOne: false
+            referencedRelation: "nr1_denuncias"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      nr1_denuncias_apuracao: {
+        Row: {
+          created_at: string
+          denuncia_id: string
+          evidencia_url: string | null
+          id: string
+          nota: string
+          registrado_por: string | null
+        }
+        Insert: {
+          created_at?: string
+          denuncia_id: string
+          evidencia_url?: string | null
+          id?: string
+          nota: string
+          registrado_por?: string | null
+        }
+        Update: {
+          created_at?: string
+          denuncia_id?: string
+          evidencia_url?: string | null
+          id?: string
+          nota?: string
+          registrado_por?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "nr1_denuncias_apuracao_denuncia_id_fkey"
+            columns: ["denuncia_id"]
+            isOneToOne: false
+            referencedRelation: "nr1_denuncias"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      nr1_pesquisa_tokens: {
+        Row: {
+          created_at: string
+          id: string
+          pesquisa_id: string
+          token: string
+          usado: boolean
+          usado_em: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          pesquisa_id: string
+          token?: string
+          usado?: boolean
+          usado_em?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          pesquisa_id?: string
+          token?: string
+          usado?: boolean
+          usado_em?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "nr1_pesquisa_tokens_pesquisa_id_fkey"
+            columns: ["pesquisa_id"]
+            isOneToOne: false
+            referencedRelation: "nr1_pesquisas_clima"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      nr1_pesquisas_clima: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          data_fim: string | null
+          data_inicio: string | null
+          descricao: string | null
+          empresa_id: string | null
+          id: string
+          perguntas: Json
+          setor_id: string | null
+          status: string
+          titulo: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          data_fim?: string | null
+          data_inicio?: string | null
+          descricao?: string | null
+          empresa_id?: string | null
+          id?: string
+          perguntas?: Json
+          setor_id?: string | null
+          status?: string
+          titulo: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          data_fim?: string | null
+          data_inicio?: string | null
+          descricao?: string | null
+          empresa_id?: string | null
+          id?: string
+          perguntas?: Json
+          setor_id?: string | null
+          status?: string
+          titulo?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       plano_checklist_funcionario: {
         Row: {
           aviso_tipo: string | null
