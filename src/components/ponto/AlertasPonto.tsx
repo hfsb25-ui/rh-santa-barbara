@@ -29,16 +29,20 @@ function formatHoras(decimal: number | null | undefined): string {
   return `${isNeg ? "-" : ""}${h}h${String(m).padStart(2, "0")}min`;
 }
 
-
 type Registro = {
+  id: string;
   employee_id: string;
   data: string;
   hora_entrada: string | null;
   hora_saida: string | null;
   hora_inicio_intervalo: string | null;
   hora_fim_intervalo: string | null;
+  tipo_dia: string | null;
+  horas_trabalhadas: number | null;
 };
 type Config = any;
+
+type AlertType = "intervaloCurto" | "intervaloLongo" | "atrasos" | "saidasAnt" | "banco";
 
 function timeToMin(t: string | null) {
   if (!t) return null;
@@ -61,7 +65,7 @@ function monthRange(ym: string) {
 
 export function AlertasPonto() {
   const [mes, setMes] = useState<string>(currentMonthStr());
-  const [selected, setSelected] = useState<{ id: string; nome: string } | null>(null);
+  const [selected, setSelected] = useState<{ id: string; nome: string; tipo: AlertType } | null>(null);
   const { start, end } = monthRange(mes);
 
   const { data: detalhe, isLoading: ld } = useQuery({
@@ -76,10 +80,9 @@ export function AlertasPonto() {
         .lte("data", end)
         .order("data");
       if (error) throw error;
-      return data;
+      return data as Registro[];
     },
   });
-
 
   const { data: config, isLoading: lc } = useQuery({
     queryKey: ["alertas-ponto-config"],
@@ -140,13 +143,14 @@ export function AlertasPonto() {
     },
   });
 
+  const horasMap = useMemo(() => {
+    return new Map((configHoras || []).map((c: any) => [c.employee_id, c]));
+  }, [configHoras]);
+
   const alertas = useMemo(() => {
     if (!config || !employees || !registros) return null;
 
     const empMap = new Map(employees.map((e: any) => [e.id, e]));
-    const horasMap = new Map(
-      (configHoras || []).map((c: any) => [c.employee_id, c])
-    );
 
     type Item = { employee_id: string; nome: string; cargo: string; setor: string; ocorrencias: number; detalhe?: string };
     const intervaloCurto: Map<string, number> = new Map();
@@ -223,7 +227,44 @@ export function AlertasPonto() {
       saidasAnt: config.alerta_saida_antecipada_ativo ? buildList(saidasAnt) : [],
       banco: bancoItems,
     };
-  }, [config, employees, registros, configHoras, bancoHoras]);
+  }, [config, employees, registros, bancoHoras, horasMap]);
+
+  function isOcorrenciaRow(r: Registro, tipo: AlertType): boolean {
+    if (!config) return false;
+    const ch: any = horasMap.get(r.employee_id);
+    const entradaPrev = timeToMin(ch?.hora_entrada_prevista ?? "08:00:00");
+    const saidaPrev = timeToMin(ch?.hora_saida_prevista ?? "17:00:00");
+
+    switch (tipo) {
+      case "intervaloCurto": {
+        const ini = timeToMin(r.hora_inicio_intervalo);
+        const fim = timeToMin(r.hora_fim_intervalo);
+        if (ini !== null && fim !== null && fim > ini) {
+          return fim - ini < config.intervalo_min_minutos;
+        }
+        return false;
+      }
+      case "intervaloLongo": {
+        const ini = timeToMin(r.hora_inicio_intervalo);
+        const fim = timeToMin(r.hora_fim_intervalo);
+        if (ini !== null && fim !== null && fim > ini) {
+          return fim - ini > config.intervalo_max_minutos;
+        }
+        return false;
+      }
+      case "atrasos": {
+        const entrada = timeToMin(r.hora_entrada);
+        return entrada !== null && entradaPrev !== null && entrada > entradaPrev + config.tolerancia_atraso_minutos;
+      }
+      case "saidasAnt": {
+        const saida = timeToMin(r.hora_saida);
+        return saida !== null && saidaPrev !== null && saida < saidaPrev - config.tolerancia_saida_minutos;
+      }
+      case "banco":
+      default:
+        return false;
+    }
+  }
 
   if (lc || lr || !alertas) {
     return (
@@ -251,12 +292,14 @@ export function AlertasPonto() {
     items,
     description,
     variant = "default",
+    tipo,
   }: {
     title: string;
     icon: any;
     items: any[];
     description: string;
     variant?: "default" | "destructive";
+    tipo: AlertType;
   }) => (
     <Card>
       <CardHeader>
@@ -277,7 +320,7 @@ export function AlertasPonto() {
             <button
               key={it.employee_id}
               type="button"
-              onClick={() => setSelected({ id: it.employee_id, nome: it.nome })}
+              onClick={() => setSelected({ id: it.employee_id, nome: it.nome, tipo })}
               className="w-full text-left transition hover:opacity-80 focus:outline-none focus:ring-2 focus:ring-ring rounded-lg"
             >
               <Alert variant={variant} className="cursor-pointer">
@@ -289,7 +332,6 @@ export function AlertasPonto() {
               </Alert>
             </button>
           ))
-
         )}
       </CardContent>
     </Card>
@@ -311,9 +353,7 @@ export function AlertasPonto() {
 
       <Alert>
         <AlertTriangle className="w-4 h-4" />
-        <AlertTitle>
-          {total === 0 ? "Tudo em ordem" : `${total} alerta(s) detectado(s)`}
-        </AlertTitle>
+        <AlertTitle>{total === 0 ? "Tudo em ordem" : `${total} alerta(s) detectado(s)`}</AlertTitle>
         <AlertDescription>
           Recorrência ≥ {config.ocorrencias_minimas} ocorrências no mês selecionado.
         </AlertDescription>
@@ -326,12 +366,14 @@ export function AlertasPonto() {
           items={alertas.intervaloCurto}
           description={`Intervalo abaixo de ${config.intervalo_min_minutos} min`}
           variant="destructive"
+          tipo="intervaloCurto"
         />
         <Section
           title="Intervalo longo recorrente"
           icon={Coffee}
           items={alertas.intervaloLongo}
           description={`Intervalo acima de ${config.intervalo_max_minutos} min`}
+          tipo="intervaloLongo"
         />
         <Section
           title="Atraso recorrente"
@@ -339,12 +381,14 @@ export function AlertasPonto() {
           items={alertas.atrasos}
           description={`Entrada após o previsto + ${config.tolerancia_atraso_minutos} min`}
           variant="destructive"
+          tipo="atrasos"
         />
         <Section
           title="Saída antecipada recorrente"
           icon={LogOut}
           items={alertas.saidasAnt}
           description={`Saída antes do previsto − ${config.tolerancia_saida_minutos} min`}
+          tipo="saidasAnt"
         />
         <Section
           title="Banco de horas fora da faixa"
@@ -352,6 +396,7 @@ export function AlertasPonto() {
           items={alertas.banco}
           description={`Faixa aceitável: ${config.banco_horas_min}h a ${config.banco_horas_max}h`}
           variant="destructive"
+          tipo="banco"
         />
       </div>
 
@@ -383,21 +428,31 @@ export function AlertasPonto() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {detalhe.map((r: any) => (
-                  <TableRow key={r.id}>
-                    <TableCell className="whitespace-nowrap">
-                      {format(new Date(r.data + "T00:00:00"), "dd/MM (EEE)", { locale: ptBR })}
-                    </TableCell>
-                    <TableCell>{TIPO_DIA_LABELS[r.tipo_dia] || r.tipo_dia}</TableCell>
-                    <TableCell>{r.hora_entrada || "-"}</TableCell>
-                    <TableCell>{r.hora_inicio_intervalo || "-"}</TableCell>
-                    <TableCell>{r.hora_fim_intervalo || "-"}</TableCell>
-                    <TableCell>{r.hora_saida || "-"}</TableCell>
-                    <TableCell className="text-right font-medium">
-                      {formatHoras(r.horas_trabalhadas)}
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {detalhe.map((r) => {
+                  const ocorrencia = selected && isOcorrenciaRow(r, selected.tipo);
+                  return (
+                    <TableRow
+                      key={r.id}
+                      className={
+                        ocorrencia
+                          ? "bg-destructive/10 border-l-4 border-l-destructive"
+                          : ""
+                      }
+                    >
+                      <TableCell className="whitespace-nowrap">
+                        {format(new Date(r.data + "T00:00:00"), "dd/MM (EEE)", { locale: ptBR })}
+                      </TableCell>
+                      <TableCell>{TIPO_DIA_LABELS[r.tipo_dia || ""] || r.tipo_dia || "-"}</TableCell>
+                      <TableCell>{r.hora_entrada || "-"}</TableCell>
+                      <TableCell>{r.hora_inicio_intervalo || "-"}</TableCell>
+                      <TableCell>{r.hora_fim_intervalo || "-"}</TableCell>
+                      <TableCell>{r.hora_saida || "-"}</TableCell>
+                      <TableCell className="text-right font-medium">
+                        {formatHoras(r.horas_trabalhadas)}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           )}
@@ -405,5 +460,4 @@ export function AlertasPonto() {
       </Dialog>
     </div>
   );
-
 }
