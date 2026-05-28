@@ -55,8 +55,6 @@ export default function NR1AuditoriaMT() {
   const [empresaId, setEmpresaId] = useState<string>("all");
   const [inicio, setInicio] = useState<string>(daysAgoISO(365));
   const [fim, setFim] = useState<string>(todayISO());
-  const [respNome, setRespNome] = useState("");
-  const [respCargo, setRespCargo] = useState("");
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState<"pdf" | "xlsx" | null>(null);
   const [history, setHistory] = useState<any[]>([]);
@@ -177,8 +175,6 @@ export default function NR1AuditoriaMT() {
     cnpj: empresaAtual?.cnpj || null,
     periodo_inicio: inicio,
     periodo_fim: fim,
-    responsavel_nome: respNome,
-    responsavel_cargo: respCargo,
     kpis,
     gerado_em: new Date().toISOString(),
   });
@@ -193,8 +189,6 @@ export default function NR1AuditoriaMT() {
       empresa_id: empresaId === "all" ? null : empresaId,
       periodo_inicio: inicio,
       periodo_fim: fim,
-      responsavel_nome: respNome || null,
-      responsavel_cargo: respCargo || null,
       formato,
       hash_integridade: hash,
       gerado_por: u?.user?.id || null,
@@ -204,10 +198,6 @@ export default function NR1AuditoriaMT() {
   };
 
   const exportPDF = async () => {
-    if (!respNome.trim()) {
-      toast.error("Informe o responsável SST antes de gerar o documento.");
-      return;
-    }
     setGenerating("pdf");
     try {
       const metadata = buildMetadata();
@@ -247,8 +237,6 @@ export default function NR1AuditoriaMT() {
       linha("Empresa:", empresaAtual?.nome || "Todas as empresas");
       linha("CNPJ:", empresaAtual?.cnpj || "—");
       linha("Período auditado:", `${inicio} a ${fim}`);
-      linha("Responsável SST:", respNome);
-      linha("Cargo:", respCargo || "—");
       linha("Data de emissão:", new Date().toLocaleString("pt-BR"));
       linha("Hash de integridade:", hash);
 
