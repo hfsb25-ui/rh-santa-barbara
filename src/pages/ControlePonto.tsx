@@ -3,13 +3,15 @@ import { useNavigate } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Calendar, Clock, Users, Wallet, ArrowLeft, Tag } from "lucide-react";
+import { Calendar, Clock, Users, Wallet, ArrowLeft, Tag, AlertTriangle, Settings } from "lucide-react";
 import { LancamentoPonto } from "@/components/ponto/LancamentoPonto";
 import { LancamentoPontoLote } from "@/components/ponto/LancamentoPontoLote";
 import { ConfiguracaoHoras } from "@/components/ponto/ConfiguracaoHoras";
 import { RelatoriosPonto } from "@/components/ponto/RelatoriosPonto";
 import { BancoHoras } from "@/components/ponto/BancoHoras";
 import { EtiquetasPonto } from "@/components/ponto/EtiquetasPonto";
+import { AlertasPonto } from "@/components/ponto/AlertasPonto";
+import { ConfiguracaoAlertasPonto } from "@/components/ponto/ConfiguracaoAlertasPonto";
 
 export default function ControlePonto() {
   const navigate = useNavigate();
@@ -39,8 +41,12 @@ export default function ControlePonto() {
           </div>
         </div>
 
-        <Tabs defaultValue="individual" className="space-y-6">
-          <TabsList className="inline-flex w-full overflow-x-auto tabs-scroll lg:grid lg:grid-cols-6">
+        <Tabs defaultValue="alertas" className="space-y-6">
+          <TabsList className="inline-flex w-full overflow-x-auto tabs-scroll lg:grid lg:grid-cols-8">
+            <TabsTrigger value="alertas" className="flex-shrink-0 flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4" />
+              <span className="hidden sm:inline">Alertas</span>
+            </TabsTrigger>
             <TabsTrigger value="individual" className="flex-shrink-0 flex items-center gap-2">
               <Calendar className="h-4 w-4" />
               <span className="hidden sm:inline">Lançamento Individual</span>
@@ -65,7 +71,17 @@ export default function ControlePonto() {
               <Tag className="h-4 w-4" />
               <span className="hidden sm:inline">Etiquetas</span>
             </TabsTrigger>
+            <TabsTrigger value="config-alertas" className="flex-shrink-0 flex items-center gap-2">
+              <Settings className="h-4 w-4" />
+              <span className="hidden sm:inline">Config. Alertas</span>
+            </TabsTrigger>
           </TabsList>
+
+          <TabsContent value="alertas">
+            <Card className="p-6">
+              <AlertasPonto />
+            </Card>
+          </TabsContent>
 
           <TabsContent value="individual">
             <Card className="p-6">
@@ -100,6 +116,12 @@ export default function ControlePonto() {
           <TabsContent value="etiquetas">
             <Card className="p-6">
               <EtiquetasPonto />
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="config-alertas">
+            <Card className="p-6">
+              <ConfiguracaoAlertasPonto />
             </Card>
           </TabsContent>
         </Tabs>
