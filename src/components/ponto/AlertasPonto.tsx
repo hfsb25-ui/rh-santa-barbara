@@ -219,9 +219,9 @@ export function AlertasPonto() {
 
   function isOcorrenciaRow(r: Registro, tipo: AlertType): boolean {
     if (!config) return false;
-    const ch: any = horasMap.get(r.employee_id);
-    const entradaPrev = timeToMin(ch?.hora_entrada_prevista ?? "08:00:00");
-    const saidaPrev = timeToMin(ch?.hora_saida_prevista ?? "17:00:00");
+    const entradaPrev = timeToMin(config.hora_entrada_padrao ?? "08:00:00");
+    const saidaPrev = timeToMin(config.hora_saida_padrao ?? "17:00:00");
+
 
     switch (tipo) {
       case "intervaloCurto": {
