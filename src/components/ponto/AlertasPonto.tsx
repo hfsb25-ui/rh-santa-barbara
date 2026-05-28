@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Loader2, AlertTriangle, Clock, Coffee, LogOut, Wallet } from "lucide-react";
+import { Loader2, AlertTriangle, Clock, Coffee, LogOut, Wallet, TrendingDown } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -42,7 +42,7 @@ type Registro = {
 };
 type Config = any;
 
-type AlertType = "intervaloCurto" | "intervaloLongo" | "atrasos" | "saidasAnt" | "banco";
+type AlertType = "intervaloCurto" | "intervaloLongo" | "atrasos" | "saidasAnt" | "banco" | "saldoMes";
 
 function timeToMin(t: string | null) {
   if (!t) return null;
@@ -117,11 +117,22 @@ export function AlertasPonto() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("registros_ponto")
-        .select("employee_id, data, hora_entrada, hora_saida, hora_inicio_intervalo, hora_fim_intervalo")
+        .select("employee_id, data, hora_entrada, hora_saida, hora_inicio_intervalo, hora_fim_intervalo, tipo_dia, horas_trabalhadas")
         .gte("data", start)
         .lte("data", end);
       if (error) throw error;
       return data as Registro[];
+    },
+  });
+
+  const { data: configHoras } = useQuery({
+    queryKey: ["alertas-ponto-config-horas"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("configuracao_horas_trabalho")
+        .select("employee_id, horas_diarias_esperadas");
+      if (error) throw error;
+      return data as { employee_id: string; horas_diarias_esperadas: number | null }[];
     },
   });
 
@@ -208,14 +219,49 @@ export function AlertasPonto() {
       bancoItems.sort((a, b) => a.nome.localeCompare(b.nome));
     }
 
+    // Saldo de horas negativo no mês vigente (não banco)
+    const saldoItems: Item[] = [];
+    const horasMapCfg = new Map<string, number>(
+      (configHoras || []).map((c) => [c.employee_id, Number(c.horas_diarias_esperadas) || 8])
+    );
+    const porEmp = new Map<string, { trabalhadas: number; diasNormal: number }>();
+    for (const r of registros) {
+      const agg = porEmp.get(r.employee_id) || { trabalhadas: 0, diasNormal: 0 };
+      agg.trabalhadas += Number(r.horas_trabalhadas || 0);
+      const lancado = !!(r.hora_entrada || r.hora_saida || r.hora_inicio_intervalo || r.hora_fim_intervalo || (r.horas_trabalhadas && r.horas_trabalhadas > 0));
+      if (r.tipo_dia === "normal" && lancado) agg.diasNormal += 1;
+      porEmp.set(r.employee_id, agg);
+    }
+    porEmp.forEach((agg, id) => {
+      const e: any = empMap.get(id);
+      if (!e) return;
+      const hDia = horasMapCfg.get(id) ?? 8;
+      const esperadas = agg.diasNormal * hDia;
+      const saldo = agg.trabalhadas - esperadas;
+      if (saldo < 0) {
+        const h = Math.floor(Math.abs(saldo));
+        const m = Math.round((Math.abs(saldo) - h) * 60);
+        saldoItems.push({
+          employee_id: id,
+          nome: (e.nome_completo || "").toUpperCase(),
+          cargo: e.cargo,
+          setor: e.setor,
+          ocorrencias: 1,
+          detalhe: `Saldo do mês: -${h}h${String(m).padStart(2, "0")}min`,
+        });
+      }
+    });
+    saldoItems.sort((a, b) => a.nome.localeCompare(b.nome));
+
     return {
       intervaloCurto: config.alerta_intervalo_curto_ativo ? buildList(intervaloCurto) : [],
       intervaloLongo: config.alerta_intervalo_longo_ativo ? buildList(intervaloLongo) : [],
       atrasos: config.alerta_atraso_ativo ? buildList(atrasos) : [],
       saidasAnt: config.alerta_saida_antecipada_ativo ? buildList(saidasAnt) : [],
       banco: bancoItems,
+      saldoMes: saldoItems,
     };
-  }, [config, employees, registros, bancoHoras, horasMap]);
+  }, [config, employees, registros, bancoHoras, configHoras, horasMap]);
 
   function isOcorrenciaRow(r: Registro, tipo: AlertType): boolean {
     if (!config) return false;
@@ -267,7 +313,8 @@ export function AlertasPonto() {
     alertas.intervaloLongo.length +
     alertas.atrasos.length +
     alertas.saidasAnt.length +
-    alertas.banco.length;
+    alertas.banco.length +
+    alertas.saldoMes.length;
 
   const mesLabel = new Date(`${mes}-01T00:00:00`).toLocaleDateString("pt-BR", {
     month: "long",
@@ -385,6 +432,14 @@ export function AlertasPonto() {
           description={`Faixa aceitável: ${config.banco_horas_min}h a ${config.banco_horas_max}h`}
           variant="destructive"
           tipo="banco"
+        />
+        <Section
+          title="Saldo negativo no mês"
+          icon={TrendingDown}
+          items={alertas.saldoMes}
+          description="Horas trabalhadas abaixo do esperado no mês selecionado"
+          variant="destructive"
+          tipo="saldoMes"
         />
       </div>
 
