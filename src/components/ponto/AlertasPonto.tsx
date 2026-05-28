@@ -61,7 +61,25 @@ function monthRange(ym: string) {
 
 export function AlertasPonto() {
   const [mes, setMes] = useState<string>(currentMonthStr());
+  const [selected, setSelected] = useState<{ id: string; nome: string } | null>(null);
   const { start, end } = monthRange(mes);
+
+  const { data: detalhe, isLoading: ld } = useQuery({
+    queryKey: ["alertas-ponto-detalhe", selected?.id, start, end],
+    enabled: !!selected,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("registros_ponto")
+        .select("*")
+        .eq("employee_id", selected!.id)
+        .gte("data", start)
+        .lte("data", end)
+        .order("data");
+      if (error) throw error;
+      return data;
+    },
+  });
+
 
   const { data: config, isLoading: lc } = useQuery({
     queryKey: ["alertas-ponto-config"],
