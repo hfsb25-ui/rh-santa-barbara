@@ -118,6 +118,12 @@ export default function ControlePonto() {
               <EtiquetasPonto />
             </Card>
           </TabsContent>
+
+          <TabsContent value="config-alertas">
+            <Card className="p-6">
+              <ConfiguracaoAlertasPonto />
+            </Card>
+          </TabsContent>
         </Tabs>
       </div>
     </div>
