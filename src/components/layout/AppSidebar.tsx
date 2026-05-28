@@ -195,6 +195,15 @@ const urlToModuleKey: Record<string, string> = {
   "/relatorios": "relatorios",
   "/settings": "settings",
   "/ai-insights": "ai-insights",
+  "/nr1/dashboard": "nr1-dashboard",
+  "/nr1/clima": "nr1-clima",
+  "/nr1/denuncias": "nr1-denuncias",
+  "/nr1/riscos": "nr1-riscos",
+  "/nr1/treinamentos": "nr1-treinamentos",
+  "/nr1/acoes": "nr1-acoes",
+  "/nr1/lideranca": "nr1-lideranca",
+  "/nr1/relatorios": "nr1-relatorios",
+  "/nr1/config": "nr1-config",
 };
 
 export function AppSidebar({ allowedModules = null }: AppSidebarProps) {
