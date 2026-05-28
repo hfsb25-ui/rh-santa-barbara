@@ -8,8 +8,8 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Loader2, AlertTriangle, Clock, Coffee, LogOut, Wallet } from "lucide-react";
 import { Loader2, AlertTriangle, Clock, Coffee, LogOut, Wallet, TrendingDown } from "lucide-react";
+import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
 const TIPO_DIA_LABELS: Record<string, string> = {
