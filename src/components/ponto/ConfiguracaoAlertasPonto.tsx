@@ -133,6 +133,34 @@ export function ConfiguracaoAlertasPonto() {
         </div>
       </div>
 
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base">Horário padrão de referência</CardTitle>
+          <p className="text-sm text-muted-foreground">
+            Usado como base para detectar atrasos e saídas antecipadas.
+          </p>
+        </CardHeader>
+        <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label>Hora de entrada padrão</Label>
+            <Input
+              type="time"
+              value={config.hora_entrada_padrao?.slice(0, 5) ?? ""}
+              onChange={(e) => updateField("hora_entrada_padrao", e.target.value + ":00")}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>Hora de saída padrão</Label>
+            <Input
+              type="time"
+              value={config.hora_saida_padrao?.slice(0, 5) ?? ""}
+              onChange={(e) => updateField("hora_saida_padrao", e.target.value + ":00")}
+            />
+          </div>
+        </CardContent>
+      </Card>
+
+
       <Row
         label="Intervalo abaixo do mínimo"
         checked={config.alerta_intervalo_curto_ativo}
