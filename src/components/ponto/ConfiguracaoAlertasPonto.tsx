@@ -14,11 +14,14 @@ type Config = {
   intervalo_max_minutos: number;
   tolerancia_atraso_minutos: number;
   tolerancia_saida_minutos: number;
+  hora_entrada_padrao: string;
+  hora_saida_padrao: string;
   banco_horas_min: number;
   banco_horas_max: number;
   ocorrencias_minimas: number;
   janela_dias: number;
   alerta_intervalo_curto_ativo: boolean;
+
   alerta_intervalo_longo_ativo: boolean;
   alerta_atraso_ativo: boolean;
   alerta_saida_antecipada_ativo: boolean;
@@ -66,6 +69,9 @@ export function ConfiguracaoAlertasPonto() {
         alerta_atraso_ativo: config.alerta_atraso_ativo,
         alerta_saida_antecipada_ativo: config.alerta_saida_antecipada_ativo,
         alerta_banco_horas_ativo: config.alerta_banco_horas_ativo,
+        hora_entrada_padrao: config.hora_entrada_padrao,
+        hora_saida_padrao: config.hora_saida_padrao,
+
       })
       .eq("id", config.id);
     setSaving(false);
@@ -126,6 +132,34 @@ export function ConfiguracaoAlertasPonto() {
           />
         </div>
       </div>
+
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base">Horário padrão de referência</CardTitle>
+          <p className="text-sm text-muted-foreground">
+            Usado como base para detectar atrasos e saídas antecipadas.
+          </p>
+        </CardHeader>
+        <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label>Hora de entrada padrão</Label>
+            <Input
+              type="time"
+              value={config.hora_entrada_padrao?.slice(0, 5) ?? ""}
+              onChange={(e) => updateField("hora_entrada_padrao", e.target.value + ":00")}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>Hora de saída padrão</Label>
+            <Input
+              type="time"
+              value={config.hora_saida_padrao?.slice(0, 5) ?? ""}
+              onChange={(e) => updateField("hora_saida_padrao", e.target.value + ":00")}
+            />
+          </div>
+        </CardContent>
+      </Card>
+
 
       <Row
         label="Intervalo abaixo do mínimo"

@@ -109,16 +109,7 @@ export function AlertasPonto() {
     },
   });
 
-  const { data: configHoras } = useQuery({
-    queryKey: ["alertas-ponto-config-horas"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("configuracao_horas_trabalho")
-        .select("employee_id, hora_entrada_prevista, hora_saida_prevista");
-      if (error) throw error;
-      return data;
-    },
-  });
+  // Horário padrão vem da configuração de alertas
 
   const { data: registros, isLoading: lr } = useQuery({
     queryKey: ["alertas-ponto-registros", start, end],
@@ -142,10 +133,7 @@ export function AlertasPonto() {
       return data;
     },
   });
-
-  const horasMap = useMemo(() => {
-    return new Map((configHoras || []).map((c: any) => [c.employee_id, c]));
-  }, [configHoras]);
+  const horasMap = useMemo(() => new Map<string, any>(), []);
 
   const alertas = useMemo(() => {
     if (!config || !employees || !registros) return null;
@@ -169,9 +157,9 @@ export function AlertasPonto() {
           intervaloLongo.set(r.employee_id, (intervaloLongo.get(r.employee_id) || 0) + 1);
       }
 
-      const ch: any = horasMap.get(r.employee_id);
-      const entradaPrev = timeToMin(ch?.hora_entrada_prevista ?? "08:00:00");
-      const saidaPrev = timeToMin(ch?.hora_saida_prevista ?? "17:00:00");
+      const entradaPrev = timeToMin(config.hora_entrada_padrao ?? "08:00:00");
+      const saidaPrev = timeToMin(config.hora_saida_padrao ?? "17:00:00");
+
       const entrada = timeToMin(r.hora_entrada);
       const saida = timeToMin(r.hora_saida);
 
@@ -231,9 +219,9 @@ export function AlertasPonto() {
 
   function isOcorrenciaRow(r: Registro, tipo: AlertType): boolean {
     if (!config) return false;
-    const ch: any = horasMap.get(r.employee_id);
-    const entradaPrev = timeToMin(ch?.hora_entrada_prevista ?? "08:00:00");
-    const saidaPrev = timeToMin(ch?.hora_saida_prevista ?? "17:00:00");
+    const entradaPrev = timeToMin(config.hora_entrada_padrao ?? "08:00:00");
+    const saidaPrev = timeToMin(config.hora_saida_padrao ?? "17:00:00");
+
 
     switch (tipo) {
       case "intervaloCurto": {
