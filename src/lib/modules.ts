@@ -36,6 +36,15 @@ export const MODULES: ModuleDef[] = [
   { key: "relatorios", label: "Relatórios", path: "/relatorios", group: "Admin" },
   { key: "settings", label: "Configurações", path: "/settings", group: "Admin" },
   { key: "ai-insights", label: "Inteligência Artificial", path: "/ai-insights", group: "Cérebrum IA" },
+  { key: "nr1-dashboard", label: "Dashboard NR-1", path: "/nr1/dashboard", group: "NR-1 | Gestão Psicossocial" },
+  { key: "nr1-clima", label: "Pesquisa de Clima", path: "/nr1/clima", group: "NR-1 | Gestão Psicossocial" },
+  { key: "nr1-denuncias", label: "Canal de Denúncias", path: "/nr1/denuncias", group: "NR-1 | Gestão Psicossocial" },
+  { key: "nr1-riscos", label: "Gestão de Riscos", path: "/nr1/riscos", group: "NR-1 | Gestão Psicossocial" },
+  { key: "nr1-treinamentos", label: "Treinamentos NR-1", path: "/nr1/treinamentos", group: "NR-1 | Gestão Psicossocial" },
+  { key: "nr1-acoes", label: "Ações Preventivas", path: "/nr1/acoes", group: "NR-1 | Gestão Psicossocial" },
+  { key: "nr1-lideranca", label: "Avaliação de Liderança", path: "/nr1/lideranca", group: "NR-1 | Gestão Psicossocial" },
+  { key: "nr1-relatorios", label: "Relatórios NR-1", path: "/nr1/relatorios", group: "NR-1 | Gestão Psicossocial" },
+  { key: "nr1-config", label: "Configurações NR-1", path: "/nr1/config", group: "NR-1 | Gestão Psicossocial" },
 ];
 
 export const moduleKeyFromPath = (pathname: string): string | null => {
