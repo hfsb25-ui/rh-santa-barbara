@@ -16,12 +16,12 @@ type Config = {
   tolerancia_saida_minutos: number;
   hora_entrada_padrao: string;
   hora_saida_padrao: string;
-  alerta_intervalo_curto_ativo: boolean;
-
+  banco_horas_min: number;
   banco_horas_max: number;
   ocorrencias_minimas: number;
   janela_dias: number;
   alerta_intervalo_curto_ativo: boolean;
+
   alerta_intervalo_longo_ativo: boolean;
   alerta_atraso_ativo: boolean;
   alerta_saida_antecipada_ativo: boolean;
