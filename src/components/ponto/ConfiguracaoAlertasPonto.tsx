@@ -14,7 +14,10 @@ type Config = {
   intervalo_max_minutos: number;
   tolerancia_atraso_minutos: number;
   tolerancia_saida_minutos: number;
-  banco_horas_min: number;
+  hora_entrada_padrao: string;
+  hora_saida_padrao: string;
+  alerta_intervalo_curto_ativo: boolean;
+
   banco_horas_max: number;
   ocorrencias_minimas: number;
   janela_dias: number;
