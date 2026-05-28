@@ -37,8 +37,8 @@ export default function NR1Dashboard() {
   useEffect(() => {
     (async () => {
       const [denRes, climaRes, afastRes] = await Promise.all([
-        supabase.from("nr1_denuncias").select("setor, status, created_at"),
-        supabase.from("nr1_clima_respostas").select("respostas, created_at, setor"),
+        (supabase.from("nr1_denuncias") as any).select("setor, status, created_at"),
+        (supabase.from("nr1_clima_respostas") as any).select("respostas, created_at, setor"),
         supabase.from("afastamentos").select("id, data_fim").gte("data_fim", new Date().toISOString().slice(0, 10)),
       ]);
 

@@ -20,7 +20,7 @@ export default function NR1Denuncias() {
   const [selecionada, setSelecionada] = useState<any | null>(null);
 
   const load = async () => {
-    const { data } = await supabase.from("nr1_denuncias").select("*").order("created_at", { ascending: false });
+    const { data } = await (supabase.from("nr1_denuncias") as any).select("*").order("created_at", { ascending: false });
     setDenuncias(data || []);
   };
 

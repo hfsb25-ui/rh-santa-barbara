@@ -24,8 +24,8 @@ export default function NR1Clima() {
 
   const load = async () => {
     const [p, r] = await Promise.all([
-      supabase.from("nr1_pesquisas_clima").select("*").order("created_at", { ascending: false }),
-      supabase.from("nr1_clima_respostas").select("*"),
+      (supabase.from("nr1_pesquisas_clima") as any).select("*").order("created_at", { ascending: false }),
+      (supabase.from("nr1_clima_respostas") as any).select("*"),
     ]);
     setPesquisas(p.data || []);
     setRespostas(r.data || []);
@@ -36,7 +36,7 @@ export default function NR1Clima() {
     if (!titulo.trim()) return;
     setLoading(true);
     const { data: { user } } = await supabase.auth.getUser();
-    const { error } = await (supabase.from("nr1_pesquisas_clima") as any).insert({
+    const { error } = await ((supabase.from("nr1_pesquisas_clima") as any) as any).insert({
       titulo: titulo.trim(),
       descricao: descricao.trim() || null,
       perguntas: PERGUNTAS_PADRAO,
@@ -50,14 +50,14 @@ export default function NR1Clima() {
 
   const gerarTokens = async (pesquisa: any, qtd: number) => {
     const rows = Array.from({ length: qtd }, () => ({ pesquisa_id: pesquisa.id }));
-    const { data, error } = await (supabase.from("nr1_pesquisa_tokens") as any).insert(rows).select("token");
+    const { data, error } = await ((supabase.from("nr1_pesquisa_tokens") as any) as any).insert(rows).select("token");
     if (error) { toast.error(error.message); return; }
     setTokensDialog({ pesquisa, tokens: (data || []).map((t: any) => t.token) });
   };
 
   const toggleStatus = async (p: any) => {
     const novo = p.status === "ativa" ? "encerrada" : "ativa";
-    await supabase.from("nr1_pesquisas_clima").update({ status: novo }).eq("id", p.id);
+    await (supabase.from("nr1_pesquisas_clima") as any).update({ status: novo }).eq("id", p.id);
     load();
   };
 

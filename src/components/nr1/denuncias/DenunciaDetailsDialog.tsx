@@ -29,8 +29,8 @@ export function DenunciaDetailsDialog({ denuncia, open, onOpenChange, onUpdated 
     setStatus(denuncia.status);
     (async () => {
       const [aRes, apRes] = await Promise.all([
-        supabase.from("nr1_denuncias_anexos").select("*").eq("denuncia_id", denuncia.id),
-        supabase.from("nr1_denuncias_apuracao").select("*").eq("denuncia_id", denuncia.id).order("created_at"),
+        (supabase.from("nr1_denuncias_anexos") as any).select("*").eq("denuncia_id", denuncia.id),
+        (supabase.from("nr1_denuncias_apuracao") as any).select("*").eq("denuncia_id", denuncia.id).order("created_at"),
       ]);
       setAnexos(aRes.data || []);
       setApuracoes(apRes.data || []);
@@ -39,7 +39,7 @@ export function DenunciaDetailsDialog({ denuncia, open, onOpenChange, onUpdated 
 
   const updateStatus = async (s: string) => {
     setStatus(s);
-    await supabase.from("nr1_denuncias").update({ status: s }).eq("id", denuncia.id);
+    await (supabase.from("nr1_denuncias") as any).update({ status: s }).eq("id", denuncia.id);
     onUpdated();
   };
 
@@ -47,7 +47,7 @@ export function DenunciaDetailsDialog({ denuncia, open, onOpenChange, onUpdated 
     if (!novaNota.trim()) return;
     setLoading(true);
     const { data: { user } } = await supabase.auth.getUser();
-    const { error } = await supabase.from("nr1_denuncias_apuracao").insert({
+    const { error } = await (supabase.from("nr1_denuncias_apuracao") as any).insert({
       denuncia_id: denuncia.id,
       registrado_por: user?.id,
       nota: novaNota.trim(),
@@ -55,7 +55,7 @@ export function DenunciaDetailsDialog({ denuncia, open, onOpenChange, onUpdated 
     if (error) toast.error(error.message);
     else {
       setNovaNota("");
-      const apRes = await supabase.from("nr1_denuncias_apuracao").select("*").eq("denuncia_id", denuncia.id).order("created_at");
+      const apRes = await (supabase.from("nr1_denuncias_apuracao") as any).select("*").eq("denuncia_id", denuncia.id).order("created_at");
       setApuracoes(apRes.data || []);
       toast.success("Apuração registrada");
     }

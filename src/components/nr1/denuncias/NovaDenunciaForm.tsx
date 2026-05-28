@@ -48,7 +48,7 @@ export function NovaDenunciaForm({ onSuccess }: Props) {
         const path = `${denuncia.id}/${crypto.randomUUID()}.${ext}`;
         const { error: upErr } = await supabase.storage.from("nr1-denuncias").upload(path, file);
         if (!upErr) {
-          await supabase.from("nr1_denuncias_anexos").insert({
+          await (supabase.from("nr1_denuncias_anexos") as any).insert({
             denuncia_id: denuncia.id,
             file_path: path,
             file_type: file.type,
