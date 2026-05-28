@@ -69,6 +69,9 @@ export function ConfiguracaoAlertasPonto() {
         alerta_atraso_ativo: config.alerta_atraso_ativo,
         alerta_saida_antecipada_ativo: config.alerta_saida_antecipada_ativo,
         alerta_banco_horas_ativo: config.alerta_banco_horas_ativo,
+        hora_entrada_padrao: config.hora_entrada_padrao,
+        hora_saida_padrao: config.hora_saida_padrao,
+
       })
       .eq("id", config.id);
     setSaving(false);
