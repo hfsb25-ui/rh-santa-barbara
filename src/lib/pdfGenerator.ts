@@ -181,10 +181,11 @@ export const generateEpiReceipt = async (data: EpiReceiptData, opts: PdfOutputOp
 
   // Save the PDF
   const fileName = `Recibo_EPI_${data.employeeName.replace(/\s+/g, "_")}_${formattedDate.replace(/\//g, "-")}.pdf`;
-  import("./pdfBackupHelper").then(({ saveAndBackup }) => saveAndBackup(doc, fileName, "EPIs"));
+  await handleOutput(doc, fileName, "EPIs", opts);
 };
 
-export const generateUniformReceipt = (data: UniformReceiptData) => {
+export const generateUniformReceipt = async (data: UniformReceiptData, opts: PdfOutputOptions = {}) => {
+
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
   let yPosition = 20;
