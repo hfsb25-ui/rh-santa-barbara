@@ -279,5 +279,6 @@ export async function generateCustomBadgesPDF(
 
   // Save the PDF
   const timestamp = new Date().toISOString().slice(0, 10);
-  doc.save(`crachas_personalizado_${timestamp}.pdf`);
+  const fileName = `crachas_personalizado_${timestamp}.pdf`;
+  import("./pdfBackupHelper").then(({ saveAndBackup }) => saveAndBackup(doc, fileName, "Crachas"));
 }

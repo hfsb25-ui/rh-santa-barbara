@@ -157,7 +157,7 @@ export const generateEpiReceipt = (data: EpiReceiptData) => {
 
   // Save the PDF
   const fileName = `Recibo_EPI_${data.employeeName.replace(/\s+/g, "_")}_${formattedDate.replace(/\//g, "-")}.pdf`;
-  doc.save(fileName);
+  import("./pdfBackupHelper").then(({ saveAndBackup }) => saveAndBackup(doc, fileName, "EPIs"));
 };
 
 export const generateUniformReceipt = (data: UniformReceiptData) => {
@@ -278,5 +278,5 @@ export const generateUniformReceipt = (data: UniformReceiptData) => {
 
   // Save the PDF
   const fileName = `Recibo_Uniforme_${data.employeeName.replace(/\s+/g, "_")}_${formattedDate.replace(/\//g, "-")}.pdf`;
-  doc.save(fileName);
+  import("./pdfBackupHelper").then(({ saveAndBackup }) => saveAndBackup(doc, fileName, "Uniformes"));
 };

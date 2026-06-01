@@ -121,7 +121,8 @@ export const gerarPedidoDemissao = (dados: DadosDesligamento) => {
   y += 5;
   doc.text("Assinatura do responsável pela empresa", margin, y);
 
-  doc.save(`pedido_demissao_${dados.funcionario.nome_completo.replace(/\s+/g, "_")}.pdf`);
+  const fileNamePD = `pedido_demissao_${dados.funcionario.nome_completo.replace(/\s+/g, "_")}.pdf`;
+  import("./pdfBackupHelper").then(({ saveAndBackup }) => saveAndBackup(doc, fileNamePD, "Desligamentos"));
 };
 
 export const gerarCartaDemissao = (dados: DadosDesligamento) => {
@@ -226,5 +227,6 @@ export const gerarCartaDemissao = (dados: DadosDesligamento) => {
   doc.setFontSize(9);
   doc.text(`CPF: ${dados.funcionario.cpf || "_______________"}`, margin, y);
 
-  doc.save(`carta_dispensa_${dados.funcionario.nome_completo.replace(/\s+/g, "_")}.pdf`);
+  const fileNameCD = `carta_dispensa_${dados.funcionario.nome_completo.replace(/\s+/g, "_")}.pdf`;
+  import("./pdfBackupHelper").then(({ saveAndBackup }) => saveAndBackup(doc, fileNameCD, "Desligamentos"));
 };

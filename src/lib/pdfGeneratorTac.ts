@@ -7,7 +7,7 @@ const tipoLabels: Record<string, string> = {
   compromisso: "Termo de Compromisso",
 };
 
-export const generateTacPDF = (tac: any) => {
+export const generateTacPDF = async (tac: any) => {
   const doc = new jsPDF("p", "mm", "a4");
   const pageWidth = doc.internal.pageSize.getWidth();
   const margin = 20;
@@ -158,5 +158,6 @@ export const generateTacPDF = (tac: any) => {
 
   // Save
   const fileName = `TAC_${employeeName.replace(/\s+/g, "_")}_${new Date(tac.data_ocorrencia).toLocaleDateString("pt-BR").replace(/\//g, "-")}.pdf`;
-  doc.save(fileName);
+  const { saveAndBackup } = await import("./pdfBackupHelper");
+  saveAndBackup(doc, fileName, "TACs", { employee_id: tac.employee_id });
 };

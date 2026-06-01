@@ -192,6 +192,7 @@ export const generateEncaminhamentoPDF = async (encaminhamento: any) => {
     /\s+/g,
     "_"
   )}_${new Date().getTime()}.pdf`;
-  doc.save(fileName);
+  const { saveAndBackup } = await import("./pdfBackupHelper");
+  saveAndBackup(doc, fileName, "Encaminhamentos", { employee_id: encaminhamento.employee_id });
 };
 

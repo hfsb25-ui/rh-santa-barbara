@@ -1161,6 +1161,90 @@ export type Database = {
           },
         ]
       }
+      drive_backup_config: {
+        Row: {
+          ativo: boolean
+          created_at: string
+          id: number
+          pasta_raiz_id: string | null
+          pasta_raiz_nome: string
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean
+          created_at?: string
+          id?: number
+          pasta_raiz_id?: string | null
+          pasta_raiz_nome?: string
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean
+          created_at?: string
+          id?: number
+          pasta_raiz_id?: string | null
+          pasta_raiz_nome?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      drive_backup_log: {
+        Row: {
+          created_at: string
+          drive_file_id: string | null
+          drive_url: string | null
+          employee_id: string | null
+          erro_mensagem: string | null
+          id: string
+          nome_arquivo: string
+          status: string
+          tamanho_bytes: number | null
+          tipo: string
+        }
+        Insert: {
+          created_at?: string
+          drive_file_id?: string | null
+          drive_url?: string | null
+          employee_id?: string | null
+          erro_mensagem?: string | null
+          id?: string
+          nome_arquivo: string
+          status?: string
+          tamanho_bytes?: number | null
+          tipo: string
+        }
+        Update: {
+          created_at?: string
+          drive_file_id?: string | null
+          drive_url?: string | null
+          employee_id?: string | null
+          erro_mensagem?: string | null
+          id?: string
+          nome_arquivo?: string
+          status?: string
+          tamanho_bytes?: number | null
+          tipo?: string
+        }
+        Relationships: []
+      }
+      drive_folder_cache: {
+        Row: {
+          caminho: string
+          created_at: string
+          drive_folder_id: string
+        }
+        Insert: {
+          caminho: string
+          created_at?: string
+          drive_folder_id: string
+        }
+        Update: {
+          caminho?: string
+          created_at?: string
+          drive_folder_id?: string
+        }
+        Relationships: []
+      }
       employee_files: {
         Row: {
           created_at: string
