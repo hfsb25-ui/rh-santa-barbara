@@ -66,7 +66,7 @@ const EventoForm = ({ evento, onSaved, onCancel, initialDate }: EventoFormProps)
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [selectedParticipants, setSelectedParticipants] = useState<string[]>([]);
   const [searchEmployee, setSearchEmployee] = useState("");
-  const [syncWithGoogle, setSyncWithGoogle] = useState(!!evento?.google_event_id);
+  const [syncWithGoogle, setSyncWithGoogle] = useState(true);
   const [isRecorrente, setIsRecorrente] = useState(evento?.recorrente || false);
   const [recorrenciaTipo, setRecorrenciaTipo] = useState(evento?.recorrencia_tipo || "semanal");
   const [quantidadeRecorrencias, setQuantidadeRecorrencias] = useState(4);
@@ -130,6 +130,7 @@ const EventoForm = ({ evento, onSaved, onCancel, initialDate }: EventoFormProps)
 
     let error;
     let totalCriados = 0;
+    let createdEvents: Array<{ id: string; data_inicio: string; data_fim: string }> = [];
     
     if (evento) {
       // Update existing event
@@ -143,6 +144,9 @@ const EventoForm = ({ evento, onSaved, onCancel, initialDate }: EventoFormProps)
       }).eq("id", evento.id));
       
       totalCriados = 1;
+      if (!error) {
+        createdEvents = [{ id: evento.id, data_inicio: dataInicio, data_fim: dataFim }];
+      }
     } else if (isRecorrente && quantidadeRecorrencias > 1) {
       // Create recurring events
       const eventosParaInserir = [];
@@ -158,21 +162,23 @@ const EventoForm = ({ evento, onSaved, onCancel, initialDate }: EventoFormProps)
         currentDate = getNextDate(currentDate, recorrenciaTipo);
       }
       
-      const { error: insertError, data } = await supabase.from("eventos").insert(eventosParaInserir).select("id");
+      const { error: insertError, data } = await supabase.from("eventos").insert(eventosParaInserir).select("id, data_inicio, data_fim");
       error = insertError;
       totalCriados = data?.length || 0;
+      createdEvents = data || [];
     } else {
       // Create single event
       const dataInicio = `${baseDate}T${horaInicio}:00`;
       const dataFim = `${baseDate}T${horaFim}:00`;
       
-      const { error: insertError } = await supabase.from("eventos").insert({
+      const { error: insertError, data } = await supabase.from("eventos").insert({
         ...baseEventoData,
         data_inicio: dataInicio,
         data_fim: dataFim,
-      });
+      }).select("id, data_inicio, data_fim").single();
       error = insertError;
       totalCriados = 1;
+      if (data) createdEvents = [data];
     }
 
     if (error) {
@@ -180,6 +186,23 @@ const EventoForm = ({ evento, onSaved, onCancel, initialDate }: EventoFormProps)
       console.error(error);
       setLoading(false);
       return;
+    }
+
+    // Sincronizar com Google Calendar
+    if (syncWithGoogle && googleConnected && createdEvents.length > 0) {
+      for (const ev of createdEvents) {
+        await syncToGoogle({
+          id: ev.id,
+          titulo: baseEventoData.titulo,
+          descricao: baseEventoData.descricao,
+          data_inicio: ev.data_inicio,
+          data_fim: ev.data_fim,
+          local: baseEventoData.local,
+          tipo: baseEventoData.tipo,
+          cor: baseEventoData.cor,
+          google_event_id: evento?.google_event_id || null,
+        });
+      }
     }
 
     setLoading(false);
