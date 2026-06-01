@@ -1,4 +1,28 @@
 import jsPDF from "jspdf";
+import { backupPdfToDrive } from "@/hooks/useDriveBackup";
+
+export interface PdfOutputOptions {
+  silent?: boolean;
+  subpasta?: string;
+  employee_id?: string | null;
+}
+
+async function handleOutput(doc: jsPDF, fileName: string, tipo: string, opts: PdfOutputOptions) {
+  if (opts.silent) {
+    const blob: Blob = doc.output("blob");
+    await backupPdfToDrive({
+      tipo,
+      nome_arquivo: fileName,
+      pdfBlob: blob,
+      employee_id: opts.employee_id ?? null,
+      subpasta: opts.subpasta,
+    });
+  } else {
+    const { saveAndBackup } = await import("./pdfBackupHelper");
+    saveAndBackup(doc, fileName, tipo, { employee_id: opts.employee_id, subpasta: opts.subpasta });
+  }
+}
+
 
 export interface EpiReceiptData {
   employeeName: string;
@@ -31,7 +55,7 @@ export interface UniformReceiptData {
   empresaCnpj?: string | null;
 }
 
-export const generateEpiReceipt = (data: EpiReceiptData) => {
+export const generateEpiReceipt = async (data: EpiReceiptData, opts: PdfOutputOptions = {}) => {
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
   let yPosition = 20;
@@ -157,10 +181,11 @@ export const generateEpiReceipt = (data: EpiReceiptData) => {
 
   // Save the PDF
   const fileName = `Recibo_EPI_${data.employeeName.replace(/\s+/g, "_")}_${formattedDate.replace(/\//g, "-")}.pdf`;
-  import("./pdfBackupHelper").then(({ saveAndBackup }) => saveAndBackup(doc, fileName, "EPIs"));
+  await handleOutput(doc, fileName, "EPIs", opts);
 };
 
-export const generateUniformReceipt = (data: UniformReceiptData) => {
+export const generateUniformReceipt = async (data: UniformReceiptData, opts: PdfOutputOptions = {}) => {
+
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
   let yPosition = 20;
@@ -278,5 +303,6 @@ export const generateUniformReceipt = (data: UniformReceiptData) => {
 
   // Save the PDF
   const fileName = `Recibo_Uniforme_${data.employeeName.replace(/\s+/g, "_")}_${formattedDate.replace(/\//g, "-")}.pdf`;
-  import("./pdfBackupHelper").then(({ saveAndBackup }) => saveAndBackup(doc, fileName, "Uniformes"));
+  await handleOutput(doc, fileName, "Uniformes", opts);
+
 };

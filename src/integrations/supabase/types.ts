@@ -2033,6 +2033,7 @@ export type Database = {
         Row: {
           ano: number
           aviso_previo_cumprido: boolean | null
+          backup_drive_em: string | null
           created_at: string | null
           created_by: string | null
           data_desligamento: string | null
@@ -2052,6 +2053,7 @@ export type Database = {
         Insert: {
           ano: number
           aviso_previo_cumprido?: boolean | null
+          backup_drive_em?: string | null
           created_at?: string | null
           created_by?: string | null
           data_desligamento?: string | null
@@ -2071,6 +2073,7 @@ export type Database = {
         Update: {
           ano?: number
           aviso_previo_cumprido?: boolean | null
+          backup_drive_em?: string | null
           created_at?: string | null
           created_by?: string | null
           data_desligamento?: string | null
@@ -2260,6 +2263,7 @@ export type Database = {
       }
       historico_estoque_epis: {
         Row: {
+          backup_drive_em: string | null
           created_at: string
           created_by: string | null
           employee_id: string | null
@@ -2272,6 +2276,7 @@ export type Database = {
           tipo_movimentacao: string
         }
         Insert: {
+          backup_drive_em?: string | null
           created_at?: string
           created_by?: string | null
           employee_id?: string | null
@@ -2284,6 +2289,7 @@ export type Database = {
           tipo_movimentacao: string
         }
         Update: {
+          backup_drive_em?: string | null
           created_at?: string
           created_by?: string | null
           employee_id?: string | null
@@ -2321,6 +2327,7 @@ export type Database = {
       }
       historico_estoque_uniformes: {
         Row: {
+          backup_drive_em: string | null
           created_at: string
           created_by: string | null
           employee_id: string | null
@@ -2333,6 +2340,7 @@ export type Database = {
           tipo_movimentacao: string
         }
         Insert: {
+          backup_drive_em?: string | null
           created_at?: string
           created_by?: string | null
           employee_id?: string | null
@@ -2345,6 +2353,7 @@ export type Database = {
           tipo_movimentacao: string
         }
         Update: {
+          backup_drive_em?: string | null
           created_at?: string
           created_by?: string | null
           employee_id?: string | null

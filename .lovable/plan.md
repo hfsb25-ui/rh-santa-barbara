@@ -1,86 +1,60 @@
-# Backup automático no Google Drive
 
-Integração com **uma conta Google central da empresa** (via connector do Lovable) para enviar automaticamente todos os PDFs gerados pelo sistema para uma pasta organizada no Drive.
+# Backup retroativo no Google Drive
+
+Migrar para o Drive todos os **Holerites** e **Recibos de EPI/Uniforme** já registrados no sistema, em execução única automática (sem tela nova).
 
 ## Como vai funcionar
 
-1. Você (admin) conecta **uma vez** a conta Google da empresa em **Configurações → Integrações → Google Drive**.
-2. Toda vez que o sistema gerar um PDF (holerite, contrato, TAC, desligamento, EPI, etc.), uma cópia é enviada automaticamente para o Drive, em pastas organizadas.
-3. Cada upload fica registrado numa tabela `drive_backups` com link direto para o arquivo no Drive — dá pra auditar tudo.
+1. Crio uma edge function nova `drive-backup-retroativo`.
+2. Ela percorre o banco em lotes, regenera cada PDF no servidor e reaproveita o `drive-backup-upload` para subir nas pastas certas (`HOLERITE/AAAA-MM/...`, `EPI/...`, `UNIFORME/...`).
+3. Para evitar duplicar, cada registro processado é marcado numa coluna nova `backup_drive_em` (timestamp). Se rodar de novo, ignora os já enviados.
+4. Você dispara 1x clicando em **Configurações → Google Drive → "Rodar backup retroativo agora"** (botão discreto, só pra você acionar). Mostra progresso simples (X de Y processados) e um log final. Não precisa ficar com a aba aberta — a função continua no servidor.
 
-## Estrutura de pastas no Drive
+## O que será processado
 
-```
-📁 RH Santa Bárbara - Backup
-├── 📁 Holerites
-│   └── 📁 2026-06
-│       └── JOAO_SILVA_2026-06.pdf
-├── 📁 Contratos
-│   └── JOAO_SILVA_contrato_2026-06-01.pdf
-├── 📁 TACs
-├── 📁 Desligamentos
-├── 📁 EPIs
-├── 📁 Atestados
-└── 📁 Outros
-```
+- **Holerites**: todos os registros de `lancamentos_folha` (todos os meses, todos os funcionários).
+- **Recibos EPI**: todos os registros de distribuição de EPI.
+- **Recibos Uniforme**: todos os registros de distribuição de uniforme.
 
-## O que será feito
+Funcionários demitidos **entram** (a documentação deles precisa estar no Drive também).
 
-### 1. Conectar Google Drive (connector nativo)
-- Usa o connector `google_drive` do Lovable — você só clica em "Conectar" e autoriza com sua conta Google.
-- Sem precisar configurar nada no Google Cloud Console.
+## O que NÃO entra
 
-### 2. Nova tabela `drive_backup_log`
-Registra cada arquivo enviado: tipo, nome, employee_id, drive_file_id, drive_url, status, data, erro (se houver).
-
-### 3. Configuração em Configurações → Backup Drive
-- Toggle: ativar/desativar backup automático
-- Status da conexão (conectado/desconectado)
-- ID da pasta raiz no Drive (opcional — se vazio, cria automaticamente)
-- Botão "Testar upload"
-- Lista dos últimos 50 backups com status e link
-
-### 4. Edge function `drive-backup-upload`
-- Recebe: tipo do documento, nome, employee_id, conteúdo do PDF (base64)
-- Cria/encontra a pasta correta no Drive
-- Faz upload via gateway do connector
-- Registra no `drive_backup_log`
-- Retorna sucesso/erro
-
-### 5. Hook `useDriveBackup`
-Função simples `backupPdf(tipo, nome, pdfBlob, employeeId?)` para chamar nos pontos de geração.
-
-### 6. Integração nos geradores de PDF existentes
-Adicionar chamada de backup (não-bloqueante, em background) em:
-- `pdfGenerator.ts` (holerites, recibos genéricos)
-- `pdfGeneratorContaSalario.ts`
-- `pdfGeneratorTac.ts`
-- `pdfGeneratorDesligamento.ts`
-- `pdfGeneratorEncaminhamento.ts`
-- `pdfGeneratorCrachas.ts` / `pdfGeneratorCrachasCustom.ts`
-- `pdfGeneratorEtiquetasPonto.ts`
-- `pdfGeneratorPonto.ts`
-- Geração de contratos em `GenerateContractButton.tsx`
-
-Se o backup falhar, o PDF continua sendo gerado normalmente — só registra o erro no log (não trava o usuário).
-
-### 7. Tela de auditoria
-Em **Configurações → Backup Drive**: tabela com histórico de uploads, filtros por tipo/período/status, link "Abrir no Drive".
+- TACs, desligamentos, encaminhamentos, crachás, etiquetas, contratos — você não pediu nesta rodada. Posso adicionar depois se quiser.
+- PDFs que dependiam de assinatura manual feita em papel: o reenvio terá o PDF "limpo" (sem assinatura digitalizada), porque não temos a imagem da assinatura salva.
 
 ## Detalhes técnicos
 
-- **Connector**: `google_drive` via `standard_connectors--connect` (gateway Lovable, sem expor credenciais no código).
-- **Upload**: `POST https://connector-gateway.lovable.dev/google_drive/upload/drive/v3/files?uploadType=multipart` com `Authorization: Bearer ${LOVABLE_API_KEY}` e `X-Connection-Api-Key: ${GOOGLE_DRIVE_API_KEY}`.
-- **Pastas**: criadas on-demand via `files.create` com mimeType `application/vnd.google-apps.folder`. ID das pastas cacheado em `drive_folder_cache` para não recriar.
-- **Tabela `drive_backup_log`**: `id, tipo, nome_arquivo, employee_id (nullable), drive_file_id, drive_url, status (sucesso/erro), erro_mensagem, tamanho_bytes, created_at` — RLS apenas para gestores, GRANT padrão.
-- **Tabela `drive_backup_config`**: `id, ativo (bool), pasta_raiz_id, pasta_raiz_nome` (singleton).
-- **Tabela `drive_folder_cache`**: `caminho (text PK), drive_folder_id`.
-- **Edge function**: `verify_jwt = false` + validação manual do JWT do usuário (padrão do projeto).
+**Edge function `drive-backup-retroativo`**
+- Recebe `{ tipos: ["holerite","epi","uniforme"], lote_size: 20 }`.
+- Para cada tipo, busca os registros com `backup_drive_em IS NULL` em lotes de 20.
+- Regenera o PDF **no servidor** usando `jsPDF` (compatível com Deno via `npm:jspdf`). Reuso a lógica dos geradores atuais portando o essencial para Deno — mesmo layout dos PDFs que o sistema produz hoje.
+- Faz upload via `drive-backup-upload` (action `upload`), passando `tipo`, `nome_arquivo`, `employee_id`, `subpasta` (ex.: `2025-11` para holerite).
+- Atualiza `backup_drive_em = now()` no registro.
+- Continua até esgotar; retorna `{ processados, erros, restantes }`.
 
-## O que NÃO está incluído
+**Migração SQL**
+- `ALTER TABLE lancamentos_folha ADD COLUMN backup_drive_em timestamptz;`
+- `ALTER TABLE epi_distribuicoes ADD COLUMN backup_drive_em timestamptz;` (nome exato confirmado ao implementar)
+- `ALTER TABLE uniforme_distribuicoes ADD COLUMN backup_drive_em timestamptz;` (idem)
+- Index parcial em cada uma: `WHERE backup_drive_em IS NULL` para o cursor de lotes ficar rápido.
 
-- Sincronização bidirecional (Drive → Sistema). Apenas upload.
-- Backup retroativo dos PDFs já gerados antes da ativação (posso adicionar depois se quiser).
-- OAuth por funcionário individual.
+**Botão na UI** (`DriveBackupSettings.tsx`)
+- Card novo "Backup retroativo" com:
+  - Texto explicando que vai regerar e enviar todos os holerites e recibos antigos.
+  - Botão **"Iniciar backup retroativo"** (confirma antes de rodar).
+  - Contador de progresso (pull a cada 5s via `drive_backup_log` filtrado por hoje).
+  - Botão **"Parar"** (seta uma flag que a função consulta entre lotes).
+
+**Auto-execução**
+- Após a migração rodar e a função estar implantada, o botão na UI permite a primeira execução. Se preferir 100% sem clique, posso criar um cron `pg_cron` que dispara 1x e se auto-desativa — me avise se quer assim.
+
+**Custo / tempo**
+- Cada upload demora ~1-2s. Mil holerites = ~25min de processamento em background. Não trava nada no sistema.
+
+## Riscos
+
+- Se o layout do PDF regerado divergir um pouco do original (fontes, espaçamento), os holerites antigos no Drive serão "versão atual" e não cópia fiel do que o funcionário recebeu. Aceitável para backup, não para auditoria fiscal estrita.
+- Se um lançamento de folha estiver com dados incompletos (rubrica zerada, funcionário sem CPF na época), o PDF gerado pode sair com campos vazios. Vou logar esses casos em `drive_backup_log` com `status='erro'` em vez de quebrar.
 
 Aprove para eu implementar.
