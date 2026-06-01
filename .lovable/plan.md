@@ -1,54 +1,86 @@
-## Objetivo
-Adicionar uma aba **"Alertas"** na página **Controle de Ponto** que calcula automaticamente, a partir dos registros já existentes (`registros_ponto`, `banco_horas`, `configuracao_horas_trabalho`), funcionários com comportamento recorrente fora do padrão — tudo configurável pelo admin.
+# Backup automático no Google Drive
 
-## Tipos de alertas
+Integração com **uma conta Google central da empresa** (via connector do Lovable) para enviar automaticamente todos os PDFs gerados pelo sistema para uma pasta organizada no Drive.
 
-1. **Intervalo abaixo do mínimo** — funcionário tirou intervalo menor que X minutos em pelo menos N dias no período.
-2. **Intervalo acima do máximo** — intervalo maior que X minutos em pelo menos N dias.
-3. **Atraso recorrente** — hora de entrada após `hora_entrada_prevista + tolerância` em pelo menos N dias.
-4. **Saída antecipada recorrente** — hora de saída antes de `hora_saida_prevista - tolerância` em N dias (extra útil).
-5. **Banco de horas negativo / fora da faixa** — `saldo_horas` abaixo de um limite configurado (ex.: −10h) ou acima de um teto (ex.: +40h).
+## Como vai funcionar
 
-Cada regra tem: **ativa/inativa**, **valor limite** (minutos/horas), **mínimo de ocorrências (N)**, **janela em dias** (ex.: últimos 30/60/90 dias) e **tolerância** quando aplicável.
+1. Você (admin) conecta **uma vez** a conta Google da empresa em **Configurações → Integrações → Google Drive**.
+2. Toda vez que o sistema gerar um PDF (holerite, contrato, TAC, desligamento, EPI, etc.), uma cópia é enviada automaticamente para o Drive, em pastas organizadas.
+3. Cada upload fica registrado numa tabela `drive_backups` com link direto para o arquivo no Drive — dá pra auditar tudo.
 
-## Mudanças no banco
+## Estrutura de pastas no Drive
 
-Nova tabela `configuracao_alertas_ponto` (single-row, gerida pelo admin):
-- `intervalo_min_minutos`, `intervalo_max_minutos`
-- `tolerancia_atraso_minutos`, `tolerancia_saida_minutos`
-- `banco_horas_min`, `banco_horas_max`
-- `ocorrencias_minimas` (default 3), `janela_dias` (default 30)
-- flags `alerta_intervalo_curto_ativo`, `alerta_intervalo_longo_ativo`, `alerta_atraso_ativo`, `alerta_saida_antecipada_ativo`, `alerta_banco_horas_ativo`
+```
+📁 RH Santa Bárbara - Backup
+├── 📁 Holerites
+│   └── 📁 2026-06
+│       └── JOAO_SILVA_2026-06.pdf
+├── 📁 Contratos
+│   └── JOAO_SILVA_contrato_2026-06-01.pdf
+├── 📁 TACs
+├── 📁 Desligamentos
+├── 📁 EPIs
+├── 📁 Atestados
+└── 📁 Outros
+```
 
-RLS: leitura para `authenticated`, escrita só para `gestor`/`admin_parcial`. GRANTs explícitos.
+## O que será feito
 
-## Mudanças no frontend
+### 1. Conectar Google Drive (connector nativo)
+- Usa o connector `google_drive` do Lovable — você só clica em "Conectar" e autoriza com sua conta Google.
+- Sem precisar configurar nada no Google Cloud Console.
 
-- **Novo componente** `src/components/ponto/AlertasPonto.tsx`:
-  - Busca configuração + `registros_ponto` da janela + `banco_horas` + `configuracao_horas_trabalho`.
-  - Calcula em memória os funcionários que disparam cada regra (contando ocorrências por employee).
-  - Renderiza cards/seções por tipo de alerta com nome do funcionário (UPPERCASE), nº de ocorrências, detalhes e link para o histórico de ponto.
-  - Filtros por empresa/setor reutilizando padrão existente.
+### 2. Nova tabela `drive_backup_log`
+Registra cada arquivo enviado: tipo, nome, employee_id, drive_file_id, drive_url, status, data, erro (se houver).
 
-- **Novo componente** `src/components/ponto/ConfiguracaoAlertasPonto.tsx`:
-  - Formulário com todos os limites e toggles, salvando em `configuracao_alertas_ponto`.
+### 3. Configuração em Configurações → Backup Drive
+- Toggle: ativar/desativar backup automático
+- Status da conexão (conectado/desconectado)
+- ID da pasta raiz no Drive (opcional — se vazio, cria automaticamente)
+- Botão "Testar upload"
+- Lista dos últimos 50 backups com status e link
 
-- **`src/pages/ControlePonto.tsx`**: adicionar duas abas — **"Alertas"** (com badge mostrando total de alertas) e **"Config. Alertas"** dentro da tab existente de configuração ou como aba separada.
+### 4. Edge function `drive-backup-upload`
+- Recebe: tipo do documento, nome, employee_id, conteúdo do PDF (base64)
+- Cria/encontra a pasta correta no Drive
+- Faz upload via gateway do connector
+- Registra no `drive_backup_log`
+- Retorna sucesso/erro
 
-- **`AppSidebar`/Dashboard**: opcional — badge no menu Controle de Ponto se houver alertas ativos (decisão pequena, posso incluir).
+### 5. Hook `useDriveBackup`
+Função simples `backupPdf(tipo, nome, pdfBlob, employeeId?)` para chamar nos pontos de geração.
+
+### 6. Integração nos geradores de PDF existentes
+Adicionar chamada de backup (não-bloqueante, em background) em:
+- `pdfGenerator.ts` (holerites, recibos genéricos)
+- `pdfGeneratorContaSalario.ts`
+- `pdfGeneratorTac.ts`
+- `pdfGeneratorDesligamento.ts`
+- `pdfGeneratorEncaminhamento.ts`
+- `pdfGeneratorCrachas.ts` / `pdfGeneratorCrachasCustom.ts`
+- `pdfGeneratorEtiquetasPonto.ts`
+- `pdfGeneratorPonto.ts`
+- Geração de contratos em `GenerateContractButton.tsx`
+
+Se o backup falhar, o PDF continua sendo gerado normalmente — só registra o erro no log (não trava o usuário).
+
+### 7. Tela de auditoria
+Em **Configurações → Backup Drive**: tabela com histórico de uploads, filtros por tipo/período/status, link "Abrir no Drive".
 
 ## Detalhes técnicos
 
-- Cálculo client-side via React Query (já é o padrão do módulo) — sem edge function necessária, dado o volume típico.
-- Intervalo em minutos = `EXTRACT(EPOCH FROM (hora_fim_intervalo - hora_inicio_intervalo))/60`, ignorando registros sem intervalo.
-- Atraso = `hora_entrada > hora_entrada_prevista + tolerancia`.
-- "Recorrência" = contagem de dias-evento por `employee_id` ≥ `ocorrencias_minimas` dentro de `janela_dias`.
-- Banco de horas: leitura direta de `banco_horas.saldo_horas`.
+- **Connector**: `google_drive` via `standard_connectors--connect` (gateway Lovable, sem expor credenciais no código).
+- **Upload**: `POST https://connector-gateway.lovable.dev/google_drive/upload/drive/v3/files?uploadType=multipart` com `Authorization: Bearer ${LOVABLE_API_KEY}` e `X-Connection-Api-Key: ${GOOGLE_DRIVE_API_KEY}`.
+- **Pastas**: criadas on-demand via `files.create` com mimeType `application/vnd.google-apps.folder`. ID das pastas cacheado em `drive_folder_cache` para não recriar.
+- **Tabela `drive_backup_log`**: `id, tipo, nome_arquivo, employee_id (nullable), drive_file_id, drive_url, status (sucesso/erro), erro_mensagem, tamanho_bytes, created_at` — RLS apenas para gestores, GRANT padrão.
+- **Tabela `drive_backup_config`**: `id, ativo (bool), pasta_raiz_id, pasta_raiz_nome` (singleton).
+- **Tabela `drive_folder_cache`**: `caminho (text PK), drive_folder_id`.
+- **Edge function**: `verify_jwt = false` + validação manual do JWT do usuário (padrão do projeto).
 
-## Arquivos
-- `supabase/migrations/<novo>.sql` (tabela + RLS + GRANTs + seed da linha única)
-- `src/components/ponto/AlertasPonto.tsx` (novo)
-- `src/components/ponto/ConfiguracaoAlertasPonto.tsx` (novo)
-- `src/pages/ControlePonto.tsx` (nova aba)
+## O que NÃO está incluído
 
-Confirma para eu implementar?
+- Sincronização bidirecional (Drive → Sistema). Apenas upload.
+- Backup retroativo dos PDFs já gerados antes da ativação (posso adicionar depois se quiser).
+- OAuth por funcionário individual.
+
+Aprove para eu implementar.
