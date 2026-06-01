@@ -158,7 +158,10 @@ export const DriveBackupSettings = () => {
         </CardContent>
       </Card>
 
+      {connected && <RetroactiveBackup />}
+
       <Card>
+
         <CardHeader>
           <CardTitle className="text-base">Histórico (últimos 50)</CardTitle>
         </CardHeader>
