@@ -55,7 +55,8 @@ export function generateEtiquetasPontoPDF(etiquetas: EtiquetaData[]): void {
   }
 
   const mesAno = etiquetas[0] ? `${etiquetas[0].mes}_${etiquetas[0].ano}` : "etiquetas";
-  doc.save(`etiquetas_ponto_${mesAno}.pdf`);
+  const fileName = `etiquetas_ponto_${mesAno}.pdf`;
+  import("./pdfBackupHelper").then(({ saveAndBackup }) => saveAndBackup(doc, fileName, "Etiquetas"));
 }
 
 function desenharEtiqueta(doc: jsPDF, data: EtiquetaData, x: number, y: number): void {

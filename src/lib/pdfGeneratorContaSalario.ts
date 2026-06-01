@@ -81,5 +81,5 @@ export function gerarSolicitacaoContaSalario(dados: DadosSolicitacaoContaSalario
 
   // Save PDF
   const fileName = `solicitacao_conta_salario_${dados.funcionario.nome_completo.replace(/\s/g, "_")}.pdf`;
-  doc.save(fileName);
+  import("./pdfBackupHelper").then(({ saveAndBackup }) => saveAndBackup(doc, fileName, "ContaSalario"));
 }

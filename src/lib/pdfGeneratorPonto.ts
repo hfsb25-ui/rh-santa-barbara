@@ -217,7 +217,8 @@ export async function generatePontoPDF(data: ReportData) {
   }
 
   const fileName = `relatorio_ponto_${data.employee.nome_completo.replace(/\s+/g, "_")}_${data.mes.replace(/\s+/g, "_")}.pdf`;
-  doc.save(fileName);
+  const { saveAndBackup } = await import("./pdfBackupHelper");
+  saveAndBackup(doc, fileName, "Ponto", { subpasta: data.mes });
 }
 
 export async function generatePontoPDFBatch(reports: ReportData[], mes: string) {
@@ -249,5 +250,6 @@ export async function generatePontoPDFBatch(reports: ReportData[], mes: string) 
   }
 
   const fileName = `relatorios_ponto_${mes.replace(/\s+/g, "_")}.pdf`;
-  doc.save(fileName);
+  const { saveAndBackup } = await import("./pdfBackupHelper");
+  saveAndBackup(doc, fileName, "Ponto", { subpasta: mes });
 }

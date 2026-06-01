@@ -1102,5 +1102,6 @@ export async function generateBadgesPDF(employees: EmployeeForBadge[], options: 
     }
   }
 
-  doc.save(`crachas_${options.orientation}_${new Date().toISOString().split("T")[0]}.pdf`);
+  const fileName = `crachas_${options.orientation}_${new Date().toISOString().split("T")[0]}.pdf`;
+  import("./pdfBackupHelper").then(({ saveAndBackup }) => saveAndBackup(doc, fileName, "Crachas"));
 }

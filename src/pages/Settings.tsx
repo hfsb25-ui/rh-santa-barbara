@@ -7,6 +7,7 @@ import { SiteSettings } from "@/components/settings/SiteSettings";
 import { DashboardVisibilitySettings } from "@/components/settings/DashboardVisibilitySettings";
 import { ExperienceAlertSettings } from "@/components/settings/ExperienceAlertSettings";
 import { DatabaseBackupSettings } from "@/components/settings/DatabaseBackupSettings";
+import { DriveBackupSettings } from "@/components/settings/DriveBackupSettings";
 import { WhatsAppSettings } from "@/components/settings/WhatsAppSettings";
 import { AISettings } from "@/components/settings/AISettings";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -56,12 +57,17 @@ const Settings = () => {
               <TabsTrigger value="dashboard">Dashboard Funcionário</TabsTrigger>
               <TabsTrigger value="alertas">Alertas</TabsTrigger>
               <TabsTrigger value="backup">Backup</TabsTrigger>
+              <TabsTrigger value="drive">Google Drive</TabsTrigger>
               <TabsTrigger value="whatsapp">WhatsApp</TabsTrigger>
               <TabsTrigger value="ia">Inteligência Artificial</TabsTrigger>
             </TabsList>
             
             <TabsContent value="site">
               <SiteSettings />
+            </TabsContent>
+
+            <TabsContent value="drive">
+              <DriveBackupSettings />
             </TabsContent>
             
             <TabsContent value="dashboard">
