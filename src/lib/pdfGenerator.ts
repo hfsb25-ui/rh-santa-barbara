@@ -1,4 +1,28 @@
 import jsPDF from "jspdf";
+import { backupPdfToDrive } from "@/hooks/useDriveBackup";
+
+export interface PdfOutputOptions {
+  silent?: boolean;
+  subpasta?: string;
+  employee_id?: string | null;
+}
+
+async function handleOutput(doc: jsPDF, fileName: string, tipo: string, opts: PdfOutputOptions) {
+  if (opts.silent) {
+    const blob: Blob = doc.output("blob");
+    await backupPdfToDrive({
+      tipo,
+      nome_arquivo: fileName,
+      pdfBlob: blob,
+      employee_id: opts.employee_id ?? null,
+      subpasta: opts.subpasta,
+    });
+  } else {
+    const { saveAndBackup } = await import("./pdfBackupHelper");
+    saveAndBackup(doc, fileName, tipo, { employee_id: opts.employee_id, subpasta: opts.subpasta });
+  }
+}
+
 
 export interface EpiReceiptData {
   employeeName: string;
