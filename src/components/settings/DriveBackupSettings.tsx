@@ -11,6 +11,8 @@ import { toast } from "sonner";
 import { Loader2, CheckCircle2, XCircle, RefreshCw, Upload, ExternalLink, HardDrive } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { RetroactiveBackup } from "./RetroactiveBackup";
+
 
 interface Config {
   ativo: boolean;
