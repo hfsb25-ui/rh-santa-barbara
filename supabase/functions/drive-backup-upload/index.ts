@@ -134,9 +134,22 @@ Deno.serve(async (req) => {
         await supabase.from("drive_backup_config").update({ pasta_raiz_id: rootId }).eq("id", 1);
       }
 
-      // Construir caminho: tipo / [subpasta]
-      const segments = [tipo];
-      if (subpasta) segments.push(subpasta);
+      // Construir caminho: TIPO / [SUBPASTA] (sempre em MAIÚSCULAS)
+      const TIPO_MAP: Record<string, string> = {
+        EPIS: "EPI",
+        UNIFORMES: "UNIFORME",
+        TACS: "TAC",
+        CRACHAS: "CRACHÁ",
+        DESLIGAMENTOS: "DESLIGAMENTO",
+        ENCAMINHAMENTOS: "ENCAMINHAMENTO",
+        ETIQUETAS: "ETIQUETA",
+        PONTO: "PONTO",
+        CONTASALARIO: "CONTA SALÁRIO",
+      };
+      const tipoUpper = String(tipo).toUpperCase();
+      const tipoFolder = TIPO_MAP[tipoUpper] || tipoUpper;
+      const segments = [tipoFolder];
+      if (subpasta) segments.push(String(subpasta).toUpperCase());
       const folderId = await ensurePath(supabase, segments, rootId);
 
       // Upload multipart
