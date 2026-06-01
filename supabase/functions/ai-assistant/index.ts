@@ -451,7 +451,89 @@ async function executeTool(supabase: any, toolName: string, params: any) {
     case "consultar_memorias": return await consultarMemorias(supabase, params);
     case "consultar_identidade": return consultarIdentidade();
     case "atualizar_status_adiantamentos": return await atualizarStatusAdiantamentos(supabase, params);
+    case "listar_drive_pastas": return await listarDrivePastas(supabase);
+    case "buscar_drive_arquivos": return await buscarDriveArquivos(supabase, params);
     default: return { error: `Tool ${toolName} not found` };
+  }
+}
+
+// ============= GOOGLE DRIVE TOOLS =============
+const DRIVE_GATEWAY = "https://connector-gateway.lovable.dev/google_drive";
+
+function driveHeaders() {
+  const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+  const GOOGLE_DRIVE_API_KEY = Deno.env.get("GOOGLE_DRIVE_API_KEY");
+  if (!LOVABLE_API_KEY || !GOOGLE_DRIVE_API_KEY) throw new Error("Conexão com Google Drive não configurada");
+  return {
+    Authorization: `Bearer ${LOVABLE_API_KEY}`,
+    "X-Connection-Api-Key": GOOGLE_DRIVE_API_KEY,
+  };
+}
+
+async function getDriveRootId(supabase: any): Promise<string | null> {
+  const { data } = await supabase.from("drive_backup_config").select("pasta_raiz_id, ativo").eq("id", 1).maybeSingle();
+  return data?.pasta_raiz_id || null;
+}
+
+async function listarDrivePastas(supabase: any) {
+  try {
+    const rootId = await getDriveRootId(supabase);
+    if (!rootId) return "Backup do Google Drive ainda não foi configurado. Peça ao gestor para configurar em Configurações → Google Drive.";
+    const q = encodeURIComponent(`'${rootId}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`);
+    const res = await fetch(`${DRIVE_GATEWAY}/drive/v3/files?q=${q}&fields=files(id,name)&pageSize=100`, { headers: driveHeaders() });
+    if (!res.ok) return `Erro Drive: ${res.status}`;
+    const json = await res.json();
+    const pastas = (json.files || []).map((f: any) => f.name).sort();
+    return `PASTAS NO BACKUP RH (${pastas.length}):\n${pastas.join("\n") || "Nenhuma pasta encontrada"}`;
+  } catch (e) {
+    return `Erro: ${(e as Error).message}`;
+  }
+}
+
+async function buscarDriveArquivos(supabase: any, params: any) {
+  try {
+    const rootId = await getDriveRootId(supabase);
+    if (!rootId) return "Backup do Google Drive ainda não foi configurado.";
+
+    // Buscar IDs de todas as pastas do backup (root + subpastas conhecidas via cache)
+    const { data: cache } = await supabase.from("drive_folder_cache").select("caminho, drive_folder_id");
+    let folderIds: string[] = [rootId, ...((cache || []).map((c: any) => c.drive_folder_id))];
+
+    // Filtro por tipo: pegar apenas IDs cujo caminho contenha o tipo
+    if (params.tipo) {
+      const tipoUp = String(params.tipo).toUpperCase();
+      const filtered = (cache || []).filter((c: any) => c.caminho.toUpperCase().includes("/" + tipoUp));
+      if (filtered.length === 0) return `Pasta "${params.tipo}" ainda não tem arquivos cadastrados no cache. Use listar_drive_pastas primeiro.`;
+      folderIds = filtered.map((c: any) => c.drive_folder_id);
+    }
+
+    // Drive limita queries: usar até 50 pastas por vez
+    folderIds = folderIds.slice(0, 50);
+    const parentsClause = folderIds.map((id) => `'${id}' in parents`).join(" or ");
+    const nameClause = params.nome ? ` and name contains '${String(params.nome).replace(/'/g, "\\'")}'` : "";
+    const q = encodeURIComponent(`(${parentsClause}) and mimeType!='application/vnd.google-apps.folder' and trashed=false${nameClause}`);
+
+    const res = await fetch(`${DRIVE_GATEWAY}/drive/v3/files?q=${q}&fields=files(id,name,webViewLink,modifiedTime,parents)&pageSize=50&orderBy=modifiedTime desc`, { headers: driveHeaders() });
+    if (!res.ok) return `Erro Drive: ${res.status} - ${await res.text()}`;
+    const json = await res.json();
+    const arquivos = json.files || [];
+    if (arquivos.length === 0) return "Nenhum arquivo encontrado com esses filtros.";
+
+    // Map folder id -> name from cache
+    const folderName: Record<string, string> = {};
+    (cache || []).forEach((c: any) => {
+      const parts = c.caminho.split("/");
+      folderName[c.drive_folder_id] = parts[parts.length - 1];
+    });
+
+    const linhas = arquivos.map((f: any) => {
+      const pasta = (f.parents || []).map((p: string) => folderName[p]).filter(Boolean).join(",") || "-";
+      const data = f.modifiedTime ? f.modifiedTime.split("T")[0] : "-";
+      return `${f.name}|${pasta}|${data}|${f.webViewLink}`;
+    });
+    return `ARQUIVOS (${arquivos.length}):\nnome|pasta|data|link\n${linhas.join("\n")}`;
+  } catch (e) {
+    return `Erro: ${(e as Error).message}`;
   }
 }
 
