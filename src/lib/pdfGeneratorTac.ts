@@ -7,7 +7,7 @@ const tipoLabels: Record<string, string> = {
   compromisso: "Termo de Compromisso",
 };
 
-export const generateTacPDF = (tac: any) => {
+export const generateTacPDF = async (tac: any) => {
   const doc = new jsPDF("p", "mm", "a4");
   const pageWidth = doc.internal.pageSize.getWidth();
   const margin = 20;
