@@ -303,5 +303,6 @@ export const generateUniformReceipt = async (data: UniformReceiptData, opts: Pdf
 
   // Save the PDF
   const fileName = `Recibo_Uniforme_${data.employeeName.replace(/\s+/g, "_")}_${formattedDate.replace(/\//g, "-")}.pdf`;
-  import("./pdfBackupHelper").then(({ saveAndBackup }) => saveAndBackup(doc, fileName, "Uniformes"));
+  await handleOutput(doc, fileName, "Uniformes", opts);
+
 };
