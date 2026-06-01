@@ -55,7 +55,7 @@ export interface UniformReceiptData {
   empresaCnpj?: string | null;
 }
 
-export const generateEpiReceipt = (data: EpiReceiptData) => {
+export const generateEpiReceipt = async (data: EpiReceiptData, opts: PdfOutputOptions = {}) => {
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
   let yPosition = 20;
