@@ -452,8 +452,8 @@ const EmployeeForm = ({ employeeId, initialData, onSaved, onCancel }: EmployeeFo
         }
 
         const successMessage = data.status === "em_admissao" && createChecklist
-          ? "Funcionário cadastrado com processo de admissão iniciado! Login: CPF " + formValues.cpf
-          : "Funcionário cadastrado! Login: CPF " + formValues.cpf;
+          ? "Funcionário cadastrado com processo de admissão iniciado!"
+          : "Funcionário cadastrado com sucesso!";
         toast.success(successMessage);
       }
       
