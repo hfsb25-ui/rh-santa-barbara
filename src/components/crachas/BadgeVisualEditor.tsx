@@ -1034,6 +1034,20 @@ export default function BadgeVisualEditor({ templateId, onSave, onCancel }: Badg
             <Type className="w-4 h-4 mr-2" />
             Texto Livre
           </Button>
+          <Separator className="my-2" />
+          <p className="text-xs text-muted-foreground mb-1">Formas:</p>
+          <Button variant="outline" size="sm" className="w-full justify-start" onClick={() => addShape('rect')}>
+            <Square className="w-4 h-4 mr-2" />
+            Retângulo
+          </Button>
+          <Button variant="outline" size="sm" className="w-full justify-start" onClick={() => addShape('circle')}>
+            <CircleIcon className="w-4 h-4 mr-2" />
+            Círculo
+          </Button>
+          <Button variant="outline" size="sm" className="w-full justify-start" onClick={() => addShape('line')}>
+            <Minus className="w-4 h-4 mr-2" />
+            Linha
+          </Button>
         </CardContent>
       </Card>
 
