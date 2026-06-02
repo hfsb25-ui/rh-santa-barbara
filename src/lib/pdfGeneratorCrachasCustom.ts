@@ -189,6 +189,8 @@ export async function generateCustomBadgesPDF(
     }
   }));
 
+  const config = template.configuracao_json;
+
   // Preload custom images referenced in the template
   const customImages = new Map<string, { base64: string; img: HTMLImageElement } | null>();
   for (const el of config.elements || []) {
@@ -196,8 +198,6 @@ export async function generateCustomBadgesPDF(
       customImages.set(el.imageUrl, await loadImage(el.imageUrl));
     }
   }
-
-  const config = template.configuracao_json;
 
   for (let i = 0; i < employees.length; i++) {
     const employee = employees[i];
