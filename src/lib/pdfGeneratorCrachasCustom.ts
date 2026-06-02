@@ -15,16 +15,23 @@ interface EmployeeForBadge {
 
 interface BadgeElement {
   id: string;
-  type: 'text' | 'image' | 'placeholder';
+  type: 'text' | 'image' | 'placeholder' | 'shape';
   placeholder?: string;
+  shapeType?: 'rect' | 'circle' | 'line';
   left: number;
   top: number;
   width?: number;
   height?: number;
+  radius?: number;
+  rx?: number;
+  x2?: number;
+  y2?: number;
   fontSize?: number;
   fontFamily?: string;
   fontWeight?: string;
   fill?: string;
+  stroke?: string;
+  strokeWidth?: number;
   textAlign?: string;
 }
 
