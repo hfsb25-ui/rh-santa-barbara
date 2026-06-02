@@ -776,6 +776,50 @@ export default function BadgeVisualEditor({ templateId, onSave, onCancel }: Badg
     fabricCanvas.renderAll();
   };
 
+  const addShape = (shapeType: 'rect' | 'circle' | 'line') => {
+    if (!fabricCanvas) return;
+    let obj: any;
+    const cx = canvasWidth / 2;
+    const cy = canvasHeight / 2;
+
+    if (shapeType === 'rect') {
+      obj = new Rect({
+        left: cx - 40, top: cy - 25, width: 80, height: 50,
+        fill: '#6366f1', stroke: '', strokeWidth: 0, rx: 0, ry: 0,
+      });
+    } else if (shapeType === 'circle') {
+      obj = new Circle({
+        left: cx - 30, top: cy - 30, radius: 30,
+        fill: '#6366f1', stroke: '', strokeWidth: 0,
+      });
+    } else {
+      obj = new Line([cx - 50, cy, cx + 50, cy], {
+        stroke: '#000000', strokeWidth: 2,
+      });
+    }
+    obj.customId = `shape_${Date.now()}`;
+    obj.isShape = true;
+    obj.shapeType = shapeType;
+    fabricCanvas.add(obj);
+    fabricCanvas.setActiveObject(obj);
+    fabricCanvas.renderAll();
+    toast.success("Forma adicionada!");
+  };
+
+  const changeLayer = (action: 'front' | 'back' | 'forward' | 'backward') => {
+    if (!fabricCanvas || !selectedObject) return;
+    if (action === 'front') fabricCanvas.bringObjectToFront(selectedObject);
+    if (action === 'back') {
+      fabricCanvas.sendObjectToBack(selectedObject);
+      // Keep helper guides truly at back
+      [...centerGuidesRef.current, ...gridLinesRef.current].forEach(l => fabricCanvas.sendObjectToBack(l));
+    }
+    if (action === 'forward') fabricCanvas.bringObjectForward(selectedObject);
+    if (action === 'backward') fabricCanvas.sendObjectBackwards(selectedObject);
+    fabricCanvas.requestRenderAll();
+    pushHistory(fabricCanvas);
+  };
+
   const deleteSelected = () => {
     if (!fabricCanvas || !selectedObject) return;
     fabricCanvas.remove(selectedObject);
