@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Calendar, Users } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { todayISO, toISODateLocal } from "@/lib/date";
 
 export const ProximasAvaliacoes = () => {
   const { data: proximosCiclos } = useQuery({
