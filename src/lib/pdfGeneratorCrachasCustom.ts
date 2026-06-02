@@ -15,8 +15,9 @@ interface EmployeeForBadge {
 
 interface BadgeElement {
   id: string;
-  type: 'text' | 'image' | 'placeholder' | 'shape';
+  type: 'text' | 'image' | 'placeholder' | 'shape' | 'customImage';
   placeholder?: string;
+  imageUrl?: string;
   shapeType?: 'rect' | 'circle' | 'line';
   left: number;
   top: number;
@@ -190,6 +191,14 @@ export async function generateCustomBadgesPDF(
 
   const config = template.configuracao_json;
 
+  // Preload custom images referenced in the template
+  const customImages = new Map<string, { base64: string; img: HTMLImageElement } | null>();
+  for (const el of config.elements || []) {
+    if (el.type === 'customImage' && el.imageUrl && !customImages.has(el.imageUrl)) {
+      customImages.set(el.imageUrl, await loadImage(el.imageUrl));
+    }
+  }
+
   for (let i = 0; i < employees.length; i++) {
     const employee = employees[i];
     const positionOnPage = i % badgesPerPage;
@@ -354,6 +363,17 @@ export async function generateCustomBadgesPDF(
           } else {
             doc.setFillColor(229, 231, 235);
             doc.rect(elemX, elemY, elemWidth, elemHeight, 'F');
+          }
+        }
+      } else if (element.type === 'customImage' && element.imageUrl) {
+        const elemWidth = (element.width || 80) * scaleX;
+        const elemHeight = (element.height || 80) * scaleY;
+        const data = customImages.get(element.imageUrl);
+        if (data) {
+          try {
+            doc.addImage(data.base64, 'PNG', elemX, elemY, elemWidth, elemHeight);
+          } catch {
+            try { doc.addImage(data.base64, 'JPEG', elemX, elemY, elemWidth, elemHeight); } catch {}
           }
         }
       }

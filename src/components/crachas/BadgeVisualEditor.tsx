@@ -21,7 +21,8 @@ import type { Json } from "@/integrations/supabase/types";
 
 interface BadgeElement {
   id: string;
-  type: 'text' | 'image' | 'placeholder' | 'shape';
+  type: 'text' | 'image' | 'placeholder' | 'shape' | 'customImage';
+  imageUrl?: string;
   placeholder?: string;
   shapeType?: 'rect' | 'circle' | 'line';
   left: number;
@@ -552,6 +553,15 @@ export default function BadgeVisualEditor({ templateId, onSave, onCancel }: Badg
             shape.isShape = true;
             shape.shapeType = element.shapeType;
             fabricCanvas.add(shape);
+          } else if (element.type === 'customImage' && element.imageUrl) {
+            const img = await FabricImage.fromURL(element.imageUrl, { crossOrigin: 'anonymous' });
+            const sx = (element.width || img.width || 1) / (img.width || 1);
+            const sy = (element.height || img.height || 1) / (img.height || 1);
+            img.set({ left: element.left, top: element.top, scaleX: sx, scaleY: sy });
+            (img as any).customId = element.id;
+            (img as any).isCustomImage = true;
+            (img as any).imageUrl = element.imageUrl;
+            fabricCanvas.add(img);
           } else if (element.type === 'image') {
             const rect = new Rect({
               left: element.left,
@@ -785,6 +795,7 @@ export default function BadgeVisualEditor({ templateId, onSave, onCancel }: Badg
     }
 
     fabricCanvas.renderAll();
+    sendHelpersToBack();
     toast.success(`${placeholder.label} adicionado!`);
   };
 
@@ -802,7 +813,9 @@ export default function BadgeVisualEditor({ templateId, onSave, onCancel }: Badg
     (text as any).customId = `custom_${Date.now()}`;
     (text as any).isPlaceholder = false;
     fabricCanvas.add(text);
+    fabricCanvas.setActiveObject(text);
     fabricCanvas.renderAll();
+    sendHelpersToBack();
   };
 
   const addShape = (shapeType: 'rect' | 'circle' | 'line') => {
@@ -833,6 +846,56 @@ export default function BadgeVisualEditor({ templateId, onSave, onCancel }: Badg
     fabricCanvas.setActiveObject(obj);
     fabricCanvas.renderAll();
     toast.success("Forma adicionada!");
+    sendHelpersToBack();
+  };
+
+  // Keep helpers (grid/center guides) always at the very back
+  const sendHelpersToBack = () => {
+    if (!fabricCanvas) return;
+    [...gridLinesRef.current, ...centerGuidesRef.current].forEach(l => {
+      try { fabricCanvas.sendObjectToBack(l); } catch {}
+    });
+    fabricCanvas.requestRenderAll();
+  };
+
+  const handleAddImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !fabricCanvas) return;
+    try {
+      const sanitizedName = file.name
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-zA-Z0-9.-]/g, '_');
+      const fileName = `img_${Date.now()}_${sanitizedName}`;
+      const { error } = await supabase.storage
+        .from('cracha-templates')
+        .upload(fileName, file);
+      if (error) throw error;
+      const { data: urlData } = supabase.storage
+        .from('cracha-templates')
+        .getPublicUrl(fileName);
+
+      const img = await FabricImage.fromURL(urlData.publicUrl, { crossOrigin: 'anonymous' });
+      const maxSide = Math.min(canvasWidth, canvasHeight) * 0.5;
+      const scale = Math.min(maxSide / (img.width || maxSide), maxSide / (img.height || maxSide));
+      img.scale(scale);
+      img.set({
+        left: canvasWidth / 2 - ((img.width || 0) * scale) / 2,
+        top: canvasHeight / 2 - ((img.height || 0) * scale) / 2,
+      });
+      (img as any).customId = `img_${Date.now()}`;
+      (img as any).isCustomImage = true;
+      (img as any).imageUrl = urlData.publicUrl;
+      fabricCanvas.add(img);
+      fabricCanvas.setActiveObject(img);
+      sendHelpersToBack();
+      toast.success("Imagem adicionada!");
+      // Clear input so the same file can be re-uploaded
+      e.target.value = '';
+    } catch (err: any) {
+      console.error('Error uploading image:', err);
+      toast.error(err.message || 'Erro ao fazer upload da imagem');
+    }
   };
 
   const changeLayer = (action: 'front' | 'back' | 'forward' | 'backward') => {
@@ -945,6 +1008,16 @@ export default function BadgeVisualEditor({ templateId, onSave, onCancel }: Badg
               strokeWidth: obj.strokeWidth,
             });
           }
+        } else if (obj.isCustomImage) {
+          elements.push({
+            id: obj.customId || `element_${Date.now()}`,
+            type: 'customImage',
+            imageUrl: obj.imageUrl,
+            left: obj.left,
+            top: obj.top,
+            width: (obj.width || 0) * (obj.scaleX || 1),
+            height: (obj.height || 0) * (obj.scaleY || 1),
+          });
         } else if (obj.type === 'rect') {
           elements.push({
             id: obj.customId || `element_${Date.now()}`,
@@ -1047,6 +1120,14 @@ export default function BadgeVisualEditor({ templateId, onSave, onCancel }: Badg
           <Button variant="outline" size="sm" className="w-full justify-start" onClick={() => addShape('line')}>
             <Minus className="w-4 h-4 mr-2" />
             Linha
+          </Button>
+          <Separator className="my-2" />
+          <Button variant="outline" size="sm" className="w-full justify-start" asChild>
+            <label className="cursor-pointer">
+              <Image className="w-4 h-4 mr-2" />
+              Upload Imagem
+              <input type="file" accept="image/*" className="hidden" onChange={handleAddImageUpload} />
+            </label>
           </Button>
         </CardContent>
       </Card>
