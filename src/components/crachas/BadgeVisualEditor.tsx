@@ -1121,6 +1121,14 @@ export default function BadgeVisualEditor({ templateId, onSave, onCancel }: Badg
             <Minus className="w-4 h-4 mr-2" />
             Linha
           </Button>
+          <Separator className="my-2" />
+          <Button variant="outline" size="sm" className="w-full justify-start" asChild>
+            <label className="cursor-pointer">
+              <Image className="w-4 h-4 mr-2" />
+              Upload Imagem
+              <input type="file" accept="image/*" className="hidden" onChange={handleAddImageUpload} />
+            </label>
+          </Button>
         </CardContent>
       </Card>
 
