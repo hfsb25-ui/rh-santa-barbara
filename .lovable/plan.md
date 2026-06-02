@@ -1,60 +1,118 @@
+## Melhorias no Editor Visual de Crachá
 
-# Backup retroativo no Google Drive
+Tornar o `BadgeVisualEditor` profissional, com referências visuais e controles avançados.
 
-Migrar para o Drive todos os **Holerites** e **Recibos de EPI/Uniforme** já registrados no sistema, em execução única automática (sem tela nova).
+### 1. Guias visuais e referências espaciais
+- **Réguas** nas bordas (em mm) — topo e lateral esquerda
+- **Linhas de centro** (vertical + horizontal) sempre visíveis em tracejado sutil
+- **Grid de fundo** (5mm) ativável com botão toggle
+- **Smart guides**: quando arrastar um elemento, mostrar linhas magenta indicando alinhamento com:
+  - Centro do canvas (vertical/horizontal)
+  - Bordas de outros elementos
+  - Espaçamento igual entre elementos
+- **Snap to grid/center**: elemento "gruda" ao passar perto do centro ou de outro elemento
 
-## Como vai funcionar
+### 2. Controles de posicionamento precisos
+Painel direito ganha campos numéricos para o elemento selecionado:
+- **X / Y** (posição em px, editável)
+- **Largura / Altura** (editável)
+- **Botões de alinhamento**:
+  - Centralizar horizontalmente no canvas
+  - Centralizar verticalmente no canvas
+  - Alinhar ao topo/base/esquerda/direita
+- **Distribuir** elementos selecionados (espaçamento igual)
 
-1. Crio uma edge function nova `drive-backup-retroativo`.
-2. Ela percorre o banco em lotes, regenera cada PDF no servidor e reaproveita o `drive-backup-upload` para subir nas pastas certas (`HOLERITE/AAAA-MM/...`, `EPI/...`, `UNIFORME/...`).
-3. Para evitar duplicar, cada registro processado é marcado numa coluna nova `backup_drive_em` (timestamp). Se rodar de novo, ignora os já enviados.
-4. Você dispara 1x clicando em **Configurações → Google Drive → "Rodar backup retroativo agora"** (botão discreto, só pra você acionar). Mostra progresso simples (X de Y processados) e um log final. Não precisa ficar com a aba aberta — a função continua no servidor.
+### 3. Camadas (layers)
+- Painel lateral mostrando lista de elementos
+- Reordenar (trazer para frente / enviar para trás)
+- Mostrar/ocultar elemento (ícone olho)
+- Travar elemento (cadeado) para não mover acidentalmente
+- Renomear elemento
 
-## O que será processado
+### 4. Atalhos de teclado
+- `Setas` — mover 1px (shift+seta = 10px)
+- `Ctrl+D` — duplicar
+- `Delete` — remover
+- `Ctrl+Z / Ctrl+Y` — desfazer/refazer (histórico de 30 ações)
+- `Ctrl+A` — selecionar tudo
+- `Esc` — desselecionar
 
-- **Holerites**: todos os registros de `lancamentos_folha` (todos os meses, todos os funcionários).
-- **Recibos EPI**: todos os registros de distribuição de EPI.
-- **Recibos Uniforme**: todos os registros de distribuição de uniforme.
+### 5. Zoom e visualização
+- Botões **+/−/100%/Ajustar tela** no canto
+- Roda do mouse com Ctrl = zoom
+- Indicador de zoom atual (ex: "150%")
+- **Modo preview**: botão que esconde guias/grid e mostra como ficará impresso
 
-Funcionários demitidos **entram** (a documentação deles precisa estar no Drive também).
+### 6. Elementos novos
+- **Formas**: linha, retângulo, círculo (com cor de preenchimento e borda)
+- **QR Code dinâmico** (placeholder `{{QRCODE}}` — gera com CPF ou ID do funcionário)
+- **Código de barras** (opcional)
+- **Data atual** (placeholder `{{DATA}}`)
+- **Múltiplas linhas de texto** com quebra automática
 
-## O que NÃO entra
+### 7. Templates e ações rápidas
+- Botão **"Duplicar template"** na lista
+- Botão **"Pré-visualizar com funcionário real"** — escolhe um colaborador e renderiza
+- **Exportar template como JSON** (backup) e **importar JSON**
 
-- TACs, desligamentos, encaminhamentos, crachás, etiquetas, contratos — você não pediu nesta rodada. Posso adicionar depois se quiser.
-- PDFs que dependiam de assinatura manual feita em papel: o reenvio terá o PDF "limpo" (sem assinatura digitalizada), porque não temos a imagem da assinatura salva.
+### 8. UX geral
+- **Indicador "MEIO"** com cruzeta sutil sempre visível no centro do canvas
+- **Tooltip** ao arrastar mostrando "X: 120mm  Y: 45mm"
+- **Barra de status** no rodapé: dimensões do crachá, elemento selecionado, posição
+- Painel direito reorganizado em accordions: *Posição*, *Tipo/Fonte*, *Cor*, *Camada*
+
+---
 
 ## Detalhes técnicos
 
-**Edge function `drive-backup-retroativo`**
-- Recebe `{ tipos: ["holerite","epi","uniforme"], lote_size: 20 }`.
-- Para cada tipo, busca os registros com `backup_drive_em IS NULL` em lotes de 20.
-- Regenera o PDF **no servidor** usando `jsPDF` (compatível com Deno via `npm:jspdf`). Reuso a lógica dos geradores atuais portando o essencial para Deno — mesmo layout dos PDFs que o sistema produz hoje.
-- Faz upload via `drive-backup-upload` (action `upload`), passando `tipo`, `nome_arquivo`, `employee_id`, `subpasta` (ex.: `2025-11` para holerite).
-- Atualiza `backup_drive_em = now()` no registro.
-- Continua até esgotar; retorna `{ processados, erros, restantes }`.
+**Arquivo principal**: `src/components/crachas/BadgeVisualEditor.tsx` (refatoração grande)
 
-**Migração SQL**
-- `ALTER TABLE lancamentos_folha ADD COLUMN backup_drive_em timestamptz;`
-- `ALTER TABLE epi_distribuicoes ADD COLUMN backup_drive_em timestamptz;` (nome exato confirmado ao implementar)
-- `ALTER TABLE uniforme_distribuicoes ADD COLUMN backup_drive_em timestamptz;` (idem)
-- Index parcial em cada uma: `WHERE backup_drive_em IS NULL` para o cursor de lotes ficar rápido.
+**Biblioteca**: continua **Fabric.js v6** (já instalada). Recursos a usar:
+- `canvas.on('object:moving')` — para smart guides
+- `aCoords` dos objetos — para detectar alinhamento entre eles
+- `canvas.viewportTransform` — para zoom
+- Linhas de guia: objetos `Line` com `selectable: false, evented: false`
 
-**Botão na UI** (`DriveBackupSettings.tsx`)
-- Card novo "Backup retroativo" com:
-  - Texto explicando que vai regerar e enviar todos os holerites e recibos antigos.
-  - Botão **"Iniciar backup retroativo"** (confirma antes de rodar).
-  - Contador de progresso (pull a cada 5s via `drive_backup_log` filtrado por hoje).
-  - Botão **"Parar"** (seta uma flag que a função consulta entre lotes).
+**Smart guides** (implementação):
+```ts
+canvas.on('object:moving', (e) => {
+  const obj = e.target;
+  const cx = canvasWidth / 2;
+  // Snap ao centro horizontal
+  if (Math.abs(obj.left + obj.width/2 - cx) < 5) {
+    obj.set({ left: cx - obj.width/2 });
+    drawGuide('vertical-center');
+  }
+  // ... alinhamento com outros objetos
+});
+```
 
-**Auto-execução**
-- Após a migração rodar e a função estar implantada, o botão na UI permite a primeira execução. Se preferir 100% sem clique, posso criar um cron `pg_cron` que dispara 1x e se auto-desativa — me avise se quer assim.
+**Histórico undo/redo**: array de `canvas.toJSON()` snapshots, máx 30 estados.
 
-**Custo / tempo**
-- Cada upload demora ~1-2s. Mil holerites = ~25min de processamento em background. Não trava nada no sistema.
+**Novo componente**: `src/components/crachas/LayersPanel.tsx` para a lista de camadas.
 
-## Riscos
+**Sem mudanças no banco** — `configuracao_json` já é flexível, só armazenamos mais tipos de elemento (`shape`, `qrcode`, `barcode`, `date`).
 
-- Se o layout do PDF regerado divergir um pouco do original (fontes, espaçamento), os holerites antigos no Drive serão "versão atual" e não cópia fiel do que o funcionário recebeu. Aceitável para backup, não para auditoria fiscal estrita.
-- Se um lançamento de folha estiver com dados incompletos (rubrica zerada, funcionário sem CPF na época), o PDF gerado pode sair com campos vazios. Vou logar esses casos em `drive_backup_log` com `status='erro'` em vez de quebrar.
+**Renderização no PDF** (`pdfGeneratorCrachasCustom.ts`):
+- Adicionar handlers para os novos tipos: `shape` (retângulo/círculo/linha via jsPDF nativo), `qrcode` (lib `qrcode` já presente? verificar)
+- QR code: usar `qrcode` npm package → gerar dataURL → render como imagem
 
-Aprove para eu implementar.
+---
+
+## Escopo desta entrega
+
+Posso fazer **tudo de uma vez** (grande) ou **em fases**. Sugiro:
+
+**Fase 1 (essencial — esta entrega):**
+- ✅ Guias de centro sempre visíveis + cruzeta no meio
+- ✅ Smart guides com snap ao arrastar
+- ✅ Réguas em mm
+- ✅ Grid toggle
+- ✅ Painel de posição precisa (X/Y/W/H + botões centralizar)
+- ✅ Atalhos de teclado (setas, delete, duplicar, undo/redo)
+- ✅ Zoom
+
+**Fase 2 (se quiser depois):**
+- Camadas, QR code, formas, modo preview, import/export JSON
+
+**Confirma a Fase 1?** Ou prefere ir direto no pacote completo?
