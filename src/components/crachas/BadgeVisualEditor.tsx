@@ -833,6 +833,56 @@ export default function BadgeVisualEditor({ templateId, onSave, onCancel }: Badg
     fabricCanvas.setActiveObject(obj);
     fabricCanvas.renderAll();
     toast.success("Forma adicionada!");
+    sendHelpersToBack();
+  };
+
+  // Keep helpers (grid/center guides) always at the very back
+  const sendHelpersToBack = () => {
+    if (!fabricCanvas) return;
+    [...gridLinesRef.current, ...centerGuidesRef.current].forEach(l => {
+      try { fabricCanvas.sendObjectToBack(l); } catch {}
+    });
+    fabricCanvas.requestRenderAll();
+  };
+
+  const handleAddImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !fabricCanvas) return;
+    try {
+      const sanitizedName = file.name
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-zA-Z0-9.-]/g, '_');
+      const fileName = `img_${Date.now()}_${sanitizedName}`;
+      const { error } = await supabase.storage
+        .from('cracha-templates')
+        .upload(fileName, file);
+      if (error) throw error;
+      const { data: urlData } = supabase.storage
+        .from('cracha-templates')
+        .getPublicUrl(fileName);
+
+      const img = await FabricImage.fromURL(urlData.publicUrl, { crossOrigin: 'anonymous' });
+      const maxSide = Math.min(canvasWidth, canvasHeight) * 0.5;
+      const scale = Math.min(maxSide / (img.width || maxSide), maxSide / (img.height || maxSide));
+      img.scale(scale);
+      img.set({
+        left: canvasWidth / 2 - ((img.width || 0) * scale) / 2,
+        top: canvasHeight / 2 - ((img.height || 0) * scale) / 2,
+      });
+      (img as any).customId = `img_${Date.now()}`;
+      (img as any).isCustomImage = true;
+      (img as any).imageUrl = urlData.publicUrl;
+      fabricCanvas.add(img);
+      fabricCanvas.setActiveObject(img);
+      sendHelpersToBack();
+      toast.success("Imagem adicionada!");
+      // Clear input so the same file can be re-uploaded
+      e.target.value = '';
+    } catch (err: any) {
+      console.error('Error uploading image:', err);
+      toast.error(err.message || 'Erro ao fazer upload da imagem');
+    }
   };
 
   const changeLayer = (action: 'front' | 'back' | 'forward' | 'backward') => {
