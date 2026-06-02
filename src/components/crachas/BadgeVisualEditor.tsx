@@ -1264,6 +1264,59 @@ export default function BadgeVisualEditor({ templateId, onSave, onCancel }: Badg
                 </div>
               </div>
 
+              {/* Layer controls */}
+              <div className="space-y-2">
+                <Label className="text-xs font-semibold">Camadas</Label>
+                <div className="grid grid-cols-4 gap-1">
+                  <Button size="sm" variant="outline" onClick={() => changeLayer('back')} title="Enviar para o fundo" className="h-8 p-0">
+                    <ChevronsDown className="w-4 h-4" />
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={() => changeLayer('backward')} title="Enviar para trás" className="h-8 p-0">
+                    <ChevronDown className="w-4 h-4" />
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={() => changeLayer('forward')} title="Trazer para frente" className="h-8 p-0">
+                    <ChevronUp className="w-4 h-4" />
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={() => changeLayer('front')} title="Trazer para o topo" className="h-8 p-0">
+                    <ChevronsUp className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+
+              {/* Shape properties */}
+              {selectedObject.isShape && (
+                <>
+                  <Separator />
+                  {selectedObject.shapeType !== 'line' && (
+                    <div>
+                      <Label className="text-xs">Cor de preenchimento</Label>
+                      <div className="flex gap-2">
+                        <Input type="color" value={fillColor} onChange={(e) => setFillColor(e.target.value)} className="w-12 h-8 p-1" />
+                        <Input value={fillColor} onChange={(e) => setFillColor(e.target.value)} className="flex-1 h-8" />
+                      </div>
+                    </div>
+                  )}
+                  <div>
+                    <Label className="text-xs">Cor da borda</Label>
+                    <div className="flex gap-2">
+                      <Input type="color" value={strokeColor} onChange={(e) => setStrokeColor(e.target.value)} className="w-12 h-8 p-1" />
+                      <Input value={strokeColor} onChange={(e) => setStrokeColor(e.target.value)} className="flex-1 h-8" />
+                    </div>
+                  </div>
+                  <div>
+                    <Label className="text-xs">Espessura da borda</Label>
+                    <Input type="number" min={0} max={20} value={strokeWidth} onChange={(e) => setStrokeWidth(Number(e.target.value))} className="h-8" />
+                  </div>
+                  {selectedObject.shapeType === 'rect' && (
+                    <div>
+                      <Label className="text-xs">Cantos arredondados</Label>
+                      <Input type="number" min={0} max={100} value={cornerRadius} onChange={(e) => setCornerRadius(Number(e.target.value))} className="h-8" />
+                    </div>
+                  )}
+                </>
+              )}
+
+
               {(selectedObject.type === 'i-text' || selectedObject.type === 'text') && (
                 <>
                   <Separator />
