@@ -54,8 +54,9 @@ export function generateEtiquetasPontoPDF(etiquetas: EtiquetaData[]): void {
     }
   }
 
-  const mesAno = etiquetas[0] ? `${etiquetas[0].mes}_${etiquetas[0].ano}` : "etiquetas";
-  const fileName = `etiquetas_ponto_${mesAno}.pdf`;
+  const first = etiquetas[0];
+  const mesAnoSlug = first?.mes && first?.ano ? `${first.mes}_${first.ano}` : "sem_data";
+  const fileName = `etiquetas_ponto_${mesAnoSlug}.pdf`;
   import("./pdfBackupHelper").then(({ saveAndBackup }) => saveAndBackup(doc, fileName, "Etiquetas"));
 }
 
@@ -64,32 +65,45 @@ function desenharEtiqueta(doc: jsPDF, data: EtiquetaData, x: number, y: number):
   const innerX = x + padding;
   const innerY = y + padding;
   const innerWidth = ETIQUETA_LARGURA - padding * 2;
-  const innerHeight = ETIQUETA_ALTURA - padding * 2;
 
-  // Mês/Ano (centralizado no topo)
-  doc.setFontSize(10);
-  doc.setFont("helvetica", "bold");
-  const mesAno = `${data.mes.toUpperCase()} / ${data.ano}`;
-  doc.text(mesAno, innerX + innerWidth / 2, innerY + 6, { align: "center" });
+  const hasMesAno = !!(data.mes && data.ano);
 
-  // Linha separadora
-  doc.setDrawColor(0);
-  doc.setLineWidth(0.2);
-  doc.line(innerX, innerY + 9, innerX + innerWidth, innerY + 9);
+  if (hasMesAno) {
+    // Mês/Ano (centralizado no topo)
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "bold");
+    const mesAno = `${data.mes!.toUpperCase()} / ${data.ano}`;
+    doc.text(mesAno, innerX + innerWidth / 2, innerY + 6, { align: "center" });
 
-  // Nome do funcionário
-  doc.setFontSize(9);
-  doc.setFont("helvetica", "bold");
-  const nomeMaxWidth = innerWidth - 4;
-  const nomeTruncado = truncateText(doc, data.nomeCompleto, nomeMaxWidth);
-  doc.text(nomeTruncado, innerX + innerWidth / 2, innerY + 16, { align: "center" });
+    // Linha separadora
+    doc.setDrawColor(0);
+    doc.setLineWidth(0.2);
+    doc.line(innerX, innerY + 9, innerX + innerWidth, innerY + 9);
 
-  // Empresa
-  doc.setFontSize(8);
-  doc.setFont("helvetica", "normal");
-  const empresaMaxWidth = innerWidth - 4;
-  const empresaTruncada = truncateText(doc, data.empresa, empresaMaxWidth);
-  doc.text(empresaTruncada, innerX + innerWidth / 2, innerY + 23, { align: "center" });
+    // Nome do funcionário
+    doc.setFontSize(9);
+    doc.setFont("helvetica", "bold");
+    const nomeTruncado = truncateText(doc, data.nomeCompleto, innerWidth - 4);
+    doc.text(nomeTruncado, innerX + innerWidth / 2, innerY + 16, { align: "center" });
+
+    // Empresa
+    doc.setFontSize(8);
+    doc.setFont("helvetica", "normal");
+    const empresaTruncada = truncateText(doc, data.empresa, innerWidth - 4);
+    doc.text(empresaTruncada, innerX + innerWidth / 2, innerY + 23, { align: "center" });
+  } else {
+    // Layout sem mês/ano: nome em destaque centralizado verticalmente, empresa abaixo
+    const centerY = y + ETIQUETA_ALTURA / 2;
+    doc.setFontSize(13);
+    doc.setFont("helvetica", "bold");
+    const nomeTruncado = truncateText(doc, data.nomeCompleto, innerWidth - 4);
+    doc.text(nomeTruncado, innerX + innerWidth / 2, centerY - 1, { align: "center" });
+
+    doc.setFontSize(9);
+    doc.setFont("helvetica", "normal");
+    const empresaTruncada = truncateText(doc, data.empresa, innerWidth - 4);
+    doc.text(empresaTruncada, innerX + innerWidth / 2, centerY + 6, { align: "center" });
+  }
 }
 
 function truncateText(doc: jsPDF, text: string, maxWidth: number): string {
