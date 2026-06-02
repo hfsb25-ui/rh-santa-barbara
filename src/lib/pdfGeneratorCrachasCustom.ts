@@ -15,8 +15,9 @@ interface EmployeeForBadge {
 
 interface BadgeElement {
   id: string;
-  type: 'text' | 'image' | 'placeholder' | 'shape';
+  type: 'text' | 'image' | 'placeholder' | 'shape' | 'customImage';
   placeholder?: string;
+  imageUrl?: string;
   shapeType?: 'rect' | 'circle' | 'line';
   left: number;
   top: number;
