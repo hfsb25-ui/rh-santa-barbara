@@ -564,20 +564,37 @@ export default function BadgeVisualEditor({ templateId, onSave, onCancel }: Badg
 
         for (const element of config.elements || []) {
           if (element.type === 'text' || element.type === 'placeholder') {
+            // Prefer saved origin if present; fallback to legacy (top-left bounds saved -> recenter).
+            const hasOrigin = !!element.originX && !!element.originY;
             const w = element.width || 0;
             const h = element.height || 0;
-            // Saved coordinates are top-left; restore using center origin
-            // (matches how new text is created in addPlaceholder/addCustomText).
+            const originX = (element.originX as any) || 'center';
+            const originY = (element.originY as any) || 'center';
+            const left = hasOrigin
+              ? element.left
+              : (originX === 'center' ? element.left + w / 2 : element.left);
+            const top = hasOrigin
+              ? element.top
+              : (originY === 'center' ? element.top + h / 2 : element.top);
             const text = new IText(element.placeholder || 'Texto', {
-              left: element.left + w / 2,
-              top: element.top + h / 2,
-              originX: 'center',
-              originY: 'center',
+              left,
+              top,
+              originX,
+              originY,
               fontSize: element.fontSize || 16,
               fontFamily: element.fontFamily || 'Arial',
               fontWeight: element.fontWeight || 'normal',
+              fontStyle: (element.fontStyle as any) || 'normal',
+              underline: !!element.underline,
+              linethrough: !!element.linethrough,
+              lineHeight: element.lineHeight ?? 1.16,
+              charSpacing: element.charSpacing ?? 0,
               fill: element.fill || '#000000',
               textAlign: element.textAlign || 'left',
+              scaleX: element.scaleX ?? 1,
+              scaleY: element.scaleY ?? 1,
+              angle: element.angle ?? 0,
+              opacity: element.opacity ?? 1,
             });
             (text as any).customId = element.id;
             (text as any).isPlaceholder = element.type === 'placeholder';
@@ -591,11 +608,24 @@ export default function BadgeVisualEditor({ templateId, onSave, onCancel }: Badg
                 fill: element.fill || '#6366f1',
                 stroke: element.stroke || '',
                 strokeWidth: element.strokeWidth || 0,
+                scaleX: element.scaleX ?? 1,
+                scaleY: element.scaleY ?? 1,
+                angle: element.angle ?? 0,
+                opacity: element.opacity ?? 1,
+                originX: (element.originX as any) || 'left',
+                originY: (element.originY as any) || 'top',
               });
             } else if (element.shapeType === 'line') {
               shape = new Line(
                 [element.left, element.top, element.x2 || element.left + 50, element.y2 || element.top],
-                { stroke: element.stroke || '#000000', strokeWidth: element.strokeWidth || 2 }
+                {
+                  stroke: element.stroke || '#000000',
+                  strokeWidth: element.strokeWidth || 2,
+                  scaleX: element.scaleX ?? 1,
+                  scaleY: element.scaleY ?? 1,
+                  angle: element.angle ?? 0,
+                  opacity: element.opacity ?? 1,
+                }
               );
             } else {
               shape = new Rect({
@@ -605,6 +635,12 @@ export default function BadgeVisualEditor({ templateId, onSave, onCancel }: Badg
                 stroke: element.stroke || '',
                 strokeWidth: element.strokeWidth || 0,
                 rx: element.rx || 0, ry: element.rx || 0,
+                scaleX: element.scaleX ?? 1,
+                scaleY: element.scaleY ?? 1,
+                angle: element.angle ?? 0,
+                opacity: element.opacity ?? 1,
+                originX: (element.originX as any) || 'left',
+                originY: (element.originY as any) || 'top',
               });
             }
             shape.customId = element.id;
@@ -615,10 +651,14 @@ export default function BadgeVisualEditor({ templateId, onSave, onCancel }: Badg
             const img = await FabricImage.fromURL(element.imageUrl, { crossOrigin: 'anonymous' });
             const natW = (img as any).width || 1;
             const natH = (img as any).height || 1;
-            const sx = (element.width || natW) / natW;
-            const sy = (element.height || natH) / natH;
+            const sx = element.scaleX ?? ((element.width || natW) / natW);
+            const sy = element.scaleY ?? ((element.height || natH) / natH);
             img.set({
               left: element.left, top: element.top, scaleX: sx, scaleY: sy,
+              angle: element.angle ?? 0,
+              opacity: element.opacity ?? 1,
+              originX: (element.originX as any) || 'left',
+              originY: (element.originY as any) || 'top',
               stroke: element.stroke || '',
               strokeWidth: element.strokeWidth || 0,
               strokeUniform: true,
@@ -640,6 +680,12 @@ export default function BadgeVisualEditor({ templateId, onSave, onCancel }: Badg
               strokeWidth: element.strokeWidth ?? 2,
               rx: element.placeholder === 'foto' ? w / 2 : 5,
               ry: element.placeholder === 'foto' ? h / 2 : 5,
+              scaleX: element.scaleX ?? 1,
+              scaleY: element.scaleY ?? 1,
+              angle: element.angle ?? 0,
+              opacity: element.opacity ?? 1,
+              originX: (element.originX as any) || 'left',
+              originY: (element.originY as any) || 'top',
             });
             (rect as any).customId = element.id;
             (rect as any).isPlaceholder = true;
