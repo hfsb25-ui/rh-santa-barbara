@@ -762,6 +762,7 @@ export default function BadgeVisualEditor({ templateId, onSave, onCancel }: Badg
 
   const addPlaceholder = (placeholder: typeof PLACEHOLDERS[0]) => {
     if (!fabricCanvas) return;
+    let createdObject: any;
 
     if (placeholder.id === 'foto' || placeholder.id === 'logo') {
       const rect = new Rect({
@@ -778,7 +779,7 @@ export default function BadgeVisualEditor({ templateId, onSave, onCancel }: Badg
       (rect as any).customId = placeholder.id;
       (rect as any).isPlaceholder = true;
       (rect as any).placeholderType = placeholder.id;
-      fabricCanvas.add(rect);
+      createdObject = rect;
     } else {
       const text = new IText(placeholder.placeholder, {
         left: canvasWidth / 2,
@@ -791,11 +792,15 @@ export default function BadgeVisualEditor({ templateId, onSave, onCancel }: Badg
       });
       (text as any).customId = placeholder.id;
       (text as any).isPlaceholder = true;
-      fabricCanvas.add(text);
+      createdObject = text;
     }
 
-    fabricCanvas.renderAll();
+    fabricCanvas.add(createdObject);
+    fabricCanvas.bringObjectToFront(createdObject);
+    fabricCanvas.setActiveObject(createdObject);
     sendHelpersToBack();
+    updatePropertiesFromObject(createdObject);
+    fabricCanvas.requestRenderAll();
     toast.success(`${placeholder.label} adicionado!`);
   };
 
@@ -813,9 +818,11 @@ export default function BadgeVisualEditor({ templateId, onSave, onCancel }: Badg
     (text as any).customId = `custom_${Date.now()}`;
     (text as any).isPlaceholder = false;
     fabricCanvas.add(text);
+    fabricCanvas.bringObjectToFront(text);
     fabricCanvas.setActiveObject(text);
-    fabricCanvas.renderAll();
     sendHelpersToBack();
+    updatePropertiesFromObject(text);
+    fabricCanvas.requestRenderAll();
   };
 
   const addShape = (shapeType: 'rect' | 'circle' | 'line') => {
@@ -843,10 +850,12 @@ export default function BadgeVisualEditor({ templateId, onSave, onCancel }: Badg
     obj.isShape = true;
     obj.shapeType = shapeType;
     fabricCanvas.add(obj);
+    fabricCanvas.bringObjectToFront(obj);
     fabricCanvas.setActiveObject(obj);
-    fabricCanvas.renderAll();
-    toast.success("Forma adicionada!");
     sendHelpersToBack();
+    updatePropertiesFromObject(obj);
+    fabricCanvas.requestRenderAll();
+    toast.success("Forma adicionada!");
   };
 
   // Keep helpers (grid/center guides) always at the very back
