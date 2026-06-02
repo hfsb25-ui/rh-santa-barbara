@@ -642,7 +642,7 @@ export default function BadgeVisualEditor({ templateId, onSave, onCancel }: Badg
 
   const duplicateSelected = async () => {
     if (!selectedObject || !fabricCanvas) return;
-    const cloned = await selectedObject.clone(['customId', 'isPlaceholder', 'placeholderType']);
+    const cloned = await selectedObject.clone();
     cloned.set({
       left: (selectedObject.left || 0) + 15,
       top: (selectedObject.top || 0) + 15,
