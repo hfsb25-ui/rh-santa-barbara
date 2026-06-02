@@ -36,10 +36,22 @@ interface BadgeElement {
   fontSize?: number;
   fontFamily?: string;
   fontWeight?: string;
+  fontStyle?: string;
+  underline?: boolean;
+  linethrough?: boolean;
+  lineHeight?: number;
+  charSpacing?: number;
   fill?: string;
   stroke?: string;
   strokeWidth?: number;
   textAlign?: string;
+  // Faithful persistence of transform/origin
+  scaleX?: number;
+  scaleY?: number;
+  angle?: number;
+  opacity?: number;
+  originX?: string;
+  originY?: string;
 }
 
 interface BadgeTemplateConfig {
