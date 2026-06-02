@@ -25,6 +25,7 @@ export function EtiquetasPonto() {
   const [tipoContratoFilter, setTipoContratoFilter] = useState<string>("all");
   const [selectedEmployees, setSelectedEmployees] = useState<Set<string>>(new Set());
   const [selectAll, setSelectAll] = useState(false);
+  const [semMesAno, setSemMesAno] = useState(false);
 
   // Buscar empresas
   const { data: empresas = [] } = useQuery({
