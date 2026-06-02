@@ -11,7 +11,7 @@ export const ProximasAvaliacoes = () => {
   const { data: proximosCiclos } = useQuery({
     queryKey: ["proximos-ciclos"],
     queryFn: async () => {
-      const hoje = new Date().toISOString().split('T')[0];
+      const hoje = todayISO();
       const proximoMes = new Date();
       proximoMes.setMonth(proximoMes.getMonth() + 1);
       
@@ -20,7 +20,7 @@ export const ProximasAvaliacoes = () => {
         .select("*, empresas(nome), setores(nome), funcoes(nome)")
         .eq("ativo", true)
         .gte("data_proxima_execucao", hoje)
-        .lte("data_proxima_execucao", proximoMes.toISOString().split('T')[0])
+        .lte("data_proxima_execucao", toISODateLocal(proximoMes))
         .order("data_proxima_execucao", { ascending: true });
       
       if (error) throw error;
