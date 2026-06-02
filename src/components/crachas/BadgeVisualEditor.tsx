@@ -876,6 +876,46 @@ export default function BadgeVisualEditor({ templateId, onSave, onCancel }: Badg
             fill: obj.fill,
             textAlign: obj.textAlign || 'left',
           });
+        } else if (obj.isShape) {
+          if (obj.shapeType === 'circle') {
+            elements.push({
+              id: obj.customId || `element_${Date.now()}`,
+              type: 'shape',
+              shapeType: 'circle',
+              left: obj.left,
+              top: obj.top,
+              radius: (obj.radius || 0) * (obj.scaleX || 1),
+              fill: obj.fill,
+              stroke: obj.stroke,
+              strokeWidth: obj.strokeWidth,
+            });
+          } else if (obj.shapeType === 'line') {
+            elements.push({
+              id: obj.customId || `element_${Date.now()}`,
+              type: 'shape',
+              shapeType: 'line',
+              left: obj.x1,
+              top: obj.y1,
+              x2: obj.x2,
+              y2: obj.y2,
+              stroke: obj.stroke,
+              strokeWidth: obj.strokeWidth,
+            });
+          } else {
+            elements.push({
+              id: obj.customId || `element_${Date.now()}`,
+              type: 'shape',
+              shapeType: 'rect',
+              left: obj.left,
+              top: obj.top,
+              width: obj.width * (obj.scaleX || 1),
+              height: obj.height * (obj.scaleY || 1),
+              rx: obj.rx || 0,
+              fill: obj.fill,
+              stroke: obj.stroke,
+              strokeWidth: obj.strokeWidth,
+            });
+          }
         } else if (obj.type === 'rect') {
           elements.push({
             id: obj.customId || `element_${Date.now()}`,
