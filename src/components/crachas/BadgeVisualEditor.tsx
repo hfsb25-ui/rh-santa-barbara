@@ -21,7 +21,8 @@ import type { Json } from "@/integrations/supabase/types";
 
 interface BadgeElement {
   id: string;
-  type: 'text' | 'image' | 'placeholder' | 'shape';
+  type: 'text' | 'image' | 'placeholder' | 'shape' | 'customImage';
+  imageUrl?: string;
   placeholder?: string;
   shapeType?: 'rect' | 'circle' | 'line';
   left: number;
