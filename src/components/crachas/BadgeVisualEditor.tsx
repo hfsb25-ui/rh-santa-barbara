@@ -1088,8 +1088,15 @@ export default function BadgeVisualEditor({ templateId, onSave, onCancel }: Badg
             fontSize: obj.fontSize,
             fontFamily: obj.fontFamily,
             fontWeight: obj.fontWeight,
+            fontStyle: obj.fontStyle,
+            underline: !!obj.underline,
+            linethrough: !!obj.linethrough,
+            lineHeight: obj.lineHeight,
+            charSpacing: obj.charSpacing,
             fill: obj.fill,
             textAlign: obj.textAlign || 'left',
+            angle: obj.angle || 0,
+            opacity: obj.opacity ?? 1,
           });
         } else if (obj.isShape) {
           if (obj.shapeType === 'circle') {
@@ -1103,6 +1110,8 @@ export default function BadgeVisualEditor({ templateId, onSave, onCancel }: Badg
               fill: obj.fill,
               stroke: obj.stroke,
               strokeWidth: obj.strokeWidth,
+              angle: obj.angle || 0,
+              opacity: obj.opacity ?? 1,
             });
           } else if (obj.shapeType === 'line') {
             elements.push({
@@ -1115,6 +1124,8 @@ export default function BadgeVisualEditor({ templateId, onSave, onCancel }: Badg
               y2: obj.y2,
               stroke: obj.stroke,
               strokeWidth: obj.strokeWidth,
+              angle: obj.angle || 0,
+              opacity: obj.opacity ?? 1,
             });
           } else {
             elements.push({
@@ -1129,6 +1140,8 @@ export default function BadgeVisualEditor({ templateId, onSave, onCancel }: Badg
               fill: obj.fill,
               stroke: obj.stroke,
               strokeWidth: obj.strokeWidth,
+              angle: obj.angle || 0,
+              opacity: obj.opacity ?? 1,
             });
           }
         } else if (obj.isCustomImage) {
@@ -1142,6 +1155,8 @@ export default function BadgeVisualEditor({ templateId, onSave, onCancel }: Badg
             height: (obj.height || 0) * (obj.scaleY || 1),
             stroke: obj.stroke,
             strokeWidth: obj.strokeWidth,
+            angle: obj.angle || 0,
+            opacity: obj.opacity ?? 1,
           });
         } else if (obj.type === 'rect') {
           elements.push({
@@ -1154,6 +1169,8 @@ export default function BadgeVisualEditor({ templateId, onSave, onCancel }: Badg
             height: obj.height * obj.scaleY,
             stroke: obj.stroke,
             strokeWidth: obj.strokeWidth,
+            angle: obj.angle || 0,
+            opacity: obj.opacity ?? 1,
           });
         }
       });
