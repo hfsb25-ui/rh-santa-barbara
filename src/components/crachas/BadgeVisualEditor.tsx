@@ -137,6 +137,11 @@ export default function BadgeVisualEditor({ templateId, onSave, onCancel }: Badg
       preserveObjectStacking: true,
     });
 
+    // Fabric cria um canvas superior para seleção/controles. Se o canvas React tiver
+    // fundo/borda via CSS, esse canvas superior pode ficar opaco e esconder os objetos.
+    canvas.upperCanvasEl.style.backgroundColor = 'transparent';
+    canvas.lowerCanvasEl.style.backgroundColor = 'transparent';
+
     canvas.on('selection:created', (e) => {
       const obj = e.selected?.[0] || null;
       setSelectedObject(obj);
@@ -1238,7 +1243,9 @@ export default function BadgeVisualEditor({ templateId, onSave, onCancel }: Badg
               ))}
             </div>
           </div>
-          <canvas ref={canvasRef} className="border border-border rounded shadow-sm bg-white" />
+          <div className="border border-border rounded shadow-sm bg-background overflow-hidden">
+            <canvas ref={canvasRef} />
+          </div>
         </div>
 
         <div className="flex gap-2 flex-wrap justify-center">
