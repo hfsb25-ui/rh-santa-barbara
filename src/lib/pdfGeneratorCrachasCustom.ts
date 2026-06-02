@@ -229,6 +229,46 @@ export async function generateCustomBadgesPDF(
       const elemX = x + element.left * scaleX;
       const elemY = y + element.top * scaleY;
 
+      if (element.type === 'shape') {
+        const sw = (element.strokeWidth || 0) * scaleX;
+        const hasFill = !!element.fill && element.fill !== 'transparent' && element.fill !== '';
+        const hasStroke = !!element.stroke && element.stroke !== '' && sw > 0;
+        if (hasFill) {
+          const c = hexToRgb(element.fill!);
+          doc.setFillColor(c.r, c.g, c.b);
+        }
+        if (hasStroke) {
+          const c = hexToRgb(element.stroke!);
+          doc.setDrawColor(c.r, c.g, c.b);
+          doc.setLineWidth(sw);
+        }
+        const style = hasFill && hasStroke ? 'FD' : hasFill ? 'F' : hasStroke ? 'S' : null;
+
+        if (element.shapeType === 'circle') {
+          const r = (element.radius || 30) * scaleX;
+          if (style) doc.circle(elemX + r, elemY + r, r, style);
+        } else if (element.shapeType === 'line') {
+          if (hasStroke) {
+            const x2 = x + (element.x2 ?? element.left) * scaleX;
+            const y2 = y + (element.y2 ?? element.top) * scaleY;
+            doc.line(elemX, elemY, x2, y2);
+          }
+        } else {
+          const w = (element.width || 80) * scaleX;
+          const h = (element.height || 50) * scaleY;
+          const rx = (element.rx || 0) * scaleX;
+          if (style) {
+            if (rx > 0 && (doc as any).roundedRect) {
+              (doc as any).roundedRect(elemX, elemY, w, h, rx, rx, style);
+            } else {
+              doc.rect(elemX, elemY, w, h, style);
+            }
+          }
+        }
+        continue;
+      }
+
+
       if (element.type === 'text' || element.type === 'placeholder') {
         const text = element.placeholder ? replacePlaceholder(element.placeholder, employee) : '';
         if (!text) continue;
