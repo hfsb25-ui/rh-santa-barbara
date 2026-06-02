@@ -523,6 +523,35 @@ export default function BadgeVisualEditor({ templateId, onSave, onCancel }: Badg
             (text as any).customId = element.id;
             (text as any).isPlaceholder = element.type === 'placeholder';
             fabricCanvas.add(text);
+          } else if (element.type === 'shape') {
+            let shape: any;
+            if (element.shapeType === 'circle') {
+              shape = new Circle({
+                left: element.left, top: element.top,
+                radius: element.radius || 30,
+                fill: element.fill || '#6366f1',
+                stroke: element.stroke || '',
+                strokeWidth: element.strokeWidth || 0,
+              });
+            } else if (element.shapeType === 'line') {
+              shape = new Line(
+                [element.left, element.top, element.x2 || element.left + 50, element.y2 || element.top],
+                { stroke: element.stroke || '#000000', strokeWidth: element.strokeWidth || 2 }
+              );
+            } else {
+              shape = new Rect({
+                left: element.left, top: element.top,
+                width: element.width || 80, height: element.height || 50,
+                fill: element.fill || '#6366f1',
+                stroke: element.stroke || '',
+                strokeWidth: element.strokeWidth || 0,
+                rx: element.rx || 0, ry: element.rx || 0,
+              });
+            }
+            shape.customId = element.id;
+            shape.isShape = true;
+            shape.shapeType = element.shapeType;
+            fabricCanvas.add(shape);
           } else if (element.type === 'image') {
             const rect = new Rect({
               left: element.left,
