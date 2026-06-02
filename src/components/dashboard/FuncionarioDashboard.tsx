@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { todayISO } from "@/lib/date";
 import { User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
@@ -170,14 +171,14 @@ const FuncionarioDashboard = ({ user }: FuncionarioDashboardProps) => {
             .from("avisos")
             .select("*")
             .contains("setores", [empData.setor])
-            .gte("data_expiracao", new Date().toISOString().split("T")[0])
+            .gte("data_expiracao", todayISO())
             .order("created_at", { ascending: false }),
           supabase
             .from("ferias")
             .select("*")
             .eq("employee_id", empData.id)
             .eq("data_retorno_confirmada", false)
-            .gte("periodo_gozo_fim", new Date().toISOString().split("T")[0])
+            .gte("periodo_gozo_fim", todayISO())
             .order("periodo_gozo_inicio", { ascending: false })
             .limit(1)
             .maybeSingle(),

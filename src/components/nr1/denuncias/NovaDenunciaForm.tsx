@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { todayISO } from "@/lib/date";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,7 +30,7 @@ export function NovaDenunciaForm({ onSuccess }: Props) {
     }
     setLoading(true);
     try {
-      const protoNum = `NR1-${new Date().toISOString().slice(0, 10).replace(/-/g, "")}-${Math.random().toString(36).slice(2, 7).toUpperCase()}`;
+      const protoNum = `NR1-${todayISO().replace(/-/g, "")}-${Math.random().toString(36).slice(2, 7).toUpperCase()}`;
       const { data: denuncia, error } = await supabase
         .from("nr1_denuncias")
         .insert({

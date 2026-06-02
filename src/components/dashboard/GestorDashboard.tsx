@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { parseDateOnly } from "@/lib/date";
+import { parseDateOnly, todayISO, toISODateLocal} from "@/lib/date";
 import { User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
@@ -139,7 +139,7 @@ const GestorDashboard = ({ user }: GestorDashboardProps) => {
         const nonDismissedEmployees = employees.filter((e: any) => e.status !== "demitido");
         const employeeIds = nonDismissedEmployees.map((e: any) => e.id);
         
-        const todayStr = new Date().toISOString().split("T")[0];
+        const todayStr = todayISO();
 
         // Contar férias em gozo ativas HOJE (dinâmico)
         const { data: vacationData } = await supabase
@@ -177,7 +177,7 @@ const GestorDashboard = ({ user }: GestorDashboardProps) => {
 
   const fetchEmployeesOnVacation = async () => {
     try {
-      const todayStr = new Date().toISOString().split("T")[0];
+      const todayStr = todayISO();
 
       // Buscar férias ativas (gozo) que estão em andamento HOJE
       const { data: activeVacations, error: vacationsError } = await supabase
@@ -317,11 +317,11 @@ const GestorDashboard = ({ user }: GestorDashboardProps) => {
         .eq("tipo_movimentacao", "saida");
 
       // Fetch absences
-      let absencesQuery = supabase.from("faltas").select("*, employees(nome_completo)").gte("data", startDate.toISOString().split("T")[0]);
+      let absencesQuery = supabase.from("faltas").select("*, employees(nome_completo)").gte("data", toISODateLocal(startDate));
       const { data: absences } = await absencesQuery;
 
       // Process data for charts - usar contagem real de férias ativas hoje
-      const todayForChart = new Date().toISOString().split("T")[0];
+      const todayForChart = todayISO();
       const employeeIds = employees?.map((e: any) => e.id) || [];
       let onVacationChartCount = 0;
       if (employeeIds.length > 0) {

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { parseDateOnly } from "@/lib/date";
+import { parseDateOnly, todayISO} from "@/lib/date";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
@@ -96,7 +96,7 @@ const EmployeeList = ({ searchQuery, onStatsUpdate, empresaId }: EmployeeListPro
 
   const fetchVacationStatus = async () => {
     try {
-      const todayStr = new Date().toISOString().split("T")[0];
+      const todayStr = todayISO();
       const { data, error } = await supabase
         .from("ferias")
         .select("employee_id")

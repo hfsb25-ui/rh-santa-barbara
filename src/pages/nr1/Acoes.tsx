@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { todayISO } from "@/lib/date";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -42,7 +43,7 @@ export default function NR1Acoes() {
       titulo: form.titulo, descricao: form.descricao || null,
       responsavel_employee_id: form.responsavel_employee_id || null,
       prazo: form.prazo || null, status: form.status, prioridade: form.prioridade, origem: form.origem,
-      data_conclusao: form.status === "concluida" ? new Date().toISOString().slice(0,10) : null,
+      data_conclusao: form.status === "concluida" ? todayISO() : null,
     };
     const res = editing
       ? await (supabase.from("nr1_acoes_preventivas") as any).update(payload).eq("id", editing.id)
