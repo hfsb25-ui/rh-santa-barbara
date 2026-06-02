@@ -97,6 +97,12 @@ export default function BadgeVisualEditor({ templateId, onSave, onCancel }: Badg
   const [sizeW, setSizeW] = useState(0);
   const [sizeH, setSizeH] = useState(0);
 
+  // Shape properties
+  const [fillColor, setFillColor] = useState("#6366f1");
+  const [strokeColor, setStrokeColor] = useState("#000000");
+  const [strokeWidth, setStrokeWidth] = useState(0);
+  const [cornerRadius, setCornerRadius] = useState(0);
+
   // Editor settings
   const [showGrid, setShowGrid] = useState(false);
   const [showGuides, setShowGuides] = useState(true);
