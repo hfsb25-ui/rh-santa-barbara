@@ -573,6 +573,13 @@ export default function BadgeVisualEditor({ templateId, onSave, onCancel }: Badg
       setTextAlign(obj.textAlign || 'center');
     }
 
+    if (obj.isShape) {
+      setFillColor(obj.fill || 'transparent');
+      setStrokeColor(obj.stroke || '#000000');
+      setStrokeWidth(obj.strokeWidth || 0);
+      if (obj.shapeType === 'rect') setCornerRadius(obj.rx || 0);
+    }
+
     const w = (obj.width || 0) * (obj.scaleX || 1);
     const h = (obj.height || 0) * (obj.scaleY || 1);
     let left = obj.left || 0;
@@ -592,11 +599,21 @@ export default function BadgeVisualEditor({ templateId, onSave, onCancel }: Badg
     fabricCanvas.renderAll();
   }, [selectedObject, fabricCanvas]);
 
-  useEffect(() => { if (selectedObject) updateSelectedObject('fontSize', fontSize); }, [fontSize]);
-  useEffect(() => { if (selectedObject) updateSelectedObject('fontFamily', fontFamily); }, [fontFamily]);
-  useEffect(() => { if (selectedObject) updateSelectedObject('fontWeight', fontWeight); }, [fontWeight]);
-  useEffect(() => { if (selectedObject) updateSelectedObject('fill', textColor); }, [textColor]);
-  useEffect(() => { if (selectedObject) updateSelectedObject('textAlign', textAlign); }, [textAlign]);
+  useEffect(() => { if (selectedObject && (selectedObject.type === 'i-text' || selectedObject.type === 'text')) updateSelectedObject('fontSize', fontSize); }, [fontSize]);
+  useEffect(() => { if (selectedObject && (selectedObject.type === 'i-text' || selectedObject.type === 'text')) updateSelectedObject('fontFamily', fontFamily); }, [fontFamily]);
+  useEffect(() => { if (selectedObject && (selectedObject.type === 'i-text' || selectedObject.type === 'text')) updateSelectedObject('fontWeight', fontWeight); }, [fontWeight]);
+  useEffect(() => { if (selectedObject && (selectedObject.type === 'i-text' || selectedObject.type === 'text')) updateSelectedObject('fill', textColor); }, [textColor]);
+  useEffect(() => { if (selectedObject && (selectedObject.type === 'i-text' || selectedObject.type === 'text')) updateSelectedObject('textAlign', textAlign); }, [textAlign]);
+
+  useEffect(() => { if (selectedObject?.isShape) updateSelectedObject('fill', fillColor); }, [fillColor]);
+  useEffect(() => { if (selectedObject?.isShape) updateSelectedObject('stroke', strokeColor); }, [strokeColor]);
+  useEffect(() => { if (selectedObject?.isShape) updateSelectedObject('strokeWidth', strokeWidth); }, [strokeWidth]);
+  useEffect(() => {
+    if (selectedObject?.isShape && selectedObject.shapeType === 'rect') {
+      selectedObject.set({ rx: cornerRadius, ry: cornerRadius });
+      fabricCanvas?.renderAll();
+    }
+  }, [cornerRadius]);
 
   // Apply numeric position
   const applyPosition = (axis: 'x' | 'y' | 'w' | 'h', value: number) => {
