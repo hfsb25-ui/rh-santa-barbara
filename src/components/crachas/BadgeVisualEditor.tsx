@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from "react";
-import { Canvas as FabricCanvas, Rect, IText, FabricImage, Line } from "fabric";
+import { Canvas as FabricCanvas, Rect, IText, FabricImage, Line, Circle } from "fabric";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,7 +14,8 @@ import {
   CreditCard, Image, Grid3x3, Crosshair, ZoomIn, ZoomOut, Maximize2,
   AlignCenterHorizontal, AlignCenterVertical, AlignStartHorizontal,
   AlignEndHorizontal, AlignStartVertical, AlignEndVertical, Undo2, Redo2,
-  Copy
+  Copy, Square, Circle as CircleIcon, Minus, ChevronUp, ChevronDown,
+  ChevronsUp, ChevronsDown
 } from "lucide-react";
 import type { Json } from "@/integrations/supabase/types";
 
