@@ -1060,6 +1060,8 @@ export default function BadgeVisualEditor({ templateId, onSave, onCancel }: Badg
             top: obj.top,
             width: (obj.width || 0) * (obj.scaleX || 1),
             height: (obj.height || 0) * (obj.scaleY || 1),
+            stroke: obj.stroke,
+            strokeWidth: obj.strokeWidth,
           });
         } else if (obj.type === 'rect') {
           elements.push({
@@ -1070,6 +1072,8 @@ export default function BadgeVisualEditor({ templateId, onSave, onCancel }: Badg
             top: obj.top,
             width: obj.width * obj.scaleX,
             height: obj.height * obj.scaleY,
+            stroke: obj.stroke,
+            strokeWidth: obj.strokeWidth,
           });
         }
       });
