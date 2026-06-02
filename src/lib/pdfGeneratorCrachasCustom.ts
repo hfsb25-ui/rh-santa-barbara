@@ -189,6 +189,14 @@ export async function generateCustomBadgesPDF(
     }
   }));
 
+  // Preload custom images referenced in the template
+  const customImages = new Map<string, { base64: string; img: HTMLImageElement } | null>();
+  for (const el of config.elements || []) {
+    if (el.type === 'customImage' && el.imageUrl && !customImages.has(el.imageUrl)) {
+      customImages.set(el.imageUrl, await loadImage(el.imageUrl));
+    }
+  }
+
   const config = template.configuracao_json;
 
   for (let i = 0; i < employees.length; i++) {
