@@ -490,8 +490,8 @@ const GestorDashboard = ({ user }: GestorDashboardProps) => {
       for (let i = 5; i >= 0; i--) {
         const monthDate = new Date(now.getFullYear(), now.getMonth() - i, 1);
         const monthName = monthDate.toLocaleDateString("pt-BR", { month: "short" });
-        const monthStart = new Date(monthDate.getFullYear(), monthDate.getMonth(), 1).toISOString().split("T")[0];
-        const monthEnd = new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 0).toISOString().split("T")[0];
+        const monthStart = toISODateLocal(new Date(monthDate.getFullYear(), monthDate.getMonth(), 1));
+        const monthEnd = toISODateLocal(new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 0));
         
         const monthAbsences = absences?.filter(a => a.data >= monthStart && a.data <= monthEnd) || [];
         const justified = monthAbsences.filter(a => a.justificada).length;
