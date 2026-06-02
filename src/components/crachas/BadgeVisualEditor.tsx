@@ -671,8 +671,16 @@ export default function BadgeVisualEditor({ templateId, onSave, onCancel }: Badg
   useEffect(() => { if (selectedObject && (selectedObject.type === 'i-text' || selectedObject.type === 'text')) updateSelectedObject('textAlign', textAlign); }, [textAlign]);
 
   useEffect(() => { if (selectedObject?.isShape) updateSelectedObject('fill', fillColor); }, [fillColor]);
-  useEffect(() => { if (selectedObject?.isShape) updateSelectedObject('stroke', strokeColor); }, [strokeColor]);
-  useEffect(() => { if (selectedObject?.isShape) updateSelectedObject('strokeWidth', strokeWidth); }, [strokeWidth]);
+  useEffect(() => {
+    if (selectedObject?.isShape || selectedObject?.isCustomImage || (selectedObject?.isPlaceholder && (selectedObject?.placeholderType === 'foto' || selectedObject?.placeholderType === 'logo'))) {
+      updateSelectedObject('stroke', strokeColor);
+    }
+  }, [strokeColor]);
+  useEffect(() => {
+    if (selectedObject?.isShape || selectedObject?.isCustomImage || (selectedObject?.isPlaceholder && (selectedObject?.placeholderType === 'foto' || selectedObject?.placeholderType === 'logo'))) {
+      updateSelectedObject('strokeWidth', strokeWidth);
+    }
+  }, [strokeWidth]);
   useEffect(() => {
     if (selectedObject?.isShape && selectedObject.shapeType === 'rect') {
       selectedObject.set({ rx: cornerRadius, ry: cornerRadius });
