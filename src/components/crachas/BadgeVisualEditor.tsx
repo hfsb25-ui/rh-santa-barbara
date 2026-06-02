@@ -1442,8 +1442,26 @@ export default function BadgeVisualEditor({ templateId, onSave, onCancel }: Badg
                 </>
               )}
 
+              {/* Image border properties (custom image + foto/logo placeholders) */}
+              {(selectedObject.isCustomImage || (selectedObject.isPlaceholder && (selectedObject.placeholderType === 'foto' || selectedObject.placeholderType === 'logo'))) && (
+                <>
+                  <Separator />
+                  <Label className="text-xs font-semibold">Borda da imagem</Label>
+                  <div>
+                    <Label className="text-xs">Cor da borda</Label>
+                    <div className="flex gap-2">
+                      <Input type="color" value={strokeColor} onChange={(e) => setStrokeColor(e.target.value)} className="w-12 h-8 p-1" />
+                      <Input value={strokeColor} onChange={(e) => setStrokeColor(e.target.value)} className="flex-1 h-8" />
+                    </div>
+                  </div>
+                  <div>
+                    <Label className="text-xs">Espessura da borda</Label>
+                    <Input type="number" min={0} max={20} value={strokeWidth} onChange={(e) => setStrokeWidth(Number(e.target.value))} className="h-8" />
+                  </div>
+                </>
+              )}
 
-              {(selectedObject.type === 'i-text' || selectedObject.type === 'text') && (
+
                 <>
                   <Separator />
                   <div>
