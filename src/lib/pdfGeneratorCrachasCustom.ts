@@ -365,6 +365,17 @@ export async function generateCustomBadgesPDF(
             doc.rect(elemX, elemY, elemWidth, elemHeight, 'F');
           }
         }
+      } else if (element.type === 'customImage' && element.imageUrl) {
+        const elemWidth = (element.width || 80) * scaleX;
+        const elemHeight = (element.height || 80) * scaleY;
+        const data = customImages.get(element.imageUrl);
+        if (data) {
+          try {
+            doc.addImage(data.base64, 'PNG', elemX, elemY, elemWidth, elemHeight);
+          } catch {
+            try { doc.addImage(data.base64, 'JPEG', elemX, elemY, elemWidth, elemHeight); } catch {}
+          }
+        }
       }
     }
   }
