@@ -553,6 +553,15 @@ export default function BadgeVisualEditor({ templateId, onSave, onCancel }: Badg
             shape.isShape = true;
             shape.shapeType = element.shapeType;
             fabricCanvas.add(shape);
+          } else if (element.type === 'customImage' && element.imageUrl) {
+            const img = await FabricImage.fromURL(element.imageUrl, { crossOrigin: 'anonymous' });
+            const sx = (element.width || img.width || 1) / (img.width || 1);
+            const sy = (element.height || img.height || 1) / (img.height || 1);
+            img.set({ left: element.left, top: element.top, scaleX: sx, scaleY: sy });
+            (img as any).customId = element.id;
+            (img as any).isCustomImage = true;
+            (img as any).imageUrl = element.imageUrl;
+            fabricCanvas.add(img);
           } else if (element.type === 'image') {
             const rect = new Rect({
               left: element.left,
