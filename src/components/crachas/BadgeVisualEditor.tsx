@@ -416,7 +416,7 @@ export default function BadgeVisualEditor({ templateId, onSave, onCancel }: Badg
 
   // ============== HISTORY ==============
   const pushHistory = (canvas: FabricCanvas) => {
-    const json = JSON.stringify(canvas.toJSON(['customId', 'isPlaceholder', 'placeholderType', 'isHelper']));
+    const json = JSON.stringify((canvas.toJSON as any)(['customId', 'isPlaceholder', 'placeholderType', 'isHelper', 'isShape', 'shapeType']));
     // Truncate forward history
     historyRef.current = historyRef.current.slice(0, historyIndexRef.current + 1);
     historyRef.current.push(json);
