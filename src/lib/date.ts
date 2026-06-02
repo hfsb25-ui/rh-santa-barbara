@@ -2,6 +2,29 @@ import { format, parse } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
 /**
+ * Retorna a data de HOJE no fuso LOCAL como string "YYYY-MM-DD".
+ * Evita o bug de `new Date().toISOString().split("T")[0]` que, em fusos
+ * negativos como Brasil (UTC-3), pode retornar o dia seguinte após ~21h.
+ */
+export function todayISO(): string {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+/**
+ * Converte um Date para "YYYY-MM-DD" usando o fuso LOCAL.
+ */
+export function toISODateLocal(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+/**
  * Converte uma string de data (YYYY-MM-DD vindo do Postgres tipo DATE)
  * em um objeto Date no fuso LOCAL — evita o bug do JS
  * `new Date('YYYY-MM-DD')` que interpreta como UTC e pode voltar 1 dia
