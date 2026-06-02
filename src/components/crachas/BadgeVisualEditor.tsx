@@ -77,6 +77,7 @@ const MM_TO_PX = 3.7795; // 1mm ≈ 3.78px at 96dpi (canvas display)
 
 export default function BadgeVisualEditor({ templateId, onSave, onCancel }: BadgeVisualEditorProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const canvasContainerRef = useRef<HTMLDivElement>(null);
   const [fabricCanvas, setFabricCanvas] = useState<FabricCanvas | null>(null);
   const [templateName, setTemplateName] = useState("");
   const [orientation, setOrientation] = useState<"horizontal" | "vertical">("horizontal");
