@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from "react";
-import { Canvas as FabricCanvas, Rect, IText, FabricImage, Line } from "fabric";
+import { Canvas as FabricCanvas, Rect, IText, FabricImage, Line, Circle } from "fabric";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,22 +14,30 @@ import {
   CreditCard, Image, Grid3x3, Crosshair, ZoomIn, ZoomOut, Maximize2,
   AlignCenterHorizontal, AlignCenterVertical, AlignStartHorizontal,
   AlignEndHorizontal, AlignStartVertical, AlignEndVertical, Undo2, Redo2,
-  Copy
+  Copy, Square, Circle as CircleIcon, Minus, ChevronUp, ChevronDown,
+  ChevronsUp, ChevronsDown
 } from "lucide-react";
 import type { Json } from "@/integrations/supabase/types";
 
 interface BadgeElement {
   id: string;
-  type: 'text' | 'image' | 'placeholder';
+  type: 'text' | 'image' | 'placeholder' | 'shape';
   placeholder?: string;
+  shapeType?: 'rect' | 'circle' | 'line';
   left: number;
   top: number;
   width?: number;
   height?: number;
+  radius?: number;
+  rx?: number;
+  x2?: number;
+  y2?: number;
   fontSize?: number;
   fontFamily?: string;
   fontWeight?: string;
   fill?: string;
+  stroke?: string;
+  strokeWidth?: number;
   textAlign?: string;
 }
 
@@ -88,6 +96,12 @@ export default function BadgeVisualEditor({ templateId, onSave, onCancel }: Badg
   const [posY, setPosY] = useState(0);
   const [sizeW, setSizeW] = useState(0);
   const [sizeH, setSizeH] = useState(0);
+
+  // Shape properties
+  const [fillColor, setFillColor] = useState("#6366f1");
+  const [strokeColor, setStrokeColor] = useState("#000000");
+  const [strokeWidth, setStrokeWidth] = useState(0);
+  const [cornerRadius, setCornerRadius] = useState(0);
 
   // Editor settings
   const [showGrid, setShowGrid] = useState(false);
@@ -415,7 +429,7 @@ export default function BadgeVisualEditor({ templateId, onSave, onCancel }: Badg
 
   // ============== HISTORY ==============
   const pushHistory = (canvas: FabricCanvas) => {
-    const json = JSON.stringify(canvas.toJSON(['customId', 'isPlaceholder', 'placeholderType', 'isHelper']));
+    const json = JSON.stringify((canvas.toJSON as any)(['customId', 'isPlaceholder', 'placeholderType', 'isHelper', 'isShape', 'shapeType']));
     // Truncate forward history
     historyRef.current = historyRef.current.slice(0, historyIndexRef.current + 1);
     historyRef.current.push(json);
@@ -509,6 +523,35 @@ export default function BadgeVisualEditor({ templateId, onSave, onCancel }: Badg
             (text as any).customId = element.id;
             (text as any).isPlaceholder = element.type === 'placeholder';
             fabricCanvas.add(text);
+          } else if (element.type === 'shape') {
+            let shape: any;
+            if (element.shapeType === 'circle') {
+              shape = new Circle({
+                left: element.left, top: element.top,
+                radius: element.radius || 30,
+                fill: element.fill || '#6366f1',
+                stroke: element.stroke || '',
+                strokeWidth: element.strokeWidth || 0,
+              });
+            } else if (element.shapeType === 'line') {
+              shape = new Line(
+                [element.left, element.top, element.x2 || element.left + 50, element.y2 || element.top],
+                { stroke: element.stroke || '#000000', strokeWidth: element.strokeWidth || 2 }
+              );
+            } else {
+              shape = new Rect({
+                left: element.left, top: element.top,
+                width: element.width || 80, height: element.height || 50,
+                fill: element.fill || '#6366f1',
+                stroke: element.stroke || '',
+                strokeWidth: element.strokeWidth || 0,
+                rx: element.rx || 0, ry: element.rx || 0,
+              });
+            }
+            shape.customId = element.id;
+            shape.isShape = true;
+            shape.shapeType = element.shapeType;
+            fabricCanvas.add(shape);
           } else if (element.type === 'image') {
             const rect = new Rect({
               left: element.left,
@@ -559,6 +602,13 @@ export default function BadgeVisualEditor({ templateId, onSave, onCancel }: Badg
       setTextAlign(obj.textAlign || 'center');
     }
 
+    if (obj.isShape) {
+      setFillColor(obj.fill || 'transparent');
+      setStrokeColor(obj.stroke || '#000000');
+      setStrokeWidth(obj.strokeWidth || 0);
+      if (obj.shapeType === 'rect') setCornerRadius(obj.rx || 0);
+    }
+
     const w = (obj.width || 0) * (obj.scaleX || 1);
     const h = (obj.height || 0) * (obj.scaleY || 1);
     let left = obj.left || 0;
@@ -578,11 +628,21 @@ export default function BadgeVisualEditor({ templateId, onSave, onCancel }: Badg
     fabricCanvas.renderAll();
   }, [selectedObject, fabricCanvas]);
 
-  useEffect(() => { if (selectedObject) updateSelectedObject('fontSize', fontSize); }, [fontSize]);
-  useEffect(() => { if (selectedObject) updateSelectedObject('fontFamily', fontFamily); }, [fontFamily]);
-  useEffect(() => { if (selectedObject) updateSelectedObject('fontWeight', fontWeight); }, [fontWeight]);
-  useEffect(() => { if (selectedObject) updateSelectedObject('fill', textColor); }, [textColor]);
-  useEffect(() => { if (selectedObject) updateSelectedObject('textAlign', textAlign); }, [textAlign]);
+  useEffect(() => { if (selectedObject && (selectedObject.type === 'i-text' || selectedObject.type === 'text')) updateSelectedObject('fontSize', fontSize); }, [fontSize]);
+  useEffect(() => { if (selectedObject && (selectedObject.type === 'i-text' || selectedObject.type === 'text')) updateSelectedObject('fontFamily', fontFamily); }, [fontFamily]);
+  useEffect(() => { if (selectedObject && (selectedObject.type === 'i-text' || selectedObject.type === 'text')) updateSelectedObject('fontWeight', fontWeight); }, [fontWeight]);
+  useEffect(() => { if (selectedObject && (selectedObject.type === 'i-text' || selectedObject.type === 'text')) updateSelectedObject('fill', textColor); }, [textColor]);
+  useEffect(() => { if (selectedObject && (selectedObject.type === 'i-text' || selectedObject.type === 'text')) updateSelectedObject('textAlign', textAlign); }, [textAlign]);
+
+  useEffect(() => { if (selectedObject?.isShape) updateSelectedObject('fill', fillColor); }, [fillColor]);
+  useEffect(() => { if (selectedObject?.isShape) updateSelectedObject('stroke', strokeColor); }, [strokeColor]);
+  useEffect(() => { if (selectedObject?.isShape) updateSelectedObject('strokeWidth', strokeWidth); }, [strokeWidth]);
+  useEffect(() => {
+    if (selectedObject?.isShape && selectedObject.shapeType === 'rect') {
+      selectedObject.set({ rx: cornerRadius, ry: cornerRadius });
+      fabricCanvas?.renderAll();
+    }
+  }, [cornerRadius]);
 
   // Apply numeric position
   const applyPosition = (axis: 'x' | 'y' | 'w' | 'h', value: number) => {
@@ -745,6 +805,50 @@ export default function BadgeVisualEditor({ templateId, onSave, onCancel }: Badg
     fabricCanvas.renderAll();
   };
 
+  const addShape = (shapeType: 'rect' | 'circle' | 'line') => {
+    if (!fabricCanvas) return;
+    let obj: any;
+    const cx = canvasWidth / 2;
+    const cy = canvasHeight / 2;
+
+    if (shapeType === 'rect') {
+      obj = new Rect({
+        left: cx - 40, top: cy - 25, width: 80, height: 50,
+        fill: '#6366f1', stroke: '', strokeWidth: 0, rx: 0, ry: 0,
+      });
+    } else if (shapeType === 'circle') {
+      obj = new Circle({
+        left: cx - 30, top: cy - 30, radius: 30,
+        fill: '#6366f1', stroke: '', strokeWidth: 0,
+      });
+    } else {
+      obj = new Line([cx - 50, cy, cx + 50, cy], {
+        stroke: '#000000', strokeWidth: 2,
+      });
+    }
+    obj.customId = `shape_${Date.now()}`;
+    obj.isShape = true;
+    obj.shapeType = shapeType;
+    fabricCanvas.add(obj);
+    fabricCanvas.setActiveObject(obj);
+    fabricCanvas.renderAll();
+    toast.success("Forma adicionada!");
+  };
+
+  const changeLayer = (action: 'front' | 'back' | 'forward' | 'backward') => {
+    if (!fabricCanvas || !selectedObject) return;
+    if (action === 'front') fabricCanvas.bringObjectToFront(selectedObject);
+    if (action === 'back') {
+      fabricCanvas.sendObjectToBack(selectedObject);
+      // Keep helper guides truly at back
+      [...centerGuidesRef.current, ...gridLinesRef.current].forEach(l => fabricCanvas.sendObjectToBack(l));
+    }
+    if (action === 'forward') fabricCanvas.bringObjectForward(selectedObject);
+    if (action === 'backward') fabricCanvas.sendObjectBackwards(selectedObject);
+    fabricCanvas.requestRenderAll();
+    pushHistory(fabricCanvas);
+  };
+
   const deleteSelected = () => {
     if (!fabricCanvas || !selectedObject) return;
     fabricCanvas.remove(selectedObject);
@@ -801,6 +905,46 @@ export default function BadgeVisualEditor({ templateId, onSave, onCancel }: Badg
             fill: obj.fill,
             textAlign: obj.textAlign || 'left',
           });
+        } else if (obj.isShape) {
+          if (obj.shapeType === 'circle') {
+            elements.push({
+              id: obj.customId || `element_${Date.now()}`,
+              type: 'shape',
+              shapeType: 'circle',
+              left: obj.left,
+              top: obj.top,
+              radius: (obj.radius || 0) * (obj.scaleX || 1),
+              fill: obj.fill,
+              stroke: obj.stroke,
+              strokeWidth: obj.strokeWidth,
+            });
+          } else if (obj.shapeType === 'line') {
+            elements.push({
+              id: obj.customId || `element_${Date.now()}`,
+              type: 'shape',
+              shapeType: 'line',
+              left: obj.x1,
+              top: obj.y1,
+              x2: obj.x2,
+              y2: obj.y2,
+              stroke: obj.stroke,
+              strokeWidth: obj.strokeWidth,
+            });
+          } else {
+            elements.push({
+              id: obj.customId || `element_${Date.now()}`,
+              type: 'shape',
+              shapeType: 'rect',
+              left: obj.left,
+              top: obj.top,
+              width: obj.width * (obj.scaleX || 1),
+              height: obj.height * (obj.scaleY || 1),
+              rx: obj.rx || 0,
+              fill: obj.fill,
+              stroke: obj.stroke,
+              strokeWidth: obj.strokeWidth,
+            });
+          }
         } else if (obj.type === 'rect') {
           elements.push({
             id: obj.customId || `element_${Date.now()}`,
@@ -889,6 +1033,20 @@ export default function BadgeVisualEditor({ templateId, onSave, onCancel }: Badg
           <Button variant="outline" size="sm" className="w-full justify-start" onClick={addCustomText}>
             <Type className="w-4 h-4 mr-2" />
             Texto Livre
+          </Button>
+          <Separator className="my-2" />
+          <p className="text-xs text-muted-foreground mb-1">Formas:</p>
+          <Button variant="outline" size="sm" className="w-full justify-start" onClick={() => addShape('rect')}>
+            <Square className="w-4 h-4 mr-2" />
+            Retângulo
+          </Button>
+          <Button variant="outline" size="sm" className="w-full justify-start" onClick={() => addShape('circle')}>
+            <CircleIcon className="w-4 h-4 mr-2" />
+            Círculo
+          </Button>
+          <Button variant="outline" size="sm" className="w-full justify-start" onClick={() => addShape('line')}>
+            <Minus className="w-4 h-4 mr-2" />
+            Linha
           </Button>
         </CardContent>
       </Card>
@@ -1105,6 +1263,59 @@ export default function BadgeVisualEditor({ templateId, onSave, onCancel }: Badg
                   </Button>
                 </div>
               </div>
+
+              {/* Layer controls */}
+              <div className="space-y-2">
+                <Label className="text-xs font-semibold">Camadas</Label>
+                <div className="grid grid-cols-4 gap-1">
+                  <Button size="sm" variant="outline" onClick={() => changeLayer('back')} title="Enviar para o fundo" className="h-8 p-0">
+                    <ChevronsDown className="w-4 h-4" />
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={() => changeLayer('backward')} title="Enviar para trás" className="h-8 p-0">
+                    <ChevronDown className="w-4 h-4" />
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={() => changeLayer('forward')} title="Trazer para frente" className="h-8 p-0">
+                    <ChevronUp className="w-4 h-4" />
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={() => changeLayer('front')} title="Trazer para o topo" className="h-8 p-0">
+                    <ChevronsUp className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+
+              {/* Shape properties */}
+              {selectedObject.isShape && (
+                <>
+                  <Separator />
+                  {selectedObject.shapeType !== 'line' && (
+                    <div>
+                      <Label className="text-xs">Cor de preenchimento</Label>
+                      <div className="flex gap-2">
+                        <Input type="color" value={fillColor} onChange={(e) => setFillColor(e.target.value)} className="w-12 h-8 p-1" />
+                        <Input value={fillColor} onChange={(e) => setFillColor(e.target.value)} className="flex-1 h-8" />
+                      </div>
+                    </div>
+                  )}
+                  <div>
+                    <Label className="text-xs">Cor da borda</Label>
+                    <div className="flex gap-2">
+                      <Input type="color" value={strokeColor} onChange={(e) => setStrokeColor(e.target.value)} className="w-12 h-8 p-1" />
+                      <Input value={strokeColor} onChange={(e) => setStrokeColor(e.target.value)} className="flex-1 h-8" />
+                    </div>
+                  </div>
+                  <div>
+                    <Label className="text-xs">Espessura da borda</Label>
+                    <Input type="number" min={0} max={20} value={strokeWidth} onChange={(e) => setStrokeWidth(Number(e.target.value))} className="h-8" />
+                  </div>
+                  {selectedObject.shapeType === 'rect' && (
+                    <div>
+                      <Label className="text-xs">Cantos arredondados</Label>
+                      <Input type="number" min={0} max={100} value={cornerRadius} onChange={(e) => setCornerRadius(Number(e.target.value))} className="h-8" />
+                    </div>
+                  )}
+                </>
+              )}
+
 
               {(selectedObject.type === 'i-text' || selectedObject.type === 'text') && (
                 <>
