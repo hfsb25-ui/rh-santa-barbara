@@ -1,4 +1,5 @@
 import jsPDF from "jspdf";
+import { parseDateOnly } from "@/lib/date";
 
 export const generateEncaminhamentoPDF = async (encaminhamento: any) => {
   const doc = new jsPDF();
@@ -63,7 +64,7 @@ export const generateEncaminhamentoPDF = async (encaminhamento: any) => {
   doc.text(
     `DATA DE NASCIMENTO: ${
       encaminhamento.employees?.data_nascimento
-        ? new Date(encaminhamento.employees.data_nascimento).toLocaleDateString("pt-BR")
+        ? (parseDateOnly(encaminhamento.employees.data_nascimento) ?? new Date()).toLocaleDateString("pt-BR")
         : ""
     }`,
     20,
@@ -126,7 +127,7 @@ export const generateEncaminhamentoPDF = async (encaminhamento: any) => {
   doc.text(
     `DATA DE ADMISSAO: ${
       encaminhamento.employees?.data_admissao
-        ? new Date(encaminhamento.employees.data_admissao).toLocaleDateString("pt-BR")
+        ? (parseDateOnly(encaminhamento.employees.data_admissao) ?? new Date()).toLocaleDateString("pt-BR")
         : ""
     }`,
     20,

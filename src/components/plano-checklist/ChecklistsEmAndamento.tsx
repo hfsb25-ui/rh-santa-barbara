@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { parseDateOnly } from "@/lib/date";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -98,7 +99,7 @@ export function ChecklistsEmAndamento({ tipo }: ChecklistsEmAndamentoProps) {
 
   const contarItensAtrasados = (checklist: any) => {
     if (!checklist.itens) return 0;
-    const dataInicio = new Date(checklist.data_inicio);
+    const dataInicio = (parseDateOnly(checklist.data_inicio) ?? new Date());
     return checklist.itens.filter((item: any) => {
       if (item.concluido || !item.prazo_dias) return false;
       const prazoData = new Date(dataInicio);
@@ -134,7 +135,7 @@ export function ChecklistsEmAndamento({ tipo }: ChecklistsEmAndamentoProps) {
           {checklists.map((checklist) => {
             const progresso = calcularProgresso(checklist.itens);
             const atrasados = contarItensAtrasados(checklist);
-            const diasDesdeInicio = differenceInDays(new Date(), new Date(checklist.data_inicio));
+            const diasDesdeInicio = differenceInDays(new Date(), (parseDateOnly(checklist.data_inicio) ?? new Date()));
 
             return (
               <Card key={checklist.id} className="hover:shadow-md transition-shadow">
@@ -195,7 +196,7 @@ export function ChecklistsEmAndamento({ tipo }: ChecklistsEmAndamentoProps) {
                   </div>
 
                   <div className="text-xs text-muted-foreground">
-                    Início: {format(new Date(checklist.data_inicio), "dd/MM/yyyy", { locale: ptBR })}
+                    Início: {format((parseDateOnly(checklist.data_inicio) ?? new Date()), "dd/MM/yyyy", { locale: ptBR })}
                   </div>
 
                   <div className="flex gap-2">

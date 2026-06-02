@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { parseDateOnly } from "@/lib/date";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -184,7 +185,7 @@ export function ChecklistExecucao({ checklistId, onUpdate }: ChecklistExecucaoPr
     if (item.concluido) return "concluido";
     if (!item.prazo_dias || !checklist?.data_inicio) return "pendente";
     
-    const prazoData = addDays(new Date(checklist.data_inicio), item.prazo_dias);
+    const prazoData = addDays((parseDateOnly(checklist.data_inicio) ?? new Date()), item.prazo_dias);
     if (isPast(prazoData)) return "atrasado";
     return "pendente";
   };
@@ -225,7 +226,7 @@ export function ChecklistExecucao({ checklistId, onUpdate }: ChecklistExecucaoPr
         {itens.map((item) => {
           const status = getItemStatus(item);
           const prazoData = item.prazo_dias && checklist?.data_inicio
-            ? addDays(new Date(checklist.data_inicio), item.prazo_dias)
+            ? addDays((parseDateOnly(checklist.data_inicio) ?? new Date()), item.prazo_dias)
             : null;
 
           return (

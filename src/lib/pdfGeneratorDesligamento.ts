@@ -1,4 +1,5 @@
 import jsPDF from "jspdf";
+import { parseDateOnly } from "@/lib/date";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -84,7 +85,7 @@ export const gerarPedidoDemissao = (dados: DadosDesligamento) => {
   y += linesAviso.length * 6 + 10;
 
   // Data de admissão
-  const dataAdmissao = format(new Date(dados.funcionario.data_admissao), "dd/MM/yyyy");
+  const dataAdmissao = format((parseDateOnly(dados.funcionario.data_admissao) ?? new Date()), "dd/MM/yyyy");
   doc.text(`Data de admissão: ${dataAdmissao}`, margin, y);
   y += 15;
 
@@ -155,7 +156,7 @@ export const gerarCartaDemissao = (dados: DadosDesligamento) => {
   // Corpo do texto
   const motivoTexto = motivoLabels[dados.motivoDesligamento] || dados.motivoDesligamento;
   
-  const texto1 = `Pela presente, comunicamos que V.Sa. está sendo dispensado(a) ${motivoTexto} do cargo de ${dados.funcionario.cargo}${dados.funcionario.setor ? `, no setor de ${dados.funcionario.setor}` : ""}, que ocupa nesta empresa desde ${format(new Date(dados.funcionario.data_admissao), "dd/MM/yyyy")}.`;
+  const texto1 = `Pela presente, comunicamos que V.Sa. está sendo dispensado(a) ${motivoTexto} do cargo de ${dados.funcionario.cargo}${dados.funcionario.setor ? `, no setor de ${dados.funcionario.setor}` : ""}, que ocupa nesta empresa desde ${format((parseDateOnly(dados.funcionario.data_admissao) ?? new Date()), "dd/MM/yyyy")}.`;
   
   const lines1 = doc.splitTextToSize(texto1, pageWidth - margin * 2);
   doc.text(lines1, margin, y);

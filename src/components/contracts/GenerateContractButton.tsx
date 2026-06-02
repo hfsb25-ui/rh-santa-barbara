@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { parseDateOnly } from "@/lib/date";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -83,7 +84,7 @@ export const GenerateContractButton = ({
       conteudo = conteudo.replace(
         /\{\{DATA_ADMISSAO\}\}/g,
         employee.data_admissao
-          ? format(new Date(employee.data_admissao), "dd/MM/yyyy", {
+          ? format((parseDateOnly(employee.data_admissao) ?? new Date()), "dd/MM/yyyy", {
               locale: ptBR,
             })
           : ""

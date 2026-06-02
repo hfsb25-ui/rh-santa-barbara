@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { parseDateOnly } from "@/lib/date";
 import { Card, CardContent } from "@/components/ui/card";
 import { 
   Calendar, 
@@ -122,7 +123,7 @@ export function VacationMetrics({ filters }: VacationMetricsProps) {
     for (const emp of employees) {
       if (!emp.data_admissao) continue;
 
-      const admissionDate = new Date(emp.data_admissao);
+      const admissionDate = (parseDateOnly(emp.data_admissao) ?? new Date());
       const daysEmployed = differenceInDays(now, admissionDate);
 
       // Verificar se tem férias registradas

@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { parseDateOnly } from "@/lib/date";
 import { User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
@@ -357,7 +358,7 @@ const GestorDashboard = ({ user }: GestorDashboardProps) => {
         const admitted = employees?.filter(e => e.data_admissao && e.data_admissao >= monthStart.split("T")[0] && e.data_admissao <= monthEnd.split("T")[0]).length || 0;
         const dismissed = employees?.filter(e => e.data_desligamento && e.data_desligamento >= monthStart.split("T")[0] && e.data_desligamento <= monthEnd.split("T")[0]).length || 0;
         const total = employees?.filter(e => {
-          const admDate = e.data_admissao ? new Date(e.data_admissao) : null;
+          const admDate = e.data_admissao ? (parseDateOnly(e.data_admissao) ?? new Date()) : null;
           const dismDate = e.data_desligamento ? new Date(e.data_desligamento) : null;
           return admDate && admDate <= new Date(monthEnd) && (!dismDate || dismDate >= new Date(monthStart));
         }).length || 0;
@@ -691,7 +692,7 @@ const GestorDashboard = ({ user }: GestorDashboardProps) => {
                           <div className="flex justify-between text-sm">
                             <span className="text-muted-foreground">Retorno</span>
                             <span className="font-medium">
-                              {new Date(employee.vacation.periodo_gozo_fim).toLocaleDateString("pt-BR")}
+                              {(parseDateOnly(employee.vacation.periodo_gozo_fim) ?? new Date()).toLocaleDateString("pt-BR")}
                             </span>
                           </div>
                           <div className="space-y-2">

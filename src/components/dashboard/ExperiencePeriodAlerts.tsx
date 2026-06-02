@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { parseDateOnly } from "@/lib/date";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { AlertTriangle, Clock, User, Calendar, X, Eye } from "lucide-react";
@@ -105,7 +106,7 @@ export const ExperiencePeriodAlerts = ({ selectedEmpresa }: ExperiencePeriodAler
       employeesData?.forEach((emp) => {
         if (!emp.data_admissao) return;
 
-        const admissionDate = new Date(emp.data_admissao);
+        const admissionDate = (parseDateOnly(emp.data_admissao) ?? new Date());
         const daysWorked = differenceInDays(today, admissionDate);
 
         // Only show employees still in experience period (up to max milestone)
@@ -252,7 +253,7 @@ export const ExperiencePeriodAlerts = ({ selectedEmpresa }: ExperiencePeriodAler
               <div className="flex items-center gap-4 text-xs">
                 <div className="flex items-center gap-1 text-muted-foreground">
                   <Calendar className="h-3 w-3" />
-                  <span>Admissão: {format(new Date(emp.data_admissao), "dd/MM/yyyy")}</span>
+                  <span>Admissão: {format((parseDateOnly(emp.data_admissao) ?? new Date()), "dd/MM/yyyy")}</span>
                 </div>
                 {emp.nextMilestone && emp.daysUntilMilestone !== null && (
                   <div className={`flex items-center gap-1 ${getUrgencyColor(emp.daysRemaining, emp.daysUntilMilestone)}`}>
