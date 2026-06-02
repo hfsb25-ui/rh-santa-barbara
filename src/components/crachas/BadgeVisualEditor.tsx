@@ -1461,8 +1461,9 @@ export default function BadgeVisualEditor({ templateId, onSave, onCancel }: Badg
                 </>
               )}
 
-
+              {(selectedObject.type === 'i-text' || selectedObject.type === 'text') && (
                 <>
+
                   <Separator />
                   <div>
                     <Label className="text-xs">Tamanho da Fonte</Label>
