@@ -77,6 +77,7 @@ const MM_TO_PX = 3.7795; // 1mm ≈ 3.78px at 96dpi (canvas display)
 
 export default function BadgeVisualEditor({ templateId, onSave, onCancel }: BadgeVisualEditorProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const canvasContainerRef = useRef<HTMLDivElement>(null);
   const [fabricCanvas, setFabricCanvas] = useState<FabricCanvas | null>(null);
   const [templateName, setTemplateName] = useState("");
   const [orientation, setOrientation] = useState<"horizontal" | "vertical">("horizontal");
@@ -127,9 +128,16 @@ export default function BadgeVisualEditor({ templateId, onSave, onCancel }: Badg
 
   // Initialize canvas
   useEffect(() => {
-    if (!canvasRef.current) return;
+    if (!canvasContainerRef.current) return;
 
-    const canvas = new FabricCanvas(canvasRef.current, {
+    // Create the <canvas> imperatively so Fabric can wrap it without
+    // confusing React's reconciler (which would otherwise try to removeChild
+    // a node Fabric has moved into its own .canvas-container wrapper).
+    const canvasEl = document.createElement('canvas');
+    canvasContainerRef.current.appendChild(canvasEl);
+    (canvasRef as React.MutableRefObject<HTMLCanvasElement | null>).current = canvasEl;
+
+    const canvas = new FabricCanvas(canvasEl, {
       width: canvasWidth,
       height: canvasHeight,
       backgroundColor: "#ffffff",
@@ -137,8 +145,6 @@ export default function BadgeVisualEditor({ templateId, onSave, onCancel }: Badg
       preserveObjectStacking: true,
     });
 
-    // Fabric cria um canvas superior para seleção/controles. Se o canvas React tiver
-    // fundo/borda via CSS, esse canvas superior pode ficar opaco e esconder os objetos.
     canvas.upperCanvasEl.style.backgroundColor = 'transparent';
     canvas.lowerCanvasEl.style.backgroundColor = 'transparent';
 
@@ -158,7 +164,6 @@ export default function BadgeVisualEditor({ templateId, onSave, onCancel }: Badg
       setSelectedObject(null);
     });
 
-    // Smart guides + snap on moving
     canvas.on('object:moving', (e) => {
       handleObjectMoving(canvas, e.target);
     });
@@ -178,8 +183,19 @@ export default function BadgeVisualEditor({ templateId, onSave, onCancel }: Badg
 
     setFabricCanvas(canvas);
 
+    const container = canvasContainerRef.current;
     return () => {
-      canvas.dispose();
+      try {
+        canvas.dispose();
+      } catch (e) {
+        // ignore
+      }
+      // Clear any residual nodes Fabric left in the container
+      if (container) {
+        while (container.firstChild) {
+          container.removeChild(container.firstChild);
+        }
+      }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [canvasWidth, canvasHeight]);
@@ -1244,7 +1260,7 @@ export default function BadgeVisualEditor({ templateId, onSave, onCancel }: Badg
             </div>
           </div>
           <div className="border border-border rounded shadow-sm bg-background overflow-hidden">
-            <canvas ref={canvasRef} />
+            <div ref={canvasContainerRef} />
           </div>
         </div>
 
