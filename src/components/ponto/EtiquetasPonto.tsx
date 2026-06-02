@@ -25,6 +25,7 @@ export function EtiquetasPonto() {
   const [tipoContratoFilter, setTipoContratoFilter] = useState<string>("all");
   const [selectedEmployees, setSelectedEmployees] = useState<Set<string>>(new Set());
   const [selectAll, setSelectAll] = useState(false);
+  const [semMesAno, setSemMesAno] = useState(false);
 
   // Buscar empresas
   const { data: empresas = [] } = useQuery({
@@ -133,8 +134,8 @@ export function EtiquetasPonto() {
         cargo: e.cargo,
         empresa: (e.empresas as any)?.nome || "Não informada",
         setor: e.setor ? setoresMap[e.setor] || e.setor : undefined,
-        mes: getMesNome(parseInt(mes)),
-        ano: ano,
+        mes: semMesAno ? undefined : getMesNome(parseInt(mes)),
+        ano: semMesAno ? undefined : ano,
       }));
 
     try {
@@ -161,32 +162,46 @@ export function EtiquetasPonto() {
       </div>
 
       {/* Seleção de Mês/Ano */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="space-y-2">
-          <Label>Mês</Label>
-          <Select value={mes} onValueChange={setMes}>
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {Array.from({ length: 12 }, (_, i) => (
-                <SelectItem key={i + 1} value={String(i + 1).padStart(2, "0")}>
-                  {getMesNome(i + 1)}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+      <div className="space-y-3">
+        <div className="flex items-center gap-2">
+          <Checkbox
+            id="sem-mes-ano"
+            checked={semMesAno}
+            onCheckedChange={(checked) => setSemMesAno(checked as boolean)}
+          />
+          <Label htmlFor="sem-mes-ano" className="text-sm cursor-pointer">
+            Gerar etiquetas sem mês/ano (somente nome do funcionário)
+          </Label>
         </div>
 
-        <div className="space-y-2">
-          <Label>Ano</Label>
-          <Input
-            type="number"
-            value={ano}
-            onChange={(e) => setAno(e.target.value)}
-            min="2020"
-            max="2099"
-          />
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="space-y-2">
+            <Label>Mês</Label>
+            <Select value={mes} onValueChange={setMes} disabled={semMesAno}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {Array.from({ length: 12 }, (_, i) => (
+                  <SelectItem key={i + 1} value={String(i + 1).padStart(2, "0")}>
+                    {getMesNome(i + 1)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Ano</Label>
+            <Input
+              type="number"
+              value={ano}
+              onChange={(e) => setAno(e.target.value)}
+              min="2020"
+              max="2099"
+              disabled={semMesAno}
+            />
+          </div>
         </div>
       </div>
 
