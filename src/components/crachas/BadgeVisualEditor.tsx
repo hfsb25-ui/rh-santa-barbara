@@ -1260,7 +1260,7 @@ export default function BadgeVisualEditor({ templateId, onSave, onCancel }: Badg
             </div>
           </div>
           <div className="border border-border rounded shadow-sm bg-background overflow-hidden">
-            <canvas ref={canvasRef} />
+            <div ref={canvasContainerRef} />
           </div>
         </div>
 
