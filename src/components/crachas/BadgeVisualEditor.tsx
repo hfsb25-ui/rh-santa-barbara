@@ -999,6 +999,16 @@ export default function BadgeVisualEditor({ templateId, onSave, onCancel }: Badg
               strokeWidth: obj.strokeWidth,
             });
           }
+        } else if (obj.isCustomImage) {
+          elements.push({
+            id: obj.customId || `element_${Date.now()}`,
+            type: 'customImage',
+            imageUrl: obj.imageUrl,
+            left: obj.left,
+            top: obj.top,
+            width: (obj.width || 0) * (obj.scaleX || 1),
+            height: (obj.height || 0) * (obj.scaleY || 1),
+          });
         } else if (obj.type === 'rect') {
           elements.push({
             id: obj.customId || `element_${Date.now()}`,
