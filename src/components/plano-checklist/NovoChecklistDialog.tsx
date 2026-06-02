@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { parseDateOnly } from "@/lib/date";
 import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -390,7 +391,7 @@ export function NovoChecklistDialog({
                     <span className="text-lg font-bold">{diasAviso} dias</span>
                     {selectedEmployeeData?.data_admissao && (
                       <p className="text-xs text-muted-foreground mt-1">
-                        Admissão: {format(new Date(selectedEmployeeData.data_admissao), "dd/MM/yyyy", { locale: ptBR })}
+                        Admissão: {format((parseDateOnly(selectedEmployeeData.data_admissao) ?? new Date()), "dd/MM/yyyy", { locale: ptBR })}
                         <br />
                         {avisoTipo === "trabalhado" && dataFimAviso && (
                           <>Fim do aviso: {format(dataFimAviso, "dd/MM/yyyy", { locale: ptBR })}</>

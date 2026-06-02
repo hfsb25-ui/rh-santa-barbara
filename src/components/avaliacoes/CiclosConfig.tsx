@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { parseDateOnly } from "@/lib/date";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -71,7 +72,7 @@ export const CiclosConfig = () => {
 
   const createCiclo = useMutation({
     mutationFn: async (data: typeof formData) => {
-      const dataInicio = new Date(data.data_inicio);
+      const dataInicio = (parseDateOnly(data.data_inicio) ?? new Date());
       const { error } = await supabase.from("ciclos_avaliacao").insert({
         ...data,
         data_proxima_execucao: data.data_inicio,

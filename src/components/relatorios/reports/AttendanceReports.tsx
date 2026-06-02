@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { parseDateOnly } from "@/lib/date";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -109,13 +110,13 @@ const AttendanceReports = () => {
       if (reportType === "absences") {
         doc.text(`Motivo: ${item.motivo}`, 20, yPos + 12);
         doc.text(
-          `Período: ${format(new Date(item.data_inicio), "dd/MM/yyyy")} - ${format(new Date(item.data_fim), "dd/MM/yyyy")}`,
+          `Período: ${format((parseDateOnly(item.data_inicio) ?? new Date()), "dd/MM/yyyy")} - ${format((parseDateOnly(item.data_fim) ?? new Date()), "dd/MM/yyyy")}`,
           20,
           yPos + 18
         );
       } else if (reportType === "vacations") {
         doc.text(
-          `Gozo: ${format(new Date(item.periodo_gozo_inicio), "dd/MM/yyyy")} - ${format(new Date(item.periodo_gozo_fim), "dd/MM/yyyy")}`,
+          `Gozo: ${format((parseDateOnly(item.periodo_gozo_inicio) ?? new Date()), "dd/MM/yyyy")} - ${format((parseDateOnly(item.periodo_gozo_fim) ?? new Date()), "dd/MM/yyyy")}`,
           20,
           yPos + 12
         );
@@ -146,8 +147,8 @@ const AttendanceReports = () => {
             Funcionário: item.employees?.nome_completo,
             Cargo: item.employees?.cargo,
             Motivo: item.motivo,
-            "Data Início": format(new Date(item.data_inicio), "dd/MM/yyyy"),
-            "Data Fim": format(new Date(item.data_fim), "dd/MM/yyyy"),
+            "Data Início": format((parseDateOnly(item.data_inicio) ?? new Date()), "dd/MM/yyyy"),
+            "Data Fim": format((parseDateOnly(item.data_fim) ?? new Date()), "dd/MM/yyyy"),
             CID: item.cid || "-",
           })) || [];
         break;
@@ -157,8 +158,8 @@ const AttendanceReports = () => {
           vacations?.map((item) => ({
             Funcionário: item.employees?.nome_completo,
             Cargo: item.employees?.cargo,
-            "Início Gozo": format(new Date(item.periodo_gozo_inicio), "dd/MM/yyyy"),
-            "Fim Gozo": format(new Date(item.periodo_gozo_fim), "dd/MM/yyyy"),
+            "Início Gozo": format((parseDateOnly(item.periodo_gozo_inicio) ?? new Date()), "dd/MM/yyyy"),
+            "Fim Gozo": format((parseDateOnly(item.periodo_gozo_fim) ?? new Date()), "dd/MM/yyyy"),
             "Dias Totais": item.dias_totais,
             Confirmada: item.data_retorno_confirmada ? "Sim" : "Não",
           })) || [];
@@ -302,20 +303,20 @@ const AttendanceReports = () => {
                         <>
                           <TableCell>{item.motivo}</TableCell>
                           <TableCell>
-                            {format(new Date(item.data_inicio), "dd/MM/yyyy")}
+                            {format((parseDateOnly(item.data_inicio) ?? new Date()), "dd/MM/yyyy")}
                           </TableCell>
                           <TableCell>
-                            {format(new Date(item.data_fim), "dd/MM/yyyy")}
+                            {format((parseDateOnly(item.data_fim) ?? new Date()), "dd/MM/yyyy")}
                           </TableCell>
                         </>
                       )}
                       {reportType === "vacations" && (
                         <>
                           <TableCell>
-                            {format(new Date(item.periodo_gozo_inicio), "dd/MM/yyyy")}
+                            {format((parseDateOnly(item.periodo_gozo_inicio) ?? new Date()), "dd/MM/yyyy")}
                           </TableCell>
                           <TableCell>
-                            {format(new Date(item.periodo_gozo_fim), "dd/MM/yyyy")}
+                            {format((parseDateOnly(item.periodo_gozo_fim) ?? new Date()), "dd/MM/yyyy")}
                           </TableCell>
                           <TableCell>{item.dias_totais}</TableCell>
                         </>

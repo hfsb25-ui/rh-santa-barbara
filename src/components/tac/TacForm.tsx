@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { todayISO } from "@/lib/date";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -45,7 +46,7 @@ const TacForm = ({ onSuccess }: TacFormProps) => {
       employee_id: "",
       titulo: "",
       tipo: "advertencia_verbal",
-      data_ocorrencia: new Date().toISOString().split("T")[0],
+      data_ocorrencia: todayISO(),
       descricao: "",
       observacoes: "",
     },

@@ -43,7 +43,7 @@ async function sha256(text: string): Promise<string> {
     .join("");
 }
 
-const todayISO = () => new Date().toISOString().slice(0, 10);
+const todayISO = () => todayISO();
 const daysAgoISO = (n: number) => {
   const d = new Date();
   d.setDate(d.getDate() - n);

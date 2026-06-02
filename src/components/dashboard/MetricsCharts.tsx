@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { parseDateOnly } from "@/lib/date";
 import { supabase } from "@/integrations/supabase/client";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -104,7 +105,7 @@ const MetricsCharts = ({ selectedEmpresa, setSelectedEmpresa, empresas, period, 
     const onLeave = employees?.filter(e => e.status === "afastado").length || 0;
     
     const previousMonthEmployees = employees?.filter(e => {
-      const admDate = e.data_admissao ? new Date(e.data_admissao) : null;
+      const admDate = e.data_admissao ? (parseDateOnly(e.data_admissao) ?? new Date()) : null;
       const prevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
       return admDate && admDate < prevMonth;
     }).length || 1;
@@ -139,7 +140,7 @@ const MetricsCharts = ({ selectedEmpresa, setSelectedEmpresa, empresas, period, 
 
     employees?.forEach(emp => {
       if (!emp.data_nascimento) return;
-      const age = Math.floor((now.getTime() - new Date(emp.data_nascimento).getTime()) / (365.25 * 24 * 60 * 60 * 1000));
+      const age = Math.floor((now.getTime() - (parseDateOnly(emp.data_nascimento) ?? new Date()).getTime()) / (365.25 * 24 * 60 * 60 * 1000));
       let faixaIndex = 4;
       if (age < 26) faixaIndex = 0;
       else if (age < 36) faixaIndex = 1;
@@ -166,7 +167,7 @@ const MetricsCharts = ({ selectedEmpresa, setSelectedEmpresa, empresas, period, 
       const admitted = employees?.filter(e => e.data_admissao && e.data_admissao >= monthStart.split("T")[0] && e.data_admissao <= monthEnd.split("T")[0]).length || 0;
       const dismissed = employees?.filter(e => e.data_desligamento && e.data_desligamento >= monthStart.split("T")[0] && e.data_desligamento <= monthEnd.split("T")[0]).length || 0;
       const total = employees?.filter(e => {
-        const admDate = e.data_admissao ? new Date(e.data_admissao) : null;
+        const admDate = e.data_admissao ? (parseDateOnly(e.data_admissao) ?? new Date()) : null;
         const dismDate = e.data_desligamento ? new Date(e.data_desligamento) : null;
         return admDate && admDate <= new Date(monthEnd) && (!dismDate || dismDate >= new Date(monthStart));
       }).length || 0;

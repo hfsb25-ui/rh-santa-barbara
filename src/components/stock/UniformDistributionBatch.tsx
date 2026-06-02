@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { todayISO } from "@/lib/date";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -34,7 +35,7 @@ const UniformDistributionBatch = () => {
   const [stockItems, setStockItems] = useState<StockItem[]>([]);
   const [selectedEmployees, setSelectedEmployees] = useState<string[]>([]);
   const [selectedItem, setSelectedItem] = useState<string | null>(null);
-  const [dataEntrega, setDataEntrega] = useState(new Date().toISOString().split("T")[0]);
+  const [dataEntrega, setDataEntrega] = useState(todayISO());
   const [observacoes, setObservacoes] = useState("");
   const [loading, setLoading] = useState(false);
   const [searchEmployee, setSearchEmployee] = useState("");

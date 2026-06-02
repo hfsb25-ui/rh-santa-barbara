@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { parseDateOnly, todayISO, toISODateLocal} from "@/lib/date";
 import { User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
@@ -138,7 +139,7 @@ const GestorDashboard = ({ user }: GestorDashboardProps) => {
         const nonDismissedEmployees = employees.filter((e: any) => e.status !== "demitido");
         const employeeIds = nonDismissedEmployees.map((e: any) => e.id);
         
-        const todayStr = new Date().toISOString().split("T")[0];
+        const todayStr = todayISO();
 
         // Contar férias em gozo ativas HOJE (dinâmico)
         const { data: vacationData } = await supabase
@@ -176,7 +177,7 @@ const GestorDashboard = ({ user }: GestorDashboardProps) => {
 
   const fetchEmployeesOnVacation = async () => {
     try {
-      const todayStr = new Date().toISOString().split("T")[0];
+      const todayStr = todayISO();
 
       // Buscar férias ativas (gozo) que estão em andamento HOJE
       const { data: activeVacations, error: vacationsError } = await supabase
@@ -316,11 +317,11 @@ const GestorDashboard = ({ user }: GestorDashboardProps) => {
         .eq("tipo_movimentacao", "saida");
 
       // Fetch absences
-      let absencesQuery = supabase.from("faltas").select("*, employees(nome_completo)").gte("data", startDate.toISOString().split("T")[0]);
+      let absencesQuery = supabase.from("faltas").select("*, employees(nome_completo)").gte("data", toISODateLocal(startDate));
       const { data: absences } = await absencesQuery;
 
       // Process data for charts - usar contagem real de férias ativas hoje
-      const todayForChart = new Date().toISOString().split("T")[0];
+      const todayForChart = todayISO();
       const employeeIds = employees?.map((e: any) => e.id) || [];
       let onVacationChartCount = 0;
       if (employeeIds.length > 0) {
@@ -357,7 +358,7 @@ const GestorDashboard = ({ user }: GestorDashboardProps) => {
         const admitted = employees?.filter(e => e.data_admissao && e.data_admissao >= monthStart.split("T")[0] && e.data_admissao <= monthEnd.split("T")[0]).length || 0;
         const dismissed = employees?.filter(e => e.data_desligamento && e.data_desligamento >= monthStart.split("T")[0] && e.data_desligamento <= monthEnd.split("T")[0]).length || 0;
         const total = employees?.filter(e => {
-          const admDate = e.data_admissao ? new Date(e.data_admissao) : null;
+          const admDate = e.data_admissao ? (parseDateOnly(e.data_admissao) ?? new Date()) : null;
           const dismDate = e.data_desligamento ? new Date(e.data_desligamento) : null;
           return admDate && admDate <= new Date(monthEnd) && (!dismDate || dismDate >= new Date(monthStart));
         }).length || 0;
@@ -489,8 +490,8 @@ const GestorDashboard = ({ user }: GestorDashboardProps) => {
       for (let i = 5; i >= 0; i--) {
         const monthDate = new Date(now.getFullYear(), now.getMonth() - i, 1);
         const monthName = monthDate.toLocaleDateString("pt-BR", { month: "short" });
-        const monthStart = new Date(monthDate.getFullYear(), monthDate.getMonth(), 1).toISOString().split("T")[0];
-        const monthEnd = new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 0).toISOString().split("T")[0];
+        const monthStart = toISODateLocal(new Date(monthDate.getFullYear(), monthDate.getMonth(), 1));
+        const monthEnd = toISODateLocal(new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 0));
         
         const monthAbsences = absences?.filter(a => a.data >= monthStart && a.data <= monthEnd) || [];
         const justified = monthAbsences.filter(a => a.justificada).length;
@@ -691,7 +692,7 @@ const GestorDashboard = ({ user }: GestorDashboardProps) => {
                           <div className="flex justify-between text-sm">
                             <span className="text-muted-foreground">Retorno</span>
                             <span className="font-medium">
-                              {new Date(employee.vacation.periodo_gozo_fim).toLocaleDateString("pt-BR")}
+                              {(parseDateOnly(employee.vacation.periodo_gozo_fim) ?? new Date()).toLocaleDateString("pt-BR")}
                             </span>
                           </div>
                           <div className="space-y-2">

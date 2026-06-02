@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { parseDateOnly } from "@/lib/date";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -62,7 +63,7 @@ export function ChecklistTab({ employeeId, isManager = false }: ChecklistTabProp
 
   const contarItensAtrasados = (checklist: any) => {
     if (!checklist.itens) return 0;
-    const dataInicio = new Date(checklist.data_inicio);
+    const dataInicio = (parseDateOnly(checklist.data_inicio) ?? new Date());
     return checklist.itens.filter((item: any) => {
       if (item.concluido || !item.prazo_dias) return false;
       const prazoData = new Date(dataInicio);
@@ -164,7 +165,7 @@ export function ChecklistTab({ employeeId, isManager = false }: ChecklistTabProp
                     <div className="flex items-center gap-1 text-muted-foreground">
                       <Clock className="h-4 w-4" />
                       <span>
-                        Início: {format(new Date(checklist.data_inicio), "dd/MM/yyyy", { locale: ptBR })}
+                        Início: {format((parseDateOnly(checklist.data_inicio) ?? new Date()), "dd/MM/yyyy", { locale: ptBR })}
                       </span>
                     </div>
                     <div className="flex items-center gap-1">

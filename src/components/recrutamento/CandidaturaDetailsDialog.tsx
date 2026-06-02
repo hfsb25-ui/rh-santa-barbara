@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { parseDateOnly } from "@/lib/date";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import {
@@ -125,7 +126,7 @@ export default function CandidaturaDetailsDialog({
             <div>
               <Label>Data de Nascimento</Label>
               <p className="text-sm text-muted-foreground">
-                {new Date(candidatura.data_nascimento).toLocaleDateString('pt-BR')}
+                {(parseDateOnly(candidatura.data_nascimento) ?? new Date()).toLocaleDateString('pt-BR')}
               </p>
             </div>
           </div>

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { todayISO } from "@/lib/date";
 import { supabase } from "@/integrations/supabase/client";
 import { KpiCard } from "@/components/nr1/KpiCard";
 import { AlertaCard } from "@/components/nr1/AlertaCard";
@@ -39,7 +40,7 @@ export default function NR1Dashboard() {
       const [denRes, climaRes, afastRes] = await Promise.all([
         (supabase.from("nr1_denuncias") as any).select("setor, status, created_at"),
         (supabase.from("nr1_clima_respostas") as any).select("respostas, created_at, setor"),
-        supabase.from("afastamentos").select("id, data_fim").gte("data_fim", new Date().toISOString().slice(0, 10)),
+        supabase.from("afastamentos").select("id, data_fim").gte("data_fim", todayISO()),
       ]);
 
       const denuncias = denRes.data || [];

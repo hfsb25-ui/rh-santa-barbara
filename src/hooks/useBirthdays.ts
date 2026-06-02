@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { parseDateOnly } from "@/lib/date";
 import { supabase } from "@/integrations/supabase/client";
 
 interface Employee {
@@ -68,7 +69,7 @@ export const useBirthdays = (empresaId?: string, setorId?: string) => {
   };
 
   const enrichEmployee = (employee: Employee): Birthday => {
-    const birthDate = new Date(employee.data_nascimento!);
+    const birthDate = (parseDateOnly(employee.data_nascimento!) ?? new Date());
     return {
       ...employee,
       age: calculateAge(employee.data_nascimento!),
@@ -85,7 +86,7 @@ export const useBirthdays = (empresaId?: string, setorId?: string) => {
     return employees
       .filter((emp) => {
         if (!emp.data_nascimento) return false;
-        const birthDate = new Date(emp.data_nascimento);
+        const birthDate = (parseDateOnly(emp.data_nascimento) ?? new Date());
         return birthDate.getDate() === todayDay && birthDate.getMonth() === todayMonth;
       })
       .map(enrichEmployee)
@@ -99,7 +100,7 @@ export const useBirthdays = (empresaId?: string, setorId?: string) => {
     return employees
       .filter((emp) => {
         if (!emp.data_nascimento) return false;
-        const birthDate = new Date(emp.data_nascimento);
+        const birthDate = (parseDateOnly(emp.data_nascimento) ?? new Date());
         return birthDate.getMonth() === currentMonth;
       })
       .map(enrichEmployee)
@@ -114,7 +115,7 @@ export const useBirthdays = (empresaId?: string, setorId?: string) => {
     return employees
       .filter((emp) => {
         if (!emp.data_nascimento) return false;
-        const birthDate = new Date(emp.data_nascimento);
+        const birthDate = (parseDateOnly(emp.data_nascimento) ?? new Date());
         
         // Create birthday for this year
         const birthdayThisYear = new Date(today.getFullYear(), birthDate.getMonth(), birthDate.getDate());

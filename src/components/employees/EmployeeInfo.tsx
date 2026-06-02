@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { todayISO } from "@/lib/date";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -21,7 +22,7 @@ const EmployeeInfo = ({ employee }: EmployeeInfoProps) => {
   useEffect(() => {
     const checkVacation = async () => {
       if (!employee?.id) return;
-      const todayStr = new Date().toISOString().split("T")[0];
+      const todayStr = todayISO();
       const { count } = await supabase
         .from("ferias")
         .select("*", { count: "exact", head: true })
