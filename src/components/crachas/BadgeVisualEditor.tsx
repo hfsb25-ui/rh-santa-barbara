@@ -521,10 +521,29 @@ export default function BadgeVisualEditor({ templateId, onSave, onCancel }: Badg
       if (error) throw error;
 
       setTemplateName(data.nome);
-      setOrientation(data.orientacao as "horizontal" | "vertical");
       setBackgroundUrl(data.background_url);
 
-      if (data.configuracao_json && fabricCanvas) {
+      const incomingOrientation = data.orientacao as "horizontal" | "vertical";
+      // If orientation differs, update it and bail — the canvas will be
+      // recreated and the effect will re-call loadTemplate on the new canvas.
+      if (incomingOrientation !== orientation) {
+        setOrientation(incomingOrientation);
+        setLoading(false);
+        return;
+      }
+
+      if (!fabricCanvas) {
+        setLoading(false);
+        return;
+      }
+
+      // Clear any existing non-helper objects to avoid duplicates on reload
+      fabricCanvas.getObjects().forEach((o: any) => {
+        if (!o.isHelper) fabricCanvas.remove(o);
+      });
+      fabricCanvas.backgroundImage = undefined;
+
+      if (data.configuracao_json) {
         const config = data.configuracao_json as unknown as BadgeTemplateConfig;
 
         if (config.backgroundColor) {
@@ -533,14 +552,20 @@ export default function BadgeVisualEditor({ templateId, onSave, onCancel }: Badg
 
         for (const element of config.elements || []) {
           if (element.type === 'text' || element.type === 'placeholder') {
+            const w = element.width || 0;
+            const h = element.height || 0;
+            // Saved coordinates are top-left; restore using center origin
+            // (matches how new text is created in addPlaceholder/addCustomText).
             const text = new IText(element.placeholder || 'Texto', {
-              left: element.left,
-              top: element.top,
+              left: element.left + w / 2,
+              top: element.top + h / 2,
+              originX: 'center',
+              originY: 'center',
               fontSize: element.fontSize || 16,
               fontFamily: element.fontFamily || 'Arial',
               fontWeight: element.fontWeight || 'normal',
               fill: element.fill || '#000000',
-              textAlign: element.textAlign || 'center',
+              textAlign: element.textAlign || 'left',
             });
             (text as any).customId = element.id;
             (text as any).isPlaceholder = element.type === 'placeholder';
@@ -576,8 +601,10 @@ export default function BadgeVisualEditor({ templateId, onSave, onCancel }: Badg
             fabricCanvas.add(shape);
           } else if (element.type === 'customImage' && element.imageUrl) {
             const img = await FabricImage.fromURL(element.imageUrl, { crossOrigin: 'anonymous' });
-            const sx = (element.width || img.width || 1) / (img.width || 1);
-            const sy = (element.height || img.height || 1) / (img.height || 1);
+            const natW = (img as any).width || 1;
+            const natH = (img as any).height || 1;
+            const sx = (element.width || natW) / natW;
+            const sy = (element.height || natH) / natH;
             img.set({
               left: element.left, top: element.top, scaleX: sx, scaleY: sy,
               stroke: element.stroke || '',
@@ -589,16 +616,18 @@ export default function BadgeVisualEditor({ templateId, onSave, onCancel }: Badg
             (img as any).imageUrl = element.imageUrl;
             fabricCanvas.add(img);
           } else if (element.type === 'image') {
+            const w = element.width || 80;
+            const h = element.height || 80;
             const rect = new Rect({
               left: element.left,
               top: element.top,
-              width: element.width || 80,
-              height: element.height || 80,
+              width: w,
+              height: h,
               fill: '#e5e7eb',
               stroke: element.stroke || '#9ca3af',
               strokeWidth: element.strokeWidth ?? 2,
-              rx: element.placeholder === 'foto' ? (element.width || 80) / 2 : 5,
-              ry: element.placeholder === 'foto' ? (element.height || 80) / 2 : 5,
+              rx: element.placeholder === 'foto' ? w / 2 : 5,
+              ry: element.placeholder === 'foto' ? h / 2 : 5,
             });
             (rect as any).customId = element.id;
             (rect as any).isPlaceholder = true;
@@ -608,14 +637,22 @@ export default function BadgeVisualEditor({ templateId, onSave, onCancel }: Badg
         }
 
         if (data.background_url) {
-          FabricImage.fromURL(data.background_url).then((img) => {
-            img.scaleToWidth(canvasWidth);
-            img.scaleToHeight(canvasHeight);
+          FabricImage.fromURL(data.background_url, { crossOrigin: 'anonymous' }).then((img) => {
+            const natW = (img as any).width || 1;
+            const natH = (img as any).height || 1;
+            // Stretch independently to fill the badge canvas
+            img.set({
+              scaleX: canvasWidth / natW,
+              scaleY: canvasHeight / natH,
+              originX: 'left',
+              originY: 'top',
+            });
             fabricCanvas.backgroundImage = img;
             fabricCanvas.renderAll();
           });
         }
 
+        sendHelpersToBack();
         fabricCanvas.renderAll();
         pushHistory(fabricCanvas);
       }
