@@ -640,6 +640,11 @@ export default function BadgeVisualEditor({ templateId, onSave, onCancel }: Badg
       if (obj.shapeType === 'rect') setCornerRadius(obj.rx || 0);
     }
 
+    if (obj.isCustomImage || (obj.isPlaceholder && (obj.placeholderType === 'foto' || obj.placeholderType === 'logo'))) {
+      setStrokeColor(obj.stroke || '#000000');
+      setStrokeWidth(obj.strokeWidth || 0);
+    }
+
     const w = (obj.width || 0) * (obj.scaleX || 1);
     const h = (obj.height || 0) * (obj.scaleY || 1);
     let left = obj.left || 0;
