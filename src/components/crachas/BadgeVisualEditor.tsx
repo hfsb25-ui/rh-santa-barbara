@@ -785,6 +785,7 @@ export default function BadgeVisualEditor({ templateId, onSave, onCancel }: Badg
     }
 
     fabricCanvas.renderAll();
+    sendHelpersToBack();
     toast.success(`${placeholder.label} adicionado!`);
   };
 
@@ -802,7 +803,9 @@ export default function BadgeVisualEditor({ templateId, onSave, onCancel }: Badg
     (text as any).customId = `custom_${Date.now()}`;
     (text as any).isPlaceholder = false;
     fabricCanvas.add(text);
+    fabricCanvas.setActiveObject(text);
     fabricCanvas.renderAll();
+    sendHelpersToBack();
   };
 
   const addShape = (shapeType: 'rect' | 'circle' | 'line') => {
