@@ -134,8 +134,8 @@ export function EtiquetasPonto() {
         cargo: e.cargo,
         empresa: (e.empresas as any)?.nome || "Não informada",
         setor: e.setor ? setoresMap[e.setor] || e.setor : undefined,
-        mes: getMesNome(parseInt(mes)),
-        ano: ano,
+        mes: semMesAno ? undefined : getMesNome(parseInt(mes)),
+        ano: semMesAno ? undefined : ano,
       }));
 
     try {
