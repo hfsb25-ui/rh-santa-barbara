@@ -21,8 +21,8 @@ interface EtiquetaData {
   cargo: string;
   empresa: string;
   setor?: string;
-  mes: string;
-  ano: string;
+  mes?: string;
+  ano?: string;
 }
 
 export function generateEtiquetasPontoPDF(etiquetas: EtiquetaData[]): void {
