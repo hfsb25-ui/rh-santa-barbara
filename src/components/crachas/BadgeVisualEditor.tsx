@@ -578,7 +578,12 @@ export default function BadgeVisualEditor({ templateId, onSave, onCancel }: Badg
             const img = await FabricImage.fromURL(element.imageUrl, { crossOrigin: 'anonymous' });
             const sx = (element.width || img.width || 1) / (img.width || 1);
             const sy = (element.height || img.height || 1) / (img.height || 1);
-            img.set({ left: element.left, top: element.top, scaleX: sx, scaleY: sy });
+            img.set({
+              left: element.left, top: element.top, scaleX: sx, scaleY: sy,
+              stroke: element.stroke || '',
+              strokeWidth: element.strokeWidth || 0,
+              strokeUniform: true,
+            });
             (img as any).customId = element.id;
             (img as any).isCustomImage = true;
             (img as any).imageUrl = element.imageUrl;
@@ -590,8 +595,8 @@ export default function BadgeVisualEditor({ templateId, onSave, onCancel }: Badg
               width: element.width || 80,
               height: element.height || 80,
               fill: '#e5e7eb',
-              stroke: '#9ca3af',
-              strokeWidth: 2,
+              stroke: element.stroke || '#9ca3af',
+              strokeWidth: element.strokeWidth ?? 2,
               rx: element.placeholder === 'foto' ? (element.width || 80) / 2 : 5,
               ry: element.placeholder === 'foto' ? (element.height || 80) / 2 : 5,
             });
@@ -640,6 +645,11 @@ export default function BadgeVisualEditor({ templateId, onSave, onCancel }: Badg
       if (obj.shapeType === 'rect') setCornerRadius(obj.rx || 0);
     }
 
+    if (obj.isCustomImage || (obj.isPlaceholder && (obj.placeholderType === 'foto' || obj.placeholderType === 'logo'))) {
+      setStrokeColor(obj.stroke || '#000000');
+      setStrokeWidth(obj.strokeWidth || 0);
+    }
+
     const w = (obj.width || 0) * (obj.scaleX || 1);
     const h = (obj.height || 0) * (obj.scaleY || 1);
     let left = obj.left || 0;
@@ -666,8 +676,16 @@ export default function BadgeVisualEditor({ templateId, onSave, onCancel }: Badg
   useEffect(() => { if (selectedObject && (selectedObject.type === 'i-text' || selectedObject.type === 'text')) updateSelectedObject('textAlign', textAlign); }, [textAlign]);
 
   useEffect(() => { if (selectedObject?.isShape) updateSelectedObject('fill', fillColor); }, [fillColor]);
-  useEffect(() => { if (selectedObject?.isShape) updateSelectedObject('stroke', strokeColor); }, [strokeColor]);
-  useEffect(() => { if (selectedObject?.isShape) updateSelectedObject('strokeWidth', strokeWidth); }, [strokeWidth]);
+  useEffect(() => {
+    if (selectedObject?.isShape || selectedObject?.isCustomImage || (selectedObject?.isPlaceholder && (selectedObject?.placeholderType === 'foto' || selectedObject?.placeholderType === 'logo'))) {
+      updateSelectedObject('stroke', strokeColor);
+    }
+  }, [strokeColor]);
+  useEffect(() => {
+    if (selectedObject?.isShape || selectedObject?.isCustomImage || (selectedObject?.isPlaceholder && (selectedObject?.placeholderType === 'foto' || selectedObject?.placeholderType === 'logo'))) {
+      updateSelectedObject('strokeWidth', strokeWidth);
+    }
+  }, [strokeWidth]);
   useEffect(() => {
     if (selectedObject?.isShape && selectedObject.shapeType === 'rect') {
       selectedObject.set({ rx: cornerRadius, ry: cornerRadius });
@@ -1047,6 +1065,8 @@ export default function BadgeVisualEditor({ templateId, onSave, onCancel }: Badg
             top: obj.top,
             width: (obj.width || 0) * (obj.scaleX || 1),
             height: (obj.height || 0) * (obj.scaleY || 1),
+            stroke: obj.stroke,
+            strokeWidth: obj.strokeWidth,
           });
         } else if (obj.type === 'rect') {
           elements.push({
@@ -1057,6 +1077,8 @@ export default function BadgeVisualEditor({ templateId, onSave, onCancel }: Badg
             top: obj.top,
             width: obj.width * obj.scaleX,
             height: obj.height * obj.scaleY,
+            stroke: obj.stroke,
+            strokeWidth: obj.strokeWidth,
           });
         }
       });
@@ -1429,9 +1451,28 @@ export default function BadgeVisualEditor({ templateId, onSave, onCancel }: Badg
                 </>
               )}
 
+              {/* Image border properties (custom image + foto/logo placeholders) */}
+              {(selectedObject.isCustomImage || (selectedObject.isPlaceholder && (selectedObject.placeholderType === 'foto' || selectedObject.placeholderType === 'logo'))) && (
+                <>
+                  <Separator />
+                  <Label className="text-xs font-semibold">Borda da imagem</Label>
+                  <div>
+                    <Label className="text-xs">Cor da borda</Label>
+                    <div className="flex gap-2">
+                      <Input type="color" value={strokeColor} onChange={(e) => setStrokeColor(e.target.value)} className="w-12 h-8 p-1" />
+                      <Input value={strokeColor} onChange={(e) => setStrokeColor(e.target.value)} className="flex-1 h-8" />
+                    </div>
+                  </div>
+                  <div>
+                    <Label className="text-xs">Espessura da borda</Label>
+                    <Input type="number" min={0} max={20} value={strokeWidth} onChange={(e) => setStrokeWidth(Number(e.target.value))} className="h-8" />
+                  </div>
+                </>
+              )}
 
               {(selectedObject.type === 'i-text' || selectedObject.type === 'text') && (
                 <>
+
                   <Separator />
                   <div>
                     <Label className="text-xs">Tamanho da Fonte</Label>

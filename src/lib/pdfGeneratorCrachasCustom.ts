@@ -325,26 +325,36 @@ export async function generateCustomBadgesPDF(
       } else if (element.type === 'image') {
         const elemWidth = (element.width || 80) * scaleX;
         const elemHeight = (element.height || 80) * scaleY;
+        const sw = (element.strokeWidth || 0) * scaleX;
+        const hasStroke = !!element.stroke && element.stroke !== '' && sw > 0;
 
         if (element.placeholder === 'foto') {
           const photo = employeeImages.get(employee.id);
+          const cx = elemX + elemWidth / 2;
+          const cy = elemY + elemHeight / 2;
+          const r = Math.min(elemWidth, elemHeight) / 2;
           if (photo) {
             try {
               const data = renderImageCover(photo.img, elemWidth, elemHeight, true);
               doc.addImage(data, 'PNG', elemX, elemY, elemWidth, elemHeight);
             } catch {
               doc.setFillColor(229, 231, 235);
-              doc.circle(elemX + elemWidth / 2, elemY + elemHeight / 2, Math.min(elemWidth, elemHeight) / 2, 'F');
+              doc.circle(cx, cy, r, 'F');
             }
           } else {
             doc.setFillColor(229, 231, 235);
-            doc.circle(elemX + elemWidth / 2, elemY + elemHeight / 2, Math.min(elemWidth, elemHeight) / 2, 'F');
+            doc.circle(cx, cy, r, 'F');
+          }
+          if (hasStroke) {
+            const c = hexToRgb(element.stroke!);
+            doc.setDrawColor(c.r, c.g, c.b);
+            doc.setLineWidth(sw);
+            doc.circle(cx, cy, r, 'S');
           }
         } else if (element.placeholder === 'logo') {
           const logoUrl = employee.empresa?.logo_url;
           const logo = logoUrl ? companyLogos.get(logoUrl) : null;
           if (logo) {
-            // Contain-fit: preserve aspect, no crop, no stretching
             const ir = logo.img.naturalWidth / logo.img.naturalHeight;
             const br = elemWidth / elemHeight;
             let dw = elemWidth, dh = elemHeight, dx = elemX, dy = elemY;
@@ -364,6 +374,12 @@ export async function generateCustomBadgesPDF(
             doc.setFillColor(229, 231, 235);
             doc.rect(elemX, elemY, elemWidth, elemHeight, 'F');
           }
+          if (hasStroke) {
+            const c = hexToRgb(element.stroke!);
+            doc.setDrawColor(c.r, c.g, c.b);
+            doc.setLineWidth(sw);
+            doc.rect(elemX, elemY, elemWidth, elemHeight, 'S');
+          }
         }
       } else if (element.type === 'customImage' && element.imageUrl) {
         const elemWidth = (element.width || 80) * scaleX;
@@ -375,6 +391,13 @@ export async function generateCustomBadgesPDF(
           } catch {
             try { doc.addImage(data.base64, 'JPEG', elemX, elemY, elemWidth, elemHeight); } catch {}
           }
+        }
+        const sw = (element.strokeWidth || 0) * scaleX;
+        if (element.stroke && element.stroke !== '' && sw > 0) {
+          const c = hexToRgb(element.stroke);
+          doc.setDrawColor(c.r, c.g, c.b);
+          doc.setLineWidth(sw);
+          doc.rect(elemX, elemY, elemWidth, elemHeight, 'S');
         }
       }
     }
