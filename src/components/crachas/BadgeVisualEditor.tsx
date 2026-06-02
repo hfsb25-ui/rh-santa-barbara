@@ -578,7 +578,12 @@ export default function BadgeVisualEditor({ templateId, onSave, onCancel }: Badg
             const img = await FabricImage.fromURL(element.imageUrl, { crossOrigin: 'anonymous' });
             const sx = (element.width || img.width || 1) / (img.width || 1);
             const sy = (element.height || img.height || 1) / (img.height || 1);
-            img.set({ left: element.left, top: element.top, scaleX: sx, scaleY: sy });
+            img.set({
+              left: element.left, top: element.top, scaleX: sx, scaleY: sy,
+              stroke: element.stroke || '',
+              strokeWidth: element.strokeWidth || 0,
+              strokeUniform: true,
+            });
             (img as any).customId = element.id;
             (img as any).isCustomImage = true;
             (img as any).imageUrl = element.imageUrl;
@@ -590,8 +595,8 @@ export default function BadgeVisualEditor({ templateId, onSave, onCancel }: Badg
               width: element.width || 80,
               height: element.height || 80,
               fill: '#e5e7eb',
-              stroke: '#9ca3af',
-              strokeWidth: 2,
+              stroke: element.stroke || '#9ca3af',
+              strokeWidth: element.strokeWidth ?? 2,
               rx: element.placeholder === 'foto' ? (element.width || 80) / 2 : 5,
               ry: element.placeholder === 'foto' ? (element.height || 80) / 2 : 5,
             });
