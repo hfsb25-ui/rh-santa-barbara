@@ -10,6 +10,22 @@ interface Props {
   assinaturaId: string | null;
 }
 
+async function baixarArquivo(path: string, filename: string) {
+  const { data, error } = await supabase.storage.from("holerites-assinados").download(path);
+  if (error || !data) {
+    alert("Não foi possível baixar o arquivo: " + (error?.message || "erro desconhecido"));
+    return;
+  }
+  const url = URL.createObjectURL(data);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
 export function AuditoriaHoleriteDialog({ open, onOpenChange, assinaturaId }: Props) {
   const { data, isLoading } = useQuery({
     queryKey: ["auditoria-holerite", assinaturaId],
@@ -157,18 +173,19 @@ export function AuditoriaHoleriteDialog({ open, onOpenChange, assinaturaId }: Pr
             </div>
 
             <div className="flex gap-2 flex-wrap">
-              {data.urls.original && (
-                <Button variant="outline" asChild>
-                  <a href={data.urls.original} target="_blank" rel="noreferrer">
-                    <Download className="w-4 h-4 mr-2" /> Holerite Original
-                  </a>
+              {data.a.pdf_original_path && (
+                <Button
+                  variant="outline"
+                  onClick={() => baixarArquivo(data.a.pdf_original_path, `holerite-${data.a.protocolo}.pdf`)}
+                >
+                  <Download className="w-4 h-4 mr-2" /> Holerite Original
                 </Button>
               )}
-              {data.urls.certificado && (
-                <Button asChild>
-                  <a href={data.urls.certificado} target="_blank" rel="noreferrer">
-                    <Download className="w-4 h-4 mr-2" /> Certificado
-                  </a>
+              {data.a.pdf_certificado_path && (
+                <Button
+                  onClick={() => baixarArquivo(data.a.pdf_certificado_path, `certificado-${data.a.protocolo}.pdf`)}
+                >
+                  <Download className="w-4 h-4 mr-2" /> Certificado
                 </Button>
               )}
             </div>
