@@ -1,6 +1,14 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import QRCode from "qrcode";
 import { backupPdfToDrive } from "@/hooks/useDriveBackup";
+
+export interface HoleriteAssinaturaInfo {
+  protocolo: string;
+  data_assinatura: string; // ISO
+  assinatura_data_url: string; // base64 png/jpeg
+  validacao_url: string; // URL pública do certificado
+}
 
 export interface HoleriteVariavel {
   id: string;
