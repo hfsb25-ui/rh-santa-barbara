@@ -234,7 +234,7 @@ Deno.serve(async (req) => {
       hash_assinatura: hashAssinatura,
       nome_completo: (employee.nome_completo || "").toUpperCase(),
       cpf: employee.cpf,
-      matricula: employee.matricula,
+      matricula: null,
       pdf_original_path: pdfPath,
       selfie_path: selfiePath,
       assinatura_imagem_path: assinaturaPath,
