@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { FileCheck2, PenLine, Eye, ArrowLeft } from "lucide-react";
+import { FileCheck2, PenLine, Eye, ArrowLeft, Download } from "lucide-react";
 import { AssinaturaHoleriteWizard } from "@/components/holerites-assinatura/AssinaturaHoleriteWizard";
 import { AuditoriaHoleriteDialog } from "@/components/holerites-assinatura/AuditoriaHoleriteDialog";
 
@@ -165,9 +165,22 @@ export default function MeusHolerites() {
                         {a.protocolo}
                       </div>
                     </div>
-                    <Button variant="outline" onClick={() => setAuditId(a.id)}>
-                      <Eye className="w-4 h-4 mr-2" /> Ver detalhes
-                    </Button>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        onClick={async () => {
+                          const { gerarHoleritePdf } = await import("@/lib/pdfGeneratorHolerite");
+                          const { carregarAssinaturaHolerite } = await import("@/lib/holeriteAssinaturaLoader");
+                          const assinatura = await carregarAssinaturaHolerite(p.id);
+                          await gerarHoleritePdf(p, empresa, employee, { assinatura });
+                        }}
+                      >
+                        <Download className="w-4 h-4 mr-2" /> Baixar
+                      </Button>
+                      <Button variant="outline" onClick={() => setAuditId(a.id)}>
+                        <Eye className="w-4 h-4 mr-2" /> Detalhes
+                      </Button>
+                    </div>
                   </div>
                 );
               })}

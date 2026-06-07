@@ -1,6 +1,14 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import QRCode from "qrcode";
 import { backupPdfToDrive } from "@/hooks/useDriveBackup";
+
+export interface HoleriteAssinaturaInfo {
+  protocolo: string;
+  data_assinatura: string; // ISO
+  assinatura_data_url: string; // base64 png/jpeg
+  validacao_url: string; // URL pública do certificado
+}
 
 export interface HoleriteVariavel {
   id: string;
@@ -112,11 +120,13 @@ function getTableData(pagamento: HoleritePagamento, employee: HoleriteEmployee) 
 
 export interface GerarHoleriteOptions {
   silent?: boolean; // não baixa localmente, apenas envia ao Drive
+  assinatura?: HoleriteAssinaturaInfo | null;
 }
 
 /**
  * Gera o PDF do holerite. Por padrão baixa no navegador.
  * Quando { silent: true }, apenas envia para o Google Drive (uso em backup retroativo).
+ * Quando { assinatura }, embute a assinatura digital + QR code do certificado.
  */
 export async function gerarHoleritePdf(
   pagamento: HoleritePagamento,
@@ -135,6 +145,23 @@ export async function gerarHoleritePdf(
   const { rows, totalProventos, totalDescontos } = getTableData(pagamento, employee);
   const fgts = salarioBase.valor * 0.08;
   const getMesAnoStr = () => `${MESES[pagamento.mes]}/${pagamento.ano}`;
+  const assinatura = options.assinatura || null;
+  let qrDataUrl = "";
+  if (assinatura?.validacao_url) {
+    try {
+      qrDataUrl = await QRCode.toDataURL(assinatura.validacao_url, { margin: 0, width: 256 });
+    } catch (e) {
+      console.error("QR holerite falhou", e);
+    }
+  }
+  const formatDateTime = (iso: string) => {
+    try {
+      return new Date(iso).toLocaleString("pt-BR", {
+        day: "2-digit", month: "2-digit", year: "numeric",
+        hour: "2-digit", minute: "2-digit", timeZone: "America/Sao_Paulo",
+      });
+    } catch { return iso; }
+  };
 
   doc.setDrawColor(40, 40, 40);
   doc.setLineWidth(0.6);
@@ -330,12 +357,44 @@ export async function gerarHoleritePdf(
   y += 7;
 
   doc.setDrawColor(100, 100, 100);
-  doc.line(ml + 3, y + 8, ml + cw / 2 - 10, y + 8);
-  doc.setFontSize(6);
-  doc.setTextColor(100, 100, 100);
-  doc.text("Assinatura do Funcionário", ml + 3, y + 11);
-  doc.line(ml + cw / 2 + 10, y + 8, ml + cw - 3, y + 8);
-  doc.text("Data: ____/____/________", ml + cw / 2 + 10, y + 11);
+  if (assinatura) {
+    // Assinatura embutida
+    const sigW = cw / 2 - 13;
+    const sigH = 16;
+    try {
+      doc.addImage(assinatura.assinatura_data_url, "PNG", ml + 3, y - 4, sigW, sigH);
+    } catch (e) { console.error("sig img holerite", e); }
+    doc.line(ml + 3, y + 12, ml + cw / 2 - 10, y + 12);
+    doc.setFontSize(6);
+    doc.setTextColor(21, 87, 36);
+    doc.setFont("helvetica", "bold");
+    doc.text("ASSINADO ELETRONICAMENTE", ml + 3, y + 15);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(80, 80, 80);
+    doc.text(`Protocolo: ${assinatura.protocolo}`, ml + 3, y + 18);
+    doc.text(`Data: ${formatDateTime(assinatura.data_assinatura)}`, ml + 3, y + 21);
+
+    // QR code à direita
+    const qrSize = 22;
+    const qrX = ml + cw - qrSize - 2;
+    const qrY = y - 4;
+    if (qrDataUrl) {
+      try { doc.addImage(qrDataUrl, "PNG", qrX, qrY, qrSize, qrSize); } catch {}
+    }
+    doc.setFontSize(5.5);
+    doc.setTextColor(80, 80, 80);
+    doc.setFont("helvetica", "normal");
+    doc.text("Escaneie para validar", qrX + qrSize / 2, qrY + qrSize + 2.5, { align: "center" });
+    doc.text("o certificado", qrX + qrSize / 2, qrY + qrSize + 5, { align: "center" });
+    y += 22;
+  } else {
+    doc.line(ml + 3, y + 8, ml + cw / 2 - 10, y + 8);
+    doc.setFontSize(6);
+    doc.setTextColor(100, 100, 100);
+    doc.text("Assinatura do Funcionário", ml + 3, y + 11);
+    doc.line(ml + cw / 2 + 10, y + 8, ml + cw - 3, y + 8);
+    doc.text("Data: ____/____/________", ml + cw / 2 + 10, y + 11);
+  }
 
   doc.setDrawColor(40, 40, 40);
   doc.setLineWidth(0.5);
