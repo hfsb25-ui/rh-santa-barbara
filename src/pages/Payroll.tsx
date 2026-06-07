@@ -17,6 +17,7 @@ import VariaveisConfig from "@/components/payroll/VariaveisConfig";
 import LancamentoFolhaForm from "@/components/payroll/LancamentoFolhaForm";
 import RelatorioDetalhadoDialog from "@/components/payroll/RelatorioDetalhadoDialog";
 import HoleriteDialog from "@/components/payroll/HoleriteDialog";
+import { AuditoriaHoleritesTab } from "@/components/payroll/AuditoriaHoleritesTab";
 import jsPDF from "jspdf";
 
 const TIPO_FOLHA_OPTIONS = [
