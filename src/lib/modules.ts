@@ -20,6 +20,7 @@ export const MODULES: ModuleDef[] = [
   { key: "vagas", label: "Vagas", path: "/vagas", group: "Recrutamento" },
   { key: "recrutamento", label: "Candidaturas", path: "/recrutamento", group: "Recrutamento" },
   { key: "payroll", label: "Folha de Pagamento", path: "/payroll", group: "Financeiro" },
+  { key: "meus-holerites", label: "Meus Holerites", path: "/meus-holerites", group: "Financeiro" },
   { key: "salary-adjustment", label: "Reajuste Salarial", path: "/salary-adjustment", group: "Financeiro" },
   { key: "adiantamentos", label: "Adiantamentos", path: "/adiantamentos", group: "Financeiro" },
   { key: "financeiro", label: "Financeiro", path: "/financeiro", group: "Financeiro" },

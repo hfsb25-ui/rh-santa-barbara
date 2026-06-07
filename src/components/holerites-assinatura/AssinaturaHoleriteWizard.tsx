@@ -279,6 +279,7 @@ export function AssinaturaHoleriteWizard({
       });
 
       setResultado({ ...(data as any), certBlob, pdfBlob });
+      setStep(4);
       toast.success("Holerite assinado com sucesso!");
       onSigned?.();
     } catch (e: any) {
@@ -472,7 +473,7 @@ export function AssinaturaHoleriteWizard({
                 </div>
               </div>
             )}
-            {resultado && setStep(4) as any}
+            
           </div>
         )}
 

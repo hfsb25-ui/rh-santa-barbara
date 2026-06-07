@@ -54,6 +54,8 @@ import NR1Relatorios from "./pages/nr1/Relatorios";
 import NR1Config from "./pages/nr1/Config";
 import ClimaResponderPublic from "./pages/public/ClimaResponder";
 import DenunciaPublica from "./pages/public/DenunciaPublica";
+import MeusHolerites from "./pages/MeusHolerites";
+import ValidarHolerite from "./pages/ValidarHolerite";
 import AppLayout from "./components/layout/AppLayout";
 import { FloatingAIChat } from "./components/ai/FloatingAIChat";
 
@@ -124,6 +126,8 @@ const App = () => {
               <Route path="/clima/:token" element={<ClimaResponderPublic />} />
               <Route path="/denuncia" element={<DenunciaPublica />} />
               <Route path="/lideranca/:token" element={<NR1LiderancaResponder />} />
+              <Route path="/validar-holerite/:protocolo" element={<ValidarHolerite />} />
+              <Route path="/meus-holerites" element={<AppLayout><MeusHolerites /></AppLayout>} />
               <Route path="/nr1/relatorios" element={<AppLayout><NR1Relatorios /></AppLayout>} />
               <Route path="/nr1/config" element={<AppLayout><NR1Config /></AppLayout>} />
               <Route path="/nr1/auditoria" element={<AppLayout><NR1AuditoriaMT /></AppLayout>} />
