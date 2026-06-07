@@ -214,11 +214,13 @@ export function AssinaturaHoleriteWizard({
     });
   }
 
-  async function submitAssinatura() {
-    if (!pdfBlob || !selfie || !assinatura) {
+  async function submitAssinatura(sigOverride?: string) {
+    const sig = sigOverride ?? assinatura;
+    if (!pdfBlob || !selfie || !sig) {
       toast.error("Faltam dados para assinar");
       return;
     }
+
     setSubmitting(true);
     try {
       // Pedir geo se consentido (já pediu antes)
