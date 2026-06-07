@@ -262,7 +262,7 @@ export function AssinaturaHoleriteWizard({
         geo: geo,
         geo_consentimento: geoConsent,
         selfie_data_url: selfie,
-        assinatura_data_url: assinatura,
+        assinatura_data_url: sig,
         validacao_url: `${baseUrl}/validar-holerite/${(data as any).protocolo}`,
         eventos: [
           { tipo: "Visualização", data: (data as any).data_assinatura, ip: (data as any).ip },
