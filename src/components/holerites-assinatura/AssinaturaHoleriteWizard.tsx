@@ -232,7 +232,7 @@ export function AssinaturaHoleriteWizard({
           folha_pagamento_id: pagamento.id,
           pdf_holerite_base64: pdfB64,
           selfie_base64: selfie,
-          assinatura_base64: assinatura,
+          assinatura_base64: sig,
           geo: geo ? { lat: geo.lat, lng: geo.lng, consentimento: geoConsent } : null,
           user_agent: ua,
           navegador: detectBrowser(ua),
