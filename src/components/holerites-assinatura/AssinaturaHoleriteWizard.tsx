@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { Check, ChevronRight, Download, FileCheck2, MapPin, Loader2 } from "lucide-react";
 import SignatureCanvas from "@/components/forms/SignatureCanvas";
 import { SelfieCapture } from "./SelfieCapture";
-import { gerarHoleritePdf, type HoleriteEmpresa, type HoleriteEmployee, type HoleritePagamento } from "@/lib/pdfGeneratorHolerite";
+import type { HoleriteEmpresa, HoleriteEmployee, HoleritePagamento } from "@/lib/pdfGeneratorHolerite";
 import { gerarCertificadoPdf, blobToBase64 } from "@/lib/pdfGeneratorCertificadoHolerite";
 
 interface Props {
