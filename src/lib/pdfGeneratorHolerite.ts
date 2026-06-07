@@ -120,11 +120,13 @@ function getTableData(pagamento: HoleritePagamento, employee: HoleriteEmployee) 
 
 export interface GerarHoleriteOptions {
   silent?: boolean; // não baixa localmente, apenas envia ao Drive
+  assinatura?: HoleriteAssinaturaInfo | null;
 }
 
 /**
  * Gera o PDF do holerite. Por padrão baixa no navegador.
  * Quando { silent: true }, apenas envia para o Google Drive (uso em backup retroativo).
+ * Quando { assinatura }, embute a assinatura digital + QR code do certificado.
  */
 export async function gerarHoleritePdf(
   pagamento: HoleritePagamento,
