@@ -357,12 +357,44 @@ export async function gerarHoleritePdf(
   y += 7;
 
   doc.setDrawColor(100, 100, 100);
-  doc.line(ml + 3, y + 8, ml + cw / 2 - 10, y + 8);
-  doc.setFontSize(6);
-  doc.setTextColor(100, 100, 100);
-  doc.text("Assinatura do Funcionário", ml + 3, y + 11);
-  doc.line(ml + cw / 2 + 10, y + 8, ml + cw - 3, y + 8);
-  doc.text("Data: ____/____/________", ml + cw / 2 + 10, y + 11);
+  if (assinatura) {
+    // Assinatura embutida
+    const sigW = cw / 2 - 13;
+    const sigH = 16;
+    try {
+      doc.addImage(assinatura.assinatura_data_url, "PNG", ml + 3, y - 4, sigW, sigH);
+    } catch (e) { console.error("sig img holerite", e); }
+    doc.line(ml + 3, y + 12, ml + cw / 2 - 10, y + 12);
+    doc.setFontSize(6);
+    doc.setTextColor(21, 87, 36);
+    doc.setFont("helvetica", "bold");
+    doc.text("ASSINADO ELETRONICAMENTE", ml + 3, y + 15);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(80, 80, 80);
+    doc.text(`Protocolo: ${assinatura.protocolo}`, ml + 3, y + 18);
+    doc.text(`Data: ${formatDateTime(assinatura.data_assinatura)}`, ml + 3, y + 21);
+
+    // QR code à direita
+    const qrSize = 22;
+    const qrX = ml + cw - qrSize - 2;
+    const qrY = y - 4;
+    if (qrDataUrl) {
+      try { doc.addImage(qrDataUrl, "PNG", qrX, qrY, qrSize, qrSize); } catch {}
+    }
+    doc.setFontSize(5.5);
+    doc.setTextColor(80, 80, 80);
+    doc.setFont("helvetica", "normal");
+    doc.text("Escaneie para validar", qrX + qrSize / 2, qrY + qrSize + 2.5, { align: "center" });
+    doc.text("o certificado", qrX + qrSize / 2, qrY + qrSize + 5, { align: "center" });
+    y += 22;
+  } else {
+    doc.line(ml + 3, y + 8, ml + cw / 2 - 10, y + 8);
+    doc.setFontSize(6);
+    doc.setTextColor(100, 100, 100);
+    doc.text("Assinatura do Funcionário", ml + 3, y + 11);
+    doc.line(ml + cw / 2 + 10, y + 8, ml + cw - 3, y + 8);
+    doc.text("Data: ____/____/________", ml + cw / 2 + 10, y + 11);
+  }
 
   doc.setDrawColor(40, 40, 40);
   doc.setLineWidth(0.5);
