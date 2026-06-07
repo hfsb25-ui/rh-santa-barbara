@@ -29,6 +29,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { toast } from "sonner";
 import { VacationProgress } from "@/components/ui/vacation-progress";
 import PendingSignaturesAlert from "./PendingSignaturesAlert";
+import PendingHoleritesAlert from "./PendingHoleritesAlert";
 import { TreinamentosCard } from "./TreinamentosCard";
 import TacCard from "@/components/tac/TacCard";
 import { format, subMonths, startOfMonth, endOfMonth } from "date-fns";
@@ -354,6 +355,8 @@ const FuncionarioDashboard = ({ user }: FuncionarioDashboardProps) => {
   return (
     <div className="min-h-screen bg-background">
       <PendingSignaturesAlert />
+      <PendingHoleritesAlert />
+      
       
       <header className="border-b bg-card">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
