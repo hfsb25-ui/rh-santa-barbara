@@ -48,15 +48,41 @@ export function SelfieCapture({ onCapture, onCancel }: Props) {
   function tirar() {
     if (!videoRef.current) return;
     const v = videoRef.current;
+    const vw = v.videoWidth || 640;
+    const vh = v.videoHeight || 480;
+
+    // Recorta em formato oval (rosto) centralizado
+    // Define um retângulo de recorte vertical 3:4 centralizado
+    const cropH = vh;
+    const cropW = Math.round(cropH * 0.75); // 3:4
+    const cropX = Math.round((vw - cropW) / 2);
+    const cropY = 0;
+
+    const outW = 480;
+    const outH = 640;
+
     const c = document.createElement("canvas");
-    c.width = v.videoWidth || 640;
-    c.height = v.videoHeight || 480;
+    c.width = outW;
+    c.height = outH;
     const ctx = c.getContext("2d")!;
-    // Espelha para selfie
-    ctx.translate(c.width, 0);
+
+    // Fundo transparente
+    ctx.clearRect(0, 0, outW, outH);
+
+    // Máscara oval
+    ctx.save();
+    ctx.beginPath();
+    ctx.ellipse(outW / 2, outH / 2, outW / 2, outH / 2, 0, 0, Math.PI * 2);
+    ctx.closePath();
+    ctx.clip();
+
+    // Espelha (selfie)
+    ctx.translate(outW, 0);
     ctx.scale(-1, 1);
-    ctx.drawImage(v, 0, 0, c.width, c.height);
-    const url = c.toDataURL("image/jpeg", 0.85);
+    ctx.drawImage(v, cropX, cropY, cropW, cropH, 0, 0, outW, outH);
+    ctx.restore();
+
+    const url = c.toDataURL("image/png");
     setCaptured(url);
     stop();
   }
@@ -77,17 +103,46 @@ export function SelfieCapture({ onCapture, onCancel }: Props) {
           {error}
         </div>
       )}
-      <div className="relative overflow-hidden rounded-lg border bg-black aspect-[4/3] flex items-center justify-center">
+      <div className="relative overflow-hidden rounded-lg border bg-black aspect-[3/4] max-w-sm mx-auto flex items-center justify-center">
         {captured ? (
-          <img src={captured} alt="Selfie" className="w-full h-full object-cover" />
+          <img src={captured} alt="Selfie" className="w-full h-full object-contain bg-muted" />
         ) : (
-          <video
-            ref={videoRef}
-            className="w-full h-full object-cover"
-            style={{ transform: "scaleX(-1)" }}
-            playsInline
-            muted
-          />
+          <>
+            <video
+              ref={videoRef}
+              className="w-full h-full object-cover"
+              style={{ transform: "scaleX(-1)" }}
+              playsInline
+              muted
+            />
+            {/* Overlay com guia oval para enquadrar o rosto */}
+            <svg
+              className="absolute inset-0 w-full h-full pointer-events-none"
+              viewBox="0 0 300 400"
+              preserveAspectRatio="none"
+            >
+              <defs>
+                <mask id="oval-mask">
+                  <rect width="300" height="400" fill="white" />
+                  <ellipse cx="150" cy="200" rx="120" ry="160" fill="black" />
+                </mask>
+              </defs>
+              <rect width="300" height="400" fill="rgba(0,0,0,0.55)" mask="url(#oval-mask)" />
+              <ellipse
+                cx="150"
+                cy="200"
+                rx="120"
+                ry="160"
+                fill="none"
+                stroke="white"
+                strokeWidth="2"
+                strokeDasharray="6 6"
+              />
+            </svg>
+            <p className="absolute bottom-2 left-0 right-0 text-center text-xs text-white drop-shadow">
+              Posicione seu rosto dentro do oval
+            </p>
+          </>
         )}
       </div>
       <div className="flex gap-2">

@@ -214,11 +214,13 @@ export function AssinaturaHoleriteWizard({
     });
   }
 
-  async function submitAssinatura() {
-    if (!pdfBlob || !selfie || !assinatura) {
+  async function submitAssinatura(sigOverride?: string) {
+    const sig = sigOverride ?? assinatura;
+    if (!pdfBlob || !selfie || !sig) {
       toast.error("Faltam dados para assinar");
       return;
     }
+
     setSubmitting(true);
     try {
       // Pedir geo se consentido (já pediu antes)
@@ -230,7 +232,7 @@ export function AssinaturaHoleriteWizard({
           folha_pagamento_id: pagamento.id,
           pdf_holerite_base64: pdfB64,
           selfie_base64: selfie,
-          assinatura_base64: assinatura,
+          assinatura_base64: sig,
           geo: geo ? { lat: geo.lat, lng: geo.lng, consentimento: geoConsent } : null,
           user_agent: ua,
           navegador: detectBrowser(ua),
@@ -260,7 +262,7 @@ export function AssinaturaHoleriteWizard({
         geo: geo,
         geo_consentimento: geoConsent,
         selfie_data_url: selfie,
-        assinatura_data_url: assinatura,
+        assinatura_data_url: sig,
         validacao_url: `${baseUrl}/validar-holerite/${(data as any).protocolo}`,
         eventos: [
           { tipo: "Visualização", data: (data as any).data_assinatura, ip: (data as any).ip },
@@ -446,36 +448,24 @@ export function AssinaturaHoleriteWizard({
         {step === 3 && (
           <div className="space-y-3">
             <p className="text-sm text-muted-foreground">
-              Assine no quadro abaixo usando o mouse ou o dedo (em celular).
+              Assine no quadro abaixo usando o mouse ou o dedo (em celular). Ao confirmar, sua assinatura será registrada automaticamente.
             </p>
             <SignatureCanvas
               title="Sua assinatura"
-              onSave={(sig) => setAssinatura(sig)}
+              onSave={(sig) => {
+                setAssinatura(sig);
+                submitAssinatura(sig);
+              }}
               onCancel={() => setStep(2)}
             />
-            {assinatura && (
-              <div className="flex justify-between items-center gap-2 rounded-lg border p-3 bg-muted/30">
-                <span className="text-sm flex items-center gap-2">
-                  <Check className="w-4 h-4 text-green-600" /> Assinatura pronta
-                </span>
-                <div className="flex gap-2">
-                  <Button variant="outline" onClick={() => setAssinatura(null)}>
-                    Refazer
-                  </Button>
-                  <Button onClick={submitAssinatura} disabled={submitting}>
-                    {submitting ? (
-                      <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                    ) : (
-                      <FileCheck2 className="w-4 h-4 mr-2" />
-                    )}
-                    {submitting ? "Registrando..." : "Confirmar assinatura"}
-                  </Button>
-                </div>
+            {submitting && (
+              <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+                <Loader2 className="w-4 h-4 animate-spin" /> Registrando assinatura...
               </div>
             )}
-            
           </div>
         )}
+
 
         {/* Step 4: Concluído */}
         {step === 4 && resultado && (
