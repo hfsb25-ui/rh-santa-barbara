@@ -145,6 +145,23 @@ export async function gerarHoleritePdf(
   const { rows, totalProventos, totalDescontos } = getTableData(pagamento, employee);
   const fgts = salarioBase.valor * 0.08;
   const getMesAnoStr = () => `${MESES[pagamento.mes]}/${pagamento.ano}`;
+  const assinatura = options.assinatura || null;
+  let qrDataUrl = "";
+  if (assinatura?.validacao_url) {
+    try {
+      qrDataUrl = await QRCode.toDataURL(assinatura.validacao_url, { margin: 0, width: 256 });
+    } catch (e) {
+      console.error("QR holerite falhou", e);
+    }
+  }
+  const formatDateTime = (iso: string) => {
+    try {
+      return new Date(iso).toLocaleString("pt-BR", {
+        day: "2-digit", month: "2-digit", year: "numeric",
+        hour: "2-digit", minute: "2-digit", timeZone: "America/Sao_Paulo",
+      });
+    } catch { return iso; }
+  };
 
   doc.setDrawColor(40, 40, 40);
   doc.setLineWidth(0.6);
