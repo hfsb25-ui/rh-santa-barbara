@@ -2539,6 +2539,159 @@ export type Database = {
           },
         ]
       }
+      holerite_assinaturas: {
+        Row: {
+          assinatura_imagem_path: string | null
+          cpf: string | null
+          created_at: string
+          data_assinatura: string | null
+          data_visualizacao: string | null
+          employee_id: string
+          empresa_id: string | null
+          folha_pagamento_id: string
+          geo_consentimento: boolean
+          geo_latitude: number | null
+          geo_longitude: number | null
+          hash_assinatura: string | null
+          hash_documento: string
+          id: string
+          ip_publico: string | null
+          matricula: string | null
+          navegador: string | null
+          nome_completo: string
+          pdf_certificado_path: string | null
+          pdf_original_path: string
+          protocolo: string
+          selfie_path: string | null
+          sistema_operacional: string | null
+          status: string
+          updated_at: string
+          user_agent: string | null
+        }
+        Insert: {
+          assinatura_imagem_path?: string | null
+          cpf?: string | null
+          created_at?: string
+          data_assinatura?: string | null
+          data_visualizacao?: string | null
+          employee_id: string
+          empresa_id?: string | null
+          folha_pagamento_id: string
+          geo_consentimento?: boolean
+          geo_latitude?: number | null
+          geo_longitude?: number | null
+          hash_assinatura?: string | null
+          hash_documento: string
+          id?: string
+          ip_publico?: string | null
+          matricula?: string | null
+          navegador?: string | null
+          nome_completo: string
+          pdf_certificado_path?: string | null
+          pdf_original_path: string
+          protocolo: string
+          selfie_path?: string | null
+          sistema_operacional?: string | null
+          status?: string
+          updated_at?: string
+          user_agent?: string | null
+        }
+        Update: {
+          assinatura_imagem_path?: string | null
+          cpf?: string | null
+          created_at?: string
+          data_assinatura?: string | null
+          data_visualizacao?: string | null
+          employee_id?: string
+          empresa_id?: string | null
+          folha_pagamento_id?: string
+          geo_consentimento?: boolean
+          geo_latitude?: number | null
+          geo_longitude?: number | null
+          hash_assinatura?: string | null
+          hash_documento?: string
+          id?: string
+          ip_publico?: string | null
+          matricula?: string | null
+          navegador?: string | null
+          nome_completo?: string
+          pdf_certificado_path?: string | null
+          pdf_original_path?: string
+          protocolo?: string
+          selfie_path?: string | null
+          sistema_operacional?: string | null
+          status?: string
+          updated_at?: string
+          user_agent?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "holerite_assinaturas_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "holerite_assinaturas_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "holerite_assinaturas_folha_pagamento_id_fkey"
+            columns: ["folha_pagamento_id"]
+            isOneToOne: false
+            referencedRelation: "folha_pagamento"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      holerite_eventos_auditoria: {
+        Row: {
+          assinatura_id: string
+          created_at: string
+          geo_latitude: number | null
+          geo_longitude: number | null
+          id: string
+          ip: string | null
+          metadata: Json | null
+          tipo_evento: string
+          user_agent: string | null
+        }
+        Insert: {
+          assinatura_id: string
+          created_at?: string
+          geo_latitude?: number | null
+          geo_longitude?: number | null
+          id?: string
+          ip?: string | null
+          metadata?: Json | null
+          tipo_evento: string
+          user_agent?: string | null
+        }
+        Update: {
+          assinatura_id?: string
+          created_at?: string
+          geo_latitude?: number | null
+          geo_longitude?: number | null
+          id?: string
+          ip?: string | null
+          metadata?: Json | null
+          tipo_evento?: string
+          user_agent?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "holerite_eventos_auditoria_assinatura_id_fkey"
+            columns: ["assinatura_id"]
+            isOneToOne: false
+            referencedRelation: "holerite_assinaturas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       informacoes_contabilidade: {
         Row: {
           ano: number
