@@ -205,7 +205,9 @@ const HoleriteDialog = ({ open, onOpenChange, pagamento, empresaId }: HoleriteDi
   const generatePDF = async () => {
     if (!pagamento || !empresa || !employee) return;
     const { gerarHoleritePdf } = await import("@/lib/pdfGeneratorHolerite");
-    await gerarHoleritePdf(pagamento, empresa, employee);
+    const { carregarAssinaturaHolerite } = await import("@/lib/holeriteAssinaturaLoader");
+    const assinatura = await carregarAssinaturaHolerite(pagamento.id);
+    await gerarHoleritePdf(pagamento, empresa, employee, { assinatura });
   };
 
 
