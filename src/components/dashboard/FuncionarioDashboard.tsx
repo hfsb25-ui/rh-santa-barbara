@@ -681,6 +681,14 @@ const FuncionarioDashboard = ({ user }: FuncionarioDashboardProps) => {
                 </CardTitle>
               </CardHeader>
               <CardContent>
+                <Button
+                  onClick={() => navigate("/meus-holerites")}
+                  className="w-full mb-3"
+                  variant="outline"
+                >
+                  <FileText className="w-4 h-4 mr-2" />
+                  Acessar Meus Holerites (Assinar / Baixar Certificado)
+                </Button>
                 {holerites.length === 0 ? (
                   <p className="text-muted-foreground">Nenhum holerite disponível.</p>
                 ) : (
