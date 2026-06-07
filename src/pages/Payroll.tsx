@@ -17,6 +17,7 @@ import VariaveisConfig from "@/components/payroll/VariaveisConfig";
 import LancamentoFolhaForm from "@/components/payroll/LancamentoFolhaForm";
 import RelatorioDetalhadoDialog from "@/components/payroll/RelatorioDetalhadoDialog";
 import HoleriteDialog from "@/components/payroll/HoleriteDialog";
+import { AuditoriaHoleritesTab } from "@/components/payroll/AuditoriaHoleritesTab";
 import jsPDF from "jspdf";
 
 const TIPO_FOLHA_OPTIONS = [
@@ -912,6 +913,7 @@ const Payroll = () => {
               <TabsTrigger value="lancamentos">Lançamentos</TabsTrigger>
               <TabsTrigger value="historico">Histórico</TabsTrigger>
               <TabsTrigger value="variaveis">Variáveis</TabsTrigger>
+              <TabsTrigger value="auditoria">Auditoria & Fiscalização</TabsTrigger>
             </TabsList>
 
             <TabsContent value="lancamentos">
@@ -1083,6 +1085,10 @@ const Payroll = () => {
 
             <TabsContent value="variaveis">
               <VariaveisConfig empresaId={selectedEmpresa} />
+            </TabsContent>
+
+            <TabsContent value="auditoria">
+              <AuditoriaHoleritesTab empresaIdInicial={selectedEmpresa} />
             </TabsContent>
           </Tabs>
         )}

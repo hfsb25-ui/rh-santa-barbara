@@ -2692,6 +2692,51 @@ export type Database = {
           },
         ]
       }
+      holerite_exportacoes_fiscalizacao: {
+        Row: {
+          created_at: string
+          email_exportador: string | null
+          exportado_por: string
+          filtros_aplicados: Json
+          hash_pacote: string | null
+          id: string
+          ip: string | null
+          nome_exportador: string | null
+          quantidade_assinados: number
+          quantidade_holerites: number
+          tamanho_bytes: number | null
+          user_agent: string | null
+        }
+        Insert: {
+          created_at?: string
+          email_exportador?: string | null
+          exportado_por: string
+          filtros_aplicados?: Json
+          hash_pacote?: string | null
+          id?: string
+          ip?: string | null
+          nome_exportador?: string | null
+          quantidade_assinados?: number
+          quantidade_holerites?: number
+          tamanho_bytes?: number | null
+          user_agent?: string | null
+        }
+        Update: {
+          created_at?: string
+          email_exportador?: string | null
+          exportado_por?: string
+          filtros_aplicados?: Json
+          hash_pacote?: string | null
+          id?: string
+          ip?: string | null
+          nome_exportador?: string | null
+          quantidade_assinados?: number
+          quantidade_holerites?: number
+          tamanho_bytes?: number | null
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
       informacoes_contabilidade: {
         Row: {
           ano: number

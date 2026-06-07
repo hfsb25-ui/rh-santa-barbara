@@ -1,100 +1,108 @@
+## Auditoria e Exportação de Holerites Assinados (Admin)
 
-# Sistema de Assinatura Digital de Holerites
+Criar uma área administrativa dedicada para fiscalização, onde o admin pode filtrar, auditar e exportar em lote todos os holerites assinados de um período — com comprovantes de assinatura e trilha de auditoria completa.
 
-Módulo completo para que cada colaborador visualize, assine digitalmente e baixe seus holerites, com trilha de auditoria imutável e valor probatório conforme Lei 14.063/2020.
+### 1. Nova aba no módulo Folha de Pagamento
+Adicionar aba **"Auditoria & Fiscalização"** dentro de `src/pages/Payroll.tsx`, visível apenas para `admin`/`gestor`.
 
-## 1. Backend (Lovable Cloud)
+### 2. Tela de Auditoria (`AuditoriaHoleritesTab.tsx`)
+Filtros no topo:
+- **Mês / Ano** (obrigatórios)
+- **Empresa** (multi-select)
+- **Tipo de Contrato** (CLT, PJ, Estágio, Temporário, etc.)
+- **Setor** (opcional)
+- **Status da assinatura**: Todos / Assinados / Pendentes / Visualizados / Não enviados
+- **Funcionário** (busca por nome/CPF)
 
-### 1.1 Novo bucket de storage (privado)
-- `holerites-assinados` — PDFs originais, certificados e selfies (privado, RLS por colaborador).
+Tabela de resultados com colunas:
+| Funcionário | Empresa | Contrato | Mês/Ano | Status | Protocolo | Data Assinatura | IP | Ações |
 
-### 1.2 Novas tabelas
+Indicadores no topo:
+- Total de holerites do período
+- % assinados / pendentes / não enviados
+- Total de funcionários com pendência
 
-**`holerite_assinaturas`** (registro imutável da assinatura)
-- `folha_pagamento_id`, `employee_id`, `protocolo` (único, formato `HOL-AAAAMM-XXXXXX`)
-- `hash_documento` (SHA-256 do PDF original)
-- `hash_assinatura` (SHA-256 do conjunto evidências)
-- `nome_completo`, `cpf`, `matricula`
-- `assinatura_imagem_url` (canvas da assinatura manuscrita)
-- `selfie_url`
-- `ip_publico`, `user_agent`, `navegador`, `sistema_operacional`
-- `geo_latitude`, `geo_longitude`, `geo_consentimento` (bool)
-- `data_visualizacao`, `data_assinatura`
-- `pdf_original_url`, `pdf_certificado_url`
-- `status` (`pendente`, `visualizado`, `assinado`)
-- Trigger que **bloqueia UPDATE/DELETE** após `status='assinado'` (imutabilidade)
+Ações por linha:
+- Ver Auditoria (reusa `AuditoriaHoleriteDialog`)
+- Baixar Holerite Original
+- Baixar Certificado de Assinatura
+- Baixar Pacote Completo (zip individual)
 
-**`holerite_eventos_auditoria`** (append-only)
-- `assinatura_id`, `tipo_evento` (`visualizou`, `iniciou_assinatura`, `capturou_selfie`, `assinou`, `baixou_certificado`)
-- `ip`, `user_agent`, `geo`, `metadata jsonb`, `created_at`
-- Sem UPDATE/DELETE (revogados via RLS + trigger)
+### 3. Exportação em Lote (Pacote de Fiscalização)
+Botão **"Exportar Pacote de Fiscalização"** que gera um arquivo `.zip` contendo:
 
-### 1.3 RLS
-- Colaborador (`funcionario`): SELECT/INSERT apenas onde `employee_id` casa com seu próprio (via join com `employees.user_id = auth.uid()`)
-- Gestor/admin: SELECT em tudo
-- Nenhuma role pode UPDATE/DELETE registros assinados
+```
+fiscalizacao_AAAAMM_empresa/
+├── _INDICE.pdf                      → relatório executivo
+├── _AUDITORIA.xlsx                  → planilha completa
+├── holerites/
+│   ├── FUNCIONARIO_CPF_holerite.pdf
+│   └── ...
+├── certificados/
+│   ├── FUNCIONARIO_CPF_certificado.pdf
+│   └── ...
+└── evidencias/
+    ├── FUNCIONARIO_CPF_selfie.jpg
+    └── FUNCIONARIO_CPF_assinatura.png
+```
 
-### 1.4 Edge Functions
-- **`gerar-holerite-assinavel`**: cria PDF do holerite (reaproveita `pdfGeneratorHolerite`), calcula SHA-256, gera protocolo + QRCode (URL pública de validação), salva no storage, cria linha em `holerite_assinaturas` com `status='pendente'`.
-- **`assinar-holerite`**: recebe assinatura manuscrita (base64), selfie (base64), geo, consentimento. Valida que `employee_id` pertence ao usuário logado. Captura IP via header. Gera certificado PDF, hash final, marca `status='assinado'`, registra evento.
-- **`validar-holerite`** (público): consulta por protocolo/hash e retorna dados básicos para QR Code.
+**_INDICE.pdf** (gerado com jsPDF):
+- Cabeçalho com empresa(s), período, data de geração, responsável (admin logado)
+- Resumo: total, assinados, pendentes, % cobertura
+- Base legal: Lei nº 14.063/2020, CLT art. 464
+- Lista de holerites com protocolo, hash, data/hora, IP
+- Hash SHA-256 do próprio pacote (rodapé de integridade)
 
-## 2. Frontend
+**_AUDITORIA.xlsx** (gerado com XLSX já instalado):
+Colunas: Funcionário | CPF | Empresa | Contrato | Setor | Cargo | Mês/Ano | Bruto | Líquido | Status | Protocolo | Data Assinatura | IP | Navegador | SO | Geolocalização | Hash Documento | Hash Assinatura | URL Validação Pública
 
-### 2.1 Acesso (ambos os pontos)
-- **Card "Holerites Pendentes"** no `FuncionarioDashboard` mostrando contador + CTA.
-- **Página dedicada** `/meus-holerites` listando todos (pendentes, assinados), com filtros por ano.
+### 4. Edge Function `holerite-export-fiscalizacao`
+Por causa do volume (centenas de PDFs) e do bypass de RLS para baixar do bucket privado:
 
-### 2.2 Fluxo de assinatura (dialog/wizard de 4 passos)
-1. **Visualizar PDF** (react-pdf inline) — registra evento `visualizou`
-2. **Aceite explícito** — checkbox "Li e concordo com o conteúdo deste holerite"
-3. **Captura de selfie** — `getUserMedia`, preview, confirmar (obrigatório a cada assinatura)
-4. **Assinatura manuscrita** — reaproveita `SignatureCanvas` existente; pede geo (opcional, com toast explicando consentimento); confirma e envia
+- Recebe filtros do frontend
+- Valida que o caller é `admin`/`gestor` (via JWT + `has_role`)
+- Consulta `holerite_assinaturas` + `folha_pagamento` + `employees` + `empresas`
+- Baixa cada PDF/imagem do bucket `holerites-assinados` com service_role
+- Monta o zip em memória (JSZip)
+- Calcula SHA-256 do zip final
+- Registra **evento de auditoria** (`tipo_evento: 'exportou_fiscalizacao'`) em `holerite_eventos_auditoria` com filtros aplicados, IP, user-agent e quantidade de arquivos
+- Retorna o zip como `application/zip`
 
-Após sucesso: mostra protocolo, hash, botões "Baixar Holerite" e "Baixar Certificado".
+### 5. Trilha de Auditoria das Exportações
+Nova tabela `holerite_exportacoes_fiscalizacao` (registro imutável de quem exportou o quê):
+- `exportado_por` (uuid)
+- `nome_exportador`, `email_exportador`
+- `filtros_aplicados` (jsonb: mês, ano, empresa_id, tipo_contrato, etc.)
+- `quantidade_holerites`
+- `hash_pacote` (SHA-256)
+- `ip`, `user_agent`
+- Trigger bloqueia UPDATE/DELETE
+- RLS: SELECT apenas admin/gestor; INSERT só pela edge function (service_role)
 
-### 2.3 Painel admin
-- Em `HoleritesTab` (visão admin do funcionário) e no módulo Payroll: badge de status (Pendente/Assinado), botão "Ver Auditoria" abrindo dialog com:
-  - Linha do tempo de eventos
-  - Selfie capturada
-  - IP, navegador, SO, geo
-  - Hashes
-  - Botão "Baixar Certificado"
+Nova sub-aba **"Histórico de Exportações"** lista esses registros (quem exportou, quando, filtros, hash) — prova de cadeia de custódia para o próprio fiscal.
 
-### 2.4 Página pública de validação
-- `/validar-holerite/:protocolo` — mostra: empresa, colaborador (parcial), data, hashes, status "VÁLIDO". Para terceiros que escaneiam o QR.
+### 6. Arquivos novos / alterados
 
-## 3. Certificado PDF
-Novo gerador `pdfGeneratorCertificadoHolerite.ts`:
-- Cabeçalho oficial + logo empresa
-- Protocolo único, hash SHA-256
-- Dados do signatário (nome, CPF, matrícula)
-- Data/hora oficial (UTC + Brasília)
-- Evidências: IP, navegador, SO, geo (se houver)
-- Selfie embutida
-- Imagem da assinatura manuscrita
-- Timeline de eventos da auditoria
-- Rodapé: "Assinatura eletrônica conforme Lei nº 14.063/2020"
+**Novos:**
+- `src/components/payroll/AuditoriaHoleritesTab.tsx` — tela de auditoria + filtros + tabela
+- `src/components/payroll/HistoricoExportacoesTab.tsx` — log de exportações
+- `src/lib/pdfGeneratorIndiceFiscalizacao.ts` — gera o `_INDICE.pdf`
+- `src/lib/xlsxGeneratorAuditoriaHolerites.ts` — gera o `_AUDITORIA.xlsx`
+- `supabase/functions/holerite-export-fiscalizacao/index.ts` — empacotamento server-side
+- Migração: tabela `holerite_exportacoes_fiscalizacao` + RLS + grants + trigger imutável
 
-## 4. Segurança
-- Toda query no front filtra por `employee_id` derivado do `auth.uid()` (via hook existente `useUserPermissions`)
-- Edge functions revalidam ownership server-side
-- IP capturado do header (`x-forwarded-for`) — nunca do cliente
-- Selfie e assinatura nunca expostas em buckets públicos (URLs assinadas com expiração)
-- 2FA dispensado: senha + selfie biométrica + IP/geo formam o segundo fator combinado
+**Alterados:**
+- `src/pages/Payroll.tsx` — adiciona as duas novas abas
+- `src/lib/modules.ts` — entrada de menu (se aplicável)
 
-## 5. Dependências novas
-- `qrcode` (gerar QR no PDF)
-- `react-pdf` ou `@react-pdf/renderer` para visualização inline (já temos jsPDF para geração)
+### 7. Segurança
+- Acesso restrito a `admin` e `gestor` (via `useUserPermissions` + revalidação na edge function com `has_role`)
+- URLs assinadas de curta duração para previews; downloads em lote vão direto pela edge function (não expõe paths do bucket)
+- Toda exportação é registrada e imutável
+- Hash do pacote permite ao fiscal verificar integridade depois
 
-## Arquivos principais a criar/editar
-- **Migration**: 2 tabelas + RLS + triggers de imutabilidade + bucket
-- **Edge functions**: `gerar-holerite-assinavel`, `assinar-holerite`, `validar-holerite`
-- **Novo**: `src/lib/pdfGeneratorCertificadoHolerite.ts`
-- **Novo**: `src/pages/MeusHolerites.tsx`
-- **Novo**: `src/pages/ValidarHolerite.tsx` (pública)
-- **Novo**: `src/components/holerites-assinatura/` (Wizard, SelfieCapture, PdfViewer, AuditoriaDialog)
-- **Editar**: `src/components/dashboard/FuncionarioDashboard.tsx` (card pendentes)
-- **Editar**: `src/components/employees/tabs/HoleritesTab.tsx` (status + auditoria admin)
-- **Editar**: `src/App.tsx` (rotas), `src/lib/modules.ts` (novo módulo)
-- **Reuso**: `SignatureCanvas`, `pdfGeneratorHolerite`
+### Reutilização
+- `AuditoriaHoleriteDialog` já existe — reaproveitado direto
+- `pdfGeneratorHolerite` / `pdfGeneratorCertificadoHolerite` — não precisam mudar
+- `XLSX` já está no `package.json`
+- Adicionar `jszip` como dependência (apenas na edge function via `npm:jszip`)
