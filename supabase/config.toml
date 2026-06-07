@@ -1,40 +1,4 @@
 project_id = "uyrdlevpowoviwvyehro"
 
-[functions.fix-user-email]
-verify_jwt = false
-
-[functions.processar-ciclos-avaliacao]
-verify_jwt = false
-
-[functions.google-calendar-auth]
-verify_jwt = false
-
-[functions.google-calendar-sync]
-verify_jwt = false
-
-[functions.export-database]
-verify_jwt = false
-
-[functions.import-database]
-verify_jwt = false
-
-[functions.ai-assistant]
-verify_jwt = false
-
-[functions.ai-predictions]
-verify_jwt = false
-
-[functions.ai-reports]
-verify_jwt = false
-
-[functions.whatsapp-ai]
-verify_jwt = false
-
-[functions.consulta-judicial]
-verify_jwt = false
-
-[functions.whatsapp-daily-reminder]
-verify_jwt = false
-
-[functions.whatsapp-event-reminder]
+[functions.holerite-validar]
 verify_jwt = false
