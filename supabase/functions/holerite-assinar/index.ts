@@ -107,7 +107,7 @@ Deno.serve(async (req) => {
 
     const { data: employee, error: empErr } = await supa
       .from("employees")
-      .select("id, user_id, nome_completo, cpf, matricula")
+      .select("id, user_id, nome_completo, cpf")
       .eq("id", folha.employee_id)
       .single();
     if (empErr || !employee) {
