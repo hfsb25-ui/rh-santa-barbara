@@ -29,6 +29,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { toast } from "sonner";
 import { VacationProgress } from "@/components/ui/vacation-progress";
 import PendingSignaturesAlert from "./PendingSignaturesAlert";
+import PendingHoleritesAlert from "./PendingHoleritesAlert";
 import { TreinamentosCard } from "./TreinamentosCard";
 import TacCard from "@/components/tac/TacCard";
 import { format, subMonths, startOfMonth, endOfMonth } from "date-fns";
