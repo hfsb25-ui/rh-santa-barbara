@@ -10,6 +10,22 @@ interface Props {
   assinaturaId: string | null;
 }
 
+async function baixarArquivo(path: string, filename: string) {
+  const { data, error } = await supabase.storage.from("holerites-assinados").download(path);
+  if (error || !data) {
+    alert("Não foi possível baixar o arquivo: " + (error?.message || "erro desconhecido"));
+    return;
+  }
+  const url = URL.createObjectURL(data);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
 export function AuditoriaHoleriteDialog({ open, onOpenChange, assinaturaId }: Props) {
   const { data, isLoading } = useQuery({
     queryKey: ["auditoria-holerite", assinaturaId],
