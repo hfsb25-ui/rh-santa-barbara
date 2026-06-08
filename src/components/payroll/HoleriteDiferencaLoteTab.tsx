@@ -19,6 +19,7 @@ import {
   carregarConfigDiferenca,
   persistirHoleriteDiferenca,
   type CalculoDiferenca,
+  type ConfigDiferenca,
 } from "@/lib/holeriteDiferencaCalc";
 import { ConfigHoleriteDiferenca } from "./ConfigHoleriteDiferenca";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -44,7 +45,7 @@ export function HoleriteDiferencaLoteTab({ empresaId, mes, ano }: Props) {
   const [loading, setLoading] = useState(false);
   const [linhas, setLinhas] = useState<LinhaPrev[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [configIds, setConfigIds] = useState<string[]>([]);
+  const [config, setConfig] = useState<ConfigDiferenca>({ variaveis_desconto_ids: [], incluir_liquido_holerite: false });
   const [executando, setExecutando] = useState(false);
 
   const carregar = async () => {
@@ -54,8 +55,9 @@ export function HoleriteDiferencaLoteTab({ empresaId, mes, ano }: Props) {
     }
     setLoading(true);
     try {
-      const ids = await carregarConfigDiferenca();
-      setConfigIds(ids);
+      const cfg = await carregarConfigDiferenca();
+      setConfig(cfg);
+      const ids = cfg.variaveis_desconto_ids;
 
       // Buscar funcionários da empresa que têm holerite normal no mês
       const { data: folhas } = await supabase
@@ -85,7 +87,7 @@ export function HoleriteDiferencaLoteTab({ empresaId, mes, ano }: Props) {
       for (const f of folhas || []) {
         const emp: any = (f as any).employees;
         if (!emp) continue;
-        const calc = await calcularHoleriteDiferenca(emp.id, mes, ano, ids);
+        const calc = await calcularHoleriteDiferenca(emp.id, mes, ano, cfg);
         resultados.push({
           employee_id: emp.id,
           nome: emp.nome_completo,
@@ -202,10 +204,10 @@ export function HoleriteDiferencaLoteTab({ empresaId, mes, ano }: Props) {
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
-            {configIds.length === 0 && (
+            {config.variaveis_desconto_ids.length === 0 && !config.incluir_liquido_holerite && (
               <div className="rounded-md border border-amber-300 bg-amber-50 dark:bg-amber-950/30 p-3 text-sm">
                 Nenhuma variável configurada. Vá para a aba <strong>Configuração</strong> e selecione as
-                variáveis de desconto.
+                variáveis de desconto (ou ative o uso do valor líquido).
               </div>
             )}
 

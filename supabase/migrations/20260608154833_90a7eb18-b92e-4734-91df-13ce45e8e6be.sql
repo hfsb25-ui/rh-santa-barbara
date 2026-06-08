@@ -1,0 +1,1 @@
+ALTER TABLE public.configuracao_holerite_diferenca ADD COLUMN IF NOT EXISTS incluir_liquido_holerite boolean NOT NULL DEFAULT false;

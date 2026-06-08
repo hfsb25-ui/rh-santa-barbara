@@ -717,6 +717,7 @@ export type Database = {
           ativo: boolean
           created_at: string
           id: string
+          incluir_liquido_holerite: boolean
           updated_at: string
           variaveis_desconto_ids: string[]
         }
@@ -724,6 +725,7 @@ export type Database = {
           ativo?: boolean
           created_at?: string
           id?: string
+          incluir_liquido_holerite?: boolean
           updated_at?: string
           variaveis_desconto_ids?: string[]
         }
@@ -731,6 +733,7 @@ export type Database = {
           ativo?: boolean
           created_at?: string
           id?: string
+          incluir_liquido_holerite?: boolean
           updated_at?: string
           variaveis_desconto_ids?: string[]
         }
