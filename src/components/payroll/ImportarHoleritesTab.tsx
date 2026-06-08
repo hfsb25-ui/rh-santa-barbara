@@ -181,6 +181,95 @@ export function ImportarHoleritesTab() {
   const totalOk = resultados.filter((r) => r.status === "ok").length;
   const totalSelecionados = resultados.filter((r) => r.selecionado && r.status === "ok").length;
 
+  // Agrupa rubricas não mapeadas (chave = tipo + descrição normalizada)
+  function coletarNaoMapeadas() {
+    const norm = (s: string) => (s || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+    const map = new Map<string, { codigo: string; nome: string; tipo: "provento" | "desconto" }>();
+    for (const r of resultados) {
+      for (const p of r.proventos) {
+        if (!p.variavel_id && p.descricao) {
+          const k = `provento|${norm(p.descricao)}`;
+          if (!map.has(k)) map.set(k, { codigo: p.codigo || "", nome: p.descricao.toUpperCase(), tipo: "provento" });
+        }
+      }
+      for (const d of r.descontos) {
+        if (!d.variavel_id && d.descricao) {
+          const k = `desconto|${norm(d.descricao)}`;
+          if (!map.has(k)) map.set(k, { codigo: d.codigo || "", nome: d.descricao.toUpperCase(), tipo: "desconto" });
+        }
+      }
+    }
+    return Array.from(map.entries()).map(([key, v]) => ({ key, ...v, selecionado: true }));
+  }
+
+  const naoMapeadasCount = coletarNaoMapeadas().length;
+
+  function abrirCadastro() {
+    setNovasVariaveis(coletarNaoMapeadas());
+    setCadastroOpen(true);
+  }
+
+  async function confirmarCadastro() {
+    const aCriar = novasVariaveis.filter((v) => v.selecionado && v.nome.trim());
+    if (aCriar.length === 0) {
+      toast.error("Selecione ao menos uma variável");
+      return;
+    }
+    setSalvandoVars(true);
+    try {
+      const payload = aCriar.map((v) => ({
+        nome: v.nome.trim().toUpperCase(),
+        codigo: v.codigo.trim() || null,
+        tipo: v.tipo,
+        ativo: true,
+        empresa_id: empresaDefault || null,
+      }));
+      const { data: criadas, error } = await supabase
+        .from("variaveis_folha")
+        .insert(payload)
+        .select("id, nome, codigo, tipo");
+      if (error) throw error;
+
+      // Re-mapeia rubricas em memória
+      const norm = (s: string) => (s || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+      function findCriada(tipo: "provento" | "desconto", codigo?: string | null, descricao?: string | null) {
+        const pool = (criadas || []).filter((c) => c.tipo === tipo);
+        if (codigo) {
+          const byCode = pool.find((c) => (c.codigo || "").toLowerCase() === codigo.toLowerCase());
+          if (byCode) return byCode;
+        }
+        if (descricao) {
+          const t = norm(descricao);
+          return pool.find((c) => norm(c.nome) === t) || null;
+        }
+        return null;
+      }
+      setResultados((arr) =>
+        arr.map((r) => ({
+          ...r,
+          proventos: r.proventos.map((p) =>
+            p.variavel_id ? p : (() => {
+              const v = findCriada("provento", p.codigo, p.descricao);
+              return v ? { ...p, variavel_id: v.id, variavel_nome: v.nome } : p;
+            })()
+          ),
+          descontos: r.descontos.map((d) =>
+            d.variavel_id ? d : (() => {
+              const v = findCriada("desconto", d.codigo, d.descricao);
+              return v ? { ...d, variavel_id: v.id, variavel_nome: v.nome } : d;
+            })()
+          ),
+        }))
+      );
+      toast.success(`${criadas?.length || 0} variável(is) cadastrada(s)`);
+      setCadastroOpen(false);
+    } catch (e: any) {
+      toast.error(e?.message || "Erro ao cadastrar variáveis");
+    } finally {
+      setSalvandoVars(false);
+    }
+  }
+
   return (
     <div className="space-y-4">
       <Card>
