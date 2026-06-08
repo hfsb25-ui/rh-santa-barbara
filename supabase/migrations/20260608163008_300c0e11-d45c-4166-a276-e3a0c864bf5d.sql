@@ -1,0 +1,1 @@
+ALTER TABLE public.folha_pagamento DROP CONSTRAINT IF EXISTS folha_pagamento_employee_id_mes_ano_key;
