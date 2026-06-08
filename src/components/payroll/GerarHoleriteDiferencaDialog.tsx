@@ -60,15 +60,15 @@ export function GerarHoleriteDiferencaDialog({
     (async () => {
       setLoading(true);
       try {
-        const ids = await carregarConfigDiferenca();
-        if (!ids.length) {
+        const cfg = await carregarConfigDiferenca();
+        if (!cfg.variaveis_desconto_ids.length && !cfg.incluir_liquido_holerite) {
           setConfigVazia(true);
           setCalculo(null);
           return;
         }
         setConfigVazia(false);
         const [calc, exists] = await Promise.all([
-          calcularHoleriteDiferenca(employeeId, mes, ano, ids),
+          calcularHoleriteDiferenca(employeeId, mes, ano, cfg),
           existeHoleriteDiferenca(employeeId, mes, ano),
         ]);
         setCalculo(calc);
