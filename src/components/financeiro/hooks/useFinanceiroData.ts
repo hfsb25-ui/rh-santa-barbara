@@ -18,6 +18,15 @@ export interface KPIsData {
   projecaoProximoMes: number;
   totalFuncionarios: number;
   totalSetores: number;
+  totalBruto: number;
+  totalInss: number;
+  totalFgts: number;
+  totalIrrf: number;
+  totalLiquido: number;
+  totalPrincipal: number;
+  totalDiferenca: number;
+  quantidadePrincipal: number;
+  quantidadeDiferenca: number;
 }
 
 export interface SetorData {
