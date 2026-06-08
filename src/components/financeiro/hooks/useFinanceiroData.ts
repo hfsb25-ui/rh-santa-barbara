@@ -18,6 +18,15 @@ export interface KPIsData {
   projecaoProximoMes: number;
   totalFuncionarios: number;
   totalSetores: number;
+  totalBruto: number;
+  totalInss: number;
+  totalFgts: number;
+  totalIrrf: number;
+  totalLiquido: number;
+  totalPrincipal: number;
+  totalDiferenca: number;
+  quantidadePrincipal: number;
+  quantidadeDiferenca: number;
 }
 
 export interface SetorData {
@@ -43,6 +52,11 @@ export interface HistoricoData {
   totalBruto: number;
   totalDescontos: number;
   totalLiquido: number;
+  totalInss: number;
+  totalFgts: number;
+  totalIrrf: number;
+  totalDiferenca: number;
+  totalPrincipal: number;
   quantidadePagamentos: number;
   diferencaValor: number;
   diferencaPercentual: number;
@@ -98,6 +112,15 @@ export function useFinanceiroData(filters: FinanceiroFilters) {
     projecaoProximoMes: 0,
     totalFuncionarios: 0,
     totalSetores: 0,
+    totalBruto: 0,
+    totalInss: 0,
+    totalFgts: 0,
+    totalIrrf: 0,
+    totalLiquido: 0,
+    totalPrincipal: 0,
+    totalDiferenca: 0,
+    quantidadePrincipal: 0,
+    quantidadeDiferenca: 0,
   });
   const [gastosPorSetor, setGastosPorSetor] = useState<SetorData[]>([]);
   const [gastosPorContrato, setGastosPorContrato] = useState<ContratoData[]>([]);
@@ -157,7 +180,7 @@ export function useFinanceiroData(filters: FinanceiroFilters) {
       // Buscar folha de pagamento
       let folhaQuery = supabase
         .from("folha_pagamento")
-        .select("*, employees(nome_completo, setor, tipo_contrato)")
+        .select("*, employees(nome_completo, setor, tipo_contrato), folha_pagamento_itens(valor, variaveis_folha(nome, tipo))")
         .order("ano", { ascending: false })
         .order("mes", { ascending: false });
 
@@ -169,6 +192,17 @@ export function useFinanceiroData(filters: FinanceiroFilters) {
       }
 
       const { data: folhaPagamento } = await folhaQuery;
+
+      // Helpers para encargos a partir dos itens da folha
+      const matchVar = (f: any, pattern: RegExp) => {
+        const itens = (f.folha_pagamento_itens || []) as any[];
+        return itens
+          .filter(i => pattern.test(i?.variaveis_folha?.nome || ""))
+          .reduce((sum, i) => sum + (Number(i.valor) || 0), 0);
+      };
+      const rxInss = /inss/i;
+      const rxFgts = /fgts/i;
+      const rxIrrf = /irrf|imposto de renda/i;
 
       // Filtrar por período
       const folhaFiltrada = (folhaPagamento || []).filter(f => {
@@ -272,19 +306,32 @@ export function useFinanceiroData(filters: FinanceiroFilters) {
           totalBruto: 0,
           totalDescontos: 0,
           totalLiquido: 0,
+          totalInss: 0,
+          totalFgts: 0,
+          totalIrrf: 0,
+          totalDiferenca: 0,
+          totalPrincipal: 0,
           quantidadePagamentos: 0,
           diferencaValor: 0,
           diferencaPercentual: 0,
         });
       }
 
-      folhaFiltrada.forEach(f => {
+      folhaFiltrada.forEach((f: any) => {
         const key = `${f.ano}-${f.mes}`;
         if (historicoMap.has(key)) {
           const h = historicoMap.get(key)!;
           h.totalBruto += f.valor_bruto || 0;
           h.totalDescontos += f.descontos || 0;
           h.totalLiquido += f.valor_liquido || 0;
+          h.totalInss += matchVar(f, rxInss);
+          h.totalFgts += matchVar(f, rxFgts);
+          h.totalIrrf += matchVar(f, rxIrrf);
+          if (f.tipo_folha === "diferenca") {
+            h.totalDiferenca += f.valor_liquido || 0;
+          } else {
+            h.totalPrincipal += f.valor_liquido || 0;
+          }
           h.quantidadePagamentos += 1;
         }
       });
@@ -395,6 +442,17 @@ export function useFinanceiroData(filters: FinanceiroFilters) {
         });
       }
 
+      // Totais consolidados do período filtrado
+      const totalBrutoPeriodo = folhaFiltrada.reduce((s: number, f: any) => s + (f.valor_bruto || 0), 0);
+      const totalLiquidoPeriodo = folhaFiltrada.reduce((s: number, f: any) => s + (f.valor_liquido || 0), 0);
+      const totalInssPeriodo = folhaFiltrada.reduce((s: number, f: any) => s + matchVar(f, rxInss), 0);
+      const totalFgtsPeriodo = folhaFiltrada.reduce((s: number, f: any) => s + matchVar(f, rxFgts), 0);
+      const totalIrrfPeriodo = folhaFiltrada.reduce((s: number, f: any) => s + matchVar(f, rxIrrf), 0);
+      const folhaDiferenca = folhaFiltrada.filter((f: any) => f.tipo_folha === "diferenca");
+      const folhaPrincipal = folhaFiltrada.filter((f: any) => f.tipo_folha !== "diferenca");
+      const totalDiferencaPeriodo = folhaDiferenca.reduce((s: number, f: any) => s + (f.valor_liquido || 0), 0);
+      const totalPrincipalPeriodo = folhaPrincipal.reduce((s: number, f: any) => s + (f.valor_liquido || 0), 0);
+
       setKpis({
         custoTotal,
         variacaoMensal,
@@ -404,6 +462,15 @@ export function useFinanceiroData(filters: FinanceiroFilters) {
         projecaoProximoMes: projecao[0] || custoTotal,
         totalFuncionarios,
         totalSetores,
+        totalBruto: totalBrutoPeriodo,
+        totalInss: totalInssPeriodo,
+        totalFgts: totalFgtsPeriodo,
+        totalIrrf: totalIrrfPeriodo,
+        totalLiquido: totalLiquidoPeriodo,
+        totalPrincipal: totalPrincipalPeriodo,
+        totalDiferenca: totalDiferencaPeriodo,
+        quantidadePrincipal: folhaPrincipal.length,
+        quantidadeDiferenca: folhaDiferenca.length,
       });
 
       setGastosPorSetor(gastosPorSetorData);

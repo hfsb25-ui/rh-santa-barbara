@@ -1,8 +1,9 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
-  AreaChart,
+  ComposedChart,
   Area,
+  Line,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -53,7 +54,7 @@ export function HistoricoMensal({ data }: HistoricoMensalProps) {
         {/* Gráfico */}
         <div className="h-[250px] sm:h-[300px] mb-6 -mx-2 sm:mx-0">
           <ResponsiveContainer width="100%" height="100%">
-            <AreaChart
+            <ComposedChart
               data={chartData}
               margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
             >
@@ -82,7 +83,7 @@ export function HistoricoMensal({ data }: HistoricoMensalProps) {
               <Area
                 type="monotone"
                 dataKey="totalBruto"
-                name="Valor em conta"
+                name="Bruto"
                 stroke="hsl(var(--primary))"
                 fillOpacity={1}
                 fill="url(#colorBruto)"
@@ -90,12 +91,15 @@ export function HistoricoMensal({ data }: HistoricoMensalProps) {
               <Area
                 type="monotone"
                 dataKey="totalLiquido"
-                name="Valor em mãos"
+                name="Líquido"
                 stroke="hsl(var(--secondary))"
                 fillOpacity={1}
                 fill="url(#colorLiquido)"
               />
-            </AreaChart>
+              <Line type="monotone" dataKey="totalInss" name="INSS" stroke="#d97706" strokeWidth={2} dot={false} />
+              <Line type="monotone" dataKey="totalFgts" name="FGTS" stroke="#0284c7" strokeWidth={2} dot={false} />
+              <Line type="monotone" dataKey="totalIrrf" name="IRRF" stroke="#9333ea" strokeWidth={2} dot={false} />
+            </ComposedChart>
           </ResponsiveContainer>
         </div>
 
@@ -105,10 +109,14 @@ export function HistoricoMensal({ data }: HistoricoMensalProps) {
             <thead className="sticky top-0 bg-muted/80 backdrop-blur-sm">
               <tr className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
                 <th className="text-left p-2">Mês/Ano</th>
-                <th className="text-right p-2">Em conta</th>
+                <th className="text-right p-2">Bruto</th>
+                <th className="text-right p-2">INSS</th>
+                <th className="text-right p-2">FGTS</th>
+                <th className="text-right p-2">IRRF</th>
                 <th className="text-right p-2">Descontos</th>
-                <th className="text-right p-2">Em mãos</th>
-                <th className="text-right p-2">Pagamentos</th>
+                <th className="text-right p-2">Líquido</th>
+                <th className="text-right p-2">Diferença</th>
+                <th className="text-right p-2">Pag.</th>
                 <th className="text-right p-2">Variação</th>
               </tr>
             </thead>
@@ -124,11 +132,23 @@ export function HistoricoMensal({ data }: HistoricoMensalProps) {
                   <td className="text-right p-2 font-semibold">
                     {formatCurrencyFull(item.totalBruto)}
                   </td>
+                  <td className="text-right p-2 text-amber-600">
+                    {formatCurrencyFull(item.totalInss)}
+                  </td>
+                  <td className="text-right p-2 text-sky-600">
+                    {formatCurrencyFull(item.totalFgts)}
+                  </td>
+                  <td className="text-right p-2 text-purple-600">
+                    {formatCurrencyFull(item.totalIrrf)}
+                  </td>
                   <td className="text-right p-2 text-destructive">
                     {formatCurrencyFull(item.totalDescontos)}
                   </td>
                   <td className="text-right p-2 text-secondary font-medium">
                     {formatCurrencyFull(item.totalLiquido)}
+                  </td>
+                  <td className="text-right p-2 text-rose-600">
+                    {formatCurrencyFull(item.totalDiferenca)}
                   </td>
                   <td className="text-right p-2 text-muted-foreground">
                     {item.quantidadePagamentos}
@@ -198,16 +218,32 @@ export function HistoricoMensal({ data }: HistoricoMensalProps) {
               
               <div className="grid grid-cols-2 gap-2 text-xs">
                 <div>
-                  <span className="text-muted-foreground">Em conta:</span>
+                  <span className="text-muted-foreground">Bruto:</span>
                   <p className="font-semibold">{formatCurrencyFull(item.totalBruto)}</p>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Líquido:</span>
+                  <p className="text-secondary font-medium">{formatCurrencyFull(item.totalLiquido)}</p>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">INSS:</span>
+                  <p className="text-amber-600">{formatCurrencyFull(item.totalInss)}</p>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">FGTS:</span>
+                  <p className="text-sky-600">{formatCurrencyFull(item.totalFgts)}</p>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">IRRF:</span>
+                  <p className="text-purple-600">{formatCurrencyFull(item.totalIrrf)}</p>
                 </div>
                 <div>
                   <span className="text-muted-foreground">Descontos:</span>
                   <p className="text-destructive">{formatCurrencyFull(item.totalDescontos)}</p>
                 </div>
                 <div>
-                  <span className="text-muted-foreground">Em mãos:</span>
-                  <p className="text-secondary font-medium">{formatCurrencyFull(item.totalLiquido)}</p>
+                  <span className="text-muted-foreground">Diferença:</span>
+                  <p className="text-rose-600">{formatCurrencyFull(item.totalDiferenca)}</p>
                 </div>
                 <div>
                   <span className="text-muted-foreground">Pagamentos:</span>
