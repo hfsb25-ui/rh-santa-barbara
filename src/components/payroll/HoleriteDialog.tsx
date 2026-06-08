@@ -80,6 +80,7 @@ const HoleriteDialog = ({ open, onOpenChange, pagamento, empresaId }: HoleriteDi
   const [empresa, setEmpresa] = useState<Empresa | null>(null);
   const [employee, setEmployee] = useState<Employee | null>(null);
   const [loading, setLoading] = useState(false);
+  const [showDiferenca, setShowDiferenca] = useState(false);
 
   useEffect(() => {
     if (open && pagamento) {
