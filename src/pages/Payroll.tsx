@@ -19,6 +19,7 @@ import RelatorioDetalhadoDialog from "@/components/payroll/RelatorioDetalhadoDia
 import HoleriteDialog from "@/components/payroll/HoleriteDialog";
 import { AuditoriaHoleritesTab } from "@/components/payroll/AuditoriaHoleritesTab";
 import { ImportarHoleritesTab } from "@/components/payroll/ImportarHoleritesTab";
+import { HoleriteDiferencaLoteTab } from "@/components/payroll/HoleriteDiferencaLoteTab";
 import jsPDF from "jspdf";
 
 const TIPO_FOLHA_OPTIONS = [
