@@ -409,6 +409,9 @@ export async function gerarHoleritePdf(
   const nomeArquivo = `holerite-${employee.nome_completo.replace(/\s+/g, "-").toLowerCase()}-${MESES[pagamento.mes].toLowerCase()}-${pagamento.ano}.pdf`;
   const subpasta = `${pagamento.ano}-${String(pagamento.mes).padStart(2, "0")}`;
 
+  if (options.returnBlob) {
+    return doc.output("blob");
+  }
   if (options.silent) {
     const blob: Blob = doc.output("blob");
     await backupPdfToDrive({
