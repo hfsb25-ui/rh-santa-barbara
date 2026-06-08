@@ -169,8 +169,9 @@ Deno.serve(async (req) => {
       });
     }
 
-    // 1) chama Gemini
-    const extracted = await callGemini(body.pdf_base64, GEMINI_KEY);
+    // 1) chama IA via Lovable Gateway
+    const extracted = await callAI(body.pdf_base64, LOVABLE_API_KEY);
+
     const holerites: any[] = Array.isArray(extracted?.holerites)
       ? extracted.holerites
       : [];
