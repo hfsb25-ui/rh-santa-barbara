@@ -225,8 +225,12 @@ export async function persistirHoleriteDiferenca(params: {
     pagamentoId = data.id;
   }
 
-  if (calculo.descontos.length > 0) {
-    const itens = calculo.descontos.map((d) => ({
+  // Filtrar pseudo-itens (ex.: valor líquido do holerite principal não é uma variável real)
+  const itensReais = calculo.descontos.filter(
+    (d) => d.variavel_id && !d.variavel_id.startsWith("__")
+  );
+  if (itensReais.length > 0) {
+    const itens = itensReais.map((d) => ({
       folha_pagamento_id: pagamentoId,
       variavel_id: d.variavel_id,
       valor: d.valor,
