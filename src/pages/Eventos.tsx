@@ -6,6 +6,7 @@ import { ArrowLeft, Plus, Calendar as CalendarIcon, List, Download, Loader2 } fr
 import EventoCalendar from "@/components/eventos/EventoCalendar";
 import EventoList from "@/components/eventos/EventoList";
 import EventoForm from "@/components/eventos/EventoForm";
+import { GoogleCalendarSettings } from "@/components/eventos/GoogleCalendarSettings";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
