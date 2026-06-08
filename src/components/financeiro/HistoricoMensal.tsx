@@ -109,10 +109,14 @@ export function HistoricoMensal({ data }: HistoricoMensalProps) {
             <thead className="sticky top-0 bg-muted/80 backdrop-blur-sm">
               <tr className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
                 <th className="text-left p-2">Mês/Ano</th>
-                <th className="text-right p-2">Em conta</th>
+                <th className="text-right p-2">Bruto</th>
+                <th className="text-right p-2">INSS</th>
+                <th className="text-right p-2">FGTS</th>
+                <th className="text-right p-2">IRRF</th>
                 <th className="text-right p-2">Descontos</th>
-                <th className="text-right p-2">Em mãos</th>
-                <th className="text-right p-2">Pagamentos</th>
+                <th className="text-right p-2">Líquido</th>
+                <th className="text-right p-2">Diferença</th>
+                <th className="text-right p-2">Pag.</th>
                 <th className="text-right p-2">Variação</th>
               </tr>
             </thead>
@@ -128,11 +132,23 @@ export function HistoricoMensal({ data }: HistoricoMensalProps) {
                   <td className="text-right p-2 font-semibold">
                     {formatCurrencyFull(item.totalBruto)}
                   </td>
+                  <td className="text-right p-2 text-amber-600">
+                    {formatCurrencyFull(item.totalInss)}
+                  </td>
+                  <td className="text-right p-2 text-sky-600">
+                    {formatCurrencyFull(item.totalFgts)}
+                  </td>
+                  <td className="text-right p-2 text-purple-600">
+                    {formatCurrencyFull(item.totalIrrf)}
+                  </td>
                   <td className="text-right p-2 text-destructive">
                     {formatCurrencyFull(item.totalDescontos)}
                   </td>
                   <td className="text-right p-2 text-secondary font-medium">
                     {formatCurrencyFull(item.totalLiquido)}
+                  </td>
+                  <td className="text-right p-2 text-rose-600">
+                    {formatCurrencyFull(item.totalDiferenca)}
                   </td>
                   <td className="text-right p-2 text-muted-foreground">
                     {item.quantidadePagamentos}
