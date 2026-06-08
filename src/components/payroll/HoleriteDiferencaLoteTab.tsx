@@ -5,7 +5,9 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Loader2, PlayCircle, Settings as SettingsIcon, RefreshCw } from "lucide-react";
+import { Loader2, PlayCircle, Settings as SettingsIcon, RefreshCw, Download } from "lucide-react";
+import JSZip from "jszip";
+import { gerarHoleritePdf } from "@/lib/pdfGeneratorHolerite";
 import {
   Table,
   TableBody,
