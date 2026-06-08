@@ -19,6 +19,7 @@ export function ConfigHoleriteDiferenca() {
   const [variaveis, setVariaveis] = useState<Variavel[]>([]);
   const [selecionadas, setSelecionadas] = useState<Set<string>>(new Set());
   const [ativo, setAtivo] = useState(true);
+  const [incluirLiquido, setIncluirLiquido] = useState(false);
   const [configId, setConfigId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -34,7 +35,7 @@ export function ConfigHoleriteDiferenca() {
           .order("nome"),
         (supabase as any)
           .from("configuracao_holerite_diferenca")
-          .select("id, variaveis_desconto_ids, ativo")
+          .select("id, variaveis_desconto_ids, ativo, incluir_liquido_holerite")
           .order("created_at", { ascending: false })
           .limit(1)
           .maybeSingle(),
@@ -43,6 +44,7 @@ export function ConfigHoleriteDiferenca() {
       if (cfg) {
         setConfigId(cfg.id);
         setAtivo(cfg.ativo);
+        setIncluirLiquido(!!cfg.incluir_liquido_holerite);
         setSelecionadas(new Set((cfg.variaveis_desconto_ids || []) as string[]));
       }
       setLoading(false);
