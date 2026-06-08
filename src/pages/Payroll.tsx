@@ -243,6 +243,7 @@ const Payroll = () => {
         ano,
         tipo_folha,
         status,
+        employees (
           nome_completo,
           cargo,
           tipo_contrato,
