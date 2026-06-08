@@ -55,8 +55,9 @@ export function HoleriteDiferencaLoteTab({ empresaId, mes, ano }: Props) {
     }
     setLoading(true);
     try {
-      const ids = await carregarConfigDiferenca();
-      setConfigIds(ids);
+      const cfg = await carregarConfigDiferenca();
+      setConfig(cfg);
+      const ids = cfg.variaveis_desconto_ids;
 
       // Buscar funcionários da empresa que têm holerite normal no mês
       const { data: folhas } = await supabase
