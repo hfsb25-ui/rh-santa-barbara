@@ -508,6 +508,105 @@ export function ImportarHoleritesTab() {
           )}
         </DialogContent>
       </Dialog>
+
+      <Dialog open={cadastroOpen} onOpenChange={setCadastroOpen}>
+        <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Cadastrar variáveis não mapeadas</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              As rubricas abaixo foram identificadas no PDF mas não existem em "Variáveis de Folha".
+              Revise os dados e autorize o cadastro. Após cadastrar, o sistema re-mapeia automaticamente
+              os holerites em memória.
+            </p>
+            {novasVariaveis.length === 0 ? (
+              <p className="text-sm text-center py-6 text-muted-foreground">Nenhuma rubrica pendente.</p>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-10"></TableHead>
+                    <TableHead>Tipo</TableHead>
+                    <TableHead>Código</TableHead>
+                    <TableHead>Nome</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {novasVariaveis.map((v, idx) => (
+                    <TableRow key={v.key}>
+                      <TableCell>
+                        <Checkbox
+                          checked={v.selecionado}
+                          onCheckedChange={(c) =>
+                            setNovasVariaveis((arr) => {
+                              const n = [...arr];
+                              n[idx] = { ...n[idx], selecionado: !!c };
+                              return n;
+                            })
+                          }
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <Select
+                          value={v.tipo}
+                          onValueChange={(t: "provento" | "desconto") =>
+                            setNovasVariaveis((arr) => {
+                              const n = [...arr];
+                              n[idx] = { ...n[idx], tipo: t };
+                              return n;
+                            })
+                          }
+                        >
+                          <SelectTrigger className="h-8 w-32">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="provento">Provento</SelectItem>
+                            <SelectItem value="desconto">Desconto</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </TableCell>
+                      <TableCell>
+                        <Input
+                          className="h-8 w-24"
+                          value={v.codigo}
+                          onChange={(e) =>
+                            setNovasVariaveis((arr) => {
+                              const n = [...arr];
+                              n[idx] = { ...n[idx], codigo: e.target.value };
+                              return n;
+                            })
+                          }
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <Input
+                          className="h-8"
+                          value={v.nome}
+                          onChange={(e) =>
+                            setNovasVariaveis((arr) => {
+                              const n = [...arr];
+                              n[idx] = { ...n[idx], nome: e.target.value };
+                              return n;
+                            })
+                          }
+                        />
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCadastroOpen(false)}>Cancelar</Button>
+            <Button onClick={confirmarCadastro} disabled={salvandoVars || novasVariaveis.length === 0}>
+              {salvandoVars ? "Cadastrando..." : "Autorizar cadastro"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
