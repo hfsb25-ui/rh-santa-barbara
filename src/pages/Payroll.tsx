@@ -18,6 +18,7 @@ import LancamentoFolhaForm from "@/components/payroll/LancamentoFolhaForm";
 import RelatorioDetalhadoDialog from "@/components/payroll/RelatorioDetalhadoDialog";
 import HoleriteDialog from "@/components/payroll/HoleriteDialog";
 import { AuditoriaHoleritesTab } from "@/components/payroll/AuditoriaHoleritesTab";
+import { ImportarHoleritesTab } from "@/components/payroll/ImportarHoleritesTab";
 import jsPDF from "jspdf";
 
 const TIPO_FOLHA_OPTIONS = [
@@ -909,10 +910,11 @@ const Payroll = () => {
 
         {selectedEmpresa && (
           <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="mb-4">
+            <TabsList className="mb-4 flex flex-wrap h-auto">
               <TabsTrigger value="lancamentos">Lançamentos</TabsTrigger>
               <TabsTrigger value="historico">Histórico</TabsTrigger>
               <TabsTrigger value="variaveis">Variáveis</TabsTrigger>
+              <TabsTrigger value="importar">Importar PDF</TabsTrigger>
               <TabsTrigger value="auditoria">Auditoria & Fiscalização</TabsTrigger>
             </TabsList>
 
