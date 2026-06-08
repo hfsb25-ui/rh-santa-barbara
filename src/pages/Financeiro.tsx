@@ -48,14 +48,17 @@ const Financeiro = () => {
     let y = 45;
     doc.setFontSize(14);
     doc.text("Resumo", 20, y);
-    y += 10;
+    y += 8;
     doc.setFontSize(10);
-    doc.text(`Custo Total: R$ ${kpis.custoTotal.toLocaleString("pt-BR")}`, 20, y);
-    y += 6;
-    doc.text(`Variação Mensal: ${kpis.variacaoMensal.toFixed(1)}%`, 20, y);
-    y += 6;
-    doc.text(`Funcionários: ${kpis.totalFuncionarios}`, 20, y);
-    y += 15;
+    doc.text(`Valor Bruto: R$ ${kpis.totalBruto.toLocaleString("pt-BR")}`, 20, y); y += 5;
+    doc.text(`INSS: R$ ${kpis.totalInss.toLocaleString("pt-BR")}`, 20, y); y += 5;
+    doc.text(`FGTS: R$ ${kpis.totalFgts.toLocaleString("pt-BR")}`, 20, y); y += 5;
+    doc.text(`IRRF: R$ ${kpis.totalIrrf.toLocaleString("pt-BR")}`, 20, y); y += 5;
+    doc.text(`Valor Líquido: R$ ${kpis.totalLiquido.toLocaleString("pt-BR")}`, 20, y); y += 5;
+    doc.text(`Holerite Principal: R$ ${kpis.totalPrincipal.toLocaleString("pt-BR")} (${kpis.quantidadePrincipal})`, 20, y); y += 5;
+    doc.text(`Holerite Diferença: R$ ${kpis.totalDiferenca.toLocaleString("pt-BR")} (${kpis.quantidadeDiferenca})`, 20, y); y += 5;
+    doc.text(`Variação Mensal: ${kpis.variacaoMensal.toFixed(1)}%`, 20, y); y += 5;
+    doc.text(`Funcionários: ${kpis.totalFuncionarios}`, 20, y); y += 12;
 
     doc.setFontSize(14);
     doc.text("Gastos por Setor", 20, y);
