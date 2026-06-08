@@ -19,6 +19,7 @@ import {
   carregarConfigDiferenca,
   persistirHoleriteDiferenca,
   type CalculoDiferenca,
+  type ConfigDiferenca,
 } from "@/lib/holeriteDiferencaCalc";
 import { ConfigHoleriteDiferenca } from "./ConfigHoleriteDiferenca";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
