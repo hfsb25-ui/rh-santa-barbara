@@ -328,6 +328,12 @@ export function ImportarHoleritesTab() {
                 {saving ? "Importando..." : `Importar ${totalSelecionados} como rascunho`}
               </Button>
             )}
+            {naoMapeadasCount > 0 && (
+              <Button onClick={abrirCadastro} variant="outline">
+                <Plus className="w-4 h-4 mr-2" />
+                Cadastrar {naoMapeadasCount} variável(is) não mapeada(s)
+              </Button>
+            )}
           </div>
 
           {resultados.length > 0 && (
