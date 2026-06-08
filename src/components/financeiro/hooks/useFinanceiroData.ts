@@ -52,6 +52,11 @@ export interface HistoricoData {
   totalBruto: number;
   totalDescontos: number;
   totalLiquido: number;
+  totalInss: number;
+  totalFgts: number;
+  totalIrrf: number;
+  totalDiferenca: number;
+  totalPrincipal: number;
   quantidadePagamentos: number;
   diferencaValor: number;
   diferencaPercentual: number;
