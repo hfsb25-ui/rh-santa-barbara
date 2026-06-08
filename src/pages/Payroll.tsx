@@ -1089,6 +1089,10 @@ const Payroll = () => {
               <VariaveisConfig empresaId={selectedEmpresa} />
             </TabsContent>
 
+            <TabsContent value="importar">
+              <ImportarHoleritesTab />
+            </TabsContent>
+
             <TabsContent value="auditoria">
               <AuditoriaHoleritesTab empresaIdInicial={selectedEmpresa} />
             </TabsContent>
