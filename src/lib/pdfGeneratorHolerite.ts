@@ -121,11 +121,13 @@ function getTableData(pagamento: HoleritePagamento, employee: HoleriteEmployee) 
 export interface GerarHoleriteOptions {
   silent?: boolean; // não baixa localmente, apenas envia ao Drive
   assinatura?: HoleriteAssinaturaInfo | null;
+  returnBlob?: boolean; // retorna o Blob em vez de baixar (uso em lote)
 }
 
 /**
  * Gera o PDF do holerite. Por padrão baixa no navegador.
  * Quando { silent: true }, apenas envia para o Google Drive (uso em backup retroativo).
+ * Quando { returnBlob: true }, retorna o Blob sem baixar nem enviar ao Drive.
  * Quando { assinatura }, embute a assinatura digital + QR code do certificado.
  */
 export async function gerarHoleritePdf(
@@ -133,7 +135,7 @@ export async function gerarHoleritePdf(
   empresa: HoleriteEmpresa,
   employee: HoleriteEmployee,
   options: GerarHoleriteOptions = {}
-): Promise<void> {
+): Promise<Blob | void> {
   const doc = new jsPDF({ format: "a4", orientation: "portrait" });
   const pw = doc.internal.pageSize.getWidth();
   const ml = 10;
