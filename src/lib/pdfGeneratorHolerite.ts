@@ -111,10 +111,27 @@ function getTableData(pagamento: HoleritePagamento, employee: HoleriteEmployee) 
     desc: item.variaveis_folha?.nome || "-",
     ref: "", prov: "", desc2: formatCurrency(item.valor),
   }));
+
+  // Holerite Diferença: se houver desconto extra do líquido do holerite principal
+  // (gravado em pagamento.descontos mas sem item correspondente), renderiza linha virtual.
+  let descontoLiquidoPrincipal = 0;
+  if (pagamento.tipo_folha === "diferenca") {
+    const somaItens = descontosItens.reduce((s, d) => s + d.valor, 0);
+    const diff = (pagamento.descontos || 0) - somaItens;
+    if (diff > 0.009) {
+      descontoLiquidoPrincipal = diff;
+      rows.push({
+        cod: "—",
+        desc: "Valor Líquido Holerite Principal",
+        ref: "", prov: "", desc2: formatCurrency(diff),
+      });
+    }
+  }
+
   while (rows.length < 8) rows.push({ cod: "", desc: "", ref: "", prov: "", desc2: "" });
 
   const totalProventos = salarioBase.valor + proventos.reduce((s, p) => s + p.valor, 0);
-  const totalDescontos = descontosItens.reduce((s, d) => s + d.valor, 0);
+  const totalDescontos = descontosItens.reduce((s, d) => s + d.valor, 0) + descontoLiquidoPrincipal;
   return { rows, totalProventos, totalDescontos };
 }
 
