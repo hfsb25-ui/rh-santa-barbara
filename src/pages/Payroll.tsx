@@ -709,6 +709,27 @@ const Payroll = () => {
         </div>
         {showActions && (
           <div className="flex gap-2 ml-4">
+            {pag.status === "rascunho" && (
+              <Button
+                variant="default"
+                size="sm"
+                onClick={async () => {
+                  const { error } = await supabase
+                    .from("folha_pagamento")
+                    .update({ status: "final" })
+                    .eq("id", pag.id);
+                  if (error) toast.error("Erro ao liberar");
+                  else {
+                    toast.success("Holerite liberado para o funcionário");
+                    fetchPagamentos();
+                    fetchTodosPagamentos();
+                  }
+                }}
+                title="Liberar para o funcionário assinar"
+              >
+                Liberar
+              </Button>
+            )}
             <Button variant="outline" size="sm" onClick={() => handleOpenHolerite(pag)} title="Imprimir Holerite">
               <Printer className="w-4 h-4" />
             </Button>
