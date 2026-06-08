@@ -87,7 +87,7 @@ export function HoleriteDiferencaLoteTab({ empresaId, mes, ano }: Props) {
       for (const f of folhas || []) {
         const emp: any = (f as any).employees;
         if (!emp) continue;
-        const calc = await calcularHoleriteDiferenca(emp.id, mes, ano, ids);
+        const calc = await calcularHoleriteDiferenca(emp.id, mes, ano, cfg);
         resultados.push({
           employee_id: emp.id,
           nome: emp.nome_completo,
