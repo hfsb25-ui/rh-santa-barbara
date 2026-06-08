@@ -306,19 +306,32 @@ export function useFinanceiroData(filters: FinanceiroFilters) {
           totalBruto: 0,
           totalDescontos: 0,
           totalLiquido: 0,
+          totalInss: 0,
+          totalFgts: 0,
+          totalIrrf: 0,
+          totalDiferenca: 0,
+          totalPrincipal: 0,
           quantidadePagamentos: 0,
           diferencaValor: 0,
           diferencaPercentual: 0,
         });
       }
 
-      folhaFiltrada.forEach(f => {
+      folhaFiltrada.forEach((f: any) => {
         const key = `${f.ano}-${f.mes}`;
         if (historicoMap.has(key)) {
           const h = historicoMap.get(key)!;
           h.totalBruto += f.valor_bruto || 0;
           h.totalDescontos += f.descontos || 0;
           h.totalLiquido += f.valor_liquido || 0;
+          h.totalInss += matchVar(f, rxInss);
+          h.totalFgts += matchVar(f, rxFgts);
+          h.totalIrrf += matchVar(f, rxIrrf);
+          if (f.tipo_folha === "diferenca") {
+            h.totalDiferenca += f.valor_liquido || 0;
+          } else {
+            h.totalPrincipal += f.valor_liquido || 0;
+          }
           h.quantidadePagamentos += 1;
         }
       });
