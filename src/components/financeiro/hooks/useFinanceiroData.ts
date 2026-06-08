@@ -442,6 +442,17 @@ export function useFinanceiroData(filters: FinanceiroFilters) {
         });
       }
 
+      // Totais consolidados do período filtrado
+      const totalBrutoPeriodo = folhaFiltrada.reduce((s: number, f: any) => s + (f.valor_bruto || 0), 0);
+      const totalLiquidoPeriodo = folhaFiltrada.reduce((s: number, f: any) => s + (f.valor_liquido || 0), 0);
+      const totalInssPeriodo = folhaFiltrada.reduce((s: number, f: any) => s + matchVar(f, rxInss), 0);
+      const totalFgtsPeriodo = folhaFiltrada.reduce((s: number, f: any) => s + matchVar(f, rxFgts), 0);
+      const totalIrrfPeriodo = folhaFiltrada.reduce((s: number, f: any) => s + matchVar(f, rxIrrf), 0);
+      const folhaDiferenca = folhaFiltrada.filter((f: any) => f.tipo_folha === "diferenca");
+      const folhaPrincipal = folhaFiltrada.filter((f: any) => f.tipo_folha !== "diferenca");
+      const totalDiferencaPeriodo = folhaDiferenca.reduce((s: number, f: any) => s + (f.valor_liquido || 0), 0);
+      const totalPrincipalPeriodo = folhaPrincipal.reduce((s: number, f: any) => s + (f.valor_liquido || 0), 0);
+
       setKpis({
         custoTotal,
         variacaoMensal,
@@ -451,6 +462,15 @@ export function useFinanceiroData(filters: FinanceiroFilters) {
         projecaoProximoMes: projecao[0] || custoTotal,
         totalFuncionarios,
         totalSetores,
+        totalBruto: totalBrutoPeriodo,
+        totalInss: totalInssPeriodo,
+        totalFgts: totalFgtsPeriodo,
+        totalIrrf: totalIrrfPeriodo,
+        totalLiquido: totalLiquidoPeriodo,
+        totalPrincipal: totalPrincipalPeriodo,
+        totalDiferenca: totalDiferencaPeriodo,
+        quantidadePrincipal: folhaPrincipal.length,
+        quantidadeDiferenca: folhaDiferenca.length,
       });
 
       setGastosPorSetor(gastosPorSetorData);
