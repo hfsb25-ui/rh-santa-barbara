@@ -45,7 +45,7 @@ export function HoleriteDiferencaLoteTab({ empresaId, mes, ano }: Props) {
   const [loading, setLoading] = useState(false);
   const [linhas, setLinhas] = useState<LinhaPrev[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [configIds, setConfigIds] = useState<string[]>([]);
+  const [config, setConfig] = useState<ConfigDiferenca>({ variaveis_desconto_ids: [], incluir_liquido_holerite: false });
   const [executando, setExecutando] = useState(false);
 
   const carregar = async () => {
