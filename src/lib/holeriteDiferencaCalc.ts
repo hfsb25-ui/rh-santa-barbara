@@ -18,15 +18,25 @@ export interface CalculoDiferenca {
  * Busca config global de variáveis consideradas no holerite diferença.
  * Retorna array de UUIDs.
  */
-export async function carregarConfigDiferenca(): Promise<string[]> {
+export interface ConfigDiferenca {
+  variaveis_desconto_ids: string[];
+  incluir_liquido_holerite: boolean;
+}
+
+export async function carregarConfigDiferenca(): Promise<ConfigDiferenca> {
   const { data, error } = await (supabase as any)
     .from("configuracao_holerite_diferenca")
-    .select("variaveis_desconto_ids, ativo")
+    .select("variaveis_desconto_ids, ativo, incluir_liquido_holerite")
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
-  if (error || !data || data.ativo === false) return [];
-  return (data.variaveis_desconto_ids || []) as string[];
+  if (error || !data || data.ativo === false) {
+    return { variaveis_desconto_ids: [], incluir_liquido_holerite: false };
+  }
+  return {
+    variaveis_desconto_ids: (data.variaveis_desconto_ids || []) as string[],
+    incluir_liquido_holerite: !!data.incluir_liquido_holerite,
+  };
 }
 
 /**
