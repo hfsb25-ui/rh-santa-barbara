@@ -62,8 +62,9 @@ export default function MeusHolerites() {
       .neq("status", "rascunho")
       .order("ano", { ascending: false })
       .order("mes", { ascending: false });
-    setPagamentos(pags || []);
-    if (pags && pags.length) {
+    const filtrados = (pags || []).filter((p) => p.tipo_folha !== "diferenca");
+    setPagamentos(filtrados);
+    if (filtrados.length) {
       const { data: ass } = await supabase
         .from("holerite_assinaturas")
         .select("*")
