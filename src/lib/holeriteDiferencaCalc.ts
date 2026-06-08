@@ -49,8 +49,11 @@ export async function calcularHoleriteDiferenca(
   employeeId: string,
   mes: number,
   ano: number,
-  variaveisConfig: string[]
+  config: ConfigDiferenca
 ): Promise<CalculoDiferenca | null> {
+  const variaveisConfig = config.variaveis_desconto_ids || [];
+  const incluirLiquido = config.incluir_liquido_holerite;
+
   // 1. Pegar salário base
   const { data: emp } = await supabase
     .from("employees")
@@ -60,15 +63,11 @@ export async function calcularHoleriteDiferenca(
   const base = Number(emp?.salario || 0);
   if (!base) return null;
 
-  if (!variaveisConfig.length) {
-    return { base, descontos: [], total_descontos: 0, diferenca: base };
-  }
-
-  // 2. Pegar holerite normal (salario) do mês
+  // 2. Pegar holerite normal do mês (precisa para itens E para líquido)
   const { data: folha } = await supabase
     .from("folha_pagamento")
     .select(
-      `id, folha_pagamento_itens(variavel_id, valor, variaveis_folha(id, nome, codigo, tipo))`
+      `id, valor_liquido, folha_pagamento_itens(variavel_id, valor, variaveis_folha(id, nome, codigo, tipo))`
     )
     .eq("employee_id", employeeId)
     .eq("mes", mes)
@@ -77,17 +76,32 @@ export async function calcularHoleriteDiferenca(
     .maybeSingle();
 
   const descontos: DescontoDiferenca[] = [];
-  const itens = (folha?.folha_pagamento_itens || []) as any[];
-  itens.forEach((it) => {
-    if (variaveisConfig.includes(it.variavel_id)) {
+
+  if (incluirLiquido && folha) {
+    const liquido = Number((folha as any).valor_liquido || 0);
+    if (liquido > 0) {
       descontos.push({
-        variavel_id: it.variavel_id,
-        nome: it.variaveis_folha?.nome || "—",
-        codigo: it.variaveis_folha?.codigo || null,
-        valor: Number(it.valor) || 0,
+        variavel_id: "__liquido_holerite__",
+        nome: "Valor líquido do holerite principal",
+        codigo: "LIQ",
+        valor: liquido,
       });
     }
-  });
+  }
+
+  if (variaveisConfig.length) {
+    const itens = (folha?.folha_pagamento_itens || []) as any[];
+    itens.forEach((it) => {
+      if (variaveisConfig.includes(it.variavel_id)) {
+        descontos.push({
+          variavel_id: it.variavel_id,
+          nome: it.variaveis_folha?.nome || "—",
+          codigo: it.variaveis_folha?.codigo || null,
+          valor: Number(it.valor) || 0,
+        });
+      }
+    });
+  }
 
   const total_descontos = descontos.reduce((s, d) => s + d.valor, 0);
   return {
