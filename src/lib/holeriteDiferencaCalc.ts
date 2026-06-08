@@ -90,17 +90,54 @@ export async function calcularHoleriteDiferenca(
   }
 
   if (variaveisConfig.length) {
+    // Buscar metadata de todas as variáveis configuradas (para nome/codigo)
+    const { data: varsMeta } = await supabase
+      .from("variaveis_folha")
+      .select("id, nome, codigo")
+      .in("id", variaveisConfig);
+    const metaMap = new Map<string, { nome: string; codigo: string | null }>();
+    (varsMeta || []).forEach((v: any) =>
+      metaMap.set(v.id, { nome: v.nome, codigo: v.codigo })
+    );
+
+    // 2a. Itens do holerite normal do mês
     const itens = (folha?.folha_pagamento_itens || []) as any[];
+    const idsCobertos = new Set<string>();
     itens.forEach((it) => {
       if (variaveisConfig.includes(it.variavel_id)) {
+        const meta = metaMap.get(it.variavel_id);
         descontos.push({
           variavel_id: it.variavel_id,
-          nome: it.variaveis_folha?.nome || "—",
-          codigo: it.variaveis_folha?.codigo || null,
+          nome: it.variaveis_folha?.nome || meta?.nome || "—",
+          codigo: it.variaveis_folha?.codigo || meta?.codigo || null,
           valor: Number(it.valor) || 0,
         });
+        idsCobertos.add(it.variavel_id);
       }
     });
+
+    // 2b. Fallback: variáveis fixas do funcionário (Clube de Benefícios, etc.)
+    const faltantes = variaveisConfig.filter((id) => !idsCobertos.has(id));
+    if (faltantes.length) {
+      const { data: fixas } = await supabase
+        .from("variaveis_fixas_funcionario")
+        .select("variavel_id, valor, ativo")
+        .eq("employee_id", employeeId)
+        .eq("ativo", true)
+        .in("variavel_id", faltantes);
+      (fixas || []).forEach((f: any) => {
+        const meta = metaMap.get(f.variavel_id);
+        const valor = Number(f.valor) || 0;
+        if (valor > 0) {
+          descontos.push({
+            variavel_id: f.variavel_id,
+            nome: meta?.nome || "—",
+            codigo: meta?.codigo || null,
+            valor,
+          });
+        }
+      });
+    }
   }
 
   const total_descontos = descontos.reduce((s, d) => s + d.valor, 0);
