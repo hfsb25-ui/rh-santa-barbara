@@ -272,10 +272,20 @@ export function HoleriteDiferencaLoteTab({ empresaId, mes, ano }: Props) {
               <CardTitle className="text-base">
                 Holerite Diferença — {mes.toString().padStart(2, "0")}/{ano}
               </CardTitle>
-              <Button variant="outline" size="sm" onClick={carregar} disabled={loading}>
-                <RefreshCw className={`w-4 h-4 mr-2 ${loading ? "animate-spin" : ""}`} />
-                Recarregar
-              </Button>
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" onClick={baixarLote} disabled={baixando}>
+                  {baixando ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  ) : (
+                    <Download className="w-4 h-4 mr-2" />
+                  )}
+                  Baixar ZIP
+                </Button>
+                <Button variant="outline" size="sm" onClick={carregar} disabled={loading}>
+                  <RefreshCw className={`w-4 h-4 mr-2 ${loading ? "animate-spin" : ""}`} />
+                  Recarregar
+                </Button>
+              </div>
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
