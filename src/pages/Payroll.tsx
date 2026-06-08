@@ -74,6 +74,7 @@ interface Pagamento {
   mes: number;
   ano: number;
   tipo_folha: string;
+  status?: string;
   employees: {
     nome_completo: string;
     cargo: string;
