@@ -22,7 +22,8 @@ const PendingHoleritesAlert = () => {
       const { data: pags } = await supabase
         .from("folha_pagamento")
         .select("id")
-        .eq("employee_id", emp.id);
+        .eq("employee_id", emp.id)
+        .neq("status", "rascunho");
       if (!pags?.length) return;
       const { data: ass } = await supabase
         .from("holerite_assinaturas")

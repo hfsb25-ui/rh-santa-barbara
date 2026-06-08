@@ -1,108 +1,80 @@
-## Auditoria e Exportação de Holerites Assinados (Admin)
 
-Criar uma área administrativa dedicada para fiscalização, onde o admin pode filtrar, auditar e exportar em lote todos os holerites assinados de um período — com comprovantes de assinatura e trilha de auditoria completa.
+## Importação de Holerites por PDF (com IA)
 
-### 1. Nova aba no módulo Folha de Pagamento
-Adicionar aba **"Auditoria & Fiscalização"** dentro de `src/pages/Payroll.tsx`, visível apenas para `admin`/`gestor`.
+Novo fluxo onde o admin envia um PDF contendo um ou vários holerites. O sistema usa IA (Gemini) para ler cada página, identifica o colaborador pelo CPF, importa rubricas detalhadas e deixa tudo como rascunho para revisão antes de liberar para assinatura.
 
-### 2. Tela de Auditoria (`AuditoriaHoleritesTab.tsx`)
-Filtros no topo:
-- **Mês / Ano** (obrigatórios)
-- **Empresa** (multi-select)
-- **Tipo de Contrato** (CLT, PJ, Estágio, Temporário, etc.)
-- **Setor** (opcional)
-- **Status da assinatura**: Todos / Assinados / Pendentes / Visualizados / Não enviados
-- **Funcionário** (busca por nome/CPF)
+### 1. Nova aba "Importar Holerites" em Folha de Pagamento
+Em `src/pages/Payroll.tsx`, adicionar aba visível só para admin/gestor.
 
-Tabela de resultados com colunas:
-| Funcionário | Empresa | Contrato | Mês/Ano | Status | Protocolo | Data Assinatura | IP | Ações |
+Tela (`ImportarHoleritesTab.tsx`):
+- Upload de PDF (até ~20 MB) com drag-and-drop
+- Seleção de **Mês/Ano** e **Empresa** padrão (usados como fallback se a IA não identificar)
+- Botão "Processar com IA"
+- Barra de progresso por página
+- Tabela de resultados:
+  | Página | CPF detectado | Funcionário | Mês/Ano | Bruto | Líquido | Status | Ações |
+  - Status: ✅ Reconhecido / ⚠️ CPF não encontrado / ❌ Erro de leitura / 🔁 Já existe (mesmo mês/ano)
+  - Ações por linha: Ver dados extraídos, Editar mapeamento, Vincular manualmente a um funcionário, Descartar
+- Botão final **"Importar como rascunho"** — só importa as linhas marcadas, com `status: 'rascunho'` em `folha_pagamento`
 
-Indicadores no topo:
-- Total de holerites do período
-- % assinados / pendentes / não enviados
-- Total de funcionários com pendência
+### 2. Edge Function `holerite-importar-pdf`
+- Recebe o PDF em base64 + mês/ano/empresa default
+- Valida que o caller é admin/gestor (via JWT + `has_role`)
+- Envia o PDF para a **Gemini API** (`gemini-2.0-flash` aceita PDF nativamente) com um prompt estruturado pedindo JSON:
+  ```json
+  {
+    "holerites": [
+      {
+        "pagina": 1,
+        "cpf": "12345678900",
+        "nome": "FULANO",
+        "mes": 5, "ano": 2026,
+        "tipo_folha": "mensal",
+        "proventos": [{ "codigo": "001", "descricao": "Salário", "valor": 2500.00 }],
+        "descontos": [{ "codigo": "INSS", "descricao": "INSS", "valor": 200.00 }],
+        "valor_bruto": 2500.00,
+        "descontos_total": 200.00,
+        "valor_liquido": 2300.00
+      }
+    ]
+  }
+  ```
+- Para cada holerite extraído:
+  - Limpa CPF (só dígitos) → busca `employees.cpf`
+  - Se encontrar: tenta casar rubricas com `variaveis_folha` por `codigo` ou `nome` (case-insensitive). Rubricas não reconhecidas vão para uma lista `rubricas_nao_mapeadas` que aparece na revisão.
+  - Verifica duplicidade em `folha_pagamento` (employee_id + mes + ano + tipo_folha)
+- **Não persiste nada** — devolve um JSON com tudo (extraídos + matches) para a UI revisar.
 
-Ações por linha:
-- Ver Auditoria (reusa `AuditoriaHoleriteDialog`)
-- Baixar Holerite Original
-- Baixar Certificado de Assinatura
-- Baixar Pacote Completo (zip individual)
+### 3. Confirmação da importação
+Quando o admin clica "Importar como rascunho":
+- Frontend chama a edge function `holerite-importar-pdf-confirmar` com a lista revisada
+- Para cada item: cria `folha_pagamento` (status=`rascunho`) + `folha_pagamento_itens` para cada rubrica mapeada
+- Retorna sumário (X criados, Y pulados, Z erros)
 
-### 3. Exportação em Lote (Pacote de Fiscalização)
-Botão **"Exportar Pacote de Fiscalização"** que gera um arquivo `.zip` contendo:
+### 4. Pós-importação
+- O holerite fica visível na aba normal de Folha de Pagamento marcado como **Rascunho**
+- Admin abre, confere, edita se necessário e clica "Liberar" (fluxo já existente) — só então aparece em "Meus Holerites" para o funcionário assinar
+- Importações são registradas em `holerite_eventos_auditoria` com `tipo_evento: 'importado_pdf'`
 
-```
-fiscalizacao_AAAAMM_empresa/
-├── _INDICE.pdf                      → relatório executivo
-├── _AUDITORIA.xlsx                  → planilha completa
-├── holerites/
-│   ├── FUNCIONARIO_CPF_holerite.pdf
-│   └── ...
-├── certificados/
-│   ├── FUNCIONARIO_CPF_certificado.pdf
-│   └── ...
-└── evidencias/
-    ├── FUNCIONARIO_CPF_selfie.jpg
-    └── FUNCIONARIO_CPF_assinatura.png
-```
-
-**_INDICE.pdf** (gerado com jsPDF):
-- Cabeçalho com empresa(s), período, data de geração, responsável (admin logado)
-- Resumo: total, assinados, pendentes, % cobertura
-- Base legal: Lei nº 14.063/2020, CLT art. 464
-- Lista de holerites com protocolo, hash, data/hora, IP
-- Hash SHA-256 do próprio pacote (rodapé de integridade)
-
-**_AUDITORIA.xlsx** (gerado com XLSX já instalado):
-Colunas: Funcionário | CPF | Empresa | Contrato | Setor | Cargo | Mês/Ano | Bruto | Líquido | Status | Protocolo | Data Assinatura | IP | Navegador | SO | Geolocalização | Hash Documento | Hash Assinatura | URL Validação Pública
-
-### 4. Edge Function `holerite-export-fiscalizacao`
-Por causa do volume (centenas de PDFs) e do bypass de RLS para baixar do bucket privado:
-
-- Recebe filtros do frontend
-- Valida que o caller é `admin`/`gestor` (via JWT + `has_role`)
-- Consulta `holerite_assinaturas` + `folha_pagamento` + `employees` + `empresas`
-- Baixa cada PDF/imagem do bucket `holerites-assinados` com service_role
-- Monta o zip em memória (JSZip)
-- Calcula SHA-256 do zip final
-- Registra **evento de auditoria** (`tipo_evento: 'exportou_fiscalizacao'`) em `holerite_eventos_auditoria` com filtros aplicados, IP, user-agent e quantidade de arquivos
-- Retorna o zip como `application/zip`
-
-### 5. Trilha de Auditoria das Exportações
-Nova tabela `holerite_exportacoes_fiscalizacao` (registro imutável de quem exportou o quê):
-- `exportado_por` (uuid)
-- `nome_exportador`, `email_exportador`
-- `filtros_aplicados` (jsonb: mês, ano, empresa_id, tipo_contrato, etc.)
-- `quantidade_holerites`
-- `hash_pacote` (SHA-256)
-- `ip`, `user_agent`
-- Trigger bloqueia UPDATE/DELETE
-- RLS: SELECT apenas admin/gestor; INSERT só pela edge function (service_role)
-
-Nova sub-aba **"Histórico de Exportações"** lista esses registros (quem exportou, quando, filtros, hash) — prova de cadeia de custódia para o próprio fiscal.
-
-### 6. Arquivos novos / alterados
+### 5. Arquivos novos / alterados
 
 **Novos:**
-- `src/components/payroll/AuditoriaHoleritesTab.tsx` — tela de auditoria + filtros + tabela
-- `src/components/payroll/HistoricoExportacoesTab.tsx` — log de exportações
-- `src/lib/pdfGeneratorIndiceFiscalizacao.ts` — gera o `_INDICE.pdf`
-- `src/lib/xlsxGeneratorAuditoriaHolerites.ts` — gera o `_AUDITORIA.xlsx`
-- `supabase/functions/holerite-export-fiscalizacao/index.ts` — empacotamento server-side
-- Migração: tabela `holerite_exportacoes_fiscalizacao` + RLS + grants + trigger imutável
+- `src/components/payroll/ImportarHoleritesTab.tsx` — UI completa
+- `src/components/payroll/ImportPreviewDialog.tsx` — dialog para inspecionar/editar uma linha antes de importar
+- `supabase/functions/holerite-importar-pdf/index.ts` — extração via Gemini
+- `supabase/functions/holerite-importar-pdf-confirmar/index.ts` — persistência em rascunho
 
 **Alterados:**
-- `src/pages/Payroll.tsx` — adiciona as duas novas abas
-- `src/lib/modules.ts` — entrada de menu (se aplicável)
+- `src/pages/Payroll.tsx` — nova aba
+
+### 6. Detalhes técnicos
+- IA: usa `GOOGLE_GEMINI_API_KEY` (já existe). Modelo `gemini-2.0-flash-exp` com `responseMimeType: application/json` e schema estrito para garantir resposta parseable.
+- PDFs grandes (>20MB): instruir o usuário a dividir; pode ser adicionado split client-side em iteração futura.
+- Multi-empresa: se o nome da empresa aparecer no holerite, tenta casar com `empresas.nome`; senão usa a empresa default selecionada.
+- CPFs com pontuação são normalizados antes da busca.
+- Toda a extração é stateless até o "Importar como rascunho" — usuário pode descartar tudo sem efeitos colaterais.
 
 ### 7. Segurança
-- Acesso restrito a `admin` e `gestor` (via `useUserPermissions` + revalidação na edge function com `has_role`)
-- URLs assinadas de curta duração para previews; downloads em lote vão direto pela edge function (não expõe paths do bucket)
-- Toda exportação é registrada e imutável
-- Hash do pacote permite ao fiscal verificar integridade depois
-
-### Reutilização
-- `AuditoriaHoleriteDialog` já existe — reaproveitado direto
-- `pdfGeneratorHolerite` / `pdfGeneratorCertificadoHolerite` — não precisam mudar
-- `XLSX` já está no `package.json`
-- Adicionar `jszip` como dependência (apenas na edge function via `npm:jszip`)
+- Acesso só admin/gestor (UI + revalidação na edge function)
+- PDF não é armazenado — só processado em memória
+- RLS de `folha_pagamento` / `folha_pagamento_itens` continua mandando; edge function usa service_role apenas após validar role

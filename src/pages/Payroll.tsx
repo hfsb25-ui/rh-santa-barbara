@@ -18,6 +18,7 @@ import LancamentoFolhaForm from "@/components/payroll/LancamentoFolhaForm";
 import RelatorioDetalhadoDialog from "@/components/payroll/RelatorioDetalhadoDialog";
 import HoleriteDialog from "@/components/payroll/HoleriteDialog";
 import { AuditoriaHoleritesTab } from "@/components/payroll/AuditoriaHoleritesTab";
+import { ImportarHoleritesTab } from "@/components/payroll/ImportarHoleritesTab";
 import jsPDF from "jspdf";
 
 const TIPO_FOLHA_OPTIONS = [
@@ -73,6 +74,7 @@ interface Pagamento {
   mes: number;
   ano: number;
   tipo_folha: string;
+  status?: string;
   employees: {
     nome_completo: string;
     cargo: string;
@@ -240,6 +242,7 @@ const Payroll = () => {
         mes,
         ano,
         tipo_folha,
+        status,
         employees (
           nome_completo,
           cargo,
@@ -316,6 +319,7 @@ const Payroll = () => {
         mes,
         ano,
         tipo_folha,
+        status,
         employees (
           nome_completo,
           cargo,
@@ -665,11 +669,16 @@ const Payroll = () => {
     return (
       <div key={pag.id} className="flex items-start justify-between p-4 border rounded-lg">
         <div className="flex-1">
-          <div className="flex items-center gap-2 mb-1">
+          <div className="flex items-center gap-2 mb-1 flex-wrap">
             <p className="font-semibold">{pag.employees.nome_completo}</p>
             <span className="text-xs px-2 py-0.5 rounded bg-primary/10 text-primary font-medium">
               {getTipoFolhaLabel(pag.tipo_folha || "salario")}
             </span>
+            {pag.status === "rascunho" && (
+              <span className="text-xs px-2 py-0.5 rounded bg-yellow-100 text-yellow-800 font-medium">
+                Rascunho — Importado
+              </span>
+            )}
           </div>
           <p className="text-sm text-muted-foreground">{pag.employees.cargo}</p>
           <p className="text-xs text-muted-foreground">
@@ -700,6 +709,27 @@ const Payroll = () => {
         </div>
         {showActions && (
           <div className="flex gap-2 ml-4">
+            {pag.status === "rascunho" && (
+              <Button
+                variant="default"
+                size="sm"
+                onClick={async () => {
+                  const { error } = await supabase
+                    .from("folha_pagamento")
+                    .update({ status: "final" })
+                    .eq("id", pag.id);
+                  if (error) toast.error("Erro ao liberar");
+                  else {
+                    toast.success("Holerite liberado para o funcionário");
+                    fetchPagamentos();
+                    fetchTodosPagamentos();
+                  }
+                }}
+                title="Liberar para o funcionário assinar"
+              >
+                Liberar
+              </Button>
+            )}
             <Button variant="outline" size="sm" onClick={() => handleOpenHolerite(pag)} title="Imprimir Holerite">
               <Printer className="w-4 h-4" />
             </Button>
@@ -909,10 +939,11 @@ const Payroll = () => {
 
         {selectedEmpresa && (
           <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="mb-4">
+            <TabsList className="mb-4 flex flex-wrap h-auto">
               <TabsTrigger value="lancamentos">Lançamentos</TabsTrigger>
               <TabsTrigger value="historico">Histórico</TabsTrigger>
               <TabsTrigger value="variaveis">Variáveis</TabsTrigger>
+              <TabsTrigger value="importar">Importar PDF</TabsTrigger>
               <TabsTrigger value="auditoria">Auditoria & Fiscalização</TabsTrigger>
             </TabsList>
 
@@ -1085,6 +1116,10 @@ const Payroll = () => {
 
             <TabsContent value="variaveis">
               <VariaveisConfig empresaId={selectedEmpresa} />
+            </TabsContent>
+
+            <TabsContent value="importar">
+              <ImportarHoleritesTab />
             </TabsContent>
 
             <TabsContent value="auditoria">
