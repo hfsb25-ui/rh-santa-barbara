@@ -117,6 +117,23 @@ export function ConfigHoleriteDiferenca() {
           <Label htmlFor="ativo">Configuração ativa</Label>
         </div>
 
+        <div className="flex items-start gap-3 rounded-md border p-3 bg-muted/20">
+          <Switch
+            checked={incluirLiquido}
+            onCheckedChange={setIncluirLiquido}
+            id="incluir-liquido"
+          />
+          <div className="space-y-0.5">
+            <Label htmlFor="incluir-liquido" className="cursor-pointer">
+              Descontar o valor líquido do holerite principal
+            </Label>
+            <p className="text-xs text-muted-foreground">
+              Quando ativo, o valor líquido pago no holerite normal do mês é subtraído da base
+              salarial antes de aplicar as variáveis selecionadas abaixo.
+            </p>
+          </div>
+        </div>
+
         {loading ? (
           <p className="text-sm text-muted-foreground">Carregando variáveis...</p>
         ) : variaveis.length === 0 ? (
