@@ -43,52 +43,53 @@ REGRAS:
 Retorne APENAS JSON válido no formato:
 { "holerites": [ {...}, {...} ] }`;
 
-async function callGemini(pdfBase64: string, apiKey: string): Promise<any> {
+async function callAI(pdfBase64: string, apiKey: string): Promise<any> {
   const clean = pdfBase64.includes(",") ? pdfBase64.split(",")[1] : pdfBase64;
+  const dataUrl = `data:application/pdf;base64,${clean}`;
 
   const body = {
-    contents: [
+    model: "google/gemini-2.5-flash",
+    messages: [
       {
-        parts: [
-          { text: EXTRACT_PROMPT },
-          { inline_data: { mime_type: "application/pdf", data: clean } },
+        role: "user",
+        content: [
+          { type: "text", text: EXTRACT_PROMPT },
+          { type: "file", file: { filename: "holerites.pdf", file_data: dataUrl } },
         ],
       },
     ],
-    generationConfig: {
-      response_mime_type: "application/json",
-      temperature: 0.1,
-    },
+    response_format: { type: "json_object" },
   };
 
-  const url =
-    "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=" +
-    apiKey;
-
-  const resp = await fetch(url, {
+  const resp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${apiKey}`,
+    },
     body: JSON.stringify(body),
   });
 
   if (!resp.ok) {
     const txt = await resp.text();
-    throw new Error(`Gemini error ${resp.status}: ${txt}`);
+    if (resp.status === 429) throw new Error("Limite de uso da IA atingido. Tente novamente em alguns instantes.");
+    if (resp.status === 402) throw new Error("Créditos de IA esgotados. Adicione créditos no workspace Lovable.");
+    throw new Error(`AI Gateway error ${resp.status}: ${txt}`);
   }
 
   const json = await resp.json();
-  const text = json?.candidates?.[0]?.content?.parts?.[0]?.text;
-  if (!text) throw new Error("Gemini retornou resposta vazia");
+  const text = json?.choices?.[0]?.message?.content;
+  if (!text) throw new Error("IA retornou resposta vazia");
 
   try {
     return JSON.parse(text);
   } catch {
-    // tenta extrair JSON entre chaves
     const m = text.match(/\{[\s\S]*\}/);
     if (m) return JSON.parse(m[0]);
     throw new Error("Resposta da IA não é JSON válido");
   }
 }
+
 
 function cleanCpf(cpf: string | null | undefined): string | null {
   if (!cpf) return null;
@@ -121,14 +122,15 @@ Deno.serve(async (req) => {
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
     const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
-    const GEMINI_KEY = Deno.env.get("GOOGLE_GEMINI_API_KEY");
+    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
 
-    if (!GEMINI_KEY) {
+    if (!LOVABLE_API_KEY) {
       return new Response(
-        JSON.stringify({ error: "GOOGLE_GEMINI_API_KEY não configurada" }),
+        JSON.stringify({ error: "LOVABLE_API_KEY não configurada" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+
 
     const supaUser = createClient(SUPABASE_URL, ANON_KEY, {
       global: { headers: { Authorization: authHeader } },
@@ -167,8 +169,9 @@ Deno.serve(async (req) => {
       });
     }
 
-    // 1) chama Gemini
-    const extracted = await callGemini(body.pdf_base64, GEMINI_KEY);
+    // 1) chama IA via Lovable Gateway
+    const extracted = await callAI(body.pdf_base64, LOVABLE_API_KEY);
+
     const holerites: any[] = Array.isArray(extracted?.holerites)
       ? extracted.holerites
       : [];
