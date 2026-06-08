@@ -1124,6 +1124,10 @@ const Payroll = () => {
               <ImportarHoleritesTab />
             </TabsContent>
 
+            <TabsContent value="diferenca">
+              <HoleriteDiferencaLoteTab empresaId={selectedEmpresa} mes={mes} ano={ano} />
+            </TabsContent>
+
             <TabsContent value="auditoria">
               <AuditoriaHoleritesTab empresaIdInicial={selectedEmpresa} />
             </TabsContent>
