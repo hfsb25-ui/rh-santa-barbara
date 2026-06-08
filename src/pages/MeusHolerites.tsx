@@ -59,6 +59,7 @@ export default function MeusHolerites() {
         *, folha_pagamento_itens(id, variavel_id, valor, variaveis_folha(id, nome, codigo, tipo))
       `)
       .eq("employee_id", emp.id)
+      .neq("status", "rascunho")
       .order("ano", { ascending: false })
       .order("mes", { ascending: false });
     setPagamentos(pags || []);
