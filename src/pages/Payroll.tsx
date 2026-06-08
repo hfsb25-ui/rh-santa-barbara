@@ -669,11 +669,16 @@ const Payroll = () => {
     return (
       <div key={pag.id} className="flex items-start justify-between p-4 border rounded-lg">
         <div className="flex-1">
-          <div className="flex items-center gap-2 mb-1">
+          <div className="flex items-center gap-2 mb-1 flex-wrap">
             <p className="font-semibold">{pag.employees.nome_completo}</p>
             <span className="text-xs px-2 py-0.5 rounded bg-primary/10 text-primary font-medium">
               {getTipoFolhaLabel(pag.tipo_folha || "salario")}
             </span>
+            {pag.status === "rascunho" && (
+              <span className="text-xs px-2 py-0.5 rounded bg-yellow-100 text-yellow-800 font-medium">
+                Rascunho — Importado
+              </span>
+            )}
           </div>
           <p className="text-sm text-muted-foreground">{pag.employees.cargo}</p>
           <p className="text-xs text-muted-foreground">
