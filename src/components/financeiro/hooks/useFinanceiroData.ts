@@ -180,7 +180,7 @@ export function useFinanceiroData(filters: FinanceiroFilters) {
       // Buscar folha de pagamento
       let folhaQuery = supabase
         .from("folha_pagamento")
-        .select("*, employees(nome_completo, setor, tipo_contrato)")
+        .select("*, employees(nome_completo, setor, tipo_contrato), folha_pagamento_itens(valor, variaveis_folha(nome, tipo))")
         .order("ano", { ascending: false })
         .order("mes", { ascending: false });
 
@@ -192,6 +192,17 @@ export function useFinanceiroData(filters: FinanceiroFilters) {
       }
 
       const { data: folhaPagamento } = await folhaQuery;
+
+      // Helpers para encargos a partir dos itens da folha
+      const matchVar = (f: any, pattern: RegExp) => {
+        const itens = (f.folha_pagamento_itens || []) as any[];
+        return itens
+          .filter(i => pattern.test(i?.variaveis_folha?.nome || ""))
+          .reduce((sum, i) => sum + (Number(i.valor) || 0), 0);
+      };
+      const rxInss = /inss/i;
+      const rxFgts = /fgts/i;
+      const rxIrrf = /irrf|imposto de renda/i;
 
       // Filtrar por período
       const folhaFiltrada = (folhaPagamento || []).filter(f => {
