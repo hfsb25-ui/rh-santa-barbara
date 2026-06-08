@@ -54,7 +54,7 @@ export function HistoricoMensal({ data }: HistoricoMensalProps) {
         {/* Gráfico */}
         <div className="h-[250px] sm:h-[300px] mb-6 -mx-2 sm:mx-0">
           <ResponsiveContainer width="100%" height="100%">
-            <AreaChart
+            <ComposedChart
               data={chartData}
               margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
             >
@@ -83,7 +83,7 @@ export function HistoricoMensal({ data }: HistoricoMensalProps) {
               <Area
                 type="monotone"
                 dataKey="totalBruto"
-                name="Valor em conta"
+                name="Bruto"
                 stroke="hsl(var(--primary))"
                 fillOpacity={1}
                 fill="url(#colorBruto)"
@@ -91,12 +91,15 @@ export function HistoricoMensal({ data }: HistoricoMensalProps) {
               <Area
                 type="monotone"
                 dataKey="totalLiquido"
-                name="Valor em mãos"
+                name="Líquido"
                 stroke="hsl(var(--secondary))"
                 fillOpacity={1}
                 fill="url(#colorLiquido)"
               />
-            </AreaChart>
+              <Line type="monotone" dataKey="totalInss" name="INSS" stroke="#d97706" strokeWidth={2} dot={false} />
+              <Line type="monotone" dataKey="totalFgts" name="FGTS" stroke="#0284c7" strokeWidth={2} dot={false} />
+              <Line type="monotone" dataKey="totalIrrf" name="IRRF" stroke="#9333ea" strokeWidth={2} dot={false} />
+            </ComposedChart>
           </ResponsiveContainer>
         </div>
 
