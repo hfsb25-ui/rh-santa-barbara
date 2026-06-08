@@ -218,16 +218,32 @@ export function HistoricoMensal({ data }: HistoricoMensalProps) {
               
               <div className="grid grid-cols-2 gap-2 text-xs">
                 <div>
-                  <span className="text-muted-foreground">Em conta:</span>
+                  <span className="text-muted-foreground">Bruto:</span>
                   <p className="font-semibold">{formatCurrencyFull(item.totalBruto)}</p>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Líquido:</span>
+                  <p className="text-secondary font-medium">{formatCurrencyFull(item.totalLiquido)}</p>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">INSS:</span>
+                  <p className="text-amber-600">{formatCurrencyFull(item.totalInss)}</p>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">FGTS:</span>
+                  <p className="text-sky-600">{formatCurrencyFull(item.totalFgts)}</p>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">IRRF:</span>
+                  <p className="text-purple-600">{formatCurrencyFull(item.totalIrrf)}</p>
                 </div>
                 <div>
                   <span className="text-muted-foreground">Descontos:</span>
                   <p className="text-destructive">{formatCurrencyFull(item.totalDescontos)}</p>
                 </div>
                 <div>
-                  <span className="text-muted-foreground">Em mãos:</span>
-                  <p className="text-secondary font-medium">{formatCurrencyFull(item.totalLiquido)}</p>
+                  <span className="text-muted-foreground">Diferença:</span>
+                  <p className="text-rose-600">{formatCurrencyFull(item.totalDiferenca)}</p>
                 </div>
                 <div>
                   <span className="text-muted-foreground">Pagamentos:</span>
