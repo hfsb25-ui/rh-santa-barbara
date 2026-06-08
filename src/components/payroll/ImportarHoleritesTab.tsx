@@ -8,8 +8,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Upload, Sparkles, Save, AlertCircle, CheckCircle2, XCircle, Eye } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Upload, Sparkles, Save, AlertCircle, CheckCircle2, XCircle, Eye, Plus } from "lucide-react";
 import { toast } from "sonner";
 
 const MESES = ["", "Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
@@ -81,6 +81,15 @@ export function ImportarHoleritesTab() {
   const [saving, setSaving] = useState(false);
   const [resultados, setResultados] = useState<ExtractedHolerite[]>([]);
   const [preview, setPreview] = useState<ExtractedHolerite | null>(null);
+  const [cadastroOpen, setCadastroOpen] = useState(false);
+  const [novasVariaveis, setNovasVariaveis] = useState<Array<{
+    key: string;
+    codigo: string;
+    nome: string;
+    tipo: "provento" | "desconto";
+    selecionado: boolean;
+  }>>([]);
+  const [salvandoVars, setSalvandoVars] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -172,6 +181,95 @@ export function ImportarHoleritesTab() {
   const totalOk = resultados.filter((r) => r.status === "ok").length;
   const totalSelecionados = resultados.filter((r) => r.selecionado && r.status === "ok").length;
 
+  // Agrupa rubricas não mapeadas (chave = tipo + descrição normalizada)
+  function coletarNaoMapeadas() {
+    const norm = (s: string) => (s || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+    const map = new Map<string, { codigo: string; nome: string; tipo: "provento" | "desconto" }>();
+    for (const r of resultados) {
+      for (const p of r.proventos) {
+        if (!p.variavel_id && p.descricao) {
+          const k = `provento|${norm(p.descricao)}`;
+          if (!map.has(k)) map.set(k, { codigo: p.codigo || "", nome: p.descricao.toUpperCase(), tipo: "provento" });
+        }
+      }
+      for (const d of r.descontos) {
+        if (!d.variavel_id && d.descricao) {
+          const k = `desconto|${norm(d.descricao)}`;
+          if (!map.has(k)) map.set(k, { codigo: d.codigo || "", nome: d.descricao.toUpperCase(), tipo: "desconto" });
+        }
+      }
+    }
+    return Array.from(map.entries()).map(([key, v]) => ({ key, ...v, selecionado: true }));
+  }
+
+  const naoMapeadasCount = coletarNaoMapeadas().length;
+
+  function abrirCadastro() {
+    setNovasVariaveis(coletarNaoMapeadas());
+    setCadastroOpen(true);
+  }
+
+  async function confirmarCadastro() {
+    const aCriar = novasVariaveis.filter((v) => v.selecionado && v.nome.trim());
+    if (aCriar.length === 0) {
+      toast.error("Selecione ao menos uma variável");
+      return;
+    }
+    setSalvandoVars(true);
+    try {
+      const payload = aCriar.map((v) => ({
+        nome: v.nome.trim().toUpperCase(),
+        codigo: v.codigo.trim() || null,
+        tipo: v.tipo,
+        ativo: true,
+        empresa_id: empresaDefault || null,
+      }));
+      const { data: criadas, error } = await supabase
+        .from("variaveis_folha")
+        .insert(payload)
+        .select("id, nome, codigo, tipo");
+      if (error) throw error;
+
+      // Re-mapeia rubricas em memória
+      const norm = (s: string) => (s || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+      function findCriada(tipo: "provento" | "desconto", codigo?: string | null, descricao?: string | null) {
+        const pool = (criadas || []).filter((c) => c.tipo === tipo);
+        if (codigo) {
+          const byCode = pool.find((c) => (c.codigo || "").toLowerCase() === codigo.toLowerCase());
+          if (byCode) return byCode;
+        }
+        if (descricao) {
+          const t = norm(descricao);
+          return pool.find((c) => norm(c.nome) === t) || null;
+        }
+        return null;
+      }
+      setResultados((arr) =>
+        arr.map((r) => ({
+          ...r,
+          proventos: r.proventos.map((p) =>
+            p.variavel_id ? p : (() => {
+              const v = findCriada("provento", p.codigo, p.descricao);
+              return v ? { ...p, variavel_id: v.id, variavel_nome: v.nome } : p;
+            })()
+          ),
+          descontos: r.descontos.map((d) =>
+            d.variavel_id ? d : (() => {
+              const v = findCriada("desconto", d.codigo, d.descricao);
+              return v ? { ...d, variavel_id: v.id, variavel_nome: v.nome } : d;
+            })()
+          ),
+        }))
+      );
+      toast.success(`${criadas?.length || 0} variável(is) cadastrada(s)`);
+      setCadastroOpen(false);
+    } catch (e: any) {
+      toast.error(e?.message || "Erro ao cadastrar variáveis");
+    } finally {
+      setSalvandoVars(false);
+    }
+  }
+
   return (
     <div className="space-y-4">
       <Card>
@@ -228,6 +326,12 @@ export function ImportarHoleritesTab() {
               <Button onClick={handleImportar} disabled={saving || totalSelecionados === 0} variant="default">
                 <Save className="w-4 h-4 mr-2" />
                 {saving ? "Importando..." : `Importar ${totalSelecionados} como rascunho`}
+              </Button>
+            )}
+            {naoMapeadasCount > 0 && (
+              <Button onClick={abrirCadastro} variant="outline">
+                <Plus className="w-4 h-4 mr-2" />
+                Cadastrar {naoMapeadasCount} variável(is) não mapeada(s)
               </Button>
             )}
           </div>
@@ -402,6 +506,105 @@ export function ImportarHoleritesTab() {
               )}
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={cadastroOpen} onOpenChange={setCadastroOpen}>
+        <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Cadastrar variáveis não mapeadas</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              As rubricas abaixo foram identificadas no PDF mas não existem em "Variáveis de Folha".
+              Revise os dados e autorize o cadastro. Após cadastrar, o sistema re-mapeia automaticamente
+              os holerites em memória.
+            </p>
+            {novasVariaveis.length === 0 ? (
+              <p className="text-sm text-center py-6 text-muted-foreground">Nenhuma rubrica pendente.</p>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-10"></TableHead>
+                    <TableHead>Tipo</TableHead>
+                    <TableHead>Código</TableHead>
+                    <TableHead>Nome</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {novasVariaveis.map((v, idx) => (
+                    <TableRow key={v.key}>
+                      <TableCell>
+                        <Checkbox
+                          checked={v.selecionado}
+                          onCheckedChange={(c) =>
+                            setNovasVariaveis((arr) => {
+                              const n = [...arr];
+                              n[idx] = { ...n[idx], selecionado: !!c };
+                              return n;
+                            })
+                          }
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <Select
+                          value={v.tipo}
+                          onValueChange={(t: "provento" | "desconto") =>
+                            setNovasVariaveis((arr) => {
+                              const n = [...arr];
+                              n[idx] = { ...n[idx], tipo: t };
+                              return n;
+                            })
+                          }
+                        >
+                          <SelectTrigger className="h-8 w-32">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="provento">Provento</SelectItem>
+                            <SelectItem value="desconto">Desconto</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </TableCell>
+                      <TableCell>
+                        <Input
+                          className="h-8 w-24"
+                          value={v.codigo}
+                          onChange={(e) =>
+                            setNovasVariaveis((arr) => {
+                              const n = [...arr];
+                              n[idx] = { ...n[idx], codigo: e.target.value };
+                              return n;
+                            })
+                          }
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <Input
+                          className="h-8"
+                          value={v.nome}
+                          onChange={(e) =>
+                            setNovasVariaveis((arr) => {
+                              const n = [...arr];
+                              n[idx] = { ...n[idx], nome: e.target.value };
+                              return n;
+                            })
+                          }
+                        />
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCadastroOpen(false)}>Cancelar</Button>
+            <Button onClick={confirmarCadastro} disabled={salvandoVars || novasVariaveis.length === 0}>
+              {salvandoVars ? "Cadastrando..." : "Autorizar cadastro"}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
