@@ -19,6 +19,7 @@ import RelatorioDetalhadoDialog from "@/components/payroll/RelatorioDetalhadoDia
 import HoleriteDialog from "@/components/payroll/HoleriteDialog";
 import { AuditoriaHoleritesTab } from "@/components/payroll/AuditoriaHoleritesTab";
 import { ImportarHoleritesTab } from "@/components/payroll/ImportarHoleritesTab";
+import { HoleriteDiferencaLoteTab } from "@/components/payroll/HoleriteDiferencaLoteTab";
 import jsPDF from "jspdf";
 
 const TIPO_FOLHA_OPTIONS = [
@@ -944,6 +945,7 @@ const Payroll = () => {
               <TabsTrigger value="historico">Histórico</TabsTrigger>
               <TabsTrigger value="variaveis">Variáveis</TabsTrigger>
               <TabsTrigger value="importar">Importar PDF</TabsTrigger>
+              <TabsTrigger value="diferenca">Holerite Diferença</TabsTrigger>
               <TabsTrigger value="auditoria">Auditoria & Fiscalização</TabsTrigger>
             </TabsList>
 
@@ -1120,6 +1122,10 @@ const Payroll = () => {
 
             <TabsContent value="importar">
               <ImportarHoleritesTab />
+            </TabsContent>
+
+            <TabsContent value="diferenca">
+              <HoleriteDiferencaLoteTab empresaId={selectedEmpresa} mes={mes} ano={ano} />
             </TabsContent>
 
             <TabsContent value="auditoria">

@@ -1,80 +1,77 @@
+# Holerite Diferença
 
-## Importação de Holerites por PDF (com IA)
+Novo tipo de folha que paga a diferença entre o salário cadastrado do funcionário e um conjunto pré-configurado de descontos do mês. Sempre emitido após o holerite principal, sem fluxo de assinatura eletrônica.
 
-Novo fluxo onde o admin envia um PDF contendo um ou vários holerites. O sistema usa IA (Gemini) para ler cada página, identifica o colaborador pelo CPF, importa rubricas detalhadas e deixa tudo como rascunho para revisão antes de liberar para assinatura.
+## Fórmula
 
-### 1. Nova aba "Importar Holerites" em Folha de Pagamento
-Em `src/pages/Payroll.tsx`, adicionar aba visível só para admin/gestor.
+```
+base       = employees.salario
+descontos  = soma das variáveis configuradas (presentes na folha do mês)
+diferença  = base - descontos
+```
 
-Tela (`ImportarHoleritesTab.tsx`):
-- Upload de PDF (até ~20 MB) com drag-and-drop
-- Seleção de **Mês/Ano** e **Empresa** padrão (usados como fallback se a IA não identificar)
-- Botão "Processar com IA"
-- Barra de progresso por página
-- Tabela de resultados:
-  | Página | CPF detectado | Funcionário | Mês/Ano | Bruto | Líquido | Status | Ações |
-  - Status: ✅ Reconhecido / ⚠️ CPF não encontrado / ❌ Erro de leitura / 🔁 Já existe (mesmo mês/ano)
-  - Ações por linha: Ver dados extraídos, Editar mapeamento, Vincular manualmente a um funcionário, Descartar
-- Botão final **"Importar como rascunho"** — só importa as linhas marcadas, com `status: 'rascunho'` em `folha_pagamento`
+Se diferença ≤ 0, o sistema avisa e não gera lançamento.
 
-### 2. Edge Function `holerite-importar-pdf`
-- Recebe o PDF em base64 + mês/ano/empresa default
-- Valida que o caller é admin/gestor (via JWT + `has_role`)
-- Envia o PDF para a **Gemini API** (`gemini-2.0-flash` aceita PDF nativamente) com um prompt estruturado pedindo JSON:
-  ```json
-  {
-    "holerites": [
-      {
-        "pagina": 1,
-        "cpf": "12345678900",
-        "nome": "FULANO",
-        "mes": 5, "ano": 2026,
-        "tipo_folha": "mensal",
-        "proventos": [{ "codigo": "001", "descricao": "Salário", "valor": 2500.00 }],
-        "descontos": [{ "codigo": "INSS", "descricao": "INSS", "valor": 200.00 }],
-        "valor_bruto": 2500.00,
-        "descontos_total": 200.00,
-        "valor_liquido": 2300.00
-      }
-    ]
-  }
-  ```
-- Para cada holerite extraído:
-  - Limpa CPF (só dígitos) → busca `employees.cpf`
-  - Se encontrar: tenta casar rubricas com `variaveis_folha` por `codigo` ou `nome` (case-insensitive). Rubricas não reconhecidas vão para uma lista `rubricas_nao_mapeadas` que aparece na revisão.
-  - Verifica duplicidade em `folha_pagamento` (employee_id + mes + ano + tipo_folha)
-- **Não persiste nada** — devolve um JSON com tudo (extraídos + matches) para a UI revisar.
+## 1. Banco de dados
 
-### 3. Confirmação da importação
-Quando o admin clica "Importar como rascunho":
-- Frontend chama a edge function `holerite-importar-pdf-confirmar` com a lista revisada
-- Para cada item: cria `folha_pagamento` (status=`rascunho`) + `folha_pagamento_itens` para cada rubrica mapeada
-- Retorna sumário (X criados, Y pulados, Z erros)
+Nova tabela `configuracao_holerite_diferenca` (global, 1 linha):
+- `variaveis_desconto_ids uuid[]` — IDs das variáveis de desconto consideradas
+- `ativo boolean`
+- timestamps + RLS (admin/gestor gerencia, authenticated lê)
 
-### 4. Pós-importação
-- O holerite fica visível na aba normal de Folha de Pagamento marcado como **Rascunho**
-- Admin abre, confere, edita se necessário e clica "Liberar" (fluxo já existente) — só então aparece em "Meus Holerites" para o funcionário assinar
-- Importações são registradas em `holerite_eventos_auditoria` com `tipo_evento: 'importado_pdf'`
+Reutiliza `folha_pagamento` adicionando o valor `'diferenca'` ao campo `tipo_folha` (já é texto livre). Cada holerite diferença é uma linha em `folha_pagamento` com:
+- `tipo_folha = 'diferenca'`
+- `valor_bruto = salario base`
+- `descontos = soma das variáveis configuradas`
+- `valor_liquido = diferença`
+- itens em `folha_pagamento_itens` referenciando as variáveis descontadas (com seus valores do holerite principal do mês)
 
-### 5. Arquivos novos / alterados
+## 2. Configuração (Settings ou aba em Payroll)
 
-**Novos:**
-- `src/components/payroll/ImportarHoleritesTab.tsx` — UI completa
-- `src/components/payroll/ImportPreviewDialog.tsx` — dialog para inspecionar/editar uma linha antes de importar
-- `supabase/functions/holerite-importar-pdf/index.ts` — extração via Gemini
-- `supabase/functions/holerite-importar-pdf-confirmar/index.ts` — persistência em rascunho
+Nova tela **"Holerite Diferença"** em Configurações da Folha:
+- Lista todas as variáveis tipo `desconto` de `variaveis_folha` com checkbox
+- Salva seleção na `configuracao_holerite_diferenca`
+- Texto explicativo da fórmula
 
-**Alterados:**
-- `src/pages/Payroll.tsx` — nova aba
+## 3. Geração — dois fluxos
 
-### 6. Detalhes técnicos
-- IA: usa `GOOGLE_GEMINI_API_KEY` (já existe). Modelo `gemini-2.0-flash-exp` com `responseMimeType: application/json` e schema estrito para garantir resposta parseable.
-- PDFs grandes (>20MB): instruir o usuário a dividir; pode ser adicionado split client-side em iteração futura.
-- Multi-empresa: se o nome da empresa aparecer no holerite, tenta casar com `empresas.nome`; senão usa a empresa default selecionada.
-- CPFs com pontuação são normalizados antes da busca.
-- Toda a extração é stateless até o "Importar como rascunho" — usuário pode descartar tudo sem efeitos colaterais.
+**A) Botão individual** em `HoleriteDialog` / lista de holerites:
+- Botão "Gerar Holerite Diferença" aparece em holerites `tipo_folha='normal'`
+- Abre dialog de preview com: base, descontos detalhados, valor final, observações editáveis
+- Confirma → cria registro `tipo_folha='diferenca'` no mesmo mês/ano
 
-### 7. Segurança
-- Acesso só admin/gestor (UI + revalidação na edge function)
-- PDF não é armazenado — só processado em memória
-- RLS de `folha_pagamento` / `folha_pagamento_itens` continua mandando; edge function usa service_role apenas após validar role
+**B) Geração em lote** em nova aba "Holerite Diferença" dentro de `Payroll`:
+- Seletor mês/ano + empresa
+- Lista funcionários com holerite normal do mês mas sem diferença ainda
+- Mostra prévia da diferença de cada um
+- Botão "Gerar todos" cria os registros em lote
+- Pula quem não tem holerite normal ou diferença ≤ 0
+
+## 4. PDF e visualização
+
+- Reusa `pdfGeneratorHolerite.ts`, só ajusta cabeçalho para "RECIBO DE PAGAMENTO - DIFERENÇA" quando `tipo_folha='diferenca'`
+- Sem fluxo de assinatura: oculta botões "Assinar" e badge de assinatura para tipo `diferenca`
+- Aparece nas listagens (`HoleritesTab` do funcionário, `Payroll`) com tipo "Diferença"
+- Painel do funcionário: visualiza/baixa PDF, mas não há etapa de assinatura
+
+## Detalhes técnicos
+
+**Arquivos novos:**
+- `supabase/migrations/...` — tabela `configuracao_holerite_diferenca` + RLS + GRANT
+- `src/components/payroll/ConfigHoleriteDiferenca.tsx` — tela de configuração
+- `src/components/payroll/GerarHoleriteDiferencaDialog.tsx` — preview individual
+- `src/components/payroll/HoleriteDiferencaLoteTab.tsx` — geração em lote
+- `src/lib/holeriteDiferencaCalc.ts` — função pura de cálculo (base, itens, total)
+
+**Arquivos editados:**
+- `src/pages/Payroll.tsx` — nova aba "Diferença" + entrada de configuração
+- `src/components/payroll/HoleriteDialog.tsx` — botão "Gerar Diferença" quando `tipo_folha='normal'`
+- `src/lib/pdfGeneratorHolerite.ts` — título dinâmico conforme `tipo_folha`
+- `src/components/employees/tabs/HoleritesTab.tsx` — coluna "Tipo" já existe, apenas garantir exibição e ocultar coluna assinatura para tipo `diferenca`
+- `src/pages/MeusHolerites.tsx` — listar também tipo `diferenca` sem CTA de assinatura
+
+**Regras de validação:**
+- Não permitir duplicar: 1 holerite diferença por funcionário/mês/ano
+- Exigir holerite normal do mesmo mês/ano antes de gerar
+- Se config global vazia → bloquear com mensagem "Configure as variáveis de desconto primeiro"
+- Itens copiados pegam o valor real da variável no holerite normal daquele mês (não o valor padrão da variável)

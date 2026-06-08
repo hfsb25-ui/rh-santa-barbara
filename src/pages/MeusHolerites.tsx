@@ -75,8 +75,8 @@ export default function MeusHolerites() {
     setLoading(false);
   }
 
-  const pendentes = pagamentos.filter((p) => !assinaturas[p.id] || assinaturas[p.id].status !== "assinado");
-  const assinados = pagamentos.filter((p) => assinaturas[p.id]?.status === "assinado");
+  const pendentes = pagamentos.filter((p) => p.tipo_folha !== "diferenca" && (!assinaturas[p.id] || assinaturas[p.id].status !== "assinado"));
+  const assinados = pagamentos.filter((p) => p.tipo_folha === "diferenca" || assinaturas[p.id]?.status === "assinado");
 
   return (
     <div className="max-w-4xl mx-auto p-6 space-y-6">

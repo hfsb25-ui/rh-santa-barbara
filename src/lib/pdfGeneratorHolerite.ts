@@ -187,7 +187,11 @@ export async function gerarHoleritePdf(
   doc.setFontSize(9);
   doc.setFont("helvetica", "bold");
   doc.setTextColor(33, 37, 41);
-  doc.text("RECIBO DE PAGAMENTO DE SALÁRIO", ml + cw / 2, y + 5, { align: "center" });
+  const titulo =
+    pagamento.tipo_folha === "diferenca"
+      ? "RECIBO DE PAGAMENTO - DIFERENÇA"
+      : "RECIBO DE PAGAMENTO DE SALÁRIO";
+  doc.text(titulo, ml + cw / 2, y + 5, { align: "center" });
   doc.setFontSize(7);
   doc.setFont("helvetica", "normal");
   doc.text(getMesAnoStr(), ml + cw - 4, y + 5, { align: "right" });

@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Download } from "lucide-react";
+import { Download, Calculator } from "lucide-react";
+import { GerarHoleriteDiferencaDialog } from "./GerarHoleriteDiferencaDialog";
 
 
 
@@ -79,6 +80,7 @@ const HoleriteDialog = ({ open, onOpenChange, pagamento, empresaId }: HoleriteDi
   const [empresa, setEmpresa] = useState<Empresa | null>(null);
   const [employee, setEmployee] = useState<Employee | null>(null);
   const [loading, setLoading] = useState(false);
+  const [showDiferenca, setShowDiferenca] = useState(false);
 
   useEffect(() => {
     if (open && pagamento) {
@@ -221,7 +223,11 @@ const HoleriteDialog = ({ open, onOpenChange, pagamento, empresaId }: HoleriteDi
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Recibo de Pagamento</DialogTitle>
+          <DialogTitle>
+            {pagamento?.tipo_folha === "diferenca"
+              ? "Recibo de Pagamento — Diferença"
+              : "Recibo de Pagamento"}
+          </DialogTitle>
         </DialogHeader>
 
         {loading ? (
@@ -384,13 +390,30 @@ const HoleriteDialog = ({ open, onOpenChange, pagamento, empresaId }: HoleriteDi
               </div>
             </div>
 
-            <div className="flex justify-end">
+            <div className="flex justify-end gap-2">
+              {pagamento?.tipo_folha === "salario" && (
+                <Button variant="outline" onClick={() => setShowDiferenca(true)}>
+                  <Calculator className="w-4 h-4 mr-2" />
+                  Gerar Holerite Diferença
+                </Button>
+              )}
               <Button onClick={generatePDF} disabled={loading || !empresa || !employee}>
                 <Download className="w-4 h-4 mr-2" />
                 {loading ? "Carregando..." : "Baixar PDF"}
               </Button>
             </div>
           </div>
+        )}
+        {pagamento && (
+          <GerarHoleriteDiferencaDialog
+            open={showDiferenca}
+            onOpenChange={setShowDiferenca}
+            employeeId={pagamento.employee_id}
+            employeeNome={pagamento.employees?.nome_completo || ""}
+            empresaId={pagamento.empresa_id}
+            mes={pagamento.mes}
+            ano={pagamento.ano}
+          />
         )}
       </DialogContent>
     </Dialog>
