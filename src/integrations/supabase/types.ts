@@ -2044,6 +2044,7 @@ export type Database = {
           id: string
           mes: number
           observacoes: string | null
+          status: string
           tipo_folha: string
           tipo_rescisao: string | null
           updated_at: string | null
@@ -2064,6 +2065,7 @@ export type Database = {
           id?: string
           mes: number
           observacoes?: string | null
+          status?: string
           tipo_folha?: string
           tipo_rescisao?: string | null
           updated_at?: string | null
@@ -2084,6 +2086,7 @@ export type Database = {
           id?: string
           mes?: number
           observacoes?: string | null
+          status?: string
           tipo_folha?: string
           tipo_rescisao?: string | null
           updated_at?: string | null
