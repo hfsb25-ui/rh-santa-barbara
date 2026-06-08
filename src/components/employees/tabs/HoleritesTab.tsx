@@ -105,7 +105,9 @@ export function HoleritesTab({ employeeId }: HoleritesTabProps) {
                     R$ {pag.valor_liquido.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                   </TableCell>
                   <TableCell>
-                    {ass?.status === "assinado" ? (
+                    {pag.tipo_folha === "diferenca" ? (
+                      <Badge variant="outline">—</Badge>
+                    ) : ass?.status === "assinado" ? (
                       <Badge className="bg-green-100 text-green-800 hover:bg-green-100">
                         Assinado
                       </Badge>
