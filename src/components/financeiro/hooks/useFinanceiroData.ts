@@ -112,6 +112,15 @@ export function useFinanceiroData(filters: FinanceiroFilters) {
     projecaoProximoMes: 0,
     totalFuncionarios: 0,
     totalSetores: 0,
+    totalBruto: 0,
+    totalInss: 0,
+    totalFgts: 0,
+    totalIrrf: 0,
+    totalLiquido: 0,
+    totalPrincipal: 0,
+    totalDiferenca: 0,
+    quantidadePrincipal: 0,
+    quantidadeDiferenca: 0,
   });
   const [gastosPorSetor, setGastosPorSetor] = useState<SetorData[]>([]);
   const [gastosPorContrato, setGastosPorContrato] = useState<ContratoData[]>([]);
