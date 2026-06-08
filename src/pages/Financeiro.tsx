@@ -108,8 +108,14 @@ const Financeiro = () => {
     const historicoData = historicoMensal.map(h => ({
       "Mês/Ano": `${h.mes}/${h.ano}`,
       "Valor Bruto": h.totalBruto,
+      "INSS": h.totalInss,
+      "FGTS": h.totalFgts,
+      "IRRF": h.totalIrrf,
       "Descontos": h.totalDescontos,
       "Valor Líquido": h.totalLiquido,
+      "Holerite Diferença": h.totalDiferenca,
+      "Holerite Principal": h.totalPrincipal,
+      "Pagamentos": h.quantidadePagamentos,
       "Variação (%)": h.diferencaPercentual,
     }));
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(historicoData), "Histórico");
