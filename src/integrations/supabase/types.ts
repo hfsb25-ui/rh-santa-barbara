@@ -712,6 +712,30 @@ export type Database = {
         }
         Relationships: []
       }
+      configuracao_holerite_diferenca: {
+        Row: {
+          ativo: boolean
+          created_at: string
+          id: string
+          updated_at: string
+          variaveis_desconto_ids: string[]
+        }
+        Insert: {
+          ativo?: boolean
+          created_at?: string
+          id?: string
+          updated_at?: string
+          variaveis_desconto_ids?: string[]
+        }
+        Update: {
+          ativo?: boolean
+          created_at?: string
+          id?: string
+          updated_at?: string
+          variaveis_desconto_ids?: string[]
+        }
+        Relationships: []
+      }
       configuracao_horas_trabalho: {
         Row: {
           created_at: string | null
