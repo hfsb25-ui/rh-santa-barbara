@@ -204,10 +204,10 @@ export function HoleriteDiferencaLoteTab({ empresaId, mes, ano }: Props) {
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
-            {configIds.length === 0 && (
+            {config.variaveis_desconto_ids.length === 0 && !config.incluir_liquido_holerite && (
               <div className="rounded-md border border-amber-300 bg-amber-50 dark:bg-amber-950/30 p-3 text-sm">
                 Nenhuma variável configurada. Vá para a aba <strong>Configuração</strong> e selecione as
-                variáveis de desconto.
+                variáveis de desconto (ou ative o uso do valor líquido).
               </div>
             )}
 
