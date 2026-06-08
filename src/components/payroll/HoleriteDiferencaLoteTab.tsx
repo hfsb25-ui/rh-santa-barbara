@@ -49,6 +49,79 @@ export function HoleriteDiferencaLoteTab({ empresaId, mes, ano }: Props) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [config, setConfig] = useState<ConfigDiferenca>({ variaveis_desconto_ids: [], incluir_liquido_holerite: false });
   const [executando, setExecutando] = useState(false);
+  const [baixando, setBaixando] = useState(false);
+
+  const MESES_NOME = [
+    "", "janeiro", "fevereiro", "marco", "abril", "maio", "junho",
+    "julho", "agosto", "setembro", "outubro", "novembro", "dezembro",
+  ];
+
+  const baixarLote = async () => {
+    setBaixando(true);
+    try {
+      const { data: empresa } = await supabase
+        .from("empresas")
+        .select("nome, cnpj, logo_url, endereco")
+        .eq("id", empresaId)
+        .maybeSingle();
+
+      const { data: folhas } = await supabase
+        .from("folha_pagamento")
+        .select(`*, folha_pagamento_itens(id, variavel_id, valor, variaveis_folha(id, nome, codigo, tipo))`)
+        .eq("empresa_id", empresaId)
+        .eq("mes", mes)
+        .eq("ano", ano)
+        .eq("tipo_folha", "diferenca");
+
+      if (!folhas || folhas.length === 0) {
+        toast.error("Nenhum holerite diferença gerado neste mês.");
+        return;
+      }
+
+      const empIds = folhas.map((f: any) => f.employee_id);
+      const { data: emps } = await supabase
+        .from("employees")
+        .select("*")
+        .in("id", empIds);
+      const empMap = new Map((emps || []).map((e: any) => [e.id, e]));
+
+      const zip = new JSZip();
+      let ok = 0;
+      for (const pag of folhas) {
+        const emp = empMap.get((pag as any).employee_id);
+        if (!emp) continue;
+        try {
+          const blob = (await gerarHoleritePdf(pag as any, empresa as any, emp as any, {
+            returnBlob: true,
+          })) as Blob;
+          const nome = `holerite-diferenca-${emp.nome_completo.replace(/\s+/g, "-").toLowerCase()}.pdf`;
+          zip.file(nome, blob);
+          ok++;
+        } catch (e) {
+          console.error("Erro PDF lote:", e);
+        }
+      }
+
+      if (ok === 0) {
+        toast.error("Nenhum PDF gerado.");
+        return;
+      }
+
+      const zipBlob = await zip.generateAsync({ type: "blob" });
+      const url = URL.createObjectURL(zipBlob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `holerites-diferenca-${MESES_NOME[mes]}-${ano}.zip`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success(`${ok} holerite(s) baixado(s) em ZIP!`);
+    } catch (e: any) {
+      console.error(e);
+      toast.error(e.message || "Erro ao baixar em lote");
+    } finally {
+      setBaixando(false);
+    }
+  };
 
   const carregar = async () => {
     if (!empresaId || empresaId === "all") {
