@@ -96,6 +96,10 @@ const Eventos = () => {
           </div>
         </div>
 
+        <div className="mb-6">
+          <GoogleCalendarSettings onRefresh={handleRefresh} />
+        </div>
+
         <Tabs defaultValue="calendar" className="w-full">
           <TabsList className="grid w-full grid-cols-2 max-w-md">
             <TabsTrigger value="calendar">
