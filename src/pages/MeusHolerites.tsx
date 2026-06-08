@@ -68,7 +68,7 @@ export default function MeusHolerites() {
       const { data: ass } = await supabase
         .from("holerite_assinaturas")
         .select("*")
-        .in("folha_pagamento_id", pags.map((p) => p.id));
+        .in("folha_pagamento_id", filtrados.map((p) => p.id));
       const map: Record<string, any> = {};
       (ass || []).forEach((a) => (map[a.folha_pagamento_id] = a));
       setAssinaturas(map);
@@ -76,8 +76,8 @@ export default function MeusHolerites() {
     setLoading(false);
   }
 
-  const pendentes = pagamentos.filter((p) => p.tipo_folha !== "diferenca" && (!assinaturas[p.id] || assinaturas[p.id].status !== "assinado"));
-  const assinados = pagamentos.filter((p) => p.tipo_folha === "diferenca" || assinaturas[p.id]?.status === "assinado");
+  const pendentes = pagamentos.filter((p) => !assinaturas[p.id] || assinaturas[p.id].status !== "assinado");
+  const assinados = pagamentos.filter((p) => assinaturas[p.id]?.status === "assinado");
 
   return (
     <div className="max-w-4xl mx-auto p-6 space-y-6">
