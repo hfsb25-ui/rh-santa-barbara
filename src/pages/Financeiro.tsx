@@ -79,7 +79,15 @@ const Financeiro = () => {
 
     // Resumo
     const resumo = [
-      ["Custo Total", kpis.custoTotal],
+      ["Valor Bruto", kpis.totalBruto],
+      ["INSS", kpis.totalInss],
+      ["FGTS", kpis.totalFgts],
+      ["IRRF", kpis.totalIrrf],
+      ["Valor Líquido", kpis.totalLiquido],
+      ["Holerite Principal", kpis.totalPrincipal],
+      ["Qtd Holerite Principal", kpis.quantidadePrincipal],
+      ["Holerite Diferença", kpis.totalDiferenca],
+      ["Qtd Holerite Diferença", kpis.quantidadeDiferenca],
       ["Variação Mensal (%)", kpis.variacaoMensal],
       ["Custo Médio/Funcionário", kpis.custoMedioFuncionario],
       ["Total Funcionários", kpis.totalFuncionarios],
