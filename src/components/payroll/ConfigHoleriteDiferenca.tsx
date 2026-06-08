@@ -65,6 +65,7 @@ export function ConfigHoleriteDiferenca() {
     const payload = {
       variaveis_desconto_ids: Array.from(selecionadas),
       ativo,
+      incluir_liquido_holerite: incluirLiquido,
     };
     try {
       if (configId) {
