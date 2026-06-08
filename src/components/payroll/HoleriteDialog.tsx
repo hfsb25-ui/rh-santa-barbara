@@ -390,13 +390,30 @@ const HoleriteDialog = ({ open, onOpenChange, pagamento, empresaId }: HoleriteDi
               </div>
             </div>
 
-            <div className="flex justify-end">
+            <div className="flex justify-end gap-2">
+              {pagamento?.tipo_folha === "salario" && (
+                <Button variant="outline" onClick={() => setShowDiferenca(true)}>
+                  <Calculator className="w-4 h-4 mr-2" />
+                  Gerar Holerite Diferença
+                </Button>
+              )}
               <Button onClick={generatePDF} disabled={loading || !empresa || !employee}>
                 <Download className="w-4 h-4 mr-2" />
                 {loading ? "Carregando..." : "Baixar PDF"}
               </Button>
             </div>
           </div>
+        )}
+        {pagamento && (
+          <GerarHoleriteDiferencaDialog
+            open={showDiferenca}
+            onOpenChange={setShowDiferenca}
+            employeeId={pagamento.employee_id}
+            employeeNome={pagamento.employees?.nome_completo || ""}
+            empresaId={pagamento.empresa_id}
+            mes={pagamento.mes}
+            ano={pagamento.ano}
+          />
         )}
       </DialogContent>
     </Dialog>
