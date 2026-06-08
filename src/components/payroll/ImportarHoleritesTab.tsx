@@ -81,6 +81,15 @@ export function ImportarHoleritesTab() {
   const [saving, setSaving] = useState(false);
   const [resultados, setResultados] = useState<ExtractedHolerite[]>([]);
   const [preview, setPreview] = useState<ExtractedHolerite | null>(null);
+  const [cadastroOpen, setCadastroOpen] = useState(false);
+  const [novasVariaveis, setNovasVariaveis] = useState<Array<{
+    key: string;
+    codigo: string;
+    nome: string;
+    tipo: "provento" | "desconto";
+    selecionado: boolean;
+  }>>([]);
+  const [salvandoVars, setSalvandoVars] = useState(false);
 
   useEffect(() => {
     (async () => {
