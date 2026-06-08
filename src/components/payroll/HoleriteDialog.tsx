@@ -223,7 +223,11 @@ const HoleriteDialog = ({ open, onOpenChange, pagamento, empresaId }: HoleriteDi
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Recibo de Pagamento</DialogTitle>
+          <DialogTitle>
+            {pagamento?.tipo_folha === "diferenca"
+              ? "Recibo de Pagamento — Diferença"
+              : "Recibo de Pagamento"}
+          </DialogTitle>
         </DialogHeader>
 
         {loading ? (
