@@ -173,7 +173,7 @@ Deno.serve(async (req) => {
     }
 
     return new Response(
-      JSON.stringify({ criados, pulados, erros }),
+      JSON.stringify({ criados, sobrescritos, pulados, erros }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (e: any) {
