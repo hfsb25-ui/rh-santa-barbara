@@ -495,6 +495,58 @@ export function ImportarHoleritesTab() {
             )}
           </div>
 
+          {jobStatus !== "idle" && (
+            <div className="rounded-lg border p-4 space-y-3 bg-card">
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <div className="flex items-center gap-2">
+                  {jobStatus === "enfileirado" && (
+                    <Badge className="bg-slate-100 text-slate-800 hover:bg-slate-100 gap-1">
+                      <Clock className="w-3 h-3" /> Enfileirado
+                    </Badge>
+                  )}
+                  {jobStatus === "processando" && (
+                    <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100 gap-1">
+                      <Loader2 className="w-3 h-3 animate-spin" /> Processando
+                    </Badge>
+                  )}
+                  {jobStatus === "concluido" && (
+                    <Badge className="bg-green-100 text-green-800 hover:bg-green-100 gap-1">
+                      <CheckCircle2 className="w-3 h-3" /> Concluído
+                    </Badge>
+                  )}
+                  {jobStatus === "erro" && (
+                    <Badge className="bg-red-100 text-red-800 hover:bg-red-100 gap-1">
+                      <XCircle className="w-3 h-3" /> Erro
+                    </Badge>
+                  )}
+                  <span className="text-sm text-muted-foreground">
+                    {jobStatus === "erro" ? jobError : jobMessage}
+                  </span>
+                </div>
+                {(jobStatus === "enfileirado" || jobStatus === "processando") && (
+                  <span className="text-xs text-muted-foreground tabular-nums">
+                    {Math.floor(jobElapsed / 60)}:{String(jobElapsed % 60).padStart(2, "0")} decorridos
+                  </span>
+                )}
+              </div>
+              <Progress
+                value={jobStatus === "erro" ? 100 : jobProgress}
+                className={
+                  jobStatus === "erro"
+                    ? "[&>div]:bg-destructive"
+                    : jobStatus === "concluido"
+                    ? "[&>div]:bg-green-600"
+                    : ""
+                }
+              />
+              {(jobStatus === "enfileirado" || jobStatus === "processando") && (
+                <p className="text-xs text-muted-foreground">
+                  O processamento continua em segundo plano. Pode levar alguns minutos para PDFs grandes.
+                </p>
+              )}
+            </div>
+          )}
+
           {resultados.length > 0 && (
             <>
               <div className="flex items-center gap-2 p-3 rounded border bg-muted/30">
