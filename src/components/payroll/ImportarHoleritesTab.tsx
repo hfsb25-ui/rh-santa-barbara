@@ -338,9 +338,8 @@ export function ImportarHoleritesTab() {
           ),
         }))
       );
-      const reaproveitadas = existentes.length;
-      const msgReuso = reaproveitadas > 0 ? ` (${reaproveitadas} reaproveitada(s))` : "";
-      toast.success(`${criadas.length} variável(is) cadastrada(s)${msgReuso}`);
+      const msgUp = atualizadas > 0 ? ` · ${atualizadas} atualizada(s)` : "";
+      toast.success(`${criadas.length} variável(is) cadastrada(s)${msgUp}`);
       setCadastroOpen(false);
     } catch (e: any) {
       toast.error(e?.message || "Erro ao cadastrar variáveis");
