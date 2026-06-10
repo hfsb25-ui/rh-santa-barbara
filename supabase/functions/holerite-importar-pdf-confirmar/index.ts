@@ -73,7 +73,10 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { holerites } = (await req.json()) as { holerites: HoleriteIn[] };
+    const { holerites, sobrescrever } = (await req.json()) as {
+      holerites: HoleriteIn[];
+      sobrescrever?: boolean;
+    };
     if (!Array.isArray(holerites) || holerites.length === 0) {
       return new Response(JSON.stringify({ error: "Lista vazia" }), {
         status: 400,
@@ -82,6 +85,7 @@ Deno.serve(async (req) => {
     }
 
     let criados = 0;
+    let sobrescritos = 0;
     let pulados = 0;
     const erros: string[] = [];
 
