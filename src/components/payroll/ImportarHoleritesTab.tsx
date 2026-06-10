@@ -233,30 +233,68 @@ export function ImportarHoleritesTab() {
     }
     setSalvandoVars(true);
     try {
-      const payload = aCriar.map((v) => ({
+      // Monta payload normalizado
+      const rawPayload = aCriar.map((v) => ({
         nome: v.nome.trim().toUpperCase(),
         codigo: v.codigo.trim() || null,
         tipo: v.tipo,
         ativo: true,
         empresa_id: empresaDefault || null,
       }));
-      const { data: criadas, error } = await supabase
-        .from("variaveis_folha")
-        .insert(payload)
-        .select("id, nome, codigo, tipo");
-      if (error) throw error;
+
+      // Dedupe interno: por (codigo+tipo) quando há código, senão por (nome+tipo)
+      const seen = new Set<string>();
+      const payload: typeof rawPayload = [];
+      for (const p of rawPayload) {
+        const key = p.codigo
+          ? `c:${p.tipo}:${p.codigo.toLowerCase()}`
+          : `n:${p.tipo}:${p.nome.toLowerCase()}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        payload.push(p);
+      }
+
+      // Busca códigos já existentes no banco para evitar duplicate key
+      const codigosNovos = payload.map((p) => p.codigo).filter((c): c is string => !!c);
+      let existentes: any[] = [];
+      if (codigosNovos.length > 0) {
+        const { data: jaExistem } = await supabase
+          .from("variaveis_folha")
+          .select("id, nome, codigo, tipo")
+          .in("codigo", codigosNovos);
+        existentes = jaExistem || [];
+      }
+      const codigosExistentes = new Set(
+        existentes.map((e) => (e.codigo || "").toLowerCase())
+      );
+      const aInserir = payload.filter(
+        (p) => !p.codigo || !codigosExistentes.has(p.codigo.toLowerCase())
+      );
+
+      let criadas: any[] = [];
+      if (aInserir.length > 0) {
+        const { data, error } = await supabase
+          .from("variaveis_folha")
+          .insert(aInserir)
+          .select("id, nome, codigo, tipo");
+        if (error) throw error;
+        criadas = data || [];
+      }
+
+      // Pool para mapeamento = criadas + já existentes reaproveitadas
+      const pool = [...criadas, ...existentes];
 
       // Re-mapeia rubricas em memória
       const norm = (s: string) => (s || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
       function findCriada(tipo: "provento" | "desconto", codigo?: string | null, descricao?: string | null) {
-        const pool = (criadas || []).filter((c) => c.tipo === tipo);
+        const filtered = pool.filter((c) => c.tipo === tipo);
         if (codigo) {
-          const byCode = pool.find((c) => (c.codigo || "").toLowerCase() === codigo.toLowerCase());
+          const byCode = filtered.find((c) => (c.codigo || "").toLowerCase() === codigo.toLowerCase());
           if (byCode) return byCode;
         }
         if (descricao) {
           const t = norm(descricao);
-          return pool.find((c) => norm(c.nome) === t) || null;
+          return filtered.find((c) => norm(c.nome) === t) || null;
         }
         return null;
       }
@@ -277,7 +315,9 @@ export function ImportarHoleritesTab() {
           ),
         }))
       );
-      toast.success(`${criadas?.length || 0} variável(is) cadastrada(s)`);
+      const reaproveitadas = existentes.length;
+      const msgReuso = reaproveitadas > 0 ? ` (${reaproveitadas} reaproveitada(s))` : "";
+      toast.success(`${criadas.length} variável(is) cadastrada(s)${msgReuso}`);
       setCadastroOpen(false);
     } catch (e: any) {
       toast.error(e?.message || "Erro ao cadastrar variáveis");
@@ -285,6 +325,7 @@ export function ImportarHoleritesTab() {
       setSalvandoVars(false);
     }
   }
+
 
   return (
     <div className="space-y-4">
