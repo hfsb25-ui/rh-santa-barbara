@@ -399,6 +399,12 @@ const HoleriteDialog = ({ open, onOpenChange, pagamento, empresaId }: HoleriteDi
                   Gerar Holerite Diferença
                 </Button>
               )}
+              {pagamento?.tipo_folha === "diferenca" && (
+                <Button variant="outline" onClick={() => setShowEditar(true)}>
+                  <Pencil className="w-4 h-4 mr-2" />
+                  Editar
+                </Button>
+              )}
               <Button onClick={generatePDF} disabled={loading || !empresa || !employee}>
                 <Download className="w-4 h-4 mr-2" />
                 {loading ? "Carregando..." : "Baixar PDF"}
