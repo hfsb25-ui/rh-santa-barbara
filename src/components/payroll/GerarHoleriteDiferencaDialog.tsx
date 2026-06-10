@@ -147,11 +147,40 @@ export function GerarHoleriteDiferencaDialog({
               <div className="rounded-md border divide-y">
                 <div className="flex justify-between p-3 bg-muted/30">
                   <span className="font-medium">Salário base</span>
-                  <span className="font-semibold">R$ {fmt(calculo.base)}</span>
+                  <span className="font-semibold">R$ {fmt(calculo.salario_base)}</span>
                 </div>
+                {calculo.proventos.length > 0 && (
+                  <>
+                    {calculo.proventos.map((p) => (
+                      <div
+                        key={`p-${p.variavel_id}`}
+                        className="flex justify-between p-3 text-sm"
+                      >
+                        <span>
+                          {p.codigo && <span className="text-muted-foreground mr-2">{p.codigo}</span>}
+                          {p.nome}
+                          <span className="ml-2 text-xs text-muted-foreground">(provento fixo)</span>
+                        </span>
+                        <span className="text-green-600 font-medium">
+                          + R$ {fmt(p.valor)}
+                        </span>
+                      </div>
+                    ))}
+                    <div className="flex justify-between p-3 bg-muted/30 text-sm">
+                      <span>Total proventos fixos</span>
+                      <span className="font-semibold text-green-600">
+                        + R$ {fmt(calculo.total_proventos)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between p-3 bg-muted/40 text-sm">
+                      <span className="font-medium">Base total (salário + proventos)</span>
+                      <span className="font-semibold">R$ {fmt(calculo.base)}</span>
+                    </div>
+                  </>
+                )}
                 {calculo.descontos.length === 0 ? (
                   <div className="p-3 text-sm text-muted-foreground">
-                    Nenhuma variável configurada foi encontrada no holerite normal deste mês.
+                    Nenhuma variável de desconto configurada foi encontrada no holerite normal deste mês.
                   </div>
                 ) : (
                   calculo.descontos.map((d) => (

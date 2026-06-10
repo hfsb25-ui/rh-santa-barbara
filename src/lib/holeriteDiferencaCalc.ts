@@ -7,8 +7,18 @@ export interface DescontoDiferenca {
   valor: number;
 }
 
+export interface ProventoDiferenca {
+  variavel_id: string;
+  nome: string;
+  codigo: string | null;
+  valor: number;
+}
+
 export interface CalculoDiferenca {
   base: number;
+  salario_base: number;
+  proventos: ProventoDiferenca[];
+  total_proventos: number;
   descontos: DescontoDiferenca[];
   total_descontos: number;
   diferenca: number;
@@ -60,8 +70,8 @@ export async function calcularHoleriteDiferenca(
     .select("salario")
     .eq("id", employeeId)
     .maybeSingle();
-  const base = Number(emp?.salario || 0);
-  if (!base) return null;
+  const salarioBase = Number(emp?.salario || 0);
+  if (!salarioBase) return null;
 
   // 2. Pegar holerite normal do mês (precisa para itens E para líquido)
   const { data: folha } = await supabase
@@ -140,9 +150,34 @@ export async function calcularHoleriteDiferenca(
     }
   }
 
+  // 3. Proventos das variáveis fixas ativas do funcionário (tipo "provento")
+  const proventos: ProventoDiferenca[] = [];
+  const { data: fixasTodas } = await supabase
+    .from("variaveis_fixas_funcionario")
+    .select("variavel_id, valor, ativo, variaveis_folha(id, nome, codigo, tipo)")
+    .eq("employee_id", employeeId)
+    .eq("ativo", true);
+  (fixasTodas || []).forEach((f: any) => {
+    const v = f.variaveis_folha;
+    if (!v || v.tipo !== "provento") return;
+    const valor = Number(f.valor) || 0;
+    if (valor <= 0) return;
+    proventos.push({
+      variavel_id: f.variavel_id,
+      nome: v.nome || "—",
+      codigo: v.codigo || null,
+      valor,
+    });
+  });
+
+  const total_proventos = proventos.reduce((s, p) => s + p.valor, 0);
   const total_descontos = descontos.reduce((s, d) => s + d.valor, 0);
+  const base = salarioBase + total_proventos;
   return {
     base,
+    salario_base: salarioBase,
+    proventos,
+    total_proventos,
     descontos,
     total_descontos,
     diferenca: base - total_descontos,
@@ -226,15 +261,25 @@ export async function persistirHoleriteDiferenca(params: {
   }
 
   // Filtrar pseudo-itens (ex.: valor líquido do holerite principal não é uma variável real)
-  const itensReais = calculo.descontos.filter(
+  const descontosReais = calculo.descontos.filter(
     (d) => d.variavel_id && !d.variavel_id.startsWith("__")
   );
-  if (itensReais.length > 0) {
-    const itens = itensReais.map((d) => ({
+  const proventosReais = (calculo.proventos || []).filter(
+    (p) => p.variavel_id && !p.variavel_id.startsWith("__")
+  );
+  const itens = [
+    ...proventosReais.map((p) => ({
+      folha_pagamento_id: pagamentoId,
+      variavel_id: p.variavel_id,
+      valor: p.valor,
+    })),
+    ...descontosReais.map((d) => ({
       folha_pagamento_id: pagamentoId,
       variavel_id: d.variavel_id,
       valor: d.valor,
-    }));
+    })),
+  ];
+  if (itens.length > 0) {
     const { error: itensErr } = await supabase.from("folha_pagamento_itens").insert(itens);
     if (itensErr) throw itensErr;
   }
