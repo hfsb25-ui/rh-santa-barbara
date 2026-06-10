@@ -2767,6 +2767,36 @@ export type Database = {
         }
         Relationships: []
       }
+      holerite_import_jobs: {
+        Row: {
+          created_at: string
+          erro: string | null
+          id: string
+          resultado: Json | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          erro?: string | null
+          id?: string
+          resultado?: Json | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          erro?: string | null
+          id?: string
+          resultado?: Json | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       informacoes_contabilidade: {
         Row: {
           ano: number

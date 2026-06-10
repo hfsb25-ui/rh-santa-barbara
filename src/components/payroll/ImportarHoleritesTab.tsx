@@ -135,7 +135,35 @@ export function ImportarHoleritesTab() {
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
-      const hols: ExtractedHolerite[] = (data.holerites || []).map((h: ExtractedHolerite) => ({
+      const jobId: string | undefined = data?.job_id;
+      if (!jobId) throw new Error("Resposta inválida do servidor");
+
+      toast.info("Processando PDF com IA... isso pode levar alguns minutos.");
+
+      // Polling do job (até 10 minutos)
+      const inicio = Date.now();
+      const TIMEOUT_MS = 10 * 60 * 1000;
+      let resultado: any = null;
+      while (Date.now() - inicio < TIMEOUT_MS) {
+        await new Promise((r) => setTimeout(r, 4000));
+        const { data: job, error: errJob } = await supabase
+          .from("holerite_import_jobs" as any)
+          .select("status, resultado, erro")
+          .eq("id", jobId)
+          .maybeSingle();
+        if (errJob) throw errJob;
+        const j: any = job;
+        if (j?.status === "concluido") {
+          resultado = j.resultado;
+          break;
+        }
+        if (j?.status === "erro") {
+          throw new Error(j.erro || "Erro ao processar PDF");
+        }
+      }
+      if (!resultado) throw new Error("Tempo esgotado ao processar o PDF. Tente um arquivo menor.");
+
+      const hols: ExtractedHolerite[] = (resultado.holerites || []).map((h: ExtractedHolerite) => ({
         ...h,
         selecionado: h.status === "ok",
       }));
