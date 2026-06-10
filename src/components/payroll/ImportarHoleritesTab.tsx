@@ -94,6 +94,25 @@ export function ImportarHoleritesTab() {
     selecionado: boolean;
   }>>([]);
   const [salvandoVars, setSalvandoVars] = useState(false);
+  const [jobStatus, setJobStatus] = useState<JobStatus>("idle");
+  const [jobProgress, setJobProgress] = useState(0);
+  const [jobElapsed, setJobElapsed] = useState(0);
+  const [jobMessage, setJobMessage] = useState<string>("");
+  const [jobError, setJobError] = useState<string>("");
+
+  // Tick do tempo decorrido + barra de progresso estimada (assintótica até 95%)
+  useEffect(() => {
+    if (jobStatus !== "enfileirado" && jobStatus !== "processando") return;
+    const start = Date.now();
+    const itv = setInterval(() => {
+      const elapsed = Math.floor((Date.now() - start) / 1000);
+      setJobElapsed(elapsed);
+      // Curva assintótica: chega rápido a ~60% e desacelera até 95%
+      const estimated = Math.min(95, 100 * (1 - Math.exp(-elapsed / 60)));
+      setJobProgress((p) => Math.max(p, estimated));
+    }, 500);
+    return () => clearInterval(itv);
+  }, [jobStatus]);
 
   const isSelecionavel = (s: ExtractedHolerite["status"]) =>
     s === "ok" || (s === "ja_existe" && sobrescrever);
