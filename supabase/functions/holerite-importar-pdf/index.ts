@@ -169,120 +169,159 @@ Deno.serve(async (req) => {
       });
     }
 
-    // 1) chama IA via Lovable Gateway
-    const extracted = await callAI(body.pdf_base64, LOVABLE_API_KEY);
-
-    const holerites: any[] = Array.isArray(extracted?.holerites)
-      ? extracted.holerites
-      : [];
-
-    // 2) busca employees + variaveis + empresas para matching
-    const [{ data: employees }, { data: variaveis }, { data: empresas }] =
-      await Promise.all([
-        supa.from("employees").select("id, nome_completo, cpf, empresa_id").not("cpf", "is", null),
-        supa.from("variaveis_folha").select("id, nome, codigo, tipo, empresa_id").eq("ativo", true),
-        supa.from("empresas").select("id, nome"),
-      ]);
-
-    const empByCpf = new Map<string, any>();
-    (employees || []).forEach((e: any) => {
-      const c = cleanCpf(e.cpf);
-      if (c) empByCpf.set(c, e);
-    });
-
-    const empresaByNome = new Map<string, any>();
-    (empresas || []).forEach((e: any) => {
-      empresaByNome.set(normalizeStr(e.nome), e);
-    });
-
-    function findVariavel(rubrica: { codigo?: string; descricao?: string }, tipo: "provento" | "desconto", empresaId: string | null) {
-      const pool = (variaveis || []).filter((v: any) => v.tipo === tipo && (!v.empresa_id || v.empresa_id === empresaId));
-      if (rubrica.codigo) {
-        const byCode = pool.find((v: any) => (v.codigo || "").toLowerCase() === String(rubrica.codigo).toLowerCase());
-        if (byCode) return byCode;
-      }
-      if (rubrica.descricao) {
-        const target = normalizeStr(rubrica.descricao);
-        const exact = pool.find((v: any) => normalizeStr(v.nome) === target);
-        if (exact) return exact;
-        const partial = pool.find((v: any) => normalizeStr(v.nome).includes(target) || target.includes(normalizeStr(v.nome)));
-        if (partial) return partial;
-      }
-      return null;
+    // Cria job e processa em background (evita timeout 504 em PDFs grandes)
+    const { data: job, error: errJob } = await supa
+      .from("holerite_import_jobs")
+      .insert({ user_id: userId, status: "processando" })
+      .select("id")
+      .single();
+    if (errJob || !job) {
+      return new Response(
+        JSON.stringify({ error: `Erro ao criar job: ${errJob?.message}` }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
-    // 3) processa cada holerite
-    const resultado: any[] = [];
-    for (const h of holerites) {
-      const cpfClean = cleanCpf(h.cpf);
-      const employee = cpfClean ? empByCpf.get(cpfClean) : null;
+    const processar = async () => {
+      try {
+        // 1) chama IA via Lovable Gateway
+        const extracted = await callAI(body.pdf_base64, LOVABLE_API_KEY);
 
-      let empresaId: string | null = null;
-      if (h.empresa_nome) {
-        const norm = normalizeStr(h.empresa_nome);
-        const found = empresaByNome.get(norm) || Array.from(empresaByNome.entries()).find(([k]) => k.includes(norm) || norm.includes(k))?.[1];
-        if (found) empresaId = found.id;
+        const holerites: any[] = Array.isArray(extracted?.holerites)
+          ? extracted.holerites
+          : [];
+
+        // 2) busca employees + variaveis + empresas para matching
+        const [{ data: employees }, { data: variaveis }, { data: empresas }] =
+          await Promise.all([
+            supa.from("employees").select("id, nome_completo, cpf, empresa_id").not("cpf", "is", null),
+            supa.from("variaveis_folha").select("id, nome, codigo, tipo, empresa_id").eq("ativo", true),
+            supa.from("empresas").select("id, nome"),
+          ]);
+
+        const empByCpf = new Map<string, any>();
+        (employees || []).forEach((e: any) => {
+          const c = cleanCpf(e.cpf);
+          if (c) empByCpf.set(c, e);
+        });
+
+        const empresaByNome = new Map<string, any>();
+        (empresas || []).forEach((e: any) => {
+          empresaByNome.set(normalizeStr(e.nome), e);
+        });
+
+        function findVariavel(rubrica: { codigo?: string; descricao?: string }, tipo: "provento" | "desconto", empresaId: string | null) {
+          const pool = (variaveis || []).filter((v: any) => v.tipo === tipo && (!v.empresa_id || v.empresa_id === empresaId));
+          if (rubrica.codigo) {
+            const byCode = pool.find((v: any) => (v.codigo || "").toLowerCase() === String(rubrica.codigo).toLowerCase());
+            if (byCode) return byCode;
+          }
+          if (rubrica.descricao) {
+            const target = normalizeStr(rubrica.descricao);
+            const exact = pool.find((v: any) => normalizeStr(v.nome) === target);
+            if (exact) return exact;
+            const partial = pool.find((v: any) => normalizeStr(v.nome).includes(target) || target.includes(normalizeStr(v.nome)));
+            if (partial) return partial;
+          }
+          return null;
+        }
+
+        // 3) processa cada holerite
+        const resultado: any[] = [];
+        for (const h of holerites) {
+          const cpfClean = cleanCpf(h.cpf);
+          const employee = cpfClean ? empByCpf.get(cpfClean) : null;
+
+          let empresaId: string | null = null;
+          if (h.empresa_nome) {
+            const norm = normalizeStr(h.empresa_nome);
+            const found = empresaByNome.get(norm) || Array.from(empresaByNome.entries()).find(([k]) => k.includes(norm) || norm.includes(k))?.[1];
+            if (found) empresaId = found.id;
+          }
+          if (!empresaId && employee?.empresa_id) empresaId = employee.empresa_id;
+          if (!empresaId) empresaId = body.empresa_id_default || null;
+
+          const mes = h.mes || body.mes_default || null;
+          const ano = h.ano || body.ano_default || null;
+
+          // verifica duplicidade
+          let jaExiste = false;
+          if (employee && mes && ano) {
+            const { data: existing } = await supa
+              .from("folha_pagamento")
+              .select("id")
+              .eq("employee_id", employee.id)
+              .eq("mes", mes)
+              .eq("ano", ano)
+              .eq("tipo_folha", h.tipo_folha || "salario")
+              .maybeSingle();
+            if (existing) jaExiste = true;
+          }
+
+          // mapeia rubricas
+          const proventosMapped = (h.proventos || []).map((p: any) => {
+            const variavel = findVariavel(p, "provento", empresaId);
+            return { ...p, variavel_id: variavel?.id || null, variavel_nome: variavel?.nome || null };
+          });
+          const descontosMapped = (h.descontos || []).map((d: any) => {
+            const variavel = findVariavel(d, "desconto", empresaId);
+            return { ...d, variavel_id: variavel?.id || null, variavel_nome: variavel?.nome || null };
+          });
+
+          let status: "ok" | "sem_cpf" | "cpf_nao_encontrado" | "ja_existe" | "sem_periodo" = "ok";
+          if (!cpfClean) status = "sem_cpf";
+          else if (!employee) status = "cpf_nao_encontrado";
+          else if (!mes || !ano) status = "sem_periodo";
+          else if (jaExiste) status = "ja_existe";
+
+          resultado.push({
+            pagina: h.pagina,
+            cpf: cpfClean,
+            cpf_raw: h.cpf,
+            nome: (h.nome || "").toUpperCase(),
+            mes,
+            ano,
+            tipo_folha: h.tipo_folha || "salario",
+            empresa_nome: h.empresa_nome,
+            empresa_id: empresaId,
+            employee_id: employee?.id || null,
+            employee_nome: employee?.nome_completo || null,
+            valor_bruto: Number(h.valor_bruto) || 0,
+            descontos_total: Number(h.descontos_total) || 0,
+            valor_liquido: Number(h.valor_liquido) || 0,
+            proventos: proventosMapped,
+            descontos: descontosMapped,
+            status,
+          });
+        }
+
+        await supa
+          .from("holerite_import_jobs")
+          .update({
+            status: "concluido",
+            resultado: { total: resultado.length, holerites: resultado },
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", job.id);
+      } catch (e: any) {
+        console.error("[holerite-importar-pdf] job error", e);
+        await supa
+          .from("holerite_import_jobs")
+          .update({
+            status: "erro",
+            erro: e?.message || "Erro interno",
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", job.id);
       }
-      if (!empresaId && employee?.empresa_id) empresaId = employee.empresa_id;
-      if (!empresaId) empresaId = body.empresa_id_default || null;
+    };
 
-      const mes = h.mes || body.mes_default || null;
-      const ano = h.ano || body.ano_default || null;
-
-      // verifica duplicidade
-      let jaExiste = false;
-      if (employee && mes && ano) {
-        const { data: existing } = await supa
-          .from("folha_pagamento")
-          .select("id")
-          .eq("employee_id", employee.id)
-          .eq("mes", mes)
-          .eq("ano", ano)
-          .eq("tipo_folha", h.tipo_folha || "salario")
-          .maybeSingle();
-        if (existing) jaExiste = true;
-      }
-
-      // mapeia rubricas
-      const proventosMapped = (h.proventos || []).map((p: any) => {
-        const variavel = findVariavel(p, "provento", empresaId);
-        return { ...p, variavel_id: variavel?.id || null, variavel_nome: variavel?.nome || null };
-      });
-      const descontosMapped = (h.descontos || []).map((d: any) => {
-        const variavel = findVariavel(d, "desconto", empresaId);
-        return { ...d, variavel_id: variavel?.id || null, variavel_nome: variavel?.nome || null };
-      });
-
-      let status: "ok" | "sem_cpf" | "cpf_nao_encontrado" | "ja_existe" | "sem_periodo" = "ok";
-      if (!cpfClean) status = "sem_cpf";
-      else if (!employee) status = "cpf_nao_encontrado";
-      else if (!mes || !ano) status = "sem_periodo";
-      else if (jaExiste) status = "ja_existe";
-
-      resultado.push({
-        pagina: h.pagina,
-        cpf: cpfClean,
-        cpf_raw: h.cpf,
-        nome: (h.nome || "").toUpperCase(),
-        mes,
-        ano,
-        tipo_folha: h.tipo_folha || "salario",
-        empresa_nome: h.empresa_nome,
-        empresa_id: empresaId,
-        employee_id: employee?.id || null,
-        employee_nome: employee?.nome_completo || null,
-        valor_bruto: Number(h.valor_bruto) || 0,
-        descontos_total: Number(h.descontos_total) || 0,
-        valor_liquido: Number(h.valor_liquido) || 0,
-        proventos: proventosMapped,
-        descontos: descontosMapped,
-        status,
-      });
-    }
+    // @ts-ignore EdgeRuntime disponível no edge-runtime
+    EdgeRuntime.waitUntil(processar());
 
     return new Response(
-      JSON.stringify({ total: resultado.length, holerites: resultado }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      JSON.stringify({ job_id: job.id, status: "processando" }),
+      { status: 202, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (e: any) {
     console.error("[holerite-importar-pdf]", e);
