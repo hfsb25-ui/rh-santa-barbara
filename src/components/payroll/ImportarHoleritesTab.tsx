@@ -161,12 +161,30 @@ export function ImportarHoleritesTab() {
         "holerite-importar-pdf-confirmar",
         { body: { holerites: aImportar, sobrescrever } }
       );
-      if (error) throw error;
+      if (error) {
+        // Tenta extrair mensagem real do body de erro da edge function
+        let realMsg = error.message || "Erro ao importar";
+        try {
+          const ctx: any = (error as any).context;
+          if (ctx && typeof ctx.json === "function") {
+            const body = await ctx.json();
+            if (body?.error) realMsg = body.error;
+          } else if (ctx && typeof ctx.text === "function") {
+            const txt = await ctx.text();
+            if (txt) realMsg = txt;
+          }
+        } catch {}
+        console.error("[importar] erro detalhado:", error, realMsg);
+        throw new Error(realMsg);
+      }
       if (data?.error) throw new Error(data.error);
       toast.success(
         `${data.criados} criado(s), ${data.sobrescritos || 0} sobrescrito(s), ${data.pulados} pulado(s)`
       );
-      if (data.erros?.length) console.warn("Erros:", data.erros);
+      if (data.erros?.length) {
+        console.warn("Erros:", data.erros);
+        toast.warning(`Avisos: ${data.erros.slice(0, 3).join(" | ")}`);
+      }
       setResultados([]);
       setFile(null);
     } catch (e: any) {
