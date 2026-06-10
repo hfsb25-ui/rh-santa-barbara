@@ -7,8 +7,18 @@ export interface DescontoDiferenca {
   valor: number;
 }
 
+export interface ProventoDiferenca {
+  variavel_id: string;
+  nome: string;
+  codigo: string | null;
+  valor: number;
+}
+
 export interface CalculoDiferenca {
   base: number;
+  salario_base: number;
+  proventos: ProventoDiferenca[];
+  total_proventos: number;
   descontos: DescontoDiferenca[];
   total_descontos: number;
   diferenca: number;
