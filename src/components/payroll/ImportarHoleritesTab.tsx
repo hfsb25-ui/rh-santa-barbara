@@ -145,8 +145,14 @@ export function ImportarHoleritesTab() {
     }
     setProcessing(true);
     setResultados([]);
+    setJobStatus("enfileirado");
+    setJobProgress(2);
+    setJobElapsed(0);
+    setJobError("");
+    setJobMessage("Enviando PDF para o servidor...");
     try {
       const base64 = await fileToBase64(file);
+      setJobMessage("Aguardando início do processamento...");
       const { data, error } = await supabase.functions.invoke("holerite-importar-pdf", {
         body: {
           pdf_base64: base64,
@@ -160,7 +166,8 @@ export function ImportarHoleritesTab() {
       const jobId: string | undefined = data?.job_id;
       if (!jobId) throw new Error("Resposta inválida do servidor");
 
-      toast.info("Processando PDF com IA... isso pode levar alguns minutos.");
+      setJobStatus("processando");
+      setJobMessage("IA extraindo dados do PDF...");
 
       // Polling do job (até 10 minutos)
       const inicio = Date.now();
@@ -190,9 +197,14 @@ export function ImportarHoleritesTab() {
         selecionado: h.status === "ok",
       }));
       setResultados(hols);
+      setJobStatus("concluido");
+      setJobProgress(100);
+      setJobMessage(`${hols.length} holerite(s) extraído(s)`);
       toast.success(`${hols.length} holerite(s) extraído(s)`);
     } catch (e: any) {
       console.error(e);
+      setJobStatus("erro");
+      setJobError(e?.message || "Erro ao processar PDF");
       toast.error(e?.message || "Erro ao processar PDF");
     } finally {
       setProcessing(false);
