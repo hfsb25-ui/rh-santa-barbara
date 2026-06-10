@@ -423,6 +423,16 @@ const HoleriteDialog = ({ open, onOpenChange, pagamento, empresaId }: HoleriteDi
             ano={pagamento.ano}
           />
         )}
+        {pagamento && pagamento.tipo_folha === "diferenca" && (
+          <EditarHoleriteDiferencaDialog
+            open={showEditar}
+            onOpenChange={setShowEditar}
+            folhaId={pagamento.id}
+            empresaId={pagamento.empresa_id}
+            observacoesIniciais={pagamento.observacoes}
+            onSaved={() => onOpenChange(false)}
+          />
+        )}
       </DialogContent>
     </Dialog>
   );
