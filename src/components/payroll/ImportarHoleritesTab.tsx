@@ -9,8 +9,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Upload, Sparkles, Save, AlertCircle, CheckCircle2, XCircle, Eye, Plus } from "lucide-react";
+import { Upload, Sparkles, Save, AlertCircle, CheckCircle2, XCircle, Eye, Plus, Clock, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { Progress } from "@/components/ui/progress";
+
+type JobStatus = "idle" | "enfileirado" | "processando" | "concluido" | "erro";
 
 const MESES = ["", "Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
 
