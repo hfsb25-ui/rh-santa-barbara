@@ -388,7 +388,7 @@ export function ImportarHoleritesTab() {
                     <TableCell>
                       <Checkbox
                         checked={!!r.selecionado}
-                        disabled={r.status !== "ok"}
+                        disabled={!isSelecionavel(r.status)}
                         onCheckedChange={(v) =>
                           setResultados((arr) => {
                             const n = [...arr];
