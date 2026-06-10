@@ -353,11 +353,29 @@ export function ImportarHoleritesTab() {
           </div>
 
           {resultados.length > 0 && (
-            <div className="flex gap-4 text-sm">
-              <span>Total: <b>{resultados.length}</b></span>
-              <span className="text-green-700">Reconhecidos: <b>{totalOk}</b></span>
-              <span className="text-yellow-700">Pendentes: <b>{resultados.length - totalOk}</b></span>
-            </div>
+            <>
+              <div className="flex items-center gap-2 p-3 rounded border bg-muted/30">
+                <Checkbox
+                  id="sobrescrever-toggle"
+                  checked={sobrescrever}
+                  onCheckedChange={(v) => setSobrescrever(!!v)}
+                />
+                <Label htmlFor="sobrescrever-toggle" className="cursor-pointer text-sm">
+                  Sobrescrever holerites já existentes
+                  {totalJaExiste > 0 && (
+                    <span className="ml-2 text-muted-foreground">
+                      ({totalJaExiste} já existente{totalJaExiste > 1 ? "s" : ""} no banco)
+                    </span>
+                  )}
+                </Label>
+              </div>
+              <div className="flex gap-4 text-sm">
+                <span>Total: <b>{resultados.length}</b></span>
+                <span className="text-green-700">Reconhecidos: <b>{totalOk}</b></span>
+                <span className="text-blue-700">Já existem: <b>{totalJaExiste}</b></span>
+                <span className="text-yellow-700">Pendentes: <b>{resultados.length - totalOk - totalJaExiste}</b></span>
+              </div>
+            </>
           )}
         </CardContent>
       </Card>
