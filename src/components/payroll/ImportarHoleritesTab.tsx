@@ -194,7 +194,8 @@ export function ImportarHoleritesTab() {
   }
 
   const totalOk = resultados.filter((r) => r.status === "ok").length;
-  const totalSelecionados = resultados.filter((r) => r.selecionado && r.status === "ok").length;
+  const totalJaExiste = resultados.filter((r) => r.status === "ja_existe").length;
+  const totalSelecionados = resultados.filter((r) => r.selecionado && isSelecionavel(r.status)).length;
 
   // Agrupa rubricas não mapeadas (chave = tipo + descrição normalizada)
   function coletarNaoMapeadas() {
