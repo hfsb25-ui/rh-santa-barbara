@@ -9,8 +9,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Upload, Sparkles, Save, AlertCircle, CheckCircle2, XCircle, Eye, Plus } from "lucide-react";
+import { Upload, Sparkles, Save, AlertCircle, CheckCircle2, XCircle, Eye, Plus, Clock, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { Progress } from "@/components/ui/progress";
+
+type JobStatus = "idle" | "enfileirado" | "processando" | "concluido" | "erro";
 
 const MESES = ["", "Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
 
@@ -91,6 +94,25 @@ export function ImportarHoleritesTab() {
     selecionado: boolean;
   }>>([]);
   const [salvandoVars, setSalvandoVars] = useState(false);
+  const [jobStatus, setJobStatus] = useState<JobStatus>("idle");
+  const [jobProgress, setJobProgress] = useState(0);
+  const [jobElapsed, setJobElapsed] = useState(0);
+  const [jobMessage, setJobMessage] = useState<string>("");
+  const [jobError, setJobError] = useState<string>("");
+
+  // Tick do tempo decorrido + barra de progresso estimada (assintótica até 95%)
+  useEffect(() => {
+    if (jobStatus !== "enfileirado" && jobStatus !== "processando") return;
+    const start = Date.now();
+    const itv = setInterval(() => {
+      const elapsed = Math.floor((Date.now() - start) / 1000);
+      setJobElapsed(elapsed);
+      // Curva assintótica: chega rápido a ~60% e desacelera até 95%
+      const estimated = Math.min(95, 100 * (1 - Math.exp(-elapsed / 60)));
+      setJobProgress((p) => Math.max(p, estimated));
+    }, 500);
+    return () => clearInterval(itv);
+  }, [jobStatus]);
 
   const isSelecionavel = (s: ExtractedHolerite["status"]) =>
     s === "ok" || (s === "ja_existe" && sobrescrever);
@@ -123,8 +145,14 @@ export function ImportarHoleritesTab() {
     }
     setProcessing(true);
     setResultados([]);
+    setJobStatus("enfileirado");
+    setJobProgress(2);
+    setJobElapsed(0);
+    setJobError("");
+    setJobMessage("Enviando PDF para o servidor...");
     try {
       const base64 = await fileToBase64(file);
+      setJobMessage("Aguardando início do processamento...");
       const { data, error } = await supabase.functions.invoke("holerite-importar-pdf", {
         body: {
           pdf_base64: base64,
@@ -138,7 +166,8 @@ export function ImportarHoleritesTab() {
       const jobId: string | undefined = data?.job_id;
       if (!jobId) throw new Error("Resposta inválida do servidor");
 
-      toast.info("Processando PDF com IA... isso pode levar alguns minutos.");
+      setJobStatus("processando");
+      setJobMessage("IA extraindo dados do PDF...");
 
       // Polling do job (até 10 minutos)
       const inicio = Date.now();
@@ -168,9 +197,14 @@ export function ImportarHoleritesTab() {
         selecionado: h.status === "ok",
       }));
       setResultados(hols);
+      setJobStatus("concluido");
+      setJobProgress(100);
+      setJobMessage(`${hols.length} holerite(s) extraído(s)`);
       toast.success(`${hols.length} holerite(s) extraído(s)`);
     } catch (e: any) {
       console.error(e);
+      setJobStatus("erro");
+      setJobError(e?.message || "Erro ao processar PDF");
       toast.error(e?.message || "Erro ao processar PDF");
     } finally {
       setProcessing(false);
@@ -460,6 +494,58 @@ export function ImportarHoleritesTab() {
               </Button>
             )}
           </div>
+
+          {jobStatus !== "idle" && (
+            <div className="rounded-lg border p-4 space-y-3 bg-card">
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <div className="flex items-center gap-2">
+                  {jobStatus === "enfileirado" && (
+                    <Badge className="bg-slate-100 text-slate-800 hover:bg-slate-100 gap-1">
+                      <Clock className="w-3 h-3" /> Enfileirado
+                    </Badge>
+                  )}
+                  {jobStatus === "processando" && (
+                    <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100 gap-1">
+                      <Loader2 className="w-3 h-3 animate-spin" /> Processando
+                    </Badge>
+                  )}
+                  {jobStatus === "concluido" && (
+                    <Badge className="bg-green-100 text-green-800 hover:bg-green-100 gap-1">
+                      <CheckCircle2 className="w-3 h-3" /> Concluído
+                    </Badge>
+                  )}
+                  {jobStatus === "erro" && (
+                    <Badge className="bg-red-100 text-red-800 hover:bg-red-100 gap-1">
+                      <XCircle className="w-3 h-3" /> Erro
+                    </Badge>
+                  )}
+                  <span className="text-sm text-muted-foreground">
+                    {jobStatus === "erro" ? jobError : jobMessage}
+                  </span>
+                </div>
+                {(jobStatus === "enfileirado" || jobStatus === "processando") && (
+                  <span className="text-xs text-muted-foreground tabular-nums">
+                    {Math.floor(jobElapsed / 60)}:{String(jobElapsed % 60).padStart(2, "0")} decorridos
+                  </span>
+                )}
+              </div>
+              <Progress
+                value={jobStatus === "erro" ? 100 : jobProgress}
+                className={
+                  jobStatus === "erro"
+                    ? "[&>div]:bg-destructive"
+                    : jobStatus === "concluido"
+                    ? "[&>div]:bg-green-600"
+                    : ""
+                }
+              />
+              {(jobStatus === "enfileirado" || jobStatus === "processando") && (
+                <p className="text-xs text-muted-foreground">
+                  O processamento continua em segundo plano. Pode levar alguns minutos para PDFs grandes.
+                </p>
+              )}
+            </div>
+          )}
 
           {resultados.length > 0 && (
             <>
