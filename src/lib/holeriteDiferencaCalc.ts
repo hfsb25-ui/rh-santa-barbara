@@ -70,8 +70,8 @@ export async function calcularHoleriteDiferenca(
     .select("salario")
     .eq("id", employeeId)
     .maybeSingle();
-  const base = Number(emp?.salario || 0);
-  if (!base) return null;
+  const salarioBase = Number(emp?.salario || 0);
+  if (!salarioBase) return null;
 
   // 2. Pegar holerite normal do mês (precisa para itens E para líquido)
   const { data: folha } = await supabase
