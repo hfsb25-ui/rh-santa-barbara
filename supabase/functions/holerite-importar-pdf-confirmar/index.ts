@@ -93,17 +93,34 @@ Deno.serve(async (req) => {
       try {
         if (!h.employee_id || !h.empresa_id || !h.mes || !h.ano) {
           pulados++;
+          erros.push(
+            `Holerite ignorado: faltam dados (employee_id=${!!h.employee_id}, empresa_id=${!!h.empresa_id}, mes=${h.mes}, ano=${h.ano})`
+          );
           continue;
         }
 
-        const { data: existing } = await supa
+        const toNum = (v: any) => {
+          if (v === null || v === undefined) return 0;
+          if (typeof v === "number") return v;
+          const s = String(v).replace(/\./g, "").replace(",", ".");
+          const n = Number(s);
+          return isNaN(n) ? 0 : n;
+        };
+
+        const tipoFolha = h.tipo_folha || "salario";
+
+        const { data: existing, error: errExist } = await supa
           .from("folha_pagamento")
           .select("id, status")
           .eq("employee_id", h.employee_id)
           .eq("mes", h.mes)
           .eq("ano", h.ano)
-          .eq("tipo_folha", h.tipo_folha)
+          .eq("tipo_folha", tipoFolha)
           .maybeSingle();
+        if (errExist) {
+          erros.push(`Erro ao consultar holerite existente: ${errExist.message}`);
+          continue;
+        }
 
         let foiSobrescrito = false;
         if (existing) {
@@ -118,7 +135,6 @@ Deno.serve(async (req) => {
             pulados++;
             continue;
           }
-          // Remove itens antigos e a folha antiga
           await supa.from("folha_pagamento_itens").delete().eq("folha_pagamento_id", existing.id);
           const { error: errDel } = await supa.from("folha_pagamento").delete().eq("id", existing.id);
           if (errDel) {
@@ -135,11 +151,11 @@ Deno.serve(async (req) => {
             empresa_id: h.empresa_id,
             mes: h.mes,
             ano: h.ano,
-            tipo_folha: h.tipo_folha,
-            valor_bruto: h.valor_bruto,
-            descontos: h.descontos_total,
+            tipo_folha: tipoFolha,
+            valor_bruto: toNum(h.valor_bruto),
+            descontos: toNum(h.descontos_total),
             desconto: 0,
-            valor_liquido: h.valor_liquido,
+            valor_liquido: toNum(h.valor_liquido),
             status: "rascunho",
             observacoes: h.observacoes || "Importado via PDF (IA)",
             created_by: userId,
@@ -148,17 +164,17 @@ Deno.serve(async (req) => {
           .single();
 
         if (errFolha || !folha) {
-          erros.push(`Erro ao criar folha: ${errFolha?.message}`);
+          erros.push(`Erro ao criar folha (emp=${h.employee_id} ${h.mes}/${h.ano}): ${errFolha?.message}`);
           continue;
         }
 
         const itens = [
           ...(h.proventos || [])
-            .filter((p) => p.variavel_id && p.valor > 0)
-            .map((p) => ({ folha_pagamento_id: folha.id, variavel_id: p.variavel_id!, valor: p.valor })),
+            .filter((p) => p.variavel_id && toNum(p.valor) > 0)
+            .map((p) => ({ folha_pagamento_id: folha.id, variavel_id: p.variavel_id!, valor: toNum(p.valor) })),
           ...(h.descontos || [])
-            .filter((d) => d.variavel_id && d.valor > 0)
-            .map((d) => ({ folha_pagamento_id: folha.id, variavel_id: d.variavel_id!, valor: d.valor })),
+            .filter((d) => d.variavel_id && toNum(d.valor) > 0)
+            .map((d) => ({ folha_pagamento_id: folha.id, variavel_id: d.variavel_id!, valor: toNum(d.valor) })),
         ];
         if (itens.length) {
           const { error: errItens } = await supa.from("folha_pagamento_itens").insert(itens);
