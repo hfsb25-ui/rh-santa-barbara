@@ -81,6 +81,7 @@ export function ImportarHoleritesTab() {
   const [saving, setSaving] = useState(false);
   const [resultados, setResultados] = useState<ExtractedHolerite[]>([]);
   const [preview, setPreview] = useState<ExtractedHolerite | null>(null);
+  const [sobrescrever, setSobrescrever] = useState(false);
   const [cadastroOpen, setCadastroOpen] = useState(false);
   const [novasVariaveis, setNovasVariaveis] = useState<Array<{
     key: string;
@@ -90,6 +91,18 @@ export function ImportarHoleritesTab() {
     selecionado: boolean;
   }>>([]);
   const [salvandoVars, setSalvandoVars] = useState(false);
+
+  const isSelecionavel = (s: ExtractedHolerite["status"]) =>
+    s === "ok" || (s === "ja_existe" && sobrescrever);
+
+  // Quando alterna sobrescrever, marca/desmarca automaticamente os "ja_existe"
+  useEffect(() => {
+    setResultados((arr) =>
+      arr.map((r) =>
+        r.status === "ja_existe" ? { ...r, selecionado: sobrescrever } : r
+      )
+    );
+  }, [sobrescrever]);
 
   useEffect(() => {
     (async () => {
