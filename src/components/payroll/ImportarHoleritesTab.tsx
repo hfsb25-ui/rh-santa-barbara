@@ -254,7 +254,7 @@ export function ImportarHoleritesTab() {
         payload.push(p);
       }
 
-      // Busca códigos já existentes no banco para evitar duplicate key
+      // Busca códigos já existentes no banco para atualizar (não inserir duplicado)
       const codigosNovos = payload.map((p) => p.codigo).filter((c): c is string => !!c);
       let existentes: any[] = [];
       if (codigosNovos.length > 0) {
@@ -264,11 +264,33 @@ export function ImportarHoleritesTab() {
           .in("codigo", codigosNovos);
         existentes = jaExistem || [];
       }
-      const codigosExistentes = new Set(
-        existentes.map((e) => (e.codigo || "").toLowerCase())
+      const mapaExistentes = new Map(
+        existentes.map((e) => [(e.codigo || "").toLowerCase(), e])
       );
+
+      // Atualiza variáveis já existentes com os novos dados
+      let atualizadas = 0;
+      const atualizadasInfo: any[] = [];
+      for (const p of payload) {
+        if (!p.codigo) continue;
+        const exist = mapaExistentes.get(p.codigo.toLowerCase());
+        if (!exist) continue;
+        const { error: upErr, data: upData } = await supabase
+          .from("variaveis_folha")
+          .update({ nome: p.nome, tipo: p.tipo, ativo: true })
+          .eq("id", exist.id)
+          .select("id, nome, codigo, tipo")
+          .maybeSingle();
+        if (!upErr && upData) {
+          atualizadas++;
+          atualizadasInfo.push(upData);
+        } else if (upData === null) {
+          atualizadasInfo.push({ ...exist, nome: p.nome, tipo: p.tipo });
+        }
+      }
+
       const aInserir = payload.filter(
-        (p) => !p.codigo || !codigosExistentes.has(p.codigo.toLowerCase())
+        (p) => !p.codigo || !mapaExistentes.has(p.codigo.toLowerCase())
       );
 
       let criadas: any[] = [];
@@ -281,8 +303,9 @@ export function ImportarHoleritesTab() {
         criadas = data || [];
       }
 
-      // Pool para mapeamento = criadas + já existentes reaproveitadas
-      const pool = [...criadas, ...existentes];
+      // Pool para mapeamento = criadas + atualizadas
+      const pool = [...criadas, ...atualizadasInfo];
+
 
       // Re-mapeia rubricas em memória
       const norm = (s: string) => (s || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
@@ -315,9 +338,8 @@ export function ImportarHoleritesTab() {
           ),
         }))
       );
-      const reaproveitadas = existentes.length;
-      const msgReuso = reaproveitadas > 0 ? ` (${reaproveitadas} reaproveitada(s))` : "";
-      toast.success(`${criadas.length} variável(is) cadastrada(s)${msgReuso}`);
+      const msgUp = atualizadas > 0 ? ` · ${atualizadas} atualizada(s)` : "";
+      toast.success(`${criadas.length} variável(is) cadastrada(s)${msgUp}`);
       setCadastroOpen(false);
     } catch (e: any) {
       toast.error(e?.message || "Erro ao cadastrar variáveis");
