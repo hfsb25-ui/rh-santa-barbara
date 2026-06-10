@@ -150,9 +150,34 @@ export async function calcularHoleriteDiferenca(
     }
   }
 
+  // 3. Proventos das variáveis fixas ativas do funcionário (tipo "provento")
+  const proventos: ProventoDiferenca[] = [];
+  const { data: fixasTodas } = await supabase
+    .from("variaveis_fixas_funcionario")
+    .select("variavel_id, valor, ativo, variaveis_folha(id, nome, codigo, tipo)")
+    .eq("employee_id", employeeId)
+    .eq("ativo", true);
+  (fixasTodas || []).forEach((f: any) => {
+    const v = f.variaveis_folha;
+    if (!v || v.tipo !== "provento") return;
+    const valor = Number(f.valor) || 0;
+    if (valor <= 0) return;
+    proventos.push({
+      variavel_id: f.variavel_id,
+      nome: v.nome || "—",
+      codigo: v.codigo || null,
+      valor,
+    });
+  });
+
+  const total_proventos = proventos.reduce((s, p) => s + p.valor, 0);
   const total_descontos = descontos.reduce((s, d) => s + d.valor, 0);
+  const base = salarioBase + total_proventos;
   return {
     base,
+    salario_base: salarioBase,
+    proventos,
+    total_proventos,
     descontos,
     total_descontos,
     diferenca: base - total_descontos,
