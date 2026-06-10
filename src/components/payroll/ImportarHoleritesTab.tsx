@@ -150,7 +150,7 @@ export function ImportarHoleritesTab() {
   }
 
   async function handleImportar() {
-    const aImportar = resultados.filter((r) => r.selecionado && r.status === "ok");
+    const aImportar = resultados.filter((r) => r.selecionado && isSelecionavel(r.status));
     if (aImportar.length === 0) {
       toast.error("Nenhum holerite válido selecionado");
       return;
@@ -159,11 +159,13 @@ export function ImportarHoleritesTab() {
     try {
       const { data, error } = await supabase.functions.invoke(
         "holerite-importar-pdf-confirmar",
-        { body: { holerites: aImportar } }
+        { body: { holerites: aImportar, sobrescrever } }
       );
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
-      toast.success(`${data.criados} criados, ${data.pulados} pulados`);
+      toast.success(
+        `${data.criados} criado(s), ${data.sobrescritos || 0} sobrescrito(s), ${data.pulados} pulado(s)`
+      );
       if (data.erros?.length) console.warn("Erros:", data.erros);
       setResultados([]);
       setFile(null);
