@@ -73,7 +73,10 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { holerites } = (await req.json()) as { holerites: HoleriteIn[] };
+    const { holerites, sobrescrever } = (await req.json()) as {
+      holerites: HoleriteIn[];
+      sobrescrever?: boolean;
+    };
     if (!Array.isArray(holerites) || holerites.length === 0) {
       return new Response(JSON.stringify({ error: "Lista vazia" }), {
         status: 400,
@@ -82,6 +85,7 @@ Deno.serve(async (req) => {
     }
 
     let criados = 0;
+    let sobrescritos = 0;
     let pulados = 0;
     const erros: string[] = [];
 
@@ -94,15 +98,34 @@ Deno.serve(async (req) => {
 
         const { data: existing } = await supa
           .from("folha_pagamento")
-          .select("id")
+          .select("id, status")
           .eq("employee_id", h.employee_id)
           .eq("mes", h.mes)
           .eq("ano", h.ano)
           .eq("tipo_folha", h.tipo_folha)
           .maybeSingle();
+
+        let foiSobrescrito = false;
         if (existing) {
-          pulados++;
-          continue;
+          if (!sobrescrever) {
+            pulados++;
+            continue;
+          }
+          if (existing.status === "aprovado" || existing.status === "pago") {
+            erros.push(
+              `Holerite ${h.mes}/${h.ano} ja aprovado/pago - nao foi sobrescrito`
+            );
+            pulados++;
+            continue;
+          }
+          // Remove itens antigos e a folha antiga
+          await supa.from("folha_pagamento_itens").delete().eq("folha_pagamento_id", existing.id);
+          const { error: errDel } = await supa.from("folha_pagamento").delete().eq("id", existing.id);
+          if (errDel) {
+            erros.push(`Erro ao remover holerite anterior: ${errDel.message}`);
+            continue;
+          }
+          foiSobrescrito = true;
         }
 
         const { data: folha, error: errFolha } = await supa
@@ -142,14 +165,15 @@ Deno.serve(async (req) => {
           if (errItens) erros.push(`Erro ao inserir itens: ${errItens.message}`);
         }
 
-        criados++;
+        if (foiSobrescrito) sobrescritos++;
+        else criados++;
       } catch (e: any) {
         erros.push(e?.message || "Erro desconhecido");
       }
     }
 
     return new Response(
-      JSON.stringify({ criados, pulados, erros }),
+      JSON.stringify({ criados, sobrescritos, pulados, erros }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (e: any) {
