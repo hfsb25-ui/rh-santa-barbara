@@ -261,15 +261,25 @@ export async function persistirHoleriteDiferenca(params: {
   }
 
   // Filtrar pseudo-itens (ex.: valor líquido do holerite principal não é uma variável real)
-  const itensReais = calculo.descontos.filter(
+  const descontosReais = calculo.descontos.filter(
     (d) => d.variavel_id && !d.variavel_id.startsWith("__")
   );
-  if (itensReais.length > 0) {
-    const itens = itensReais.map((d) => ({
+  const proventosReais = (calculo.proventos || []).filter(
+    (p) => p.variavel_id && !p.variavel_id.startsWith("__")
+  );
+  const itens = [
+    ...proventosReais.map((p) => ({
+      folha_pagamento_id: pagamentoId,
+      variavel_id: p.variavel_id,
+      valor: p.valor,
+    })),
+    ...descontosReais.map((d) => ({
       folha_pagamento_id: pagamentoId,
       variavel_id: d.variavel_id,
       valor: d.valor,
-    }));
+    })),
+  ];
+  if (itens.length > 0) {
     const { error: itensErr } = await supabase.from("folha_pagamento_itens").insert(itens);
     if (itensErr) throw itensErr;
   }
