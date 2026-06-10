@@ -2,8 +2,9 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Download, Calculator } from "lucide-react";
+import { Download, Calculator, Pencil } from "lucide-react";
 import { GerarHoleriteDiferencaDialog } from "./GerarHoleriteDiferencaDialog";
+import { EditarHoleriteDiferencaDialog } from "./EditarHoleriteDiferencaDialog";
 
 
 
@@ -81,6 +82,7 @@ const HoleriteDialog = ({ open, onOpenChange, pagamento, empresaId }: HoleriteDi
   const [employee, setEmployee] = useState<Employee | null>(null);
   const [loading, setLoading] = useState(false);
   const [showDiferenca, setShowDiferenca] = useState(false);
+  const [showEditar, setShowEditar] = useState(false);
 
   useEffect(() => {
     if (open && pagamento) {
@@ -397,6 +399,12 @@ const HoleriteDialog = ({ open, onOpenChange, pagamento, empresaId }: HoleriteDi
                   Gerar Holerite Diferença
                 </Button>
               )}
+              {pagamento?.tipo_folha === "diferenca" && (
+                <Button variant="outline" onClick={() => setShowEditar(true)}>
+                  <Pencil className="w-4 h-4 mr-2" />
+                  Editar
+                </Button>
+              )}
               <Button onClick={generatePDF} disabled={loading || !empresa || !employee}>
                 <Download className="w-4 h-4 mr-2" />
                 {loading ? "Carregando..." : "Baixar PDF"}
@@ -413,6 +421,16 @@ const HoleriteDialog = ({ open, onOpenChange, pagamento, empresaId }: HoleriteDi
             empresaId={pagamento.empresa_id}
             mes={pagamento.mes}
             ano={pagamento.ano}
+          />
+        )}
+        {pagamento && pagamento.tipo_folha === "diferenca" && (
+          <EditarHoleriteDiferencaDialog
+            open={showEditar}
+            onOpenChange={setShowEditar}
+            folhaId={pagamento.id}
+            empresaId={pagamento.empresa_id}
+            observacoesIniciais={pagamento.observacoes}
+            onSaved={() => onOpenChange(false)}
           />
         )}
       </DialogContent>
