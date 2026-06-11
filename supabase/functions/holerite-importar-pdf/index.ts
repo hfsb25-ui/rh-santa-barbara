@@ -2,6 +2,7 @@
 // Não persiste nada. Devolve a estrutura para o admin revisar.
 
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { PDFDocument } from "npm:pdf-lib@1.17.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -16,6 +17,13 @@ interface Payload {
   ano_default?: number;
   empresa_id_default?: string;
 }
+
+interface PdfBatch {
+  base64: string;
+  pages: number[];
+}
+
+const PAGE_BATCH_SIZE = 2;
 
 const EXTRACT_PROMPT = `Você recebe um PDF que pode conter um ou vários holerites (recibos de pagamento) de funcionários brasileiros. Sua tarefa é EXTRAIR cada holerite individual em JSON estruturado.
 
