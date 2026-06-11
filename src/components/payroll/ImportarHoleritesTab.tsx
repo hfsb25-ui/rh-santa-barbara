@@ -220,7 +220,10 @@ export function ImportarHoleritesTab() {
       toast.error(e?.message || "Erro ao processar PDF");
     } finally {
       setProcessing(false);
+    }
   }
+
+
 
   async function handleProcessarOCR() {
     if (!file) {
