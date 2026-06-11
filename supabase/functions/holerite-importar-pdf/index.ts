@@ -173,8 +173,18 @@ Deno.serve(async (req) => {
 
     const processar = async () => {
       try {
-        // 1) chama IA via Lovable Gateway
-        const extracted = await callAI(body.pdf_base64, LOVABLE_API_KEY);
+        // 1) carrega configuração de IA do usuário (Gemini direto)
+        const { data: cfg } = await supa
+          .from("configuracoes_ia")
+          .select("google_gemini_api_key, modelo, provedor")
+          .limit(1)
+          .maybeSingle();
+        const geminiKey = (cfg as any)?.google_gemini_api_key || Deno.env.get("GOOGLE_GEMINI_API_KEY");
+        if (!geminiKey) {
+          throw new Error("Chave do Google Gemini não configurada em Configurações > IA.");
+        }
+        const modelo = (cfg as any)?.provedor === "gemini" ? ((cfg as any)?.modelo || "gemini-2.0-flash") : "gemini-2.0-flash";
+        const extracted = await callGemini(body.pdf_base64, geminiKey, modelo);
 
         const holerites: any[] = Array.isArray(extracted?.holerites)
           ? extracted.holerites
