@@ -2,6 +2,7 @@
 // Não persiste nada. Devolve a estrutura para o admin revisar.
 
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { PDFDocument } from "npm:pdf-lib@1.17.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -16,6 +17,13 @@ interface Payload {
   ano_default?: number;
   empresa_id_default?: string;
 }
+
+interface PdfBatch {
+  base64: string;
+  pages: number[];
+}
+
+const PAGE_BATCH_SIZE = 2;
 
 const EXTRACT_PROMPT = `Você recebe um PDF que pode conter um ou vários holerites (recibos de pagamento) de funcionários brasileiros. Sua tarefa é EXTRAIR cada holerite individual em JSON estruturado.
 
@@ -156,6 +164,44 @@ function repairJson(input: string): string {
   return str;
 }
 
+function base64ToBytes(pdfBase64: string): Uint8Array {
+  const clean = pdfBase64.includes(",") ? pdfBase64.split(",")[1] : pdfBase64;
+  const bin = atob(clean);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return bytes;
+}
+
+function bytesToBase64(bytes: Uint8Array): string {
+  let bin = "";
+  const chunkSize = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    bin += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
+  }
+  return btoa(bin);
+}
+
+async function splitPdfIntoBatches(pdfBase64: string, batchSize = PAGE_BATCH_SIZE): Promise<PdfBatch[]> {
+  const source = await PDFDocument.load(base64ToBytes(pdfBase64), { ignoreEncryption: true });
+  const totalPages = source.getPageCount();
+  const batches: PdfBatch[] = [];
+
+  for (let start = 0; start < totalPages; start += batchSize) {
+    const end = Math.min(start + batchSize, totalPages);
+    const indexes = Array.from({ length: end - start }, (_, i) => start + i);
+    const doc = await PDFDocument.create();
+    const pages = await doc.copyPages(source, indexes);
+    pages.forEach((page) => doc.addPage(page));
+    const bytes = await doc.save({ useObjectStreams: false });
+    batches.push({
+      base64: bytesToBase64(bytes),
+      pages: indexes.map((i) => i + 1),
+    });
+  }
+
+  return batches.length ? batches : [{ base64: pdfBase64, pages: [1] }];
+}
+
 const FALLBACK_MODELS = ["gemini-2.0-flash", "gemini-2.5-flash", "gemini-1.5-flash"];
 
 async function callGemini(pdfBase64: string, apiKey: string, model: string): Promise<any> {
@@ -277,11 +323,55 @@ Deno.serve(async (req) => {
           throw new Error("Chave do Google Gemini não configurada em Configurações > IA.");
         }
         const modelo = (cfg as any)?.provedor === "gemini" ? ((cfg as any)?.modelo || "gemini-2.0-flash") : "gemini-2.0-flash";
-        const extracted = await callGemini(body.pdf_base64, geminiKey, modelo);
+        const batches = await splitPdfIntoBatches(body.pdf_base64);
+        const holerites: any[] = [];
+        const avisos: string[] = [];
 
-        const holerites: any[] = Array.isArray(extracted?.holerites)
-          ? extracted.holerites
-          : [];
+        await supa
+          .from("holerite_import_jobs")
+          .update({
+            resultado: { total_lotes: batches.length, lotes_processados: 0, holerites_parciais: 0 },
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", job.id);
+
+        for (let i = 0; i < batches.length; i++) {
+          const batch = batches[i];
+          try {
+            if (i > 0) await new Promise((resolve) => setTimeout(resolve, 1200));
+            console.log(`[holerite-importar-pdf] processando lote ${i + 1}/${batches.length} páginas ${batch.pages.join(",")}`);
+            const extracted = await callGemini(batch.base64, geminiKey, modelo);
+            const batchHolerites = Array.isArray(extracted?.holerites) ? extracted.holerites : [];
+            for (const h of batchHolerites) {
+              const pageInBatch = Number(h?.pagina) || 1;
+              holerites.push({
+                ...h,
+                pagina: batch.pages[Math.max(0, pageInBatch - 1)] || batch.pages[0],
+              });
+            }
+          } catch (e: any) {
+            const msg = `Páginas ${batch.pages.join("-")}: ${e?.message || "erro ao extrair"}`;
+            console.error(`[holerite-importar-pdf] ${msg}`);
+            avisos.push(msg);
+          }
+
+          await supa
+            .from("holerite_import_jobs")
+            .update({
+              resultado: {
+                total_lotes: batches.length,
+                lotes_processados: i + 1,
+                holerites_parciais: holerites.length,
+                avisos,
+              },
+              updated_at: new Date().toISOString(),
+            })
+            .eq("id", job.id);
+        }
+
+        if (holerites.length === 0 && avisos.length > 0) {
+          throw new Error(`Nenhum holerite extraído. O PDF foi dividido em ${batches.length} lote(s), mas a IA falhou em todos. Primeiro erro: ${avisos[0]}`);
+        }
 
         // 2) busca employees + variaveis + empresas para matching
         const [{ data: employees }, { data: variaveis }, { data: empresas }] =
@@ -391,7 +481,12 @@ Deno.serve(async (req) => {
           .from("holerite_import_jobs")
           .update({
             status: "concluido",
-            resultado: { total: resultado.length, holerites: resultado },
+            resultado: {
+              total: resultado.length,
+              holerites: resultado,
+              total_lotes: batches.length,
+              avisos,
+            },
             updated_at: new Date().toISOString(),
           })
           .eq("id", job.id);

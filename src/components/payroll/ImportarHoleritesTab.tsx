@@ -182,6 +182,14 @@ export function ImportarHoleritesTab() {
           .maybeSingle();
         if (errJob) throw errJob;
         const j: any = job;
+        const parcial = j?.resultado || {};
+        if (j?.status === "processando" && parcial.total_lotes) {
+          const pct = Math.min(98, Math.round((Number(parcial.lotes_processados || 0) / Number(parcial.total_lotes)) * 100));
+          setJobProgress(Math.max(8, pct));
+          setJobMessage(
+            `Processando lote ${parcial.lotes_processados || 0}/${parcial.total_lotes} — ${parcial.holerites_parciais || 0} holerite(s) encontrado(s)`
+          );
+        }
         if (j?.status === "concluido") {
           resultado = j.resultado;
           break;
@@ -200,6 +208,9 @@ export function ImportarHoleritesTab() {
       setJobStatus("concluido");
       setJobProgress(100);
       setJobMessage(`${hols.length} holerite(s) extraído(s)`);
+      if (resultado.avisos?.length) {
+        toast.warning(`${resultado.avisos.length} lote(s) tiveram falha, mas ${hols.length} holerite(s) foram extraídos.`);
+      }
       toast.success(`${hols.length} holerite(s) extraído(s)`);
     } catch (e: any) {
       console.error(e);
