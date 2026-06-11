@@ -481,7 +481,12 @@ Deno.serve(async (req) => {
           .from("holerite_import_jobs")
           .update({
             status: "concluido",
-            resultado: { total: resultado.length, holerites: resultado },
+            resultado: {
+              total: resultado.length,
+              holerites: resultado,
+              total_lotes: batches.length,
+              avisos,
+            },
             updated_at: new Date().toISOString(),
           })
           .eq("id", job.id);
