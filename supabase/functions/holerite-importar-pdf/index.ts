@@ -43,43 +43,39 @@ REGRAS:
 Retorne APENAS JSON válido no formato:
 { "holerites": [ {...}, {...} ] }`;
 
-async function callAI(pdfBase64: string, apiKey: string): Promise<any> {
+async function callGemini(pdfBase64: string, apiKey: string, model: string): Promise<any> {
   const clean = pdfBase64.includes(",") ? pdfBase64.split(",")[1] : pdfBase64;
-  const dataUrl = `data:application/pdf;base64,${clean}`;
+  const modelName = model || "gemini-2.0-flash";
 
   const body = {
-    model: "google/gemini-2.5-flash",
-    messages: [
+    contents: [
       {
         role: "user",
-        content: [
-          { type: "text", text: EXTRACT_PROMPT },
-          { type: "file", file: { filename: "holerites.pdf", file_data: dataUrl } },
+        parts: [
+          { text: EXTRACT_PROMPT },
+          { inline_data: { mime_type: "application/pdf", data: clean } },
         ],
       },
     ],
-    response_format: { type: "json_object" },
+    generationConfig: { responseMimeType: "application/json", temperature: 0.1 },
   };
 
-  const resp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
+  const resp = await fetch(url, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${apiKey}`,
-    },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
 
+  const raw = await resp.text();
   if (!resp.ok) {
-    const txt = await resp.text();
-    if (resp.status === 429) throw new Error("Limite de uso da IA atingido. Tente novamente em alguns instantes.");
-    if (resp.status === 402) throw new Error("Créditos de IA esgotados. Adicione créditos no workspace Lovable.");
-    throw new Error(`AI Gateway error ${resp.status}: ${txt}`);
+    throw new Error(`Gemini error ${resp.status}: ${raw.slice(0, 500)}`);
   }
 
-  const json = await resp.json();
-  const text = json?.choices?.[0]?.message?.content;
-  if (!text) throw new Error("IA retornou resposta vazia");
+  let json: any;
+  try { json = JSON.parse(raw); } catch { throw new Error("Gemini retornou resposta não-JSON"); }
+  const text = json?.candidates?.[0]?.content?.parts?.map((p: any) => p.text).filter(Boolean).join("") || "";
+  if (!text) throw new Error("Gemini retornou conteúdo vazio. Verifique se o PDF não está protegido/escaneado.");
 
   try {
     return JSON.parse(text);
