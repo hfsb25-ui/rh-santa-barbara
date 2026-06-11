@@ -341,8 +341,42 @@ Deno.serve(async (req) => {
           try {
             if (i > 0) await new Promise((resolve) => setTimeout(resolve, 1200));
             console.log(`[holerite-importar-pdf] processando lote ${i + 1}/${batches.length} páginas ${batch.pages.join(",")}`);
-            const extracted = await callGemini(batch.base64, geminiKey, modelo);
-            const batchHolerites = Array.isArray(extracted?.holerites) ? extracted.holerites : [];
+            let extracted = await callGemini(batch.base64, geminiKey, modelo);
+            let batchHolerites = Array.isArray(extracted?.holerites) ? extracted.holerites : [];
+
+            // Retry se vier vazio (página com holerite costuma ter ≥1)
+            if (batchHolerites.length === 0) {
+              console.warn(`[holerite-importar-pdf] página ${batch.pages.join(",")} veio vazia — retry`);
+              await new Promise((r) => setTimeout(r, 1500));
+              try {
+                extracted = await callGemini(batch.base64, geminiKey, modelo);
+                batchHolerites = Array.isArray(extracted?.holerites) ? extracted.holerites : [];
+              } catch (e: any) {
+                console.warn(`[holerite-importar-pdf] retry falhou: ${e?.message}`);
+              }
+            }
+
+            // Se a página geralmente tem 2 holerites e veio só 1, faz uma segunda tentativa pedindo verificação
+            if (batchHolerites.length === 1) {
+              console.warn(`[holerite-importar-pdf] página ${batch.pages.join(",")} veio com apenas 1 holerite — tentando 2ª varredura`);
+              await new Promise((r) => setTimeout(r, 1500));
+              try {
+                const extra = await callGemini(batch.base64, geminiKey, modelo);
+                const extras = Array.isArray(extra?.holerites) ? extra.holerites : [];
+                // Mescla evitando duplicar pelo CPF+valor_liquido
+                const key = (h: any) => `${(h?.cpf || "").replace(/\D/g, "")}_${h?.valor_liquido || 0}`;
+                const seen = new Set(batchHolerites.map(key));
+                for (const e of extras) {
+                  if (!seen.has(key(e))) {
+                    batchHolerites.push(e);
+                    seen.add(key(e));
+                  }
+                }
+              } catch (e: any) {
+                console.warn(`[holerite-importar-pdf] 2ª varredura falhou: ${e?.message}`);
+              }
+            }
+
             for (const h of batchHolerites) {
               const pageInBatch = Number(h?.pagina) || 1;
               holerites.push({
@@ -355,6 +389,7 @@ Deno.serve(async (req) => {
             console.error(`[holerite-importar-pdf] ${msg}`);
             avisos.push(msg);
           }
+
 
           await supa
             .from("holerite_import_jobs")
