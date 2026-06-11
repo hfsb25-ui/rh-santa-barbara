@@ -488,10 +488,14 @@ export function ImportarHoleritesTab() {
             </div>
           </div>
 
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
             <Button onClick={handleProcessar} disabled={!file || processing}>
               <Upload className="w-4 h-4 mr-2" />
               {processing ? "Processando com IA..." : "Processar com IA"}
+            </Button>
+            <Button onClick={handleProcessarOCR} disabled={!file || processing} variant="secondary">
+              <ScanText className="w-4 h-4 mr-2" />
+              {processing ? "Processando..." : "Processar via OCR (sem IA)"}
             </Button>
             {resultados.length > 0 && (
               <Button onClick={handleImportar} disabled={saving || totalSelecionados === 0} variant="default">
@@ -506,6 +510,7 @@ export function ImportarHoleritesTab() {
               </Button>
             )}
           </div>
+
 
           {jobStatus !== "idle" && (
             <div className="rounded-lg border p-4 space-y-3 bg-card">
