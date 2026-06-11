@@ -23,7 +23,7 @@ interface PdfBatch {
   pages: number[];
 }
 
-const PAGE_BATCH_SIZE = 2;
+const PAGE_BATCH_SIZE = 1;
 
 const EXTRACT_PROMPT = `Você recebe um PDF com UMA ÚNICA PÁGINA que pode conter MÚLTIPLOS HOLERITES (recibos de pagamento) brasileiros empilhados verticalmente. É COMUM ter 2 (DOIS) holerites por página, um na metade superior e outro na metade inferior. PODE ter até 3.
 
