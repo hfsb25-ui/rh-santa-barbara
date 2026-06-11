@@ -164,6 +164,44 @@ function repairJson(input: string): string {
   return str;
 }
 
+function base64ToBytes(pdfBase64: string): Uint8Array {
+  const clean = pdfBase64.includes(",") ? pdfBase64.split(",")[1] : pdfBase64;
+  const bin = atob(clean);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return bytes;
+}
+
+function bytesToBase64(bytes: Uint8Array): string {
+  let bin = "";
+  const chunkSize = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    bin += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
+  }
+  return btoa(bin);
+}
+
+async function splitPdfIntoBatches(pdfBase64: string, batchSize = PAGE_BATCH_SIZE): Promise<PdfBatch[]> {
+  const source = await PDFDocument.load(base64ToBytes(pdfBase64), { ignoreEncryption: true });
+  const totalPages = source.getPageCount();
+  const batches: PdfBatch[] = [];
+
+  for (let start = 0; start < totalPages; start += batchSize) {
+    const end = Math.min(start + batchSize, totalPages);
+    const indexes = Array.from({ length: end - start }, (_, i) => start + i);
+    const doc = await PDFDocument.create();
+    const pages = await doc.copyPages(source, indexes);
+    pages.forEach((page) => doc.addPage(page));
+    const bytes = await doc.save({ useObjectStreams: false });
+    batches.push({
+      base64: bytesToBase64(bytes),
+      pages: indexes.map((i) => i + 1),
+    });
+  }
+
+  return batches.length ? batches : [{ base64: pdfBase64, pages: [1] }];
+}
+
 const FALLBACK_MODELS = ["gemini-2.0-flash", "gemini-2.5-flash", "gemini-1.5-flash"];
 
 async function callGemini(pdfBase64: string, apiKey: string, model: string): Promise<any> {
