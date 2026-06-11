@@ -9,9 +9,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Upload, Sparkles, Save, AlertCircle, CheckCircle2, XCircle, Eye, Plus, Clock, Loader2 } from "lucide-react";
+import { Upload, Sparkles, Save, AlertCircle, CheckCircle2, XCircle, Eye, Plus, Clock, Loader2, ScanText } from "lucide-react";
 import { toast } from "sonner";
 import { Progress } from "@/components/ui/progress";
+import { processarHoleritesOCR } from "@/lib/holeriteOcrParser";
 
 type JobStatus = "idle" | "enfileirado" | "processando" | "concluido" | "erro";
 
@@ -221,6 +222,50 @@ export function ImportarHoleritesTab() {
       setProcessing(false);
     }
   }
+
+
+
+  async function handleProcessarOCR() {
+    if (!file) {
+      toast.error("Selecione um PDF primeiro");
+      return;
+    }
+    setProcessing(true);
+    setResultados([]);
+    setJobStatus("processando");
+    setJobProgress(2);
+    setJobElapsed(0);
+    setJobError("");
+    setJobMessage("Iniciando OCR no navegador...");
+    try {
+      const hols = await processarHoleritesOCR(
+        file,
+        { mes: mesDefault, ano: anoDefault, empresa_id: empresaDefault || null },
+        (p) => {
+          // Cada página gera 3 etapas: render, ocr, parse → cada uma vale 1/3 de página
+          const passos = p.fase === "render" ? 0 : p.fase === "ocr" ? 0.33 : p.fase === "parse" ? 0.66 : 1;
+          const base = p.total > 0 ? ((p.pagina - 1 + passos) / p.total) * 95 : 0;
+          setJobProgress(Math.max(2, Math.min(98, Math.round(base))));
+          setJobMessage(p.msg);
+        }
+      );
+      const enriched = hols.map((h: any) => ({ ...h, selecionado: h.status === "ok" }));
+      setResultados(enriched as any);
+      setJobStatus("concluido");
+      setJobProgress(100);
+      setJobMessage(`${enriched.length} holerite(s) extraído(s) via OCR`);
+      toast.success(`${enriched.length} holerite(s) extraído(s) via OCR`);
+    } catch (e: any) {
+      console.error(e);
+      setJobStatus("erro");
+      setJobError(e?.message || "Erro no OCR");
+      toast.error(e?.message || "Erro no OCR");
+    } finally {
+      setProcessing(false);
+    }
+  }
+
+
 
   async function handleImportar() {
     const aImportar = resultados.filter((r) => r.selecionado && isSelecionavel(r.status));
@@ -487,10 +532,14 @@ export function ImportarHoleritesTab() {
             </div>
           </div>
 
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
             <Button onClick={handleProcessar} disabled={!file || processing}>
               <Upload className="w-4 h-4 mr-2" />
               {processing ? "Processando com IA..." : "Processar com IA"}
+            </Button>
+            <Button onClick={handleProcessarOCR} disabled={!file || processing} variant="secondary">
+              <ScanText className="w-4 h-4 mr-2" />
+              {processing ? "Processando..." : "Processar via OCR (sem IA)"}
             </Button>
             {resultados.length > 0 && (
               <Button onClick={handleImportar} disabled={saving || totalSelecionados === 0} variant="default">
@@ -505,6 +554,7 @@ export function ImportarHoleritesTab() {
               </Button>
             )}
           </div>
+
 
           {jobStatus !== "idle" && (
             <div className="rounded-lg border p-4 space-y-3 bg-card">
