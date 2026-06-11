@@ -43,9 +43,8 @@ REGRAS:
 Retorne APENAS JSON válido no formato:
 { "holerites": [ {...}, {...} ] }`;
 
-async function callGemini(pdfBase64: string, apiKey: string, model: string): Promise<any> {
+async function callGeminiOnce(pdfBase64: string, apiKey: string, modelName: string): Promise<any> {
   const clean = pdfBase64.includes(",") ? pdfBase64.split(",")[1] : pdfBase64;
-  const modelName = model || "gemini-2.0-flash";
 
   const body = {
     contents: [
@@ -69,7 +68,9 @@ async function callGemini(pdfBase64: string, apiKey: string, model: string): Pro
 
   const raw = await resp.text();
   if (!resp.ok) {
-    throw new Error(`Gemini error ${resp.status}: ${raw.slice(0, 500)}`);
+    const err: any = new Error(`Gemini error ${resp.status} (${modelName}): ${raw.slice(0, 500)}`);
+    err.status = resp.status;
+    throw err;
   }
 
   let json: any;
@@ -84,6 +85,28 @@ async function callGemini(pdfBase64: string, apiKey: string, model: string): Pro
     if (m) return JSON.parse(m[0]);
     throw new Error("Resposta da IA não é JSON válido");
   }
+}
+
+const FALLBACK_MODELS = ["gemini-2.0-flash", "gemini-2.5-flash", "gemini-1.5-flash"];
+
+async function callGemini(pdfBase64: string, apiKey: string, model: string): Promise<any> {
+  const primary = model || "gemini-2.0-flash";
+  const chain = [primary, ...FALLBACK_MODELS.filter((m) => m !== primary)];
+  let lastErr: any;
+  for (const m of chain) {
+    try {
+      console.log(`[holerite-importar-pdf] tentando modelo ${m}`);
+      return await callGeminiOnce(pdfBase64, apiKey, m);
+    } catch (e: any) {
+      lastErr = e;
+      const status = e?.status;
+      const msg = String(e?.message || "");
+      const isQuota = status === 429 || /quota|rate.?limit|exceeded/i.test(msg);
+      if (!isQuota) throw e;
+      console.warn(`[holerite-importar-pdf] modelo ${m} sem cota (429), tentando próximo...`);
+    }
+  }
+  throw new Error(`Todos os modelos Gemini falharam por cota. Último erro: ${lastErr?.message || lastErr}`);
 }
 
 
