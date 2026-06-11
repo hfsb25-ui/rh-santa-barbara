@@ -220,8 +220,49 @@ export function ImportarHoleritesTab() {
       toast.error(e?.message || "Erro ao processar PDF");
     } finally {
       setProcessing(false);
+  }
+
+  async function handleProcessarOCR() {
+    if (!file) {
+      toast.error("Selecione um PDF primeiro");
+      return;
+    }
+    setProcessing(true);
+    setResultados([]);
+    setJobStatus("processando");
+    setJobProgress(2);
+    setJobElapsed(0);
+    setJobError("");
+    setJobMessage("Iniciando OCR no navegador...");
+    try {
+      const hols = await processarHoleritesOCR(
+        file,
+        { mes: mesDefault, ano: anoDefault, empresa_id: empresaDefault || null },
+        (p) => {
+          // Cada página gera 3 etapas: render, ocr, parse → cada uma vale 1/3 de página
+          const passos = p.fase === "render" ? 0 : p.fase === "ocr" ? 0.33 : p.fase === "parse" ? 0.66 : 1;
+          const base = p.total > 0 ? ((p.pagina - 1 + passos) / p.total) * 95 : 0;
+          setJobProgress(Math.max(2, Math.min(98, Math.round(base))));
+          setJobMessage(p.msg);
+        }
+      );
+      const enriched = hols.map((h: any) => ({ ...h, selecionado: h.status === "ok" }));
+      setResultados(enriched as any);
+      setJobStatus("concluido");
+      setJobProgress(100);
+      setJobMessage(`${enriched.length} holerite(s) extraído(s) via OCR`);
+      toast.success(`${enriched.length} holerite(s) extraído(s) via OCR`);
+    } catch (e: any) {
+      console.error(e);
+      setJobStatus("erro");
+      setJobError(e?.message || "Erro no OCR");
+      toast.error(e?.message || "Erro no OCR");
+    } finally {
+      setProcessing(false);
     }
   }
+
+
 
   async function handleImportar() {
     const aImportar = resultados.filter((r) => r.selecionado && isSelecionavel(r.status));
