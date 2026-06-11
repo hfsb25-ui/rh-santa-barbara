@@ -25,31 +25,32 @@ interface PdfBatch {
 
 const PAGE_BATCH_SIZE = 2;
 
-const EXTRACT_PROMPT = `Você recebe um PDF que pode conter um ou vários holerites (recibos de pagamento) de funcionários brasileiros. Sua tarefa é EXTRAIR cada holerite individual em JSON estruturado.
+const EXTRACT_PROMPT = `Você recebe um PDF com UMA ÚNICA PÁGINA que pode conter MÚLTIPLOS HOLERITES (recibos de pagamento) brasileiros empilhados verticalmente. É COMUM ter 2 (DOIS) holerites por página, um na metade superior e outro na metade inferior. PODE ter até 3.
 
-Para cada holerite identificado, retorne um objeto com:
-- pagina: número da página onde o holerite está (1-indexed)
-- cpf: CPF do funcionário, APENAS DÍGITOS (11 caracteres). Se não encontrar, retorne null.
+ATENÇÃO MÁXIMA: Você DEVE varrer a página INTEIRA, de cima até embaixo, e extrair TODOS os holerites visíveis. NÃO PARE no primeiro. Cada holerite começa com um cabeçalho da empresa (razão social + CNPJ) e termina com "Total Líquido". Conte quantos blocos "Total Líquido" existem na página — esse é o número de holerites que você DEVE retornar.
+
+Para CADA holerite identificado, retorne um objeto com:
+- pagina: número da página (sempre 1 já que é uma página por vez)
+- cpf: CPF do funcionário, APENAS DÍGITOS (11 caracteres). Se não encontrar, null.
 - nome: nome completo do funcionário em UPPERCASE
 - mes: número do mês de referência (1-12)
 - ano: ano de referência (4 dígitos)
 - tipo_folha: "salario" | "adiantamento" | "decimo_terceiro" | "rescisao" | "complementar"
-- empresa_nome: nome da empresa pagadora (se identificável) ou null
-- proventos: array de { codigo, descricao, valor } - valor em número positivo (reais)
-- descontos: array de { codigo, descricao, valor } - valor em número positivo (reais)
-- valor_bruto: soma dos proventos (número)
-- descontos_total: soma dos descontos (número)
+- empresa_nome: nome da empresa pagadora ou null
+- proventos: array de { codigo, descricao, valor } - valor positivo em reais
+- descontos: array de { codigo, descricao, valor } - valor positivo em reais
+- valor_bruto: total dos proventos (número)
+- descontos_total: total dos descontos (número)
 - valor_liquido: valor líquido a receber (número)
 
-REGRAS:
+REGRAS RÍGIDAS:
 - Nomes SEMPRE em UPPERCASE
-- Valores sempre em ponto decimal (ex: 1234.56)
-- Não invente dados. Se um campo não existir no holerite, use null.
-- Se a página não for um holerite (capa, índice, etc), ignore.
-- codigo é o código numérico da rubrica quando aparece no holerite (ex: "001", "INSS"). Pode ser null.
+- Valores em ponto decimal (ex: 1234.56)
+- Não invente dados. Campo ausente = null.
+- NÃO PULE holerites. Se vir 2 nomes diferentes na página, retorne 2 objetos.
+- Se a página for capa/índice (sem holerite), retorne array vazio.
 
-Retorne APENAS JSON válido no formato:
-{ "holerites": [ {...}, {...} ] }`;
+Retorne APENAS JSON válido: { "holerites": [ {...}, {...} ] }`;
 
 async function callGeminiOnce(pdfBase64: string, apiKey: string, modelName: string): Promise<any> {
   const clean = pdfBase64.includes(",") ? pdfBase64.split(",")[1] : pdfBase64;
