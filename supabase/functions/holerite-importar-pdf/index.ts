@@ -323,11 +323,55 @@ Deno.serve(async (req) => {
           throw new Error("Chave do Google Gemini não configurada em Configurações > IA.");
         }
         const modelo = (cfg as any)?.provedor === "gemini" ? ((cfg as any)?.modelo || "gemini-2.0-flash") : "gemini-2.0-flash";
-        const extracted = await callGemini(body.pdf_base64, geminiKey, modelo);
+        const batches = await splitPdfIntoBatches(body.pdf_base64);
+        const holerites: any[] = [];
+        const avisos: string[] = [];
 
-        const holerites: any[] = Array.isArray(extracted?.holerites)
-          ? extracted.holerites
-          : [];
+        await supa
+          .from("holerite_import_jobs")
+          .update({
+            resultado: { total_lotes: batches.length, lotes_processados: 0, holerites_parciais: 0 },
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", job.id);
+
+        for (let i = 0; i < batches.length; i++) {
+          const batch = batches[i];
+          try {
+            if (i > 0) await new Promise((resolve) => setTimeout(resolve, 1200));
+            console.log(`[holerite-importar-pdf] processando lote ${i + 1}/${batches.length} páginas ${batch.pages.join(",")}`);
+            const extracted = await callGemini(batch.base64, geminiKey, modelo);
+            const batchHolerites = Array.isArray(extracted?.holerites) ? extracted.holerites : [];
+            for (const h of batchHolerites) {
+              const pageInBatch = Number(h?.pagina) || 1;
+              holerites.push({
+                ...h,
+                pagina: batch.pages[Math.max(0, pageInBatch - 1)] || batch.pages[0],
+              });
+            }
+          } catch (e: any) {
+            const msg = `Páginas ${batch.pages.join("-")}: ${e?.message || "erro ao extrair"}`;
+            console.error(`[holerite-importar-pdf] ${msg}`);
+            avisos.push(msg);
+          }
+
+          await supa
+            .from("holerite_import_jobs")
+            .update({
+              resultado: {
+                total_lotes: batches.length,
+                lotes_processados: i + 1,
+                holerites_parciais: holerites.length,
+                avisos,
+              },
+              updated_at: new Date().toISOString(),
+            })
+            .eq("id", job.id);
+        }
+
+        if (holerites.length === 0 && avisos.length > 0) {
+          throw new Error(`Nenhum holerite extraído. O PDF foi dividido em ${batches.length} lote(s), mas a IA falhou em todos. Primeiro erro: ${avisos[0]}`);
+        }
 
         // 2) busca employees + variaveis + empresas para matching
         const [{ data: employees }, { data: variaveis }, { data: empresas }] =
