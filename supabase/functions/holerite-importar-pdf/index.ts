@@ -171,11 +171,12 @@ async function callGemini(pdfBase64: string, apiKey: string, model: string): Pro
       const status = e?.status;
       const msg = String(e?.message || "");
       const isQuota = status === 429 || /quota|rate.?limit|exceeded/i.test(msg);
-      if (!isQuota) throw e;
-      console.warn(`[holerite-importar-pdf] modelo ${m} sem cota (429), tentando próximo...`);
+      const isUnavailable = status === 503 || /unavailable|high demand|try again later/i.test(msg);
+      if (!isQuota && !isUnavailable) throw e;
+      console.warn(`[holerite-importar-pdf] modelo ${m} indisponível (${status}), tentando próximo...`);
     }
   }
-  throw new Error(`Todos os modelos Gemini falharam por cota. Último erro: ${lastErr?.message || lastErr}`);
+  throw new Error(`Todos os modelos Gemini falharam. Último erro: ${lastErr?.message || lastErr}`);
 }
 
 
