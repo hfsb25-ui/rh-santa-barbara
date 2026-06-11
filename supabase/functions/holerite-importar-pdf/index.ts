@@ -56,7 +56,11 @@ async function callGeminiOnce(pdfBase64: string, apiKey: string, modelName: stri
         ],
       },
     ],
-    generationConfig: { responseMimeType: "application/json", temperature: 0.1 },
+    generationConfig: {
+      responseMimeType: "application/json",
+      temperature: 0.1,
+      maxOutputTokens: 32768,
+    },
   };
 
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
@@ -75,16 +79,81 @@ async function callGeminiOnce(pdfBase64: string, apiKey: string, modelName: stri
 
   let json: any;
   try { json = JSON.parse(raw); } catch { throw new Error("Gemini retornou resposta não-JSON"); }
+  const finishReason = json?.candidates?.[0]?.finishReason;
   const text = json?.candidates?.[0]?.content?.parts?.map((p: any) => p.text).filter(Boolean).join("") || "";
   if (!text) throw new Error("Gemini retornou conteúdo vazio. Verifique se o PDF não está protegido/escaneado.");
 
-  try {
-    return JSON.parse(text);
-  } catch {
-    const m = text.match(/\{[\s\S]*\}/);
-    if (m) return JSON.parse(m[0]);
-    throw new Error("Resposta da IA não é JSON válido");
+  const truncated = finishReason && finishReason !== "STOP";
+  if (truncated) {
+    console.warn(`[holerite-importar-pdf] resposta truncada (finishReason=${finishReason}) - tentando reparar JSON`);
   }
+
+  return parseLooseJson(text, !!truncated);
+}
+
+function parseLooseJson(text: string, truncated: boolean): any {
+  try { return JSON.parse(text); } catch {}
+  const m = text.match(/\{[\s\S]*\}/);
+  const candidate = m ? m[0] : text;
+  try { return JSON.parse(candidate); } catch {}
+  const repaired = repairJson(candidate);
+  try { return JSON.parse(repaired); } catch (e: any) {
+    if (truncated) throw new Error(`Resposta da IA foi truncada e não pôde ser reparada (PDF muito grande). Divida o PDF em arquivos menores. Detalhe: ${e?.message}`);
+    throw new Error(`Resposta da IA não é JSON válido: ${e?.message}`);
+  }
+}
+
+function repairJson(input: string): string {
+  let str = input.trim();
+  // Walk: drop last incomplete element by truncating to the last completed item inside the outermost array
+  const stack: string[] = [];
+  let inStr = false, esc = false;
+  let lastItemEnd = -1;
+  let rootArrayDepth = -1;
+  for (let i = 0; i < str.length; i++) {
+    const c = str[i];
+    if (inStr) {
+      if (esc) { esc = false; continue; }
+      if (c === "\\") { esc = true; continue; }
+      if (c === '"') inStr = false;
+      continue;
+    }
+    if (c === '"') { inStr = true; continue; }
+    if (c === "{" || c === "[") {
+      stack.push(c);
+      if (c === "[" && rootArrayDepth === -1) rootArrayDepth = stack.length;
+    } else if (c === "}" || c === "]") {
+      stack.pop();
+      if (rootArrayDepth !== -1 && stack.length === rootArrayDepth) {
+        // we just completed an element inside the root array
+        lastItemEnd = i;
+      }
+    }
+  }
+  if (lastItemEnd > 0) {
+    str = str.slice(0, lastItemEnd + 1);
+  }
+  str = str.replace(/,\s*$/, "");
+  // close remaining brackets
+  const stack2: string[] = [];
+  inStr = false; esc = false;
+  for (let i = 0; i < str.length; i++) {
+    const c = str[i];
+    if (inStr) {
+      if (esc) { esc = false; continue; }
+      if (c === "\\") { esc = true; continue; }
+      if (c === '"') inStr = false;
+      continue;
+    }
+    if (c === '"') { inStr = true; continue; }
+    if (c === "{" || c === "[") stack2.push(c);
+    else if (c === "}" || c === "]") stack2.pop();
+  }
+  while (stack2.length) {
+    const open = stack2.pop();
+    str += open === "{" ? "}" : "]";
+  }
+  return str;
 }
 
 const FALLBACK_MODELS = ["gemini-2.0-flash", "gemini-2.5-flash", "gemini-1.5-flash"];
