@@ -263,7 +263,9 @@ export function ImportarHoleritesTab() {
       toast.error(e?.message || "Erro no OCR");
     } finally {
       setProcessing(false);
+    }
   }
+
 
   async function handleProcessarTexto() {
     if (!file) {
