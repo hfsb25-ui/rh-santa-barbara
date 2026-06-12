@@ -51,14 +51,28 @@ export async function processarHoleritesTexto(
   onProgress: (p: OcrProgress) => void
 ): Promise<OcrHolerite[]> {
   const arrayBuffer = await file.arrayBuffer();
-  const pdf: any = await (pdfjsLib as any).getDocument({ data: arrayBuffer }).promise;
+  const pdf: any = await (pdfjsLib as any).getDocument({
+    data: arrayBuffer,
+    stopAtErrors: false,
+    isEvalSupported: false,
+    useSystemFonts: true,
+    disableFontFace: true,
+  } as any).promise;
   const total = pdf.numPages;
 
   const holerites: OcrHolerite[] = [];
+  const avisos: string[] = [];
   let textoTotal = 0;
   for (let p = 1; p <= total; p++) {
     onProgress({ fase: "parse", pagina: p, total, msg: `Lendo página ${p}/${total}...` });
-    const pageText = await extractPageText(pdf, p);
+    let pageText = "";
+    try {
+      pageText = await extractPageText(pdf, p);
+    } catch (e: any) {
+      console.warn(`[holeriteTextParser] página ${p} falhou:`, e?.message);
+      avisos.push(`Página ${p}: ${e?.message || "erro ao ler"}`);
+      continue;
+    }
     textoTotal += pageText.trim().length;
     const segs = splitHolerites(pageText);
     for (const seg of segs) {
@@ -72,7 +86,11 @@ export async function processarHoleritesTexto(
   }
 
   if (textoTotal < 50) {
-    throw new Error("O PDF não tem texto extraível (parece ser imagem/escaneado). Use a opção OCR ou peça um PDF com texto nativo.");
+    const msgExtra = avisos.length ? ` (${avisos.length} página(s) com erro: ${avisos.slice(0, 2).join("; ")})` : "";
+    throw new Error(`O PDF não tem texto extraível${msgExtra}. Pode estar corrompido ou ser imagem/escaneado. Use OCR ou peça outro PDF.`);
+  }
+  if (avisos.length) {
+    console.warn(`[holeriteTextParser] ${avisos.length} página(s) com erro mas ${holerites.length} holerite(s) extraído(s)`);
   }
 
   onProgress({ fase: "match", pagina: total, total, msg: "Cruzando com cadastros..." });
