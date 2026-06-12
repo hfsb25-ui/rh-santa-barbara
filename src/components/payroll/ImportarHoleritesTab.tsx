@@ -263,7 +263,45 @@ export function ImportarHoleritesTab() {
       toast.error(e?.message || "Erro no OCR");
     } finally {
       setProcessing(false);
+  }
+
+  async function handleProcessarTexto() {
+    if (!file) {
+      toast.error("Selecione um PDF primeiro");
+      return;
     }
+    setProcessing(true);
+    setResultados([]);
+    setJobStatus("processando");
+    setJobProgress(2);
+    setJobElapsed(0);
+    setJobError("");
+    setJobMessage("Lendo texto do PDF...");
+    try {
+      const hols = await processarHoleritesTexto(
+        file,
+        { mes: mesDefault, ano: anoDefault, empresa_id: empresaDefault || null },
+        (p) => {
+          const base = p.total > 0 ? (p.pagina / p.total) * 95 : 0;
+          setJobProgress(Math.max(2, Math.min(98, Math.round(base))));
+          setJobMessage(p.msg);
+        }
+      );
+      const enriched = hols.map((h: any) => ({ ...h, selecionado: h.status === "ok" }));
+      setResultados(enriched as any);
+      setJobStatus("concluido");
+      setJobProgress(100);
+      setJobMessage(`${enriched.length} holerite(s) extraído(s) do texto`);
+      toast.success(`${enriched.length} holerite(s) extraído(s) do texto do PDF`);
+    } catch (e: any) {
+      console.error(e);
+      setJobStatus("erro");
+      setJobError(e?.message || "Erro ao ler texto");
+      toast.error(e?.message || "Erro ao ler texto do PDF");
+    } finally {
+      setProcessing(false);
+    }
+  }
   }
 
 
