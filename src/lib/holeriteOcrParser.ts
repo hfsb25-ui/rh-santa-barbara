@@ -358,7 +358,8 @@ export async function processarHoleritesOCR(
   return holerites;
 }
 
-async function enriquecer(holerites: OcrHolerite[], empresaDefault: string | null) {
+export { splitHolerites, parseOneHolerite };
+export async function enriquecer(holerites: OcrHolerite[], empresaDefault: string | null) {
   const [{ data: employees }, { data: variaveis }, { data: empresas }] = await Promise.all([
     supabase.from("employees").select("id, nome_completo, cpf, empresa_id").not("cpf", "is", null),
     supabase.from("variaveis_folha").select("id, nome, codigo, tipo, empresa_id").eq("ativo", true),
