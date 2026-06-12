@@ -86,7 +86,11 @@ export async function processarHoleritesTexto(
   }
 
   if (textoTotal < 50) {
-    throw new Error("O PDF não tem texto extraível (parece ser imagem/escaneado). Use a opção OCR ou peça um PDF com texto nativo.");
+    const msgExtra = avisos.length ? ` (${avisos.length} página(s) com erro: ${avisos.slice(0, 2).join("; ")})` : "";
+    throw new Error(`O PDF não tem texto extraível${msgExtra}. Pode estar corrompido ou ser imagem/escaneado. Use OCR ou peça outro PDF.`);
+  }
+  if (avisos.length) {
+    console.warn(`[holeriteTextParser] ${avisos.length} página(s) com erro mas ${holerites.length} holerite(s) extraído(s)`);
   }
 
   onProgress({ fase: "match", pagina: total, total, msg: "Cruzando com cadastros..." });
