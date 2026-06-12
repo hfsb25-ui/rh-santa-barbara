@@ -13,6 +13,7 @@ import { Upload, Sparkles, Save, AlertCircle, CheckCircle2, XCircle, Eye, Plus, 
 import { toast } from "sonner";
 import { Progress } from "@/components/ui/progress";
 import { processarHoleritesOCR } from "@/lib/holeriteOcrParser";
+import { processarHoleritesTexto } from "@/lib/holeriteTextParser";
 
 type JobStatus = "idle" | "enfileirado" | "processando" | "concluido" | "erro";
 
