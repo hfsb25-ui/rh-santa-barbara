@@ -576,6 +576,10 @@ export function ImportarHoleritesTab() {
               <Upload className="w-4 h-4 mr-2" />
               {processing ? "Processando com IA..." : "Processar com IA"}
             </Button>
+            <Button onClick={handleProcessarTexto} disabled={!file || processing} variant="default">
+              <Upload className="w-4 h-4 mr-2" />
+              {processing ? "Processando..." : "Processar texto do PDF (sem IA, sem OCR)"}
+            </Button>
             <Button onClick={handleProcessarOCR} disabled={!file || processing} variant="secondary">
               <ScanText className="w-4 h-4 mr-2" />
               {processing ? "Processando..." : "Processar via OCR (sem IA)"}
