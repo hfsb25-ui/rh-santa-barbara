@@ -527,9 +527,9 @@ const Payroll = () => {
       toast.success("Pagamento excluído!");
       fetchPagamentos();
       fetchTodosPagamentos();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Erro ao excluir pagamento:", error);
-      toast.error("Erro ao excluir pagamento");
+      toast.error(`Erro ao excluir pagamento: ${error?.message || "desconhecido"}`);
     }
   };
 
