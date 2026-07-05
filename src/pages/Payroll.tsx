@@ -533,6 +533,27 @@ const Payroll = () => {
     }
   };
 
+  const handleDeleteTodosDoMes = async () => {
+    const ids = pagamentos.map((p) => p.id);
+    if (ids.length === 0) {
+      toast.info("Nenhum holerite para excluir no filtro atual.");
+      return;
+    }
+    try {
+      const { error } = await supabase
+        .from("folha_pagamento")
+        .delete()
+        .in("id", ids);
+      if (error) throw error;
+      toast.success(`${ids.length} holerite(s) excluído(s)!`);
+      fetchPagamentos();
+      fetchTodosPagamentos();
+    } catch (error: any) {
+      console.error("Erro ao excluir holerites do mês:", error);
+      toast.error(`Erro ao excluir: ${error?.message || "desconhecido"}`);
+    }
+  };
+
   const exportToPDF = () => {
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.getWidth();
