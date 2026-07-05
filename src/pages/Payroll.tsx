@@ -533,6 +533,27 @@ const Payroll = () => {
     }
   };
 
+  const handleDeleteTodosDoMes = async () => {
+    const ids = pagamentos.map((p) => p.id);
+    if (ids.length === 0) {
+      toast.info("Nenhum holerite para excluir no filtro atual.");
+      return;
+    }
+    try {
+      const { error } = await supabase
+        .from("folha_pagamento")
+        .delete()
+        .in("id", ids);
+      if (error) throw error;
+      toast.success(`${ids.length} holerite(s) excluído(s)!`);
+      fetchPagamentos();
+      fetchTodosPagamentos();
+    } catch (error: any) {
+      console.error("Erro ao excluir holerites do mês:", error);
+      toast.error(`Erro ao excluir: ${error?.message || "desconhecido"}`);
+    }
+  };
+
   const exportToPDF = () => {
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.getWidth();
@@ -988,8 +1009,37 @@ const Payroll = () => {
                     </Select>
                   </div>
                 </div>
-                <div className="text-lg font-semibold">
-                  Total: R$ {valorTotal.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                <div className="flex items-center gap-3">
+                  {pagamentos.length > 0 && (
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="destructive" size="sm">
+                          <Trash2 className="w-4 h-4 mr-2" />
+                          Excluir todos do mês
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Excluir todos os holerites do mês?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Esta ação irá excluir <strong>{pagamentos.length}</strong> holerite(s) do período {mes.toString().padStart(2, "0")}/{ano} conforme os filtros aplicados. Esta ação não pode ser desfeita.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={handleDeleteTodosDoMes}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                          >
+                            Excluir todos
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  )}
+                  <div className="text-lg font-semibold">
+                    Total: R$ {valorTotal.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                  </div>
                 </div>
               </div>
 
