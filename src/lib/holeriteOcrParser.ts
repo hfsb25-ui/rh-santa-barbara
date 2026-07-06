@@ -353,35 +353,28 @@ export async function processarHoleritesOCR(
 
   onProgress({ fase: "match", pagina: total, total, msg: "Cruzando com cadastros (funcionários, empresas, variáveis)..." });
 
-  // Deduplica vias iguais (PDFs geralmente têm 2 vias idênticas do mesmo holerite)
-  const seen = new Map<string, OcrHolerite>();
-  for (const h of holerites) {
-    const key = [
-      h.cpf || h.nome || "?",
-      h.mes ?? "?",
-      h.ano ?? "?",
-      h.tipo_folha || "salario",
-      Math.round((h.valor_liquido || 0) * 100),
-      Math.round((h.valor_bruto || 0) * 100),
-    ].join("|");
-    if (!seen.has(key)) seen.set(key, h);
-  }
-  const antes = holerites.length;
-  holerites.length = 0;
-  holerites.push(...seen.values());
-  if (antes !== holerites.length) {
-    console.log(`[holeriteOcrParser] ${antes - holerites.length} via(s) duplicada(s) removida(s)`);
-  }
-
   await enriquecer(holerites, defaults.empresa_id || null);
 
   // Descarta segmentos que não correspondem a colaboradores cadastrados (lixo de parsing)
   const validos = holerites.filter((h) => h.status !== "sem_cpf" && h.status !== "cpf_nao_encontrado");
-  const removidos = holerites.length - validos.length;
-  if (removidos > 0) console.log(`[holeriteOcrParser] ${removidos} entrada(s) sem CPF cadastrado descartada(s)`);
+  const removidosLixo = holerites.length - validos.length;
+  if (removidosLixo > 0) console.log(`[holeriteOcrParser] ${removidosLixo} entrada(s) sem CPF cadastrado descartada(s)`);
 
-  onProgress({ fase: "done", pagina: total, total, msg: `${validos.length} holerite(s) processado(s)` });
-  return validos;
+  // Deduplica vias iguais do MESMO funcionário no MESMO período (PDFs geralmente têm 2 vias).
+  // Feito só APÓS enriquecer, para não colapsar holerites diferentes cujo CPF não pôde ser lido.
+  const seen = new Map<string, OcrHolerite>();
+  for (const h of validos) {
+    const key = [h.employee_id || "?", h.mes ?? "?", h.ano ?? "?", h.tipo_folha || "salario"].join("|");
+    const prev = seen.get(key);
+    // mantém a via com maior valor_liquido (geralmente a mais completa)
+    if (!prev || (h.valor_liquido || 0) > (prev.valor_liquido || 0)) seen.set(key, h);
+  }
+  const unicos = Array.from(seen.values());
+  const removidosDup = validos.length - unicos.length;
+  if (removidosDup > 0) console.log(`[holeriteOcrParser] ${removidosDup} via(s) duplicada(s) removida(s)`);
+
+  onProgress({ fase: "done", pagina: total, total, msg: `${unicos.length} holerite(s) processado(s)` });
+  return unicos;
 }
 
 export { splitHolerites, parseOneHolerite };
