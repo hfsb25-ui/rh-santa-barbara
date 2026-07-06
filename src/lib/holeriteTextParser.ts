@@ -116,6 +116,11 @@ export async function processarHoleritesTexto(
   onProgress({ fase: "match", pagina: total, total, msg: "Cruzando com cadastros..." });
   await enriquecer(holerites, defaults.empresa_id || null);
 
-  onProgress({ fase: "done", pagina: total, total, msg: `${holerites.length} holerite(s) processado(s)` });
-  return holerites;
+  // Descarta segmentos que não correspondem a colaboradores cadastrados (lixo de parsing)
+  const validos = holerites.filter((h) => h.status !== "sem_cpf" && h.status !== "cpf_nao_encontrado");
+  const removidos = holerites.length - validos.length;
+  if (removidos > 0) console.log(`[holeriteTextParser] ${removidos} entrada(s) sem CPF cadastrado descartada(s)`);
+
+  onProgress({ fase: "done", pagina: total, total, msg: `${validos.length} holerite(s) processado(s)` });
+  return validos;
 }
