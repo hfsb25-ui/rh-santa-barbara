@@ -93,6 +93,26 @@ export async function processarHoleritesTexto(
     console.warn(`[holeriteTextParser] ${avisos.length} página(s) com erro mas ${holerites.length} holerite(s) extraído(s)`);
   }
 
+  // Deduplica vias iguais (PDFs geralmente têm 2 vias idênticas do mesmo holerite)
+  const seen = new Map<string, OcrHolerite>();
+  for (const h of holerites) {
+    const key = [
+      h.cpf || h.nome || "?",
+      h.mes ?? "?",
+      h.ano ?? "?",
+      h.tipo_folha || "salario",
+      Math.round((h.valor_liquido || 0) * 100),
+      Math.round((h.valor_bruto || 0) * 100),
+    ].join("|");
+    if (!seen.has(key)) seen.set(key, h);
+  }
+  const antes = holerites.length;
+  holerites.length = 0;
+  holerites.push(...seen.values());
+  if (antes !== holerites.length) {
+    console.log(`[holeriteTextParser] ${antes - holerites.length} via(s) duplicada(s) removida(s)`);
+  }
+
   onProgress({ fase: "match", pagina: total, total, msg: "Cruzando com cadastros..." });
   await enriquecer(holerites, defaults.empresa_id || null);
 
