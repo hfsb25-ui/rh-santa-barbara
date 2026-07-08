@@ -96,22 +96,39 @@ export async function processarHoleritesTexto(
   onProgress({ fase: "match", pagina: total, total, msg: "Cruzando com cadastros..." });
   await enriquecer(holerites, defaults.empresa_id || null);
 
-  // Descarta segmentos que não correspondem a colaboradores cadastrados (lixo de parsing)
-  const validos = holerites.filter((h) => h.status !== "sem_cpf" && h.status !== "cpf_nao_encontrado");
+  // Descarta APENAS lixo puro: sem CPF válido OU (CPF não encontrado E totalmente zerado, sem rubricas).
+  // Colaboradores reais não cadastrados continuam aparecendo, e holerites distintos
+  // do mesmo funcionário (adiantamento, férias, 13º, complementar) NÃO são removidos.
+  const validos = holerites.filter((h) => {
+    if (h.status === "sem_cpf") return false;
+    if (h.status === "cpf_nao_encontrado") {
+      const semValor = (h.valor_bruto || 0) === 0 && (h.valor_liquido || 0) === 0 && (h.descontos_total || 0) === 0;
+      const semRubricas = (h.proventos?.length || 0) === 0 && (h.descontos?.length || 0) === 0;
+      if (semValor && semRubricas) return false;
+    }
+    return true;
+  });
   const removidosLixo = holerites.length - validos.length;
-  if (removidosLixo > 0) console.log(`[holeriteTextParser] ${removidosLixo} entrada(s) sem CPF cadastrado descartada(s)`);
+  if (removidosLixo > 0) console.log(`[holeriteTextParser] ${removidosLixo} entrada(s) de lixo descartada(s)`);
 
-  // Deduplica vias iguais do MESMO funcionário no MESMO período (PDFs geralmente têm 2 vias).
-  // Feito só APÓS enriquecer, para não colapsar holerites diferentes cujo CPF não pôde ser lido.
+  // Deduplica SOMENTE vias 100% idênticas (mesmo funcionário, período E valores exatos).
   const seen = new Map<string, OcrHolerite>();
   for (const h of validos) {
-    const key = [h.employee_id || "?", h.mes ?? "?", h.ano ?? "?", h.tipo_folha || "salario"].join("|");
-    const prev = seen.get(key);
-    if (!prev || (h.valor_liquido || 0) > (prev.valor_liquido || 0)) seen.set(key, h);
+    const key = [
+      h.employee_id || h.cpf || h.nome || "?",
+      h.mes ?? "?", h.ano ?? "?",
+      h.tipo_folha || "salario",
+      Math.round((h.valor_bruto || 0) * 100),
+      Math.round((h.valor_liquido || 0) * 100),
+      Math.round((h.descontos_total || 0) * 100),
+      (h.proventos?.length || 0),
+      (h.descontos?.length || 0),
+    ].join("|");
+    if (!seen.has(key)) seen.set(key, h);
   }
   const unicos = Array.from(seen.values());
   const removidosDup = validos.length - unicos.length;
-  if (removidosDup > 0) console.log(`[holeriteTextParser] ${removidosDup} via(s) duplicada(s) removida(s)`);
+  if (removidosDup > 0) console.log(`[holeriteTextParser] ${removidosDup} via(s) idêntica(s) removida(s)`);
 
   onProgress({ fase: "done", pagina: total, total, msg: `${unicos.length} holerite(s) processado(s)` });
   return unicos;
