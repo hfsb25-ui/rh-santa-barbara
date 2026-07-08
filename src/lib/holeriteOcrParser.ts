@@ -386,9 +386,30 @@ export async function processarHoleritesOCR(
     ].join("|");
     if (!seen.has(key)) seen.set(key, h);
   }
-  const unicos = Array.from(seen.values());
+  let unicos = Array.from(seen.values());
   const removidosDup = validos.length - unicos.length;
   if (removidosDup > 0) console.log(`[holeriteOcrParser] ${removidosDup} via(s) idêntica(s) removida(s)`);
+
+  // Se, para o mesmo (funcionário, período, tipo), existir uma via com valores e outra 100% zerada,
+  // descarta a zerada (parsing incompleto do segmento).
+  const grupos = new Map<string, OcrHolerite[]>();
+  for (const h of unicos) {
+    const gk = [h.employee_id || h.cpf || h.nome || "?", h.mes ?? "?", h.ano ?? "?", h.tipo_folha || "salario"].join("|");
+    if (!grupos.has(gk)) grupos.set(gk, []);
+    grupos.get(gk)!.push(h);
+  }
+  const filtrados: OcrHolerite[] = [];
+  for (const [, arr] of grupos) {
+    const temValor = arr.some((h) => (h.valor_bruto || 0) > 0 || (h.valor_liquido || 0) > 0 || (h.descontos_total || 0) > 0);
+    for (const h of arr) {
+      const zerado = (h.valor_bruto || 0) === 0 && (h.valor_liquido || 0) === 0 && (h.descontos_total || 0) === 0;
+      if (temValor && zerado) continue;
+      filtrados.push(h);
+    }
+  }
+  const removidosZero = unicos.length - filtrados.length;
+  if (removidosZero > 0) console.log(`[holeriteOcrParser] ${removidosZero} via(s) zerada(s) descartada(s) em favor da via com valores`);
+  unicos = filtrados;
 
   onProgress({ fase: "done", pagina: total, total, msg: `${unicos.length} holerite(s) processado(s)` });
   return unicos;
