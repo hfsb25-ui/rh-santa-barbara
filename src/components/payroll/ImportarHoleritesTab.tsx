@@ -352,24 +352,55 @@ export function ImportarHoleritesTab() {
     }
   }
 
-  function vincularManual(idx: number, employeeId: string) {
+  async function vincularManual(idx: number, employeeId: string) {
+    const emp = employees.find((e) => e.id === employeeId);
+    if (!emp) return;
+    // Snapshot do row atual para checagem async
+    const atual = resultados[idx];
+    const empresaId = atual.empresa_id || emp.empresa_id || empresaDefault || null;
+    const temPeriodo = !!(atual.mes && atual.ano);
+    const tipoFolha = atual.tipo_folha || "salario";
+
+    // Checa se já existe holerite para esse funcionário/período/tipo
+    let jaExiste = false;
+    if (temPeriodo) {
+      const { data: exist } = await supabase
+        .from("folha_pagamento")
+        .select("id")
+        .eq("employee_id", emp.id)
+        .eq("mes", atual.mes as number)
+        .eq("ano", atual.ano as number)
+        .eq("tipo_folha", tipoFolha)
+        .maybeSingle();
+      jaExiste = !!exist;
+    }
+
     setResultados((arr) => {
       const novo = [...arr];
-      const emp = employees.find((e) => e.id === employeeId);
-      if (emp) {
-        const empresaId = novo[idx].empresa_id || emp.empresa_id || empresaDefault || null;
-        const temPeriodo = !!(novo[idx].mes && novo[idx].ano);
-        novo[idx] = {
-          ...novo[idx],
-          employee_id: emp.id,
-          employee_nome: emp.nome_completo,
-          empresa_id: empresaId,
-          status: temPeriodo ? "ok" : "sem_periodo",
-          selecionado: temPeriodo,
-        };
-      }
+      const status: ExtractedHolerite["status"] = !temPeriodo
+        ? "sem_periodo"
+        : jaExiste
+        ? "ja_existe"
+        : "ok";
+      const selecionado = status === "ok" || (status === "ja_existe" && sobrescrever);
+      novo[idx] = {
+        ...novo[idx],
+        employee_id: emp.id,
+        employee_nome: emp.nome_completo,
+        empresa_id: empresaId,
+        status,
+        selecionado,
+      };
       return novo;
     });
+
+    if (jaExiste) {
+      toast.warning(
+        `${emp.nome_completo}: já existe holerite para ${atual.mes}/${atual.ano}. Ative "Sobrescrever" para reimportar.`
+      );
+    } else if (!temPeriodo) {
+      toast.warning(`${emp.nome_completo}: sem mês/ano detectado — defina antes de importar.`);
+    }
   }
 
   const totalOk = resultados.filter((r) => r.status === "ok").length;
