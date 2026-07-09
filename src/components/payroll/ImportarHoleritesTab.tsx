@@ -134,7 +134,7 @@ export function ImportarHoleritesTab() {
       setEmpresas(emp || []);
       const { data: e } = await supabase
         .from("employees")
-        .select("id, nome_completo, cpf")
+        .select("id, nome_completo, cpf, empresa_id")
         .order("nome_completo");
       setEmployees(e || []);
     })();
