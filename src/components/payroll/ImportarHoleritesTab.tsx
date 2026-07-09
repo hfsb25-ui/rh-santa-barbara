@@ -357,12 +357,15 @@ export function ImportarHoleritesTab() {
       const novo = [...arr];
       const emp = employees.find((e) => e.id === employeeId);
       if (emp) {
+        const empresaId = novo[idx].empresa_id || emp.empresa_id || empresaDefault || null;
+        const temPeriodo = !!(novo[idx].mes && novo[idx].ano);
         novo[idx] = {
           ...novo[idx],
           employee_id: emp.id,
           employee_nome: emp.nome_completo,
-          status: novo[idx].mes && novo[idx].ano ? "ok" : "sem_periodo",
-          selecionado: true,
+          empresa_id: empresaId,
+          status: temPeriodo ? "ok" : "sem_periodo",
+          selecionado: temPeriodo,
         };
       }
       return novo;
