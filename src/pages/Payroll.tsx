@@ -481,14 +481,18 @@ const Payroll = () => {
     await Promise.all([fetchPagamentos(), fetchTodosPagamentos()]);
   };
 
-  const handleImportComplete = async (holerites: Array<{ mes: number | null; ano: number | null }>) => {
+  const handleImportComplete = async (holerites: Array<{ mes: number | null; ano: number | null; tipo_folha?: string }>) => {
     const comPeriodo = holerites.filter((h) => h.mes && h.ano);
     const primeiro = comPeriodo[0];
     const mesmoPeriodo = !!primeiro && comPeriodo.every((h) => h.mes === primeiro.mes && h.ano === primeiro.ano);
+    const mesmoTipo = !!primeiro?.tipo_folha && comPeriodo.every((h) => h.tipo_folha === primeiro.tipo_folha);
 
     if (mesmoPeriodo) {
       setMes(primeiro.mes as number);
       setAno(primeiro.ano as number);
+      if (mesmoTipo && tipoFolha !== "all" && tipoFolha !== primeiro.tipo_folha) {
+        setTipoFolha(primeiro.tipo_folha as string);
+      }
       if (primeiro.mes === mes && primeiro.ano === ano) {
         await Promise.all([fetchPagamentos(), fetchTodosPagamentos()]);
       }
