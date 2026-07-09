@@ -481,6 +481,31 @@ const Payroll = () => {
     await Promise.all([fetchPagamentos(), fetchTodosPagamentos()]);
   };
 
+  const handleImportComplete = async (holerites: Array<{ mes: number | null; ano: number | null; tipo_folha?: string; empresa_id?: string | null }>) => {
+    const comPeriodo = holerites.filter((h) => h.mes && h.ano);
+    const primeiro = comPeriodo[0];
+    const mesmoPeriodo = !!primeiro && comPeriodo.every((h) => h.mes === primeiro.mes && h.ano === primeiro.ano);
+    const mesmoTipo = !!primeiro?.tipo_folha && comPeriodo.every((h) => h.tipo_folha === primeiro.tipo_folha);
+    const mesmaEmpresa = !!primeiro?.empresa_id && comPeriodo.every((h) => h.empresa_id === primeiro.empresa_id);
+
+    if (mesmoPeriodo) {
+      setMes(primeiro.mes as number);
+      setAno(primeiro.ano as number);
+      if (mesmaEmpresa && selectedEmpresa !== "all" && selectedEmpresa !== primeiro.empresa_id) {
+        setSelectedEmpresa(primeiro.empresa_id as string);
+      }
+      if (mesmoTipo && tipoFolha !== "all" && tipoFolha !== primeiro.tipo_folha) {
+        setTipoFolha(primeiro.tipo_folha as string);
+      }
+      if (primeiro.mes === mes && primeiro.ano === ano) {
+        await Promise.all([fetchPagamentos(), fetchTodosPagamentos()]);
+      }
+    } else {
+      await Promise.all([fetchPagamentos(), fetchTodosPagamentos()]);
+    }
+    setActiveTab("lancamentos");
+  };
+
   const handleUpdatePagamento = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!editingPagamento) return;
@@ -1171,7 +1196,7 @@ const Payroll = () => {
             </TabsContent>
 
             <TabsContent value="importar">
-              <ImportarHoleritesTab />
+              <ImportarHoleritesTab onImportComplete={handleImportComplete} />
             </TabsContent>
 
             <TabsContent value="diferenca">
