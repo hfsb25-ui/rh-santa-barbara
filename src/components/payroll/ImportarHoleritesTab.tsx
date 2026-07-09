@@ -20,7 +20,7 @@ type JobStatus = "idle" | "enfileirado" | "processando" | "concluido" | "erro";
 const MESES = ["", "Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
 
 interface Empresa { id: string; nome: string }
-interface Employee { id: string; nome_completo: string; cpf: string | null }
+interface Employee { id: string; nome_completo: string; cpf: string | null; empresa_id: string | null }
 
 interface Rubrica {
   codigo?: string | null;
@@ -134,7 +134,7 @@ export function ImportarHoleritesTab() {
       setEmpresas(emp || []);
       const { data: e } = await supabase
         .from("employees")
-        .select("id, nome_completo, cpf")
+        .select("id, nome_completo, cpf, empresa_id")
         .order("nome_completo");
       setEmployees(e || []);
     })();
@@ -357,12 +357,15 @@ export function ImportarHoleritesTab() {
       const novo = [...arr];
       const emp = employees.find((e) => e.id === employeeId);
       if (emp) {
+        const empresaId = novo[idx].empresa_id || emp.empresa_id || empresaDefault || null;
+        const temPeriodo = !!(novo[idx].mes && novo[idx].ano);
         novo[idx] = {
           ...novo[idx],
           employee_id: emp.id,
           employee_nome: emp.nome_completo,
-          status: novo[idx].mes && novo[idx].ano ? "ok" : "sem_periodo",
-          selecionado: true,
+          empresa_id: empresaId,
+          status: temPeriodo ? "ok" : "sem_periodo",
+          selecionado: temPeriodo,
         };
       }
       return novo;
