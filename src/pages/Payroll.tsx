@@ -489,6 +489,9 @@ const Payroll = () => {
     if (mesmoPeriodo) {
       setMes(primeiro.mes as number);
       setAno(primeiro.ano as number);
+      if (primeiro.mes === mes && primeiro.ano === ano) {
+        await Promise.all([fetchPagamentos(), fetchTodosPagamentos()]);
+      }
     } else {
       await Promise.all([fetchPagamentos(), fetchTodosPagamentos()]);
     }
