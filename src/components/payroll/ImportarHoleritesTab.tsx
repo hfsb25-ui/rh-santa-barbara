@@ -75,7 +75,11 @@ function statusBadge(s: ExtractedHolerite["status"]) {
   }
 }
 
-export function ImportarHoleritesTab() {
+interface ImportarHoleritesTabProps {
+  onImportComplete?: (holerites: ExtractedHolerite[]) => void;
+}
+
+export function ImportarHoleritesTab({ onImportComplete }: ImportarHoleritesTabProps = {}) {
   const [empresas, setEmpresas] = useState<Empresa[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [empresaDefault, setEmpresaDefault] = useState<string>("");
@@ -342,6 +346,9 @@ export function ImportarHoleritesTab() {
       if (data.erros?.length) {
         console.warn("Erros:", data.erros);
         toast.warning(`Avisos: ${data.erros.slice(0, 3).join(" | ")}`);
+      }
+      if ((data.criados || 0) > 0 || (data.sobrescritos || 0) > 0) {
+        onImportComplete?.(aImportar);
       }
       setResultados([]);
       setFile(null);
