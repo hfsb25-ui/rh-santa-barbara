@@ -162,6 +162,7 @@ export function ImportarHoleritesTab({ onImportComplete }: ImportarHoleritesTabP
       const { data, error } = await supabase.functions.invoke("holerite-importar-pdf", {
         body: {
           pdf_base64: base64,
+          nome_arquivo: file.name,
           mes_default: mesDefault,
           ano_default: anoDefault,
           empresa_id_default: empresaDefault || null,
@@ -408,6 +409,50 @@ export function ImportarHoleritesTab({ onImportComplete }: ImportarHoleritesTabP
     } else if (!temPeriodo) {
       toast.warning(`${emp.nome_completo}: sem mês/ano detectado — defina antes de importar.`);
     }
+  }
+
+  async function atualizarPeriodo(idx: number, patch: { mes?: number | null; ano?: number | null }) {
+    const atual = resultados[idx];
+    if (!atual) return;
+    const mesFinal = patch.mes !== undefined ? patch.mes : atual.mes;
+    const anoFinal = patch.ano !== undefined ? patch.ano : atual.ano;
+    const temPeriodo = !!(mesFinal && anoFinal);
+    const tipoFolha = atual.tipo_folha || "salario";
+
+    let jaExiste = false;
+    if (atual.employee_id && temPeriodo) {
+      const { data: exist } = await supabase
+        .from("folha_pagamento")
+        .select("id")
+        .eq("employee_id", atual.employee_id)
+        .eq("mes", mesFinal as number)
+        .eq("ano", anoFinal as number)
+        .eq("tipo_folha", tipoFolha)
+        .maybeSingle();
+      jaExiste = !!exist;
+    }
+
+    setResultados((arr) => {
+      const novo = [...arr];
+      const baseStatus = novo[idx].status;
+      const status: ExtractedHolerite["status"] = !temPeriodo
+        ? "sem_periodo"
+        : !novo[idx].employee_id
+        ? baseStatus === "sem_cpf"
+          ? "sem_cpf"
+          : "cpf_nao_encontrado"
+        : jaExiste
+        ? "ja_existe"
+        : "ok";
+      novo[idx] = {
+        ...novo[idx],
+        mes: mesFinal,
+        ano: anoFinal,
+        status,
+        selecionado: status === "ok" || (status === "ja_existe" && sobrescrever),
+      };
+      return novo;
+    });
   }
 
   const totalOk = resultados.filter((r) => r.status === "ok").length;
@@ -777,7 +822,37 @@ export function ImportarHoleritesTab({ onImportComplete }: ImportarHoleritesTabP
                         </Select>
                       )}
                     </TableCell>
-                    <TableCell>{r.mes && r.ano ? `${MESES[r.mes]}/${r.ano}` : "—"}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2 min-w-44">
+                        <Select
+                          value={r.mes ? String(r.mes) : ""}
+                          onValueChange={(v) => atualizarPeriodo(idx, { mes: Number(v) })}
+                        >
+                          <SelectTrigger className="h-8 w-20 text-xs">
+                            <SelectValue placeholder="Mês" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
+                              <SelectItem key={m} value={String(m)}>{MESES[m]}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <Input
+                          type="number"
+                          className="h-8 w-20 text-xs"
+                          value={r.ano ?? ""}
+                          onChange={(e) => {
+                            const value = e.target.value ? Number(e.target.value) : null;
+                            setResultados((arr) => {
+                              const n = [...arr];
+                              n[idx] = { ...n[idx], ano: value };
+                              return n;
+                            });
+                          }}
+                          onBlur={(e) => atualizarPeriodo(idx, { ano: e.target.value ? Number(e.target.value) : null })}
+                        />
+                      </div>
+                    </TableCell>
                     <TableCell className="text-right">
                       R$ {r.valor_bruto.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                     </TableCell>

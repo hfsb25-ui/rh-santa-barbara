@@ -13,6 +13,7 @@ const corsHeaders = {
 
 interface Payload {
   pdf_base64: string;
+  nome_arquivo?: string;
   mes_default?: number;
   ano_default?: number;
   empresa_id_default?: string;
@@ -49,6 +50,9 @@ REGRAS RÍGIDAS:
 - Não invente dados. Campo ausente = null.
 - NÃO PULE holerites. Se vir 2 nomes diferentes na página, retorne 2 objetos.
 - Se a página for capa/índice (sem holerite), retorne array vazio.
+- Para mes/ano, procure especificamente no campo "Período", "Competência", "Referência" ou texto como "01/06/2026 Até 30/06/2026". Nesse exemplo, mes=6 e ano=2026.
+- NÃO use data atual, data de processamento, data de emissão, data de admissão nem data de assinatura como competência do holerite.
+- Se houver dúvida entre duas datas, use o mês/ano do intervalo do "Período" do recibo; se não encontrar, deixe mes/ano como null.
 
 Retorne APENAS JSON válido: { "holerites": [ {...}, {...} ] }`;
 
@@ -239,6 +243,43 @@ function normalizeStr(s: string): string {
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .replace(/[^a-z0-9]/g, "");
+}
+
+function inferCompetenciaFromNomeArquivo(nomeArquivo?: string): { mes: number; ano: number } | null {
+  if (!nomeArquivo) return null;
+  const normalized = nomeArquivo
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+
+  const numeric = normalized.match(/(?:^|\D)(0?[1-9]|1[0-2])\D?(20\d{2})(?:\D|$)/);
+  if (numeric) return { mes: Number(numeric[1]), ano: Number(numeric[2]) };
+
+  const reverseNumeric = normalized.match(/(?:^|\D)(20\d{2})\D?(0?[1-9]|1[0-2])(?:\D|$)/);
+  if (reverseNumeric) return { mes: Number(reverseNumeric[2]), ano: Number(reverseNumeric[1]) };
+
+  const meses: Record<string, number> = {
+    janeiro: 1, jan: 1,
+    fevereiro: 2, fev: 2,
+    marco: 3, mar: 3,
+    abril: 4, abr: 4,
+    maio: 5, mai: 5,
+    junho: 6, jun: 6,
+    julho: 7, jul: 7,
+    agosto: 8, ago: 8,
+    setembro: 9, set: 9,
+    outubro: 10, out: 10,
+    novembro: 11, nov: 11,
+    dezembro: 12, dez: 12,
+  };
+  const ano = normalized.match(/(?:^|\D)(20\d{2})(?:\D|$)/)?.[1];
+  if (!ano) return null;
+  for (const [nomeMes, mes] of Object.entries(meses)) {
+    if (new RegExp(`(?:^|[^a-z])${nomeMes}(?:[^a-z]|$)`).test(normalized)) {
+      return { mes, ano: Number(ano) };
+    }
+  }
+  return null;
 }
 
 Deno.serve(async (req) => {
@@ -445,6 +486,7 @@ Deno.serve(async (req) => {
         }
 
         // 3) processa cada holerite
+        const competenciaArquivo = inferCompetenciaFromNomeArquivo(body.nome_arquivo);
         const resultado: any[] = [];
         for (const h of holerites) {
           const cpfClean = cleanCpf(h.cpf);
@@ -459,8 +501,8 @@ Deno.serve(async (req) => {
           if (!empresaId && employee?.empresa_id) empresaId = employee.empresa_id;
           if (!empresaId) empresaId = body.empresa_id_default || null;
 
-          const mes = h.mes || body.mes_default || null;
-          const ano = h.ano || body.ano_default || null;
+          const mes = competenciaArquivo?.mes || h.mes || body.mes_default || null;
+          const ano = competenciaArquivo?.ano || h.ano || body.ano_default || null;
 
           // verifica duplicidade
           let jaExiste = false;
