@@ -411,7 +411,7 @@ const Payroll = () => {
       const valorEmConta = calcularValorEmConta(pag);
       resumos[key].totalPagamentos += 1;
       resumos[key].totalEmConta += valorEmConta;
-      resumos[key].totalEmMaos += pag.valor_liquido; // Valor em Mãos = Proventos - Descontos (valor líquido)
+      resumos[key].totalEmMaos += pag.valor_liquido; // Valor em Conta = Proventos - Descontos (valor líquido)
       resumos[key].totalDescontos += pag.descontos || 0;
       resumos[key].totalGeral += pag.valor_bruto;
     });
@@ -642,7 +642,7 @@ const Payroll = () => {
       }
       
       doc.setFontSize(10);
-      doc.text(`  VALOR EM MÃOS: R$ ${pag.valor_liquido.toFixed(2)}`, 20, yPosition);
+      doc.text(`  VALOR EM CONTA: R$ ${pag.valor_liquido.toFixed(2)}`, 20, yPosition);
       yPosition += 10;
       
       if (pag.observacoes) {
@@ -690,7 +690,7 @@ const Payroll = () => {
     doc.setFontSize(10);
     doc.text(`Total Bruto: R$ ${totalProventos.toFixed(2)}`, 25, yPosition);
     doc.text(`Total Descontos: R$ ${totalDescontos.toFixed(2)}`, 25, yPosition + 6);
-    doc.text(`Total em Mãos: R$ ${totalLiquido.toFixed(2)}`, 25, yPosition + 12);
+    doc.text(`Total em Conta: R$ ${totalLiquido.toFixed(2)}`, 25, yPosition + 12);
     
     doc.save(`folha-pagamento-${mesNome}-${ano}.pdf`);
   };
@@ -749,7 +749,7 @@ const Payroll = () => {
             </div>
             <div>
               <p className="font-medium">Resumo</p>
-              <p className="text-lg font-bold text-primary">Valor em Mãos: R$ {pag.valor_liquido.toFixed(2)}</p>
+              <p className="text-lg font-bold text-primary">Valor em Conta: R$ {pag.valor_liquido.toFixed(2)}</p>
             </div>
           </div>
           {pag.observacoes && <p className="text-muted-foreground mt-2 text-sm">{pag.observacoes}</p>}
@@ -1168,7 +1168,7 @@ const Payroll = () => {
                                     <p className="font-semibold text-sm">R$ {resumo.totalGeral.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
                                   </div>
                                   <div className="text-right">
-                                    <p className="text-xs text-muted-foreground">Em Mãos</p>
+                                    <p className="text-xs text-muted-foreground">Em Conta</p>
                                     <p className="font-bold">R$ {resumo.totalEmMaos.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
                                   </div>
                                   {isExpanded ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
