@@ -109,6 +109,27 @@ Deno.serve(async (req) => {
 
         const tipoFolha = h.tipo_folha || "salario";
 
+        const getFallbackVariavel = async (tipo: "provento" | "desconto", empresaId: string, codigo: string, nome: string) => {
+          const { data: existente } = await supa
+            .from("variaveis_folha")
+            .select("id")
+            .eq("codigo", codigo)
+            .eq("tipo", tipo)
+            .or(`empresa_id.eq.${empresaId},empresa_id.is.null`)
+            .order("empresa_id", { ascending: false, nullsFirst: false })
+            .limit(1)
+            .maybeSingle();
+          if (existente?.id) return existente.id as string;
+
+          const { data: criada, error: errCriarVar } = await supa
+            .from("variaveis_folha")
+            .insert({ codigo, nome, tipo, empresa_id: null, ativo: true })
+            .select("id")
+            .single();
+          if (errCriarVar || !criada?.id) throw errCriarVar || new Error(`Erro ao criar variável ${nome}`);
+          return criada.id as string;
+        };
+
         const { data: existing, error: errExist } = await supa
           .from("folha_pagamento")
           .select("id, status")
@@ -176,6 +197,14 @@ Deno.serve(async (req) => {
             .filter((d) => d.variavel_id && toNum(d.valor) > 0)
             .map((d) => ({ folha_pagamento_id: folha.id, variavel_id: d.variavel_id!, valor: toNum(d.valor) })),
         ];
+        const somaDescontosMapeados = (h.descontos || [])
+          .filter((d) => d.variavel_id)
+          .reduce((sum, d) => sum + toNum(d.valor), 0);
+        const descontoNaoMapeado = Math.round((toNum(h.descontos_total) - somaDescontosMapeados) * 100) / 100;
+        if (descontoNaoMapeado > 0.009) {
+          const fallbackId = await getFallbackVariavel("desconto", h.empresa_id, "9999", "OUTROS DESCONTOS");
+          itens.push({ folha_pagamento_id: folha.id, variavel_id: fallbackId, valor: descontoNaoMapeado });
+        }
         if (itens.length) {
           const { error: errItens } = await supa.from("folha_pagamento_itens").insert(itens);
           if (errItens) erros.push(`Erro ao inserir itens: ${errItens.message}`);
