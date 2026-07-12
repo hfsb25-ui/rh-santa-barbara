@@ -64,6 +64,8 @@ const MESES = [
 const formatCurrency = (value: number) =>
   value.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
+const roundMoney = (value: number) => Math.round((Number(value) || 0) * 100) / 100;
+
 const formatCNPJ = (cnpj: string | null) => {
   if (!cnpj) return "";
   const c = cnpj.replace(/\D/g, "");
@@ -97,10 +99,15 @@ function getSalarioBase(employee: HoleriteEmployee) {
 function getTableData(pagamento: HoleritePagamento, employee: HoleriteEmployee) {
   const proventos = pagamento.folha_pagamento_itens?.filter(i => i.variaveis_folha?.tipo === "provento") || [];
   const descontosItens = pagamento.folha_pagamento_itens?.filter(i => i.variaveis_folha?.tipo === "desconto") || [];
-  const salarioBase = getSalarioBase(employee);
+  const totalProventosRegistrado = roundMoney(pagamento.valor_bruto || 0);
+  const totalDescontosRegistrado = roundMoney((pagamento.desconto || 0) + (pagamento.descontos || 0));
+  const somaProventosItens = roundMoney(proventos.reduce((s, p) => s + Number(p.valor || 0), 0));
+  const somaDescontosItens = roundMoney(descontosItens.reduce((s, d) => s + Number(d.valor || 0), 0));
+  const salarioBaseValor = roundMoney(Math.max(0, totalProventosRegistrado - somaProventosItens));
+  const descontoSemRubrica = roundMoney(Math.max(0, totalDescontosRegistrado - somaDescontosItens));
 
   const rows: { cod: string; desc: string; ref: string; prov: string; desc2: string }[] = [];
-  rows.push({ cod: "101", desc: "Salário Base", ref: "", prov: formatCurrency(salarioBase.valor), desc2: "" });
+  rows.push({ cod: "101", desc: "Salário Base", ref: "", prov: formatCurrency(salarioBaseValor), desc2: "" });
   proventos.forEach((item) => rows.push({
     cod: item.variaveis_folha?.codigo || "-",
     desc: item.variaveis_folha?.nome || "-",
@@ -112,11 +119,15 @@ function getTableData(pagamento: HoleritePagamento, employee: HoleriteEmployee) 
     ref: "", prov: "", desc2: formatCurrency(item.valor),
   }));
 
+  if (descontoSemRubrica > 0.009) {
+    rows.push({ cod: "-", desc: "Outros descontos", ref: "", prov: "", desc2: formatCurrency(descontoSemRubrica) });
+  }
+
   // Holerite Diferença: se houver desconto extra do líquido do holerite principal
   // (gravado em pagamento.descontos mas sem item correspondente), renderiza linha virtual.
   let descontoLiquidoPrincipal = 0;
   if (pagamento.tipo_folha === "diferenca") {
-    const somaItens = descontosItens.reduce((s, d) => s + d.valor, 0);
+    const somaItens = somaDescontosItens + descontoSemRubrica;
     const diff = (pagamento.descontos || 0) - somaItens;
     if (diff > 0.009) {
       descontoLiquidoPrincipal = diff;
@@ -130,8 +141,8 @@ function getTableData(pagamento: HoleritePagamento, employee: HoleriteEmployee) 
 
   while (rows.length < 8) rows.push({ cod: "", desc: "", ref: "", prov: "", desc2: "" });
 
-  const totalProventos = salarioBase.valor + proventos.reduce((s, p) => s + p.valor, 0);
-  const totalDescontos = descontosItens.reduce((s, d) => s + d.valor, 0) + descontoLiquidoPrincipal;
+  const totalProventos = totalProventosRegistrado;
+  const totalDescontos = Math.max(somaDescontosItens + descontoSemRubrica, totalDescontosRegistrado) + descontoLiquidoPrincipal;
   return { rows, totalProventos, totalDescontos };
 }
 
@@ -162,7 +173,7 @@ export async function gerarHoleritePdf(
 
   const salarioBase = getSalarioBase(employee);
   const { rows, totalProventos, totalDescontos } = getTableData(pagamento, employee);
-  const fgts = salarioBase.valor * 0.08;
+  const fgts = totalProventos * 0.08;
   const getMesAnoStr = () => `${MESES[pagamento.mes]}/${pagamento.ano}`;
   const assinatura = options.assinatura || null;
   let qrDataUrl = "";

@@ -77,6 +77,8 @@ const MESES = [
 const formatCurrency = (value: number) =>
   value.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
+const roundMoney = (value: number) => Math.round((Number(value) || 0) * 100) / 100;
+
 const HoleriteDialog = ({ open, onOpenChange, pagamento, empresaId }: HoleriteDialogProps) => {
   const [empresa, setEmpresa] = useState<Empresa | null>(null);
   const [employee, setEmployee] = useState<Employee | null>(null);
@@ -160,7 +162,12 @@ const HoleriteDialog = ({ open, onOpenChange, pagamento, empresaId }: HoleriteDi
   const getTableData = () => {
     const proventos = pagamento?.folha_pagamento_itens?.filter(i => i.variaveis_folha?.tipo === "provento") || [];
     const descontosItens = pagamento?.folha_pagamento_itens?.filter(i => i.variaveis_folha?.tipo === "desconto") || [];
-    const salarioBase = getSalarioBase();
+    const totalProventosRegistrado = roundMoney(pagamento?.valor_bruto || 0);
+    const totalDescontosRegistrado = roundMoney((pagamento?.desconto || 0) + (pagamento?.descontos || 0));
+    const somaProventosItens = roundMoney(proventos.reduce((sum, p) => sum + Number(p.valor || 0), 0));
+    const somaDescontosItens = roundMoney(descontosItens.reduce((sum, d) => sum + Number(d.valor || 0), 0));
+    const salarioBaseValor = roundMoney(Math.max(0, totalProventosRegistrado - somaProventosItens));
+    const descontoSemRubrica = roundMoney(Math.max(0, totalDescontosRegistrado - somaDescontosItens));
 
     const rows: { cod: string; desc: string; ref: string; prov: string; desc2: string }[] = [];
 
@@ -169,7 +176,7 @@ const HoleriteDialog = ({ open, onOpenChange, pagamento, empresaId }: HoleriteDi
       cod: "101",
       desc: "Salário Base",
       ref: "",
-      prov: formatCurrency(salarioBase.valor),
+      prov: formatCurrency(salarioBaseValor),
       desc2: "",
     });
 
@@ -195,13 +202,23 @@ const HoleriteDialog = ({ open, onOpenChange, pagamento, empresaId }: HoleriteDi
       });
     });
 
+    if (descontoSemRubrica > 0.009) {
+      rows.push({
+        cod: "-",
+        desc: "Outros descontos",
+        ref: "",
+        prov: "",
+        desc2: formatCurrency(descontoSemRubrica),
+      });
+    }
+
     // Preencher até 8 linhas (compacto para caber na página)
     while (rows.length < 8) {
       rows.push({ cod: "", desc: "", ref: "", prov: "", desc2: "" });
     }
 
-    const totalProventos = salarioBase.valor + proventos.reduce((sum, p) => sum + p.valor, 0);
-    const totalDescontos = descontosItens.reduce((sum, d) => sum + d.valor, 0);
+    const totalProventos = totalProventosRegistrado;
+    const totalDescontos = Math.max(somaDescontosItens, totalDescontosRegistrado);
 
     return { rows, totalProventos, totalDescontos };
   };
@@ -219,7 +236,7 @@ const HoleriteDialog = ({ open, onOpenChange, pagamento, empresaId }: HoleriteDi
 
   const { rows, totalProventos, totalDescontos } = getTableData();
   const salarioBase = getSalarioBase();
-  const fgts = salarioBase.valor * 0.08;
+  const fgts = totalProventos * 0.08;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

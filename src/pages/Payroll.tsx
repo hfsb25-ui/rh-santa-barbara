@@ -392,6 +392,14 @@ const Payroll = () => {
     return itemEmConta?.valor || 0;
   };
 
+  const calcularTotalDescontos = (pag: Pagamento) => {
+    const somaItens = (pag.folha_pagamento_itens || [])
+      .filter((i) => i.variaveis_folha?.tipo === "desconto")
+      .reduce((sum, i) => sum + Number(i.valor || 0), 0);
+    const registrado = Number(pag.desconto || 0) + Number(pag.descontos || 0);
+    return Math.max(somaItens, registrado);
+  };
+
   const getResumosMensais = (): ResumoMensal[] => {
     const resumos: Record<string, ResumoMensal> = {};
     
@@ -412,7 +420,7 @@ const Payroll = () => {
       resumos[key].totalPagamentos += 1;
       resumos[key].totalEmConta += valorEmConta;
       resumos[key].totalEmMaos += pag.valor_liquido; // Valor em Conta = Proventos - Descontos (valor líquido)
-      resumos[key].totalDescontos += pag.descontos || 0;
+      resumos[key].totalDescontos += calcularTotalDescontos(pag);
       resumos[key].totalGeral += pag.valor_bruto;
     });
     
@@ -712,6 +720,9 @@ const Payroll = () => {
   const renderPagamentoCard = (pag: Pagamento, showActions: boolean = true) => {
     const proventos = pag.folha_pagamento_itens?.filter(i => i.variaveis_folha?.tipo === 'provento') || [];
     const descontos = pag.folha_pagamento_itens?.filter(i => i.variaveis_folha?.tipo === 'desconto') || [];
+    const totalDescontos = calcularTotalDescontos(pag);
+    const descontosMapeados = descontos.reduce((sum, item) => sum + Number(item.valor || 0), 0);
+    const descontoSemRubrica = Math.max(0, totalDescontos - descontosMapeados);
     
     return (
       <div key={pag.id} className="flex items-start justify-between p-4 border rounded-lg">
@@ -743,9 +754,16 @@ const Payroll = () => {
             </div>
             <div>
               <p className="font-medium text-red-600">Descontos</p>
-              {descontos.length > 0 ? descontos.map(item => (
-                <p key={item.id}>{item.variaveis_folha?.nome}: R$ {item.valor.toFixed(2)}</p>
-              )) : <p className="text-muted-foreground">-</p>}
+              {descontos.length > 0 || descontoSemRubrica > 0.009 ? (
+                <>
+                  {descontos.map(item => (
+                    <p key={item.id}>{item.variaveis_folha?.nome}: R$ {item.valor.toFixed(2)}</p>
+                  ))}
+                  {descontoSemRubrica > 0.009 && (
+                    <p>Outros descontos: R$ {descontoSemRubrica.toFixed(2)}</p>
+                  )}
+                </>
+              ) : <p className="text-muted-foreground">-</p>}
             </div>
             <div>
               <p className="font-medium">Resumo</p>
