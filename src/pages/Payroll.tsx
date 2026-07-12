@@ -434,10 +434,12 @@ const Payroll = () => {
     const resumos: Record<string, ResumoVariavel> = {};
     
     pagamentos.forEach(pag => {
+      let somaDescontosItens = 0;
       if (pag.folha_pagamento_itens) {
         pag.folha_pagamento_itens.forEach(item => {
           const varName = item.variaveis_folha?.nome || "Desconhecido";
           const varTipo = item.variaveis_folha?.tipo || "desconto";
+          if (varTipo === "desconto") somaDescontosItens += Number(item.valor || 0);
           
           if (!resumos[varName]) {
             resumos[varName] = {
@@ -450,6 +452,20 @@ const Payroll = () => {
           resumos[varName].funcionarios += 1;
           resumos[varName].total += item.valor;
         });
+      }
+
+      const descontoSemRubrica = Math.max(0, calcularTotalDescontos(pag) - somaDescontosItens);
+      if (descontoSemRubrica > 0.009) {
+        if (!resumos["Outros descontos"]) {
+          resumos["Outros descontos"] = {
+            variavel: "Outros descontos",
+            tipo: "desconto",
+            funcionarios: 0,
+            total: 0,
+          };
+        }
+        resumos["Outros descontos"].funcionarios += 1;
+        resumos["Outros descontos"].total += descontoSemRubrica;
       }
     });
     
