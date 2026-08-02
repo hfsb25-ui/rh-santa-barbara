@@ -37,6 +37,8 @@ import {
   Star,
   FileBarChart,
   Settings2,
+  HardHat,
+  Stethoscope,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
@@ -112,12 +114,14 @@ const menuGroups = [
     label: "Estoque",
     items: [
       { title: "EPIs / Uniformes", url: "/stock", icon: Package },
+      { title: "Distribuir EPI", url: "/distribuir-epi", icon: HardHat },
     ],
   },
   {
     label: "Saúde",
     items: [
       { title: "Saúde Ocupacional", url: "/saude-ocupacional", icon: Activity },
+      { title: "Afastamentos / Atestados", url: "/afastamentos", icon: Stethoscope },
     ],
   },
   {
@@ -189,6 +193,8 @@ const urlToModuleKey: Record<string, string> = {
   "/crachas": "crachas",
   "/consulta-judicial": "consulta-judicial",
   "/stock": "stock",
+  "/distribuir-epi": "distribuir-epi",
+  "/afastamentos": "afastamentos",
   "/saude-ocupacional": "saude-ocupacional",
   "/contabilidade": "contabilidade",
   "/companies": "companies",
