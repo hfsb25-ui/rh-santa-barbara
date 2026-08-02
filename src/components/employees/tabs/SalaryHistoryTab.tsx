@@ -28,8 +28,16 @@ export function SalaryHistoryTab({ employeeId }: SalaryHistoryTabProps) {
     },
   });
 
-  if (isLoading) {
+  if (permLoading || isLoading) {
     return <div className="p-6">Carregando histórico...</div>;
+  }
+
+  if (!canViewSalary) {
+    return (
+      <div className="p-6 text-center text-muted-foreground">
+        Você não tem permissão para visualizar informações salariais.
+      </div>
+    );
   }
 
   if (!history || history.length === 0) {
