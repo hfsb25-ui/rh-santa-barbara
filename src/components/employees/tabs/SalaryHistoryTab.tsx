@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { useCanViewSalary } from "@/hooks/useCanViewSalary";
 
 interface SalaryHistoryTabProps {
   employeeId: string;
