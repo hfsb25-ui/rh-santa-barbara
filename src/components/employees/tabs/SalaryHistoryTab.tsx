@@ -3,12 +3,14 @@ import { supabase } from "@/integrations/supabase/client";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { useCanViewSalary } from "@/hooks/useCanViewSalary";
 
 interface SalaryHistoryTabProps {
   employeeId: string;
 }
 
 export function SalaryHistoryTab({ employeeId }: SalaryHistoryTabProps) {
+  const { canViewSalary, loading: permLoading } = useCanViewSalary();
   const { data: history, isLoading } = useQuery({
     queryKey: ["salary-history", employeeId],
     queryFn: async () => {
@@ -26,8 +28,16 @@ export function SalaryHistoryTab({ employeeId }: SalaryHistoryTabProps) {
     },
   });
 
-  if (isLoading) {
+  if (permLoading || isLoading) {
     return <div className="p-6">Carregando histórico...</div>;
+  }
+
+  if (!canViewSalary) {
+    return (
+      <div className="p-6 text-center text-muted-foreground">
+        Você não tem permissão para visualizar informações salariais.
+      </div>
+    );
   }
 
   if (!history || history.length === 0) {

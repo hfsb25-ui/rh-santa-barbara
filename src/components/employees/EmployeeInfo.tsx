@@ -10,6 +10,7 @@ import { User, FileText, MapPin, Briefcase, Landmark } from "lucide-react";
 import ChangePasswordDialog from "./ChangePasswordDialog";
 import { gerarSolicitacaoContaSalario } from "@/lib/pdfGeneratorContaSalario";
 import { toast } from "sonner";
+import { useCanViewSalary } from "@/hooks/useCanViewSalary";
 
 interface EmployeeInfoProps {
   employee: any;
@@ -17,6 +18,7 @@ interface EmployeeInfoProps {
 }
 
 const EmployeeInfo = ({ employee }: EmployeeInfoProps) => {
+  const { canViewSalary } = useCanViewSalary();
   const [isOnVacation, setIsOnVacation] = useState(false);
 
   useEffect(() => {
@@ -233,8 +235,12 @@ const EmployeeInfo = ({ employee }: EmployeeInfoProps) => {
               <InfoRow label="Função" value={employee.cargo} />
               <InfoRow label="Setor" value={employee.setor} />
               <InfoRow label="Tipo de Contrato" value={getTipoContratoLabel(employee.tipo_contrato)} />
-              <InfoRow label="Salário" value={formatCurrency(employee.salario)} />
-              <InfoRow label="Tipo de Salário" value={getTipoSalarioLabel(employee.tipo_salario)} />
+              {canViewSalary && (
+                <>
+                  <InfoRow label="Salário" value={formatCurrency(employee.salario)} />
+                  <InfoRow label="Tipo de Salário" value={getTipoSalarioLabel(employee.tipo_salario)} />
+                </>
+              )}
               <InfoRow label="Data de Admissão" value={formatDate(employee.data_admissao)} />
               {employee.status === "demitido" && (
                 <InfoRow label="Data de Desligamento" value={formatDate(employee.data_desligamento)} />

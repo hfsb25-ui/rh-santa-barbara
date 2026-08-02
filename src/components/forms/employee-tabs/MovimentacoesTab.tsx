@@ -3,6 +3,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ClipboardCheck } from "lucide-react";
+import { useCanViewSalary } from "@/hooks/useCanViewSalary";
 
 interface MovimentacoesTabProps {
   initialData?: any;
@@ -37,6 +38,7 @@ const MovimentacoesTab = ({
   formValues,
   onFormChange,
 }: MovimentacoesTabProps) => {
+  const { canViewSalary } = useCanViewSalary();
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -114,6 +116,7 @@ const MovimentacoesTab = ({
           </Select>
         </div>
 
+        {canViewSalary && (
         <div>
           <Label>Salário</Label>
           <Input 
@@ -126,7 +129,9 @@ const MovimentacoesTab = ({
             onChange={(e) => onFormChange("salario", e.target.value)}
           />
         </div>
+        )}
 
+        {canViewSalary && (
         <div>
           <Label>Tipo de Salário</Label>
           <Select 
@@ -143,6 +148,7 @@ const MovimentacoesTab = ({
             </SelectContent>
           </Select>
         </div>
+        )}
 
         <div>
           <Label>Data de Admissão</Label>
