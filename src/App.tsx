@@ -9,6 +9,8 @@ import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import EmployeeDetails from "./pages/EmployeeDetails";
 import Stock from "./pages/Stock";
+import Afastamentos from "./pages/Afastamentos";
+import DistribuirEpi from "./pages/DistribuirEpi";
 import Sectors from "./pages/Sectors";
 import Turnover from "./pages/Turnover";
 import Financeiro from "./pages/Financeiro";
@@ -80,6 +82,8 @@ const App = () => {
               <Route path="/dashboard" element={<AppLayout><Dashboard /></AppLayout>} />
               <Route path="/employee/:id" element={<AppLayout><EmployeeDetails /></AppLayout>} />
               <Route path="/stock" element={<AppLayout><Stock /></AppLayout>} />
+              <Route path="/distribuir-epi" element={<AppLayout><DistribuirEpi /></AppLayout>} />
+              <Route path="/afastamentos" element={<AppLayout><Afastamentos /></AppLayout>} />
               <Route path="/sectors" element={<AppLayout><Sectors /></AppLayout>} />
               <Route path="/turnover" element={<AppLayout><Turnover /></AppLayout>} />
               <Route path="/financeiro" element={<AppLayout><Financeiro /></AppLayout>} />
