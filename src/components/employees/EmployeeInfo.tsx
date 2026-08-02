@@ -17,6 +17,7 @@ interface EmployeeInfoProps {
 }
 
 const EmployeeInfo = ({ employee }: EmployeeInfoProps) => {
+  const { canViewSalary } = useCanViewSalary();
   const [isOnVacation, setIsOnVacation] = useState(false);
 
   useEffect(() => {
