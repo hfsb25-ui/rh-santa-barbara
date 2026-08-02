@@ -9,6 +9,7 @@ interface SalaryHistoryTabProps {
 }
 
 export function SalaryHistoryTab({ employeeId }: SalaryHistoryTabProps) {
+  const { canViewSalary, loading: permLoading } = useCanViewSalary();
   const { data: history, isLoading } = useQuery({
     queryKey: ["salary-history", employeeId],
     queryFn: async () => {
