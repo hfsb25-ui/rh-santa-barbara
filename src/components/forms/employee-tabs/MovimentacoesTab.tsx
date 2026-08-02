@@ -114,6 +114,7 @@ const MovimentacoesTab = ({
           </Select>
         </div>
 
+        {canViewSalary && (
         <div>
           <Label>Salário</Label>
           <Input 
@@ -126,7 +127,9 @@ const MovimentacoesTab = ({
             onChange={(e) => onFormChange("salario", e.target.value)}
           />
         </div>
+        )}
 
+        {canViewSalary && (
         <div>
           <Label>Tipo de Salário</Label>
           <Select 
@@ -143,6 +146,7 @@ const MovimentacoesTab = ({
             </SelectContent>
           </Select>
         </div>
+        )}
 
         <div>
           <Label>Data de Admissão</Label>
