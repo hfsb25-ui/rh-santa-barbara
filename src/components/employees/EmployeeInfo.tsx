@@ -10,6 +10,7 @@ import { User, FileText, MapPin, Briefcase, Landmark } from "lucide-react";
 import ChangePasswordDialog from "./ChangePasswordDialog";
 import { gerarSolicitacaoContaSalario } from "@/lib/pdfGeneratorContaSalario";
 import { toast } from "sonner";
+import { useCanViewSalary } from "@/hooks/useCanViewSalary";
 
 interface EmployeeInfoProps {
   employee: any;
