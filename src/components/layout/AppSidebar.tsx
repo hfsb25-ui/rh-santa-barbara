@@ -38,6 +38,7 @@ import {
   FileBarChart,
   Settings2,
   HardHat,
+  Shirt,
   Stethoscope,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
