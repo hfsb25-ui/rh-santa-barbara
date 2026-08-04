@@ -11,6 +11,7 @@ import EmployeeDetails from "./pages/EmployeeDetails";
 import Stock from "./pages/Stock";
 import Afastamentos from "./pages/Afastamentos";
 import DistribuirEpi from "./pages/DistribuirEpi";
+import DistribuirUniforme from "./pages/DistribuirUniforme";
 import Sectors from "./pages/Sectors";
 import Turnover from "./pages/Turnover";
 import Financeiro from "./pages/Financeiro";
@@ -83,6 +84,7 @@ const App = () => {
               <Route path="/employee/:id" element={<AppLayout><EmployeeDetails /></AppLayout>} />
               <Route path="/stock" element={<AppLayout><Stock /></AppLayout>} />
               <Route path="/distribuir-epi" element={<AppLayout><DistribuirEpi /></AppLayout>} />
+              <Route path="/distribuir-uniforme" element={<AppLayout><DistribuirUniforme /></AppLayout>} />
               <Route path="/afastamentos" element={<AppLayout><Afastamentos /></AppLayout>} />
               <Route path="/sectors" element={<AppLayout><Sectors /></AppLayout>} />
               <Route path="/turnover" element={<AppLayout><Turnover /></AppLayout>} />
