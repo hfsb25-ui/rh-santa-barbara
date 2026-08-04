@@ -115,6 +115,7 @@ const menuGroups = [
     items: [
       { title: "EPIs / Uniformes", url: "/stock", icon: Package },
       { title: "Distribuir EPI", url: "/distribuir-epi", icon: HardHat },
+      { title: "Distribuir Uniforme", url: "/distribuir-uniforme", icon: Shirt },
     ],
   },
   {
@@ -194,6 +195,7 @@ const urlToModuleKey: Record<string, string> = {
   "/consulta-judicial": "consulta-judicial",
   "/stock": "stock",
   "/distribuir-epi": "distribuir-epi",
+  "/distribuir-uniforme": "distribuir-uniforme",
   "/afastamentos": "afastamentos",
   "/saude-ocupacional": "saude-ocupacional",
   "/contabilidade": "contabilidade",

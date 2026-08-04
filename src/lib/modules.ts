@@ -30,6 +30,7 @@ export const MODULES: ModuleDef[] = [
   { key: "consulta-judicial", label: "Consulta Judicial", path: "/consulta-judicial", group: "Documentos" },
   { key: "stock", label: "EPIs / Uniformes", path: "/stock", group: "Estoque" },
   { key: "distribuir-epi", label: "Distribuir EPI", path: "/distribuir-epi", group: "Estoque" },
+  { key: "distribuir-uniforme", label: "Distribuir Uniforme", path: "/distribuir-uniforme", group: "Estoque" },
   { key: "afastamentos", label: "Afastamentos / Atestados", path: "/afastamentos", group: "Saúde" },
   { key: "saude-ocupacional", label: "Saúde Ocupacional", path: "/saude-ocupacional", group: "Saúde" },
   { key: "contabilidade", label: "Info. Contabilidade", path: "/contabilidade", group: "Contabilidade" },
