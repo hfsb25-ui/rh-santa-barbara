@@ -24,6 +24,7 @@ const EmployeeForm = ({ employeeId, initialData, onSaved, onCancel }: EmployeeFo
   const [cpfLoading, setCpfLoading] = useState(false);
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(initialData?.foto_url || null);
+  const [photoRemoved, setPhotoRemoved] = useState(false);
   const [selectedStatus, setSelectedStatus] = useState<string>(initialData?.status || "ativo");
   const [createChecklist, setCreateChecklist] = useState(true);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
@@ -150,33 +151,26 @@ const EmployeeForm = ({ employeeId, initialData, onSaved, onCancel }: EmployeeFo
   const handleRemovePhoto = () => {
     setPhotoFile(null);
     setPhotoPreview(null);
+    setPhotoRemoved(true);
   };
 
   const uploadPhoto = async (employeeIdForUpload: string): Promise<string | null> => {
     if (!photoFile) return null;
 
-    try {
-      const fileExt = (photoFile.name.split('.').pop() || 'jpg').toLowerCase();
-      const fileName = `${employeeIdForUpload}-${Date.now()}.${fileExt}`;
-      const filePath = `${fileName}`;
+    const fileExt = (photoFile.name.split('.').pop() || 'jpg').toLowerCase();
+    const fileName = `${employeeIdForUpload}-${Date.now()}.${fileExt}`;
 
-      const { error: uploadError } = await supabase.storage
-        .from('employee-photos')
-        .upload(filePath, photoFile, { upsert: true, contentType: photoFile.type || undefined });
+    const { error: uploadError } = await supabase.storage
+      .from('employee-photos')
+      .upload(fileName, photoFile, { upsert: true, contentType: photoFile.type || undefined });
 
-      if (uploadError) throw uploadError;
+    if (uploadError) throw uploadError;
 
-      const { data: { publicUrl } } = supabase.storage
-        .from('employee-photos')
-        .getPublicUrl(filePath);
+    const { data: { publicUrl } } = supabase.storage
+      .from('employee-photos')
+      .getPublicUrl(fileName);
 
-      return publicUrl;
-    } catch (error: any) {
-      console.error("Erro ao fazer upload da foto:", error);
-      toast.error(`Erro ao fazer upload da foto: ${error?.message || "desconhecido"}`);
-      return null;
-    }
-
+    return publicUrl;
   };
 
   const createAdmissionChecklist = async (newEmployeeId: string, templateId: string) => {
@@ -349,10 +343,11 @@ const EmployeeForm = ({ employeeId, initialData, onSaved, onCancel }: EmployeeFo
 
     try {
       if (employeeId) {
-        let fotoUrl = initialData?.foto_url;
+        let fotoUrl: string | null = initialData?.foto_url ?? null;
         if (photoFile) {
-          const uploadedUrl = await uploadPhoto(employeeId);
-          if (uploadedUrl) fotoUrl = uploadedUrl;
+          fotoUrl = await uploadPhoto(employeeId);
+        } else if (photoRemoved) {
+          fotoUrl = null;
         }
 
         // Verificar se houve alteração de salário para registrar no histórico
@@ -461,7 +456,7 @@ const EmployeeForm = ({ employeeId, initialData, onSaved, onCancel }: EmployeeFo
       onSaved();
     } catch (error: any) {
       console.error("Erro:", error);
-      toast.error("Erro ao salvar funcionário");
+      toast.error(`Erro ao salvar funcionário: ${error?.message || "desconhecido"}`);
     } finally {
       setLoading(false);
     }
