@@ -24,6 +24,7 @@ const EmployeeForm = ({ employeeId, initialData, onSaved, onCancel }: EmployeeFo
   const [cpfLoading, setCpfLoading] = useState(false);
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(initialData?.foto_url || null);
+  const [photoRemoved, setPhotoRemoved] = useState(false);
   const [selectedStatus, setSelectedStatus] = useState<string>(initialData?.status || "ativo");
   const [createChecklist, setCreateChecklist] = useState(true);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
