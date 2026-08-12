@@ -456,7 +456,7 @@ const EmployeeForm = ({ employeeId, initialData, onSaved, onCancel }: EmployeeFo
       onSaved();
     } catch (error: any) {
       console.error("Erro:", error);
-      toast.error("Erro ao salvar funcionário");
+      toast.error(`Erro ao salvar funcionário: ${error?.message || "desconhecido"}`);
     } finally {
       setLoading(false);
     }
