@@ -150,33 +150,26 @@ const EmployeeForm = ({ employeeId, initialData, onSaved, onCancel }: EmployeeFo
   const handleRemovePhoto = () => {
     setPhotoFile(null);
     setPhotoPreview(null);
+    setPhotoRemoved(true);
   };
 
   const uploadPhoto = async (employeeIdForUpload: string): Promise<string | null> => {
     if (!photoFile) return null;
 
-    try {
-      const fileExt = (photoFile.name.split('.').pop() || 'jpg').toLowerCase();
-      const fileName = `${employeeIdForUpload}-${Date.now()}.${fileExt}`;
-      const filePath = `${fileName}`;
+    const fileExt = (photoFile.name.split('.').pop() || 'jpg').toLowerCase();
+    const fileName = `${employeeIdForUpload}-${Date.now()}.${fileExt}`;
 
-      const { error: uploadError } = await supabase.storage
-        .from('employee-photos')
-        .upload(filePath, photoFile, { upsert: true, contentType: photoFile.type || undefined });
+    const { error: uploadError } = await supabase.storage
+      .from('employee-photos')
+      .upload(fileName, photoFile, { upsert: true, contentType: photoFile.type || undefined });
 
-      if (uploadError) throw uploadError;
+    if (uploadError) throw uploadError;
 
-      const { data: { publicUrl } } = supabase.storage
-        .from('employee-photos')
-        .getPublicUrl(filePath);
+    const { data: { publicUrl } } = supabase.storage
+      .from('employee-photos')
+      .getPublicUrl(fileName);
 
-      return publicUrl;
-    } catch (error: any) {
-      console.error("Erro ao fazer upload da foto:", error);
-      toast.error(`Erro ao fazer upload da foto: ${error?.message || "desconhecido"}`);
-      return null;
-    }
-
+    return publicUrl;
   };
 
   const createAdmissionChecklist = async (newEmployeeId: string, templateId: string) => {
