@@ -343,10 +343,11 @@ const EmployeeForm = ({ employeeId, initialData, onSaved, onCancel }: EmployeeFo
 
     try {
       if (employeeId) {
-        let fotoUrl = initialData?.foto_url;
+        let fotoUrl: string | null = initialData?.foto_url ?? null;
         if (photoFile) {
-          const uploadedUrl = await uploadPhoto(employeeId);
-          if (uploadedUrl) fotoUrl = uploadedUrl;
+          fotoUrl = await uploadPhoto(employeeId);
+        } else if (photoRemoved) {
+          fotoUrl = null;
         }
 
         // Verificar se houve alteração de salário para registrar no histórico
