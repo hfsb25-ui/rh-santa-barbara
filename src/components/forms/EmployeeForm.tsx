@@ -156,13 +156,13 @@ const EmployeeForm = ({ employeeId, initialData, onSaved, onCancel }: EmployeeFo
     if (!photoFile) return null;
 
     try {
-      const fileExt = photoFile.name.split('.').pop();
-      const fileName = `${employeeIdForUpload}.${fileExt}`;
+      const fileExt = (photoFile.name.split('.').pop() || 'jpg').toLowerCase();
+      const fileName = `${employeeIdForUpload}-${Date.now()}.${fileExt}`;
       const filePath = `${fileName}`;
 
       const { error: uploadError } = await supabase.storage
         .from('employee-photos')
-        .upload(filePath, photoFile, { upsert: true });
+        .upload(filePath, photoFile, { upsert: true, contentType: photoFile.type || undefined });
 
       if (uploadError) throw uploadError;
 
@@ -171,11 +171,12 @@ const EmployeeForm = ({ employeeId, initialData, onSaved, onCancel }: EmployeeFo
         .getPublicUrl(filePath);
 
       return publicUrl;
-    } catch (error) {
+    } catch (error: any) {
       console.error("Erro ao fazer upload da foto:", error);
-      toast.error("Erro ao fazer upload da foto");
+      toast.error(`Erro ao fazer upload da foto: ${error?.message || "desconhecido"}`);
       return null;
     }
+
   };
 
   const createAdmissionChecklist = async (newEmployeeId: string, templateId: string) => {
