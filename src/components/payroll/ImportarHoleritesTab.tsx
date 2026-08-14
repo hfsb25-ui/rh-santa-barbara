@@ -9,11 +9,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Upload, Sparkles, Save, AlertCircle, CheckCircle2, XCircle, Eye, Plus, Clock, Loader2, ScanText } from "lucide-react";
+import { Upload, Sparkles, Save, AlertCircle, CheckCircle2, XCircle, Eye, Plus, Clock, Loader2, ScanText, FileSpreadsheet } from "lucide-react";
 import { toast } from "sonner";
 import { Progress } from "@/components/ui/progress";
 import { processarHoleritesOCR } from "@/lib/holeriteOcrParser";
 import { processarHoleritesTexto } from "@/lib/holeriteTextParser";
+import { processarHoleritesCsv } from "@/lib/holeriteCsvParser";
 
 type JobStatus = "idle" | "enfileirado" | "processando" | "concluido" | "erro";
 
