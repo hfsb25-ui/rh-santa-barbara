@@ -9,11 +9,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Upload, Sparkles, Save, AlertCircle, CheckCircle2, XCircle, Eye, Plus, Clock, Loader2, ScanText } from "lucide-react";
+import { Upload, Sparkles, Save, AlertCircle, CheckCircle2, XCircle, Eye, Plus, Clock, Loader2, ScanText, FileSpreadsheet } from "lucide-react";
 import { toast } from "sonner";
 import { Progress } from "@/components/ui/progress";
 import { processarHoleritesOCR } from "@/lib/holeriteOcrParser";
 import { processarHoleritesTexto } from "@/lib/holeriteTextParser";
+import { processarHoleritesCsv } from "@/lib/holeriteCsvParser";
 
 type JobStatus = "idle" | "enfileirado" | "processando" | "concluido" | "erro";
 
@@ -86,6 +87,7 @@ export function ImportarHoleritesTab({ onImportComplete }: ImportarHoleritesTabP
   const [mesDefault, setMesDefault] = useState<number>(new Date().getMonth() + 1);
   const [anoDefault, setAnoDefault] = useState<number>(new Date().getFullYear());
   const [file, setFile] = useState<File | null>(null);
+  const [csvFile, setCsvFile] = useState<File | null>(null);
   const [processing, setProcessing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [resultados, setResultados] = useState<ExtractedHolerite[]>([]);
@@ -310,6 +312,43 @@ export function ImportarHoleritesTab({ onImportComplete }: ImportarHoleritesTabP
     }
   }
 
+  async function handleProcessarCsv() {
+    if (!csvFile) {
+      toast.error("Selecione um arquivo CSV primeiro");
+      return;
+    }
+    setProcessing(true);
+    setResultados([]);
+    setJobStatus("processando");
+    setJobProgress(2);
+    setJobElapsed(0);
+    setJobError("");
+    setJobMessage("Lendo CSV...");
+    try {
+      const hols = await processarHoleritesCsv(
+        csvFile,
+        { mes: mesDefault, ano: anoDefault, empresa_id: empresaDefault || null },
+        (p) => {
+          const base = p.total > 0 ? (p.pagina / p.total) * 95 : 0;
+          setJobProgress(Math.max(2, Math.min(98, Math.round(base))));
+          setJobMessage(p.msg);
+        }
+      );
+      const enriched = hols.map((h: any) => ({ ...h, selecionado: h.status === "ok" }));
+      setResultados(enriched as any);
+      setJobStatus("concluido");
+      setJobProgress(100);
+      setJobMessage(`${enriched.length} holerite(s) montado(s) do CSV`);
+      toast.success(`${enriched.length} holerite(s) montado(s) a partir do CSV`);
+    } catch (e: any) {
+      console.error(e);
+      setJobStatus("erro");
+      setJobError(e?.message || "Erro ao ler CSV");
+      toast.error(e?.message || "Erro ao ler CSV");
+    } finally {
+      setProcessing(false);
+    }
+  }
 
 
   async function handleImportar() {
@@ -353,6 +392,7 @@ export function ImportarHoleritesTab({ onImportComplete }: ImportarHoleritesTabP
       }
       setResultados([]);
       setFile(null);
+      setCsvFile(null);
     } catch (e: any) {
       toast.error(e?.message || "Erro ao importar");
     } finally {
@@ -658,7 +698,26 @@ export function ImportarHoleritesTab({ onImportComplete }: ImportarHoleritesTabP
             </div>
           </div>
 
+          <div className="rounded-lg border p-3 space-y-2 bg-muted/20">
+            <Label className="flex items-center gap-2">
+              <FileSpreadsheet className="w-4 h-4 text-primary" />
+              Arquivo CSV de lançamentos (opcional)
+            </Label>
+            <Input
+              type="file"
+              accept=".csv,text/csv"
+              onChange={(e) => setCsvFile(e.target.files?.[0] || null)}
+            />
+            <p className="text-xs text-muted-foreground">
+              Colunas: Colaborador;CPF;Matricula;Cargo;Admissao;Competencia;CNPJ_Empresa;Codigo_Evento;Descricao_Evento;Tipo;Valor
+            </p>
+          </div>
+
           <div className="flex gap-2 flex-wrap">
+            <Button onClick={handleProcessarCsv} disabled={!csvFile || processing} variant="default">
+              <FileSpreadsheet className="w-4 h-4 mr-2" />
+              {processing ? "Processando..." : "Processar CSV"}
+            </Button>
             <Button onClick={handleProcessar} disabled={!file || processing}>
               <Upload className="w-4 h-4 mr-2" />
               {processing ? "Processando com IA..." : "Processar com IA"}
@@ -671,6 +730,7 @@ export function ImportarHoleritesTab({ onImportComplete }: ImportarHoleritesTabP
               <ScanText className="w-4 h-4 mr-2" />
               {processing ? "Processando..." : "Processar via OCR (sem IA)"}
             </Button>
+
             {resultados.length > 0 && (
               <Button onClick={handleImportar} disabled={saving || totalSelecionados === 0} variant="default">
                 <Save className="w-4 h-4 mr-2" />
