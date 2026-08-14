@@ -697,7 +697,26 @@ export function ImportarHoleritesTab({ onImportComplete }: ImportarHoleritesTabP
             </div>
           </div>
 
+          <div className="rounded-lg border p-3 space-y-2 bg-muted/20">
+            <Label className="flex items-center gap-2">
+              <FileSpreadsheet className="w-4 h-4 text-primary" />
+              Arquivo CSV de lançamentos (opcional)
+            </Label>
+            <Input
+              type="file"
+              accept=".csv,text/csv"
+              onChange={(e) => setCsvFile(e.target.files?.[0] || null)}
+            />
+            <p className="text-xs text-muted-foreground">
+              Colunas: Colaborador;CPF;Matricula;Cargo;Admissao;Competencia;CNPJ_Empresa;Codigo_Evento;Descricao_Evento;Tipo;Valor
+            </p>
+          </div>
+
           <div className="flex gap-2 flex-wrap">
+            <Button onClick={handleProcessarCsv} disabled={!csvFile || processing} variant="default">
+              <FileSpreadsheet className="w-4 h-4 mr-2" />
+              {processing ? "Processando..." : "Processar CSV"}
+            </Button>
             <Button onClick={handleProcessar} disabled={!file || processing}>
               <Upload className="w-4 h-4 mr-2" />
               {processing ? "Processando com IA..." : "Processar com IA"}
@@ -710,6 +729,7 @@ export function ImportarHoleritesTab({ onImportComplete }: ImportarHoleritesTabP
               <ScanText className="w-4 h-4 mr-2" />
               {processing ? "Processando..." : "Processar via OCR (sem IA)"}
             </Button>
+
             {resultados.length > 0 && (
               <Button onClick={handleImportar} disabled={saving || totalSelecionados === 0} variant="default">
                 <Save className="w-4 h-4 mr-2" />
