@@ -161,13 +161,17 @@ export async function processarHoleritesCsv(
 
     const valor = toNumber(get("valor"));
     if (valor <= 0) continue;
+    const descricaoRaw = (get("descricao") || "").trim();
+    // Lançamentos informativos de "Contrato:" não entram no cálculo
+    if (/^contrato\s*:?/i.test(descricaoRaw)) continue;
     const tipoRaw = norm(get("tipo"));
     const isDesconto = tipoRaw.startsWith("desc") || tipoRaw.startsWith("deb") || tipoRaw === "d";
     const rub = {
       codigo: (get("codigo") || "").trim() || null,
-      descricao: (get("descricao") || "").trim() || (isDesconto ? "DESCONTO" : "PROVENTO"),
+      descricao: descricaoRaw || (isDesconto ? "DESCONTO" : "PROVENTO"),
       valor,
     };
+
     if (isDesconto) {
       h.descontos.push(rub);
       h.descontos_total += valor;
