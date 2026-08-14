@@ -87,6 +87,7 @@ export function ImportarHoleritesTab({ onImportComplete }: ImportarHoleritesTabP
   const [mesDefault, setMesDefault] = useState<number>(new Date().getMonth() + 1);
   const [anoDefault, setAnoDefault] = useState<number>(new Date().getFullYear());
   const [file, setFile] = useState<File | null>(null);
+  const [csvFile, setCsvFile] = useState<File | null>(null);
   const [processing, setProcessing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [resultados, setResultados] = useState<ExtractedHolerite[]>([]);
