@@ -312,6 +312,43 @@ export function ImportarHoleritesTab({ onImportComplete }: ImportarHoleritesTabP
     }
   }
 
+  async function handleProcessarCsv() {
+    if (!csvFile) {
+      toast.error("Selecione um arquivo CSV primeiro");
+      return;
+    }
+    setProcessing(true);
+    setResultados([]);
+    setJobStatus("processando");
+    setJobProgress(2);
+    setJobElapsed(0);
+    setJobError("");
+    setJobMessage("Lendo CSV...");
+    try {
+      const hols = await processarHoleritesCsv(
+        csvFile,
+        { mes: mesDefault, ano: anoDefault, empresa_id: empresaDefault || null },
+        (p) => {
+          const base = p.total > 0 ? (p.pagina / p.total) * 95 : 0;
+          setJobProgress(Math.max(2, Math.min(98, Math.round(base))));
+          setJobMessage(p.msg);
+        }
+      );
+      const enriched = hols.map((h: any) => ({ ...h, selecionado: h.status === "ok" }));
+      setResultados(enriched as any);
+      setJobStatus("concluido");
+      setJobProgress(100);
+      setJobMessage(`${enriched.length} holerite(s) montado(s) do CSV`);
+      toast.success(`${enriched.length} holerite(s) montado(s) a partir do CSV`);
+    } catch (e: any) {
+      console.error(e);
+      setJobStatus("erro");
+      setJobError(e?.message || "Erro ao ler CSV");
+      toast.error(e?.message || "Erro ao ler CSV");
+    } finally {
+      setProcessing(false);
+    }
+  }
 
 
   async function handleImportar() {
