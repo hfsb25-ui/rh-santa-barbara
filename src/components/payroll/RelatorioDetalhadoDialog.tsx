@@ -18,6 +18,7 @@ interface Pagamento {
   descontos: number;
   valor_liquido: number;
   observacoes: string | null;
+  tipo_folha?: string | null;
   mes: number;
   ano: number;
   employees: {
