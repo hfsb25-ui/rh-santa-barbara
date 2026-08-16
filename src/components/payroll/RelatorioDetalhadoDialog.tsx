@@ -18,6 +18,7 @@ interface Pagamento {
   descontos: number;
   valor_liquido: number;
   observacoes: string | null;
+  tipo_folha?: string | null;
   mes: number;
   ano: number;
   employees: {
@@ -585,12 +586,13 @@ const RelatorioDetalhadoDialog = ({
               yPosition += 8;
             }
 
-            // Valor em mãos
+            // Holerite principal => "VALOR EM CONTA"; holerite de diferença => "VALOR EM MÃOS"
+            const rotuloValor = pag.tipo_folha === "diferenca" ? "VALOR EM MÃOS" : "VALOR EM CONTA";
             doc.setFillColor(34, 139, 34);
             doc.rect(20, yPosition - 3, pageWidth - 40, 8, "F");
             doc.setTextColor(255, 255, 255);
             doc.setFontSize(10);
-            doc.text(`VALOR EM MÃOS: ${formatCurrency(pag.valor_liquido)}`, pageWidth / 2, yPosition + 2, { align: "center" });
+            doc.text(`${rotuloValor}: ${formatCurrency(pag.valor_liquido)}`, pageWidth / 2, yPosition + 2, { align: "center" });
             doc.setTextColor(0, 0, 0);
             yPosition += 12;
 
