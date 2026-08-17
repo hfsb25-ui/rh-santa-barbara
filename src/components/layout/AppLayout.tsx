@@ -24,7 +24,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
   const [selectedEmpresa, setSelectedEmpresa] = useState<string>("all");
   const [empresas, setEmpresas] = useState<Array<{ id: string; nome: string; logo_url?: string }>>([]);
   const [companyLogo, setCompanyLogo] = useState<string | null>(null);
-  const { isLocked, unlock } = useInactivityLock(5 * 60 * 1000);
+  const { isLocked, unlock } = useInactivityLock(15 * 60 * 1000);
   const { role: userRole, allowedModules, loading: permLoading } = useUserPermissions(user?.id);
   const loading = !user || permLoading;
 
