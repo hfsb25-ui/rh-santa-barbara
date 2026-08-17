@@ -208,11 +208,8 @@ const RelatorioDetalhadoDialog = ({
       const totalFuncionarios = pagamentosOrdenados.length;
       const totalBruto = pagamentosOrdenados.reduce((sum, p) => sum + p.valor_bruto, 0);
 
-      // Códigos fixos para os totais da capa
-      const CODIGO_EM_CONTA = "3503";
-      const CODIGO_VALE = "687";
+      // Códigos fixos para o total de descontos da capa
       const CODIGOS_DESCONTOS_CAPA = ["4004", "687", "3504", "3506"];
-      const CODIGOS_DESCONTOS_SEM_VALE = ["4004", "3504", "3506"];
 
       // Soma os itens de um pagamento cujo código está na lista informada
       const somarItensPorCodigo = (p: Pagamento, codigos: string[]) => {
@@ -222,34 +219,26 @@ const RelatorioDetalhadoDialog = ({
           .reduce((sum, i) => sum + (i.valor || 0), 0);
       };
 
-      // Valor em Conta (código 3503)
-      const totalEmConta = pagamentosOrdenados.reduce(
-        (sum, p) => sum + somarItensPorCodigo(p, [CODIGO_EM_CONTA]), 0
-      );
+      // Valor em Conta = soma dos valor_liquido dos holerites principais (tipo_folha !== "diferenca")
+      const totalEmConta = pagamentosOrdenados
+        .filter(p => p.tipo_folha !== "diferenca")
+        .reduce((sum, p) => sum + (p.valor_liquido || 0), 0);
 
-      // Vales (código 687)
-      const totalVales = pagamentosOrdenados.reduce(
-        (sum, p) => sum + somarItensPorCodigo(p, [CODIGO_VALE]), 0
-      );
+      // Valor em Mãos = soma dos valor_liquido dos holerites de diferença (tipo_folha === "diferenca")
+      const totalEmMaos = pagamentosOrdenados
+        .filter(p => p.tipo_folha === "diferenca")
+        .reduce((sum, p) => sum + (p.valor_liquido || 0), 0);
 
       // Total de descontos — somente variáveis 4004, 687, 3504, 3506
       const totalDescontosCapa = pagamentosOrdenados.reduce(
         (sum, p) => sum + somarItensPorCodigo(p, CODIGOS_DESCONTOS_CAPA), 0
       );
 
-      // Descontos sem o vale (para calcular valor em mãos)
-      const totalDescontosSemVale = pagamentosOrdenados.reduce(
-        (sum, p) => sum + somarItensPorCodigo(p, CODIGOS_DESCONTOS_SEM_VALE), 0
-      );
-
-      // Valor em Mãos = Bruto - Valor em Conta - Vales - Descontos(4004, 3504, 3506)
-      const totalEmMaos = totalBruto - totalEmConta - totalVales - totalDescontosSemVale;
-
-      // Valor total líquido = Valor em Conta + Vales + Valor em Mãos
-      const totalLiquido = totalEmConta + totalVales + totalEmMaos;
+      // Valor total líquido = Valor em Conta + Valor em Mãos
+      const totalLiquido = totalEmConta + totalEmMaos;
 
       doc.setFillColor(240, 240, 240);
-      doc.roundedRect(30, yPosition, pageWidth - 60, 78, 3, 3, "F");
+      doc.roundedRect(30, yPosition, pageWidth - 60, 68, 3, 3, "F");
 
       doc.setFontSize(12);
       doc.setFont("helvetica", "bold");
