@@ -207,24 +207,49 @@ const RelatorioDetalhadoDialog = ({
       // Totais na capa
       const totalFuncionarios = pagamentosOrdenados.length;
       const totalBruto = pagamentosOrdenados.reduce((sum, p) => sum + p.valor_bruto, 0);
-      
-      // Calcular total em conta somando os valores da variável "Valor em Conta" de cada funcionário
-      const calcularValorEmConta = (p: Pagamento) => {
+
+      // Códigos fixos para os totais da capa
+      const CODIGO_EM_CONTA = "3503";
+      const CODIGO_VALE = "687";
+      const CODIGOS_DESCONTOS_CAPA = ["4004", "687", "3504", "3506"];
+      const CODIGOS_DESCONTOS_SEM_VALE = ["4004", "3504", "3506"];
+
+      // Soma os itens de um pagamento cujo código está na lista informada
+      const somarItensPorCodigo = (p: Pagamento, codigos: string[]) => {
         const itens = p.folha_pagamento_itens || [];
-        const itemEmConta = itens.find(i => 
-          i.variaveis_folha?.nome?.toLowerCase().includes("valor em conta") ||
-          i.variaveis_folha?.codigo === "3503"
-        );
-        return itemEmConta?.valor || 0;
+        return itens
+          .filter(i => i.variaveis_folha?.codigo && codigos.includes(i.variaveis_folha.codigo))
+          .reduce((sum, i) => sum + (i.valor || 0), 0);
       };
-      
-      const totalEmConta = pagamentosOrdenados.reduce((sum, p) => sum + calcularValorEmConta(p), 0);
-      
-      // Total em Mãos = Valor Bruto - Valor em Conta
-      const totalEmMaos = totalBruto - totalEmConta;
+
+      // Valor em Conta (código 3503)
+      const totalEmConta = pagamentosOrdenados.reduce(
+        (sum, p) => sum + somarItensPorCodigo(p, [CODIGO_EM_CONTA]), 0
+      );
+
+      // Vales (código 687)
+      const totalVales = pagamentosOrdenados.reduce(
+        (sum, p) => sum + somarItensPorCodigo(p, [CODIGO_VALE]), 0
+      );
+
+      // Total de descontos — somente variáveis 4004, 687, 3504, 3506
+      const totalDescontosCapa = pagamentosOrdenados.reduce(
+        (sum, p) => sum + somarItensPorCodigo(p, CODIGOS_DESCONTOS_CAPA), 0
+      );
+
+      // Descontos sem o vale (para calcular valor em mãos)
+      const totalDescontosSemVale = pagamentosOrdenados.reduce(
+        (sum, p) => sum + somarItensPorCodigo(p, CODIGOS_DESCONTOS_SEM_VALE), 0
+      );
+
+      // Valor em Mãos = Bruto - Valor em Conta - Vales - Descontos(4004, 3504, 3506)
+      const totalEmMaos = totalBruto - totalEmConta - totalVales - totalDescontosSemVale;
+
+      // Valor total líquido = Valor em Conta + Vales + Valor em Mãos
+      const totalLiquido = totalEmConta + totalVales + totalEmMaos;
 
       doc.setFillColor(240, 240, 240);
-      doc.roundedRect(30, yPosition, pageWidth - 60, 50, 3, 3, "F");
+      doc.roundedRect(30, yPosition, pageWidth - 60, 78, 3, 3, "F");
 
       doc.setFontSize(12);
       doc.setFont("helvetica", "bold");
@@ -233,10 +258,18 @@ const RelatorioDetalhadoDialog = ({
       yPosition += 10;
       doc.text(`Total Bruto: ${formatCurrency(totalBruto)}`, pageWidth / 2, yPosition, { align: "center" });
       yPosition += 10;
-      doc.text(`Total em Conta: ${formatCurrency(totalEmConta)}`, pageWidth / 2, yPosition, { align: "center" });
+      doc.setTextColor(0, 0, 120);
+      doc.text(`Valor Total Líquido: ${formatCurrency(totalLiquido)}`, pageWidth / 2, yPosition, { align: "center" });
+      doc.setTextColor(0, 0, 0);
+      yPosition += 10;
+      doc.text(`Valor Total em Conta: ${formatCurrency(totalEmConta)}`, pageWidth / 2, yPosition, { align: "center" });
       yPosition += 10;
       doc.setTextColor(0, 100, 0);
-      doc.text(`Total em Mãos: ${formatCurrency(totalEmMaos)}`, pageWidth / 2, yPosition, { align: "center" });
+      doc.text(`Valor Total em Mãos: ${formatCurrency(totalEmMaos)}`, pageWidth / 2, yPosition, { align: "center" });
+      doc.setTextColor(0, 0, 0);
+      yPosition += 10;
+      doc.setTextColor(150, 0, 0);
+      doc.text(`Total de Descontos: ${formatCurrency(totalDescontosCapa)}`, pageWidth / 2, yPosition, { align: "center" });
       doc.setTextColor(0, 0, 0);
 
       // === PÁGINA 2: SUMÁRIO EXECUTIVO ===
