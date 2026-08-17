@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 
-export function useInactivityLock(timeoutMs = 5 * 60 * 1000) {
+export function useInactivityLock(timeoutMs = 15 * 60 * 1000) {
   const [isLocked, setIsLocked] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
