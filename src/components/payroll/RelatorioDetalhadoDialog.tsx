@@ -110,29 +110,36 @@ const RelatorioDetalhadoDialog = ({
         .select("id, cpf, data_admissao")
         .in("id", employeeIds);
 
-      // Fetch company logo
-      const { data: empresaData } = await supabase
-        .from("empresas")
-        .select("logo_url, cnpj")
-        .eq("id", empresaId)
-        .maybeSingle();
+      // Fetch company logo (somente quando uma empresa específica está selecionada)
+      const empresaEspecifica = empresaId && empresaId !== "all";
+      let empresaData: { logo_url: string | null; cnpj: string | null } | null = null;
+      if (empresaEspecifica) {
+        const { data } = await supabase
+          .from("empresas")
+          .select("logo_url, cnpj")
+          .eq("id", empresaId)
+          .maybeSingle();
+        empresaData = (data as any) || null;
+      }
 
       // Fetch previous month data if needed
       let pagamentosAnteriores: Pagamento[] = [];
       if (incluirComparativo && tipoRelatorio === "completo") {
         const mesAnterior = getMesAnterior();
-        const { data } = await supabase
+        let query = supabase
           .from("folha_pagamento")
           .select(`
-            id, employee_id, valor_bruto, desconto, descontos, valor_liquido, observacoes, mes, ano,
+            id, employee_id, valor_bruto, desconto, descontos, valor_liquido, observacoes, tipo_folha, mes, ano,
             employees (nome_completo, cargo, tipo_contrato, setor)
           `)
-          .eq("empresa_id", empresaId)
           .eq("mes", mesAnterior.mes)
           .eq("ano", mesAnterior.ano);
-        
+        if (empresaEspecifica) query = query.eq("empresa_id", empresaId);
+        const { data } = await query;
+
         pagamentosAnteriores = (data || []) as any;
       }
+
 
       // Merge employee data
       const pagamentosComDados = pagamentos.map(p => {
