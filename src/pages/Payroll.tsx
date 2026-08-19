@@ -1248,7 +1248,7 @@ const Payroll = () => {
           onOpenChange={setShowRelatorioDialog}
           pagamentos={pagamentos}
           empresaId={selectedEmpresa}
-          empresaNome={empresas.find(e => e.id === selectedEmpresa)?.nome || ""}
+          empresaNome={empresas.find(e => e.id === selectedEmpresa)?.nome || "Todas as Empresas"}
           mes={mes}
           ano={ano}
         />
