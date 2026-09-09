@@ -157,14 +157,48 @@ const LancamentoFolhaForm = ({ employees, empresaId, mes, ano, tipoFolha, onSucc
   };
 
   const initializeLancamentos = async () => {
-    const { data: variaveisFixas } = await supabase
-      .from("variaveis_fixas_funcionario")
-      .select("employee_id, variavel_id, valor")
-      .eq("ativo", true)
-      .in("employee_id", employees.map(e => e.id));
+    const employeeIds = employees.map(e => e.id);
+
+    const [{ data: variaveisFixas }, { data: pagamentosExistentes }] = await Promise.all([
+      supabase
+        .from("variaveis_fixas_funcionario")
+        .select("employee_id, variavel_id, valor")
+        .eq("ativo", true)
+        .in("employee_id", employeeIds),
+      supabase
+        .from("folha_pagamento")
+        .select("employee_id, valor_bruto, observacoes, folha_pagamento_itens(variavel_id, valor, variaveis_folha(tipo))")
+        .eq("mes", mes)
+        .eq("ano", ano)
+        .eq("tipo_folha", tipoFolha)
+        .in("employee_id", employeeIds),
+    ]);
+
+    // Lançamentos já existentes (ex.: importados) para o mês/ano/tipo selecionado
+    const porFuncionario = new Map<string, any>();
+    (pagamentosExistentes || []).forEach((p: any) => {
+      if (!porFuncionario.has(p.employee_id)) porFuncionario.set(p.employee_id, p);
+    });
 
     const initial: Record<string, LancamentoData> = {};
     employees.forEach(emp => {
+      const existente = porFuncionario.get(emp.id);
+      if (existente) {
+        const itens: Record<string, number> = {};
+        let somaProventos = 0;
+        (existente.folha_pagamento_itens || []).forEach((i: any) => {
+          itens[i.variavel_id] = Number(i.valor);
+          if (i.variaveis_folha?.tipo === "provento") somaProventos += Number(i.valor);
+        });
+        const base = Math.max(0, Number(existente.valor_bruto || 0) - somaProventos);
+        initial[emp.id] = {
+          salario_base: base,
+          observacoes: existente.observacoes || "",
+          itens,
+        };
+        return;
+      }
+
       const fixedItems: Record<string, number> = {};
       variaveisFixas?.filter(vf => vf.employee_id === emp.id).forEach(vf => {
         fixedItems[vf.variavel_id] = Number(vf.valor);
