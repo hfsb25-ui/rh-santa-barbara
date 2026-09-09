@@ -211,41 +211,28 @@ const RelatorioDetalhadoDialog = ({
       doc.text(`Gerado em: ${dataGeracao}`, pageWidth / 2, yPosition, { align: "center" });
       yPosition += 20;
 
-      // Totais na capa
+      // Totais na capa (formato original)
       const totalFuncionarios = pagamentosOrdenados.length;
       const totalBruto = pagamentosOrdenados.reduce((sum, p) => sum + p.valor_bruto, 0);
 
-      // Códigos fixos para o total de descontos da capa
-      const CODIGOS_DESCONTOS_CAPA = ["4004", "687", "3504", "3506"];
-
-      // Soma os itens de um pagamento cujo código está na lista informada
-      const somarItensPorCodigo = (p: Pagamento, codigos: string[]) => {
+      // Valor em Conta = soma dos itens da variável "Valor em Conta" (código 3503)
+      const somarValorEmConta = (p: Pagamento) => {
         const itens = p.folha_pagamento_itens || [];
         return itens
-          .filter(i => i.variaveis_folha?.codigo && codigos.includes(i.variaveis_folha.codigo))
+          .filter(
+            i =>
+              i.variaveis_folha?.codigo === "3503" ||
+              i.variaveis_folha?.nome?.toLowerCase().includes("valor em conta")
+          )
           .reduce((sum, i) => sum + (i.valor || 0), 0);
       };
 
-      // Valor em Conta = soma dos valor_liquido dos holerites principais (tipo_folha !== "diferenca")
-      const totalEmConta = pagamentosOrdenados
-        .filter(p => p.tipo_folha !== "diferenca")
-        .reduce((sum, p) => sum + (p.valor_liquido || 0), 0);
-
-      // Valor em Mãos = soma dos valor_liquido dos holerites de diferença (tipo_folha === "diferenca")
-      const totalEmMaos = pagamentosOrdenados
-        .filter(p => p.tipo_folha === "diferenca")
-        .reduce((sum, p) => sum + (p.valor_liquido || 0), 0);
-
-      // Total de descontos — somente variáveis 4004, 687, 3504, 3506
-      const totalDescontosCapa = pagamentosOrdenados.reduce(
-        (sum, p) => sum + somarItensPorCodigo(p, CODIGOS_DESCONTOS_CAPA), 0
-      );
-
-      // Valor total líquido = Valor em Conta + Valor em Mãos
-      const totalLiquido = totalEmConta + totalEmMaos;
+      const totalEmConta = pagamentosOrdenados.reduce((sum, p) => sum + somarValorEmConta(p), 0);
+      // Valor em Mãos = Total Bruto - Valor em Conta
+      const totalEmMaos = totalBruto - totalEmConta;
 
       doc.setFillColor(240, 240, 240);
-      doc.roundedRect(30, yPosition, pageWidth - 60, 68, 3, 3, "F");
+      doc.roundedRect(30, yPosition, pageWidth - 60, 48, 3, 3, "F");
 
       doc.setFontSize(12);
       doc.setFont("helvetica", "bold");
@@ -255,17 +242,11 @@ const RelatorioDetalhadoDialog = ({
       doc.text(`Total Bruto: ${formatCurrency(totalBruto)}`, pageWidth / 2, yPosition, { align: "center" });
       yPosition += 10;
       doc.setTextColor(0, 0, 120);
-      doc.text(`Valor Total Líquido: ${formatCurrency(totalLiquido)}`, pageWidth / 2, yPosition, { align: "center" });
+      doc.text(`Total em Conta: ${formatCurrency(totalEmConta)}`, pageWidth / 2, yPosition, { align: "center" });
       doc.setTextColor(0, 0, 0);
-      yPosition += 10;
-      doc.text(`Valor Total em Conta: ${formatCurrency(totalEmConta)}`, pageWidth / 2, yPosition, { align: "center" });
       yPosition += 10;
       doc.setTextColor(0, 100, 0);
-      doc.text(`Valor Total em Mãos: ${formatCurrency(totalEmMaos)}`, pageWidth / 2, yPosition, { align: "center" });
-      doc.setTextColor(0, 0, 0);
-      yPosition += 10;
-      doc.setTextColor(150, 0, 0);
-      doc.text(`Total de Descontos: ${formatCurrency(totalDescontosCapa)}`, pageWidth / 2, yPosition, { align: "center" });
+      doc.text(`Total em Mãos: ${formatCurrency(totalEmMaos)}`, pageWidth / 2, yPosition, { align: "center" });
       doc.setTextColor(0, 0, 0);
 
       // === PÁGINA 2: SUMÁRIO EXECUTIVO ===
