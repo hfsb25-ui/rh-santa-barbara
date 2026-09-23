@@ -54,7 +54,9 @@ Deno.serve(async (req) => {
       return jsonResponse({ error: "Apenas gestores podem exportar o banco de dados" }, 403);
     }
 
-    const { data: tables, error: tablesError } = await adminClient.rpc("export_sql_tables");
+    const { data: tables, error: tablesError } = await adminClient.rpc("export_sql_tables", {
+      _requesting_user_id: user.id,
+    });
     if (tablesError) throw tablesError;
 
     const generatedAt = new Date().toISOString();
@@ -81,6 +83,7 @@ Deno.serve(async (req) => {
           _table_name: table.table_name,
           _offset: offset,
           _limit: chunkSize,
+          _requesting_user_id: user.id,
         });
 
         if (rowsError) throw rowsError;
