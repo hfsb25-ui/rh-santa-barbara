@@ -4535,11 +4535,16 @@ export type Database = {
     }
     Functions: {
       export_sql_table_chunk: {
-        Args: { _limit?: number; _offset?: number; _table_name: string }
+        Args: {
+          _limit?: number
+          _offset?: number
+          _requesting_user_id?: string
+          _table_name: string
+        }
         Returns: string[]
       }
       export_sql_tables: {
-        Args: never
+        Args: { _requesting_user_id: string }
         Returns: {
           table_name: string
           total_rows: number
