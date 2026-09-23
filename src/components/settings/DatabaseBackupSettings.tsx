@@ -15,7 +15,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Download, Upload, Database, AlertTriangle, CheckCircle, XCircle } from "lucide-react";
+import { Download, Upload, Database, AlertTriangle, CheckCircle, XCircle, FileCode2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -28,6 +28,7 @@ interface ImportResult {
 
 export function DatabaseBackupSettings() {
   const [isExporting, setIsExporting] = useState(false);
+  const [isExportingSql, setIsExportingSql] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
   const [importMode, setImportMode] = useState<"merge" | "replace">("merge");
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
@@ -81,6 +82,47 @@ export function DatabaseBackupSettings() {
       toast.error(`Erro ao exportar: ${error.message}`);
     } finally {
       setIsExporting(false);
+      setProgress(0);
+    }
+  };
+
+  const handleExportSql = async () => {
+    setIsExportingSql(true);
+    setProgress(10);
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast.error("Você precisa estar logado para exportar");
+        return;
+      }
+
+      setProgress(30);
+      const { data, error } = await supabase.functions.invoke("export-database-sql", {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
+
+      if (error) throw error;
+      if (typeof data !== "string") throw new Error("O arquivo SQL não foi gerado corretamente");
+
+      setProgress(90);
+      const blob = new Blob([data], { type: "application/sql;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `backup-rh-${format(new Date(), "yyyy-MM-dd-HHmm")}.sql`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      setProgress(100);
+      toast.success("Arquivo SQL exportado com sucesso!");
+    } catch (error: any) {
+      console.error("Erro ao exportar SQL:", error);
+      toast.error(`Erro ao exportar SQL: ${error.message}`);
+    } finally {
+      setIsExportingSql(false);
       setProgress(0);
     }
   };
@@ -197,23 +239,41 @@ export function DatabaseBackupSettings() {
             </ul>
           </div>
 
-          {isExporting && (
+          {(isExporting || isExportingSql) && (
             <div className="space-y-2">
               <Progress value={progress} />
               <p className="text-sm text-muted-foreground text-center">
-                Exportando dados... {progress}%
+                {isExportingSql ? "Preparando arquivo SQL" : "Exportando dados"}... {progress}%
               </p>
             </div>
           )}
 
-          <Button 
-            onClick={handleExport} 
-            disabled={isExporting}
-            className="w-full"
-          >
-            <Download className="w-4 h-4 mr-2" />
-            {isExporting ? "Exportando..." : "Exportar Backup"}
-          </Button>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Button
+              onClick={handleExport}
+              disabled={isExporting || isExportingSql}
+              className="w-full"
+            >
+              <Download className="w-4 h-4 mr-2" />
+              {isExporting ? "Exportando..." : "Exportar Backup JSON"}
+            </Button>
+            <Button
+              onClick={handleExportSql}
+              disabled={isExporting || isExportingSql}
+              variant="outline"
+              className="w-full"
+            >
+              <FileCode2 className="w-4 h-4 mr-2" />
+              {isExportingSql ? "Gerando SQL..." : "Exportar em SQL"}
+            </Button>
+          </div>
+
+          <div className="flex items-start gap-2 rounded-md border bg-muted/40 p-3 text-xs text-muted-foreground">
+            <Database className="mt-0.5 h-4 w-4 shrink-0" />
+            <p>
+              O SQL leva os dados das tabelas para migração. Usuários de acesso, arquivos enviados e chaves secretas não são incluídos.
+            </p>
+          </div>
         </CardContent>
       </Card>
 
