@@ -1,49 +1,19 @@
-## Reestruturação do Controle Financeiro
+# Exportação SQL pelo próprio sistema
 
-Adicionar visão completa de variáveis de pagamento (Bruto, INSS, FGTS, IRRF, Líquido) e separação Holerite Principal vs Diferença em todo o módulo.
+## Objetivo
+Adicionar em **Configurações → Backup** um botão para o gestor baixar os dados do sistema em um arquivo `.sql`, pronto para carregar em outro projeto PostgreSQL/Supabase depois que a estrutura do sistema estiver criada.
 
-### 1. Hook `useFinanceiroData.ts`
-Estender o agregador para somar, por período, valores de itens da folha identificados pelo nome da variável:
-- **Bruto** — `valor_bruto` da folha
-- **INSS** — itens cujo `variaveis_folha.nome` contém "inss"
-- **FGTS** — itens cujo nome contém "fgts"
-- **IRRF** — itens cujo nome contém "irrf" ou "imposto de renda"
-- **Líquido** — `valor_liquido`
-- **Total Holerite Diferença** — soma de `valor_liquido` onde `tipo = 'diferenca'`
-- **Total Holerite Principal** — soma de `valor_liquido` onde `tipo != 'diferenca'`
+## Implementação
+1. Criar uma função segura no banco que percorra as tabelas públicas e transforme todos os registros em comandos SQL, sem depender de uma lista manual de tabelas.
+2. Restringir a exportação ao perfil **gestor**, mantendo usuários comuns e administradores parciais sem acesso.
+3. Criar uma função de exportação que entregue o arquivo em partes para evitar falhas por volume e inclua transação, tratamento de chaves estrangeiras e preservação dos valores originais.
+4. Adicionar o botão **Exportar em SQL** na área de Backup, com progresso, mensagens de erro claras e download automático com data e hora.
+5. Manter as opções atuais de backup e importação JSON sem alterações.
 
-Buscar `folha_pagamento` já com `folha_pagamento_itens(valor, variaveis_folha(nome))` e calcular os encargos em memória.
+## Limite da exportação
+O arquivo SQL conterá todos os dados das tabelas públicas do sistema. A estrutura do banco, usuários de acesso, arquivos armazenados e segredos não serão incluídos; a estrutura deve existir no destino antes da importação.
 
-Novos campos em `KPIsData`:
-```ts
-totalBruto, totalInss, totalFgts, totalIrrf, totalLiquido,
-totalDiferenca, totalPrincipal, quantidadeDiferenca
-```
-
-Estender também `HistoricoData` com `inss`, `fgts`, `irrf` para o gráfico de evolução.
-
-### 2. `FinanceiroKPIs.tsx`
-Reescrever os cards em grid responsivo destacando:
-- Valor Bruto (verde) · INSS (âmbar) · FGTS (azul) · IRRF (roxo) · Líquido (indigo)
-- Holerite Principal vs Holerite Diferença (dois cards lado a lado, com contagem)
-- Manter Total Funcionários e Variação Mensal abaixo
-
-### 3. `HistoricoMensal.tsx`
-Adicionar linhas/áreas para INSS e FGTS no gráfico existente (toggle), mantendo Bruto/Líquido/Descontos.
-
-### 4. Filtros
-Mantidos como estão (empresa, período, setor, contrato, tipo folha). O filtro `tipoFolha` continua restringindo entre principal/diferença/todos.
-
-### 5. Exportações PDF/Excel (`Financeiro.tsx`)
-Incluir as novas colunas (Bruto, INSS, FGTS, IRRF, Líquido, Diferença) no resumo exportado.
-
-### Identificação de variáveis
-Match case-insensitive por `ilike` no nome da variável. Robustez: se houver múltiplas variáveis com "inss" (ex.: INSS Empresa vs INSS Funcionário), somar todas marcadas como `tipo = 'desconto'` para INSS/IRRF, e todas (provento+desconto) para FGTS já que é encargo da empresa não descontado em folha — confirmar comportamento durante implementação consultando os dados reais.
-
-### Arquivos afetados
-- `src/components/financeiro/hooks/useFinanceiroData.ts` (extensão)
-- `src/components/financeiro/FinanceiroKPIs.tsx` (reescrita visual)
-- `src/components/financeiro/HistoricoMensal.tsx` (séries extras)
-- `src/pages/Financeiro.tsx` (export atualizado)
-
-Sem mudanças de banco de dados.
+## Validação
+- Confirmar que somente gestor consegue exportar.
+- Gerar o arquivo e verificar cabeçalho, tabelas, caracteres especiais, valores nulos e fechamento da transação.
+- Verificar a tela de Backup e o download no navegador.
