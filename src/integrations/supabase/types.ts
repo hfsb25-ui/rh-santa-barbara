@@ -4534,6 +4534,17 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      export_sql_table_chunk: {
+        Args: { _limit?: number; _offset?: number; _table_name: string }
+        Returns: string[]
+      }
+      export_sql_tables: {
+        Args: never
+        Returns: {
+          table_name: string
+          total_rows: number
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
