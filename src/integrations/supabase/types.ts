@@ -4534,6 +4534,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      export_sql_schema: {
+        Args: { _requesting_user_id: string }
+        Returns: string[]
+      }
       export_sql_table_chunk: {
         Args: {
           _limit?: number
