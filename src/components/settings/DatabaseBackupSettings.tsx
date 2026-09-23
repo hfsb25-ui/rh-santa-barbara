@@ -15,7 +15,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Download, Upload, Database, AlertTriangle, CheckCircle, XCircle, FileCode2 } from "lucide-react";
+import { Download, Upload, Database, AlertTriangle, CheckCircle, XCircle, FileCode2, Blocks } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -29,6 +29,7 @@ interface ImportResult {
 export function DatabaseBackupSettings() {
   const [isExporting, setIsExporting] = useState(false);
   const [isExportingSql, setIsExportingSql] = useState(false);
+  const [isExportingSchema, setIsExportingSchema] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
   const [importMode, setImportMode] = useState<"merge" | "replace">("merge");
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
@@ -127,6 +128,51 @@ export function DatabaseBackupSettings() {
       toast.error(`Erro ao exportar SQL: ${error.message}`);
     } finally {
       setIsExportingSql(false);
+      setProgress(0);
+    }
+  };
+
+  const handleExportSchema = async () => {
+    setIsExportingSchema(true);
+    setProgress(10);
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast.error("Você precisa estar logado para exportar");
+        return;
+      }
+
+      setProgress(30);
+      const { data, error } = await supabase.functions.invoke("export-database-schema", {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
+
+      if (error) throw error;
+
+      const sqlContent = data instanceof Blob ? await data.text() : data;
+      if (typeof sqlContent !== "string" || !sqlContent.includes("-- Fim da estrutura do banco de dados")) {
+        throw new Error("O arquivo da estrutura SQL não foi gerado corretamente");
+      }
+
+      setProgress(90);
+      const blob = new Blob([sqlContent], { type: "application/sql;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `estrutura-rh-${format(new Date(), "yyyy-MM-dd-HHmm")}.sql`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      setProgress(100);
+      toast.success("Estrutura SQL exportada com sucesso!");
+    } catch (error: any) {
+      console.error("Erro ao exportar estrutura SQL:", error);
+      toast.error(`Erro ao exportar estrutura SQL: ${error.message}`);
+    } finally {
+      setIsExportingSchema(false);
       setProgress(0);
     }
   };
@@ -243,19 +289,19 @@ export function DatabaseBackupSettings() {
             </ul>
           </div>
 
-          {(isExporting || isExportingSql) && (
+          {(isExporting || isExportingSql || isExportingSchema) && (
             <div className="space-y-2">
               <Progress value={progress} />
               <p className="text-sm text-muted-foreground text-center">
-                {isExportingSql ? "Preparando arquivo SQL" : "Exportando dados"}... {progress}%
+                {isExportingSchema ? "Preparando estrutura SQL" : isExportingSql ? "Preparando arquivo SQL" : "Exportando dados"}... {progress}%
               </p>
             </div>
           )}
 
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid gap-3 sm:grid-cols-3">
             <Button
               onClick={handleExport}
-              disabled={isExporting || isExportingSql}
+              disabled={isExporting || isExportingSql || isExportingSchema}
               className="w-full"
             >
               <Download className="w-4 h-4 mr-2" />
@@ -263,19 +309,28 @@ export function DatabaseBackupSettings() {
             </Button>
             <Button
               onClick={handleExportSql}
-              disabled={isExporting || isExportingSql}
+              disabled={isExporting || isExportingSql || isExportingSchema}
               variant="outline"
               className="w-full"
             >
               <FileCode2 className="w-4 h-4 mr-2" />
               {isExportingSql ? "Gerando SQL..." : "Exportar em SQL"}
             </Button>
+            <Button
+              onClick={handleExportSchema}
+              disabled={isExporting || isExportingSql || isExportingSchema}
+              variant="outline"
+              className="w-full"
+            >
+              <Blocks className="w-4 h-4 mr-2" />
+              {isExportingSchema ? "Gerando estrutura..." : "Exportar estrutura SQL"}
+            </Button>
           </div>
 
           <div className="flex items-start gap-2 rounded-md border bg-muted/40 p-3 text-xs text-muted-foreground">
             <Database className="mt-0.5 h-4 w-4 shrink-0" />
             <p>
-              O SQL leva os dados das tabelas para migração. Usuários de acesso, arquivos enviados e chaves secretas não são incluídos.
+              Exporte primeiro a estrutura e depois os dados para migrar. Usuários de acesso, arquivos enviados e chaves secretas não são incluídos.
             </p>
           </div>
         </CardContent>
