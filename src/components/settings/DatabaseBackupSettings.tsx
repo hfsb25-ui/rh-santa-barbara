@@ -103,10 +103,14 @@ export function DatabaseBackupSettings() {
       });
 
       if (error) throw error;
-      if (typeof data !== "string") throw new Error("O arquivo SQL não foi gerado corretamente");
+
+      const sqlContent = data instanceof Blob ? await data.text() : data;
+      if (typeof sqlContent !== "string" || !sqlContent.includes("BEGIN;")) {
+        throw new Error("O arquivo SQL não foi gerado corretamente");
+      }
 
       setProgress(90);
-      const blob = new Blob([data], { type: "application/sql;charset=utf-8" });
+      const blob = new Blob([sqlContent], { type: "application/sql;charset=utf-8" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
