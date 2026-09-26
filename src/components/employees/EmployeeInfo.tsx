@@ -150,6 +150,7 @@ const EmployeeInfo = ({ employee }: EmployeeInfoProps) => {
               <div className="md:col-span-2">
                 <InfoRow label="Nome Completo" value={employee.nome_completo} />
               </div>
+              <InfoRow label="Código do funcionário" value={employee.codigo_funcionario} />
               <InfoRow label="Data de Nascimento" value={formatDate(employee.data_nascimento)} />
               <InfoRow label="Nacionalidade" value={employee.nacionalidade} />
               <InfoRow label="Naturalidade - Estado" value={employee.naturalidade_estado} />

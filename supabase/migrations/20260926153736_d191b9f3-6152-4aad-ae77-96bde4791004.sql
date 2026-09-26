@@ -1,0 +1,1 @@
+ALTER TABLE public.employees ADD COLUMN codigo_funcionario text; CREATE UNIQUE INDEX employees_empresa_codigo_funcionario_unique ON public.employees (empresa_id, codigo_funcionario) WHERE codigo_funcionario IS NOT NULL;
