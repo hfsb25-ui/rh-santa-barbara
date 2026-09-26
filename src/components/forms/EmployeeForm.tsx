@@ -33,6 +33,7 @@ const EmployeeForm = ({ employeeId, initialData, onSaved, onCancel }: EmployeeFo
   // Estado controlado para todos os campos do formulário
   const [formValues, setFormValues] = useState<Record<string, string>>({
     nome_completo: initialData?.nome_completo || "",
+    codigo_funcionario: initialData?.codigo_funcionario || "",
     data_nascimento: initialData?.data_nascimento || "",
     nacionalidade: initialData?.nacionalidade || "",
     naturalidade_estado: initialData?.naturalidade_estado || "",
@@ -307,6 +308,7 @@ const EmployeeForm = ({ employeeId, initialData, onSaved, onCancel }: EmployeeFo
     
     const data = {
       nome_completo: formValues.nome_completo,
+      codigo_funcionario: formValues.codigo_funcionario.trim() || null,
       cargo: formValues.cargo,
       setor: formValues.setor || null,
       empresa_id: formValues.empresa_id || null,

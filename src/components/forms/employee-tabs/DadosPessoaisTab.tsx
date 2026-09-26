@@ -110,6 +110,17 @@ const DadosPessoaisTab = ({
         </div>
 
         <div>
+          <Label htmlFor="codigo_funcionario">Código do funcionário</Label>
+          <Input
+            id="codigo_funcionario"
+            name="codigo_funcionario"
+            value={formValues.codigo_funcionario || ""}
+            onChange={(e) => onFormChange("codigo_funcionario", e.target.value)}
+            placeholder="Ex.: 1004"
+          />
+        </div>
+
+        <div>
           <Label>Data de Nascimento</Label>
           <Input 
             name="data_nascimento" 
