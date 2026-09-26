@@ -1330,6 +1330,7 @@ export type Database = {
           carteira_trabalho: string | null
           cep: string | null
           cidade: string | null
+          codigo_funcionario: string | null
           cpf: string | null
           created_at: string | null
           data_admissao: string | null
@@ -1372,6 +1373,7 @@ export type Database = {
           carteira_trabalho?: string | null
           cep?: string | null
           cidade?: string | null
+          codigo_funcionario?: string | null
           cpf?: string | null
           created_at?: string | null
           data_admissao?: string | null
@@ -1414,6 +1416,7 @@ export type Database = {
           carteira_trabalho?: string | null
           cep?: string | null
           cidade?: string | null
+          codigo_funcionario?: string | null
           cpf?: string | null
           created_at?: string | null
           data_admissao?: string | null
