@@ -233,7 +233,15 @@ Deno.serve(async (req) => {
     }
 
     return new Response(
-      JSON.stringify({ criados, sobrescritos, liberados, pulados, erros }),
+      JSON.stringify({
+        criados,
+        sobrescritos,
+        vinculados: criados + sobrescritos,
+        liberados,
+        pulados,
+        total_erros: erros.length,
+        erros,
+      }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (e: any) {

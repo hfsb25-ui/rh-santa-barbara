@@ -381,13 +381,15 @@ export function ImportarHoleritesTab({ onImportComplete }: ImportarHoleritesTabP
         throw new Error(realMsg);
       }
       if (data?.error) throw new Error(data.error);
+      const vinculados = data.vinculados ?? ((data.criados || 0) + (data.sobrescritos || 0));
       const liberados = data.liberados || 0;
+      const totalErros = data.total_erros ?? data.erros?.length ?? 0;
       toast.success([
-        `${data.criados} criado(s)`,
-        `${data.sobrescritos || 0} sobrescrito(s)`,
-        liberarParaAssinatura ? `${liberados} liberado(s) para assinatura` : null,
-        `${data.pulados} pulado(s)`,
-      ].filter(Boolean).join(", "));
+        `${vinculados} vinculado(s)`,
+        liberarParaAssinatura ? `${liberados} liberado(s)` : `${vinculados} salvo(s) como rascunho`,
+        `${data.pulados || 0} ignorado(s)`,
+        `${totalErros} erro(s)`,
+      ].join(", "));
       if (data.erros?.length) {
         console.warn("Erros:", data.erros);
         toast.warning(`Avisos: ${data.erros.slice(0, 3).join(" | ")}`);
