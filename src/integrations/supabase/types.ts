@@ -2681,6 +2681,118 @@ export type Database = {
           },
         ]
       }
+      holerite_documentos: {
+        Row: {
+          ano: number
+          arquivo_nome: string
+          arquivo_path: string
+          assinatura_imagem_path: string | null
+          created_at: string
+          created_by: string | null
+          data_assinatura: string | null
+          data_visualizacao: string | null
+          employee_id: string
+          empresa_id: string | null
+          geo_consentimento: boolean
+          geo_latitude: number | null
+          geo_longitude: number | null
+          hash_assinatura: string | null
+          hash_documento: string | null
+          id: string
+          ip_publico: string | null
+          mes: number
+          navegador: string | null
+          pdf_assinado_path: string | null
+          protocolo: string | null
+          selfie_path: string | null
+          sistema_operacional: string | null
+          status: string
+          tipo_folha: string
+          updated_at: string
+          user_agent: string | null
+        }
+        Insert: {
+          ano: number
+          arquivo_nome: string
+          arquivo_path: string
+          assinatura_imagem_path?: string | null
+          created_at?: string
+          created_by?: string | null
+          data_assinatura?: string | null
+          data_visualizacao?: string | null
+          employee_id: string
+          empresa_id?: string | null
+          geo_consentimento?: boolean
+          geo_latitude?: number | null
+          geo_longitude?: number | null
+          hash_assinatura?: string | null
+          hash_documento?: string | null
+          id?: string
+          ip_publico?: string | null
+          mes: number
+          navegador?: string | null
+          pdf_assinado_path?: string | null
+          protocolo?: string | null
+          selfie_path?: string | null
+          sistema_operacional?: string | null
+          status?: string
+          tipo_folha?: string
+          updated_at?: string
+          user_agent?: string | null
+        }
+        Update: {
+          ano?: number
+          arquivo_nome?: string
+          arquivo_path?: string
+          assinatura_imagem_path?: string | null
+          created_at?: string
+          created_by?: string | null
+          data_assinatura?: string | null
+          data_visualizacao?: string | null
+          employee_id?: string
+          empresa_id?: string | null
+          geo_consentimento?: boolean
+          geo_latitude?: number | null
+          geo_longitude?: number | null
+          hash_assinatura?: string | null
+          hash_documento?: string | null
+          id?: string
+          ip_publico?: string | null
+          mes?: number
+          navegador?: string | null
+          pdf_assinado_path?: string | null
+          protocolo?: string | null
+          selfie_path?: string | null
+          sistema_operacional?: string | null
+          status?: string
+          tipo_folha?: string
+          updated_at?: string
+          user_agent?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "holerite_documentos_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "holerite_documentos_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "holerite_documentos_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       holerite_eventos_auditoria: {
         Row: {
           assinatura_id: string
