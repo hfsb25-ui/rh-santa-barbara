@@ -1,4 +1,4 @@
-// Edge function: persiste holerites extraídos como RASCUNHO
+// Edge function: persiste holerites extraídos como rascunho ou liberados para assinatura
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 const corsHeaders = {
@@ -73,9 +73,10 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { holerites, sobrescrever } = (await req.json()) as {
+    const { holerites, sobrescrever, liberar_para_assinatura } = (await req.json()) as {
       holerites: HoleriteIn[];
       sobrescrever?: boolean;
+      liberar_para_assinatura?: boolean;
     };
     if (!Array.isArray(holerites) || holerites.length === 0) {
       return new Response(JSON.stringify({ error: "Lista vazia" }), {
@@ -86,6 +87,7 @@ Deno.serve(async (req) => {
 
     let criados = 0;
     let sobrescritos = 0;
+    let liberados = 0;
     let pulados = 0;
     const erros: string[] = [];
 
@@ -149,9 +151,21 @@ Deno.serve(async (req) => {
             pulados++;
             continue;
           }
-          if (existing.status === "aprovado" || existing.status === "pago") {
+          const { data: assinatura, error: errAssinatura } = await supa
+            .from("holerite_assinaturas")
+            .select("id")
+            .eq("folha_pagamento_id", existing.id)
+            .eq("status", "assinado")
+            .limit(1)
+            .maybeSingle();
+          if (errAssinatura) {
+            erros.push(`Erro ao verificar assinatura do holerite ${h.mes}/${h.ano}: ${errAssinatura.message}`);
+            pulados++;
+            continue;
+          }
+          if (assinatura || existing.status === "aprovado" || existing.status === "pago") {
             erros.push(
-              `Holerite ${h.mes}/${h.ano} ja aprovado/pago - nao foi sobrescrito`
+              `Holerite ${h.mes}/${h.ano} já assinado, aprovado ou pago — não foi sobrescrito`
             );
             pulados++;
             continue;
@@ -177,7 +191,7 @@ Deno.serve(async (req) => {
             descontos: toNum(h.descontos_total),
             desconto: 0,
             valor_liquido: toNum(h.valor_liquido),
-            status: "rascunho",
+            status: liberar_para_assinatura ? "final" : "rascunho",
             observacoes: h.observacoes || "Importado via PDF (IA)",
             created_by: userId,
           })
@@ -212,13 +226,22 @@ Deno.serve(async (req) => {
 
         if (foiSobrescrito) sobrescritos++;
         else criados++;
+        if (liberar_para_assinatura) liberados++;
       } catch (e: any) {
         erros.push(e?.message || "Erro desconhecido");
       }
     }
 
     return new Response(
-      JSON.stringify({ criados, sobrescritos, pulados, erros }),
+      JSON.stringify({
+        criados,
+        sobrescritos,
+        vinculados: criados + sobrescritos,
+        liberados,
+        pulados,
+        total_erros: erros.length,
+        erros,
+      }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (e: any) {
