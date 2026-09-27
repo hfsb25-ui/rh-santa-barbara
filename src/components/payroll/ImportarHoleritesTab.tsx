@@ -93,6 +93,7 @@ export function ImportarHoleritesTab({ onImportComplete }: ImportarHoleritesTabP
   const [resultados, setResultados] = useState<ExtractedHolerite[]>([]);
   const [preview, setPreview] = useState<ExtractedHolerite | null>(null);
   const [sobrescrever, setSobrescrever] = useState(false);
+  const [liberarParaAssinatura, setLiberarParaAssinatura] = useState(true);
   const [cadastroOpen, setCadastroOpen] = useState(false);
   const [novasVariaveis, setNovasVariaveis] = useState<Array<{
     key: string;
@@ -361,7 +362,7 @@ export function ImportarHoleritesTab({ onImportComplete }: ImportarHoleritesTabP
     try {
       const { data, error } = await supabase.functions.invoke(
         "holerite-importar-pdf-confirmar",
-        { body: { holerites: aImportar, sobrescrever } }
+        { body: { holerites: aImportar, sobrescrever, liberar_para_assinatura: liberarParaAssinatura } }
       );
       if (error) {
         // Tenta extrair mensagem real do body de erro da edge function
@@ -380,9 +381,13 @@ export function ImportarHoleritesTab({ onImportComplete }: ImportarHoleritesTabP
         throw new Error(realMsg);
       }
       if (data?.error) throw new Error(data.error);
-      toast.success(
-        `${data.criados} criado(s), ${data.sobrescritos || 0} sobrescrito(s), ${data.pulados} pulado(s)`
-      );
+      const liberados = data.liberados || 0;
+      toast.success([
+        `${data.criados} criado(s)`,
+        `${data.sobrescritos || 0} sobrescrito(s)`,
+        liberarParaAssinatura ? `${liberados} liberado(s) para assinatura` : null,
+        `${data.pulados} pulado(s)`,
+      ].filter(Boolean).join(", "));
       if (data.erros?.length) {
         console.warn("Erros:", data.erros);
         toast.warning(`Avisos: ${data.erros.slice(0, 3).join(" | ")}`);
@@ -734,7 +739,11 @@ export function ImportarHoleritesTab({ onImportComplete }: ImportarHoleritesTabP
             {resultados.length > 0 && (
               <Button onClick={handleImportar} disabled={saving || totalSelecionados === 0} variant="default">
                 <Save className="w-4 h-4 mr-2" />
-                {saving ? "Importando..." : `Importar ${totalSelecionados} como rascunho`}
+                {saving
+                  ? "Importando..."
+                  : liberarParaAssinatura
+                    ? `Importar e liberar ${totalSelecionados}`
+                    : `Importar ${totalSelecionados} como rascunho`}
               </Button>
             )}
             {naoMapeadasCount > 0 && (
@@ -800,20 +809,35 @@ export function ImportarHoleritesTab({ onImportComplete }: ImportarHoleritesTabP
 
           {resultados.length > 0 && (
             <>
-              <div className="flex items-center gap-2 p-3 rounded border bg-muted/30">
-                <Checkbox
-                  id="sobrescrever-toggle"
-                  checked={sobrescrever}
-                  onCheckedChange={(v) => setSobrescrever(!!v)}
-                />
-                <Label htmlFor="sobrescrever-toggle" className="cursor-pointer text-sm">
-                  Sobrescrever holerites já existentes
-                  {totalJaExiste > 0 && (
-                    <span className="ml-2 text-muted-foreground">
-                      ({totalJaExiste} já existente{totalJaExiste > 1 ? "s" : ""} no banco)
+              <div className="grid gap-3 rounded border bg-muted/30 p-3 md:grid-cols-2">
+                <div className="flex items-start gap-2">
+                  <Checkbox
+                    id="liberar-assinatura-toggle"
+                    checked={liberarParaAssinatura}
+                    onCheckedChange={(v) => setLiberarParaAssinatura(!!v)}
+                  />
+                  <Label htmlFor="liberar-assinatura-toggle" className="cursor-pointer text-sm leading-5">
+                    Liberar para assinatura e download
+                    <span className="block font-normal text-muted-foreground">
+                      Os funcionários poderão acessar os holerites assim que a importação terminar.
                     </span>
-                  )}
-                </Label>
+                  </Label>
+                </div>
+                <div className="flex items-start gap-2">
+                  <Checkbox
+                    id="sobrescrever-toggle"
+                    checked={sobrescrever}
+                    onCheckedChange={(v) => setSobrescrever(!!v)}
+                  />
+                  <Label htmlFor="sobrescrever-toggle" className="cursor-pointer text-sm leading-5">
+                    Sobrescrever holerites já existentes
+                    {totalJaExiste > 0 && (
+                      <span className="block font-normal text-muted-foreground">
+                        {totalJaExiste} já existente{totalJaExiste > 1 ? "s" : ""}; assinados ou pagos serão preservados.
+                      </span>
+                    )}
+                  </Label>
+                </div>
               </div>
               <div className="flex gap-4 text-sm">
                 <span>Total: <b>{resultados.length}</b></span>
