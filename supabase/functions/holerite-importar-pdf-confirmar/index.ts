@@ -1,254 +1,156 @@
-// Edge function: persiste holerites extraídos como rascunho ou liberados para assinatura
-import { createClient } from "npm:@supabase/supabase-js@2";
+import { createClient, corsHeaders } from "npm:@supabase/supabase-js@2";
+import { PDFDocument } from "npm:pdf-lib@1.17.1";
+import { z } from "npm:zod@3.25.76";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-};
+const HoleriteSchema = z.object({
+  pagina: z.number().int().positive(),
+  employee_id: z.string().uuid(),
+  empresa_id: z.string().uuid(),
+  mes: z.number().int().min(1).max(12),
+  ano: z.number().int().min(2000).max(2100),
+  tipo_folha: z.string().min(1).max(50).default("salario"),
+});
 
-interface RubricaIn {
-  codigo?: string | null;
-  descricao?: string | null;
-  valor: number;
-  variavel_id?: string | null;
+const BodySchema = z.object({
+  holerites: z.array(HoleriteSchema).min(1).max(500),
+  pdf_base64: z.string().min(100),
+  nome_arquivo: z.string().min(1).max(255),
+  sobrescrever: z.boolean().optional().default(false),
+});
+
+function base64ToBytes(value: string): Uint8Array {
+  const clean = value.includes(",") ? value.split(",")[1] : value;
+  const binary = atob(clean);
+  return Uint8Array.from(binary, (char) => char.charCodeAt(0));
 }
 
-interface HoleriteIn {
-  employee_id: string;
-  empresa_id: string;
-  mes: number;
-  ano: number;
-  tipo_folha: string;
-  valor_bruto: number;
-  descontos_total: number;
-  valor_liquido: number;
-  proventos: RubricaIn[];
-  descontos: RubricaIn[];
-  observacoes?: string;
+function safeName(value: string): string {
+  return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9._-]/g, "-");
+}
+
+async function extractReceipt(source: PDFDocument, pageNumber: number, position: number, count: number) {
+  const output = await PDFDocument.create();
+  const sourceIndex = pageNumber - 1;
+  if (sourceIndex < 0 || sourceIndex >= source.getPageCount()) throw new Error(`Página ${pageNumber} não existe no PDF`);
+  const [page] = await output.copyPages(source, [sourceIndex]);
+  const { width, height } = page.getSize();
+  if (count > 1) {
+    const segmentHeight = height / count;
+    const y = height - ((position + 1) * segmentHeight);
+    page.setMediaBox(0, y, width, segmentHeight);
+    page.setCropBox(0, y, width, segmentHeight);
+  }
+  output.addPage(page);
+  return output.save({ useObjectStreams: false });
 }
 
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
-  }
+  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+
   try {
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
-    const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
-
-    const supaUser = createClient(SUPABASE_URL, ANON_KEY, {
-      global: { headers: { Authorization: authHeader } },
-    });
-    const token = authHeader.replace("Bearer ", "");
-    const { data: claimsData } = await supaUser.auth.getClaims(token);
-    if (!claimsData?.claims) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-    const userId = claimsData.claims.sub as string;
-
-    const supa = createClient(SUPABASE_URL, SERVICE_ROLE);
-
-    const { data: rolesData } = await supa
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", userId);
-    const roles = (rolesData || []).map((r: any) => r.role);
-    if (!roles.includes("admin") && !roles.includes("gestor")) {
-      return new Response(JSON.stringify({ error: "Acesso negado" }), {
-        status: 403,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    const url = Deno.env.get("SUPABASE_URL")!;
+    const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const userClient = createClient(url, anonKey, { global: { headers: { Authorization: authHeader } } });
+    const token = authHeader.slice(7);
+    const { data: claimsData, error: claimsError } = await userClient.auth.getClaims(token);
+    if (claimsError || !claimsData?.claims?.sub) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    const { holerites, sobrescrever, liberar_para_assinatura } = (await req.json()) as {
-      holerites: HoleriteIn[];
-      sobrescrever?: boolean;
-      liberar_para_assinatura?: boolean;
-    };
-    if (!Array.isArray(holerites) || holerites.length === 0) {
-      return new Response(JSON.stringify({ error: "Lista vazia" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    const userId = String(claimsData.claims.sub);
+    const admin = createClient(url, serviceKey);
+    const { data: roles } = await admin.from("user_roles").select("role").eq("user_id", userId);
+    if (!(roles || []).some((item: { role: string }) => item.role === "gestor" || item.role === "admin_parcial")) {
+      return new Response(JSON.stringify({ error: "Acesso negado" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    let criados = 0;
+    const parsed = BodySchema.safeParse(await req.json());
+    if (!parsed.success) {
+      return new Response(JSON.stringify({ error: parsed.error.flatten().fieldErrors }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    const { holerites, pdf_base64, nome_arquivo, sobrescrever } = parsed.data;
+    const source = await PDFDocument.load(base64ToBytes(pdf_base64), { ignoreEncryption: true });
+    const counts = new Map<number, number>();
+    holerites.forEach((item) => counts.set(item.pagina, (counts.get(item.pagina) || 0) + 1));
+    const positions = new Map<number, number>();
+    let vinculados = 0;
     let sobrescritos = 0;
-    let liberados = 0;
     let pulados = 0;
     const erros: string[] = [];
 
-    for (const h of holerites) {
+    for (const item of holerites) {
       try {
-        if (!h.employee_id || !h.empresa_id || !h.mes || !h.ano) {
-          pulados++;
-          erros.push(
-            `Holerite ignorado: faltam dados (employee_id=${!!h.employee_id}, empresa_id=${!!h.empresa_id}, mes=${h.mes}, ano=${h.ano})`
-          );
-          continue;
-        }
-
-        const toNum = (v: any) => {
-          if (v === null || v === undefined) return 0;
-          if (typeof v === "number") return v;
-          const s = String(v).replace(/\./g, "").replace(",", ".");
-          const n = Number(s);
-          return isNaN(n) ? 0 : n;
-        };
-
-        const tipoFolha = h.tipo_folha || "salario";
-
-        const getFallbackVariavel = async (tipo: "provento" | "desconto", empresaId: string, codigo: string, nome: string) => {
-          const { data: existente } = await supa
-            .from("variaveis_folha")
-            .select("id")
-            .eq("codigo", codigo)
-            .eq("tipo", tipo)
-            .or(`empresa_id.eq.${empresaId},empresa_id.is.null`)
-            .order("empresa_id", { ascending: false, nullsFirst: false })
-            .limit(1)
-            .maybeSingle();
-          if (existente?.id) return existente.id as string;
-
-          const { data: criada, error: errCriarVar } = await supa
-            .from("variaveis_folha")
-            .insert({ codigo, nome, tipo, empresa_id: null, ativo: true })
-            .select("id")
-            .single();
-          if (errCriarVar || !criada?.id) throw errCriarVar || new Error(`Erro ao criar variável ${nome}`);
-          return criada.id as string;
-        };
-
-        const { data: existing, error: errExist } = await supa
-          .from("folha_pagamento")
-          .select("id, status")
-          .eq("employee_id", h.employee_id)
-          .eq("mes", h.mes)
-          .eq("ano", h.ano)
-          .eq("tipo_folha", tipoFolha)
+        const { data: existing, error: existingError } = await admin
+          .from("holerite_documentos")
+          .select("id, status, arquivo_path")
+          .eq("employee_id", item.employee_id)
+          .eq("mes", item.mes)
+          .eq("ano", item.ano)
+          .eq("tipo_folha", item.tipo_folha)
           .maybeSingle();
-        if (errExist) {
-          erros.push(`Erro ao consultar holerite existente: ${errExist.message}`);
+        if (existingError) throw existingError;
+        if (existing?.status === "assinado" || (existing && !sobrescrever)) {
+          pulados++;
           continue;
         }
 
-        let foiSobrescrito = false;
+        const position = positions.get(item.pagina) || 0;
+        positions.set(item.pagina, position + 1);
+        const bytes = await extractReceipt(source, item.pagina, position, counts.get(item.pagina) || 1);
+        const path = `${item.employee_id}/${item.ano}/${String(item.mes).padStart(2, "0")}/${crypto.randomUUID()}-${safeName(nome_arquivo)}`;
+        const { error: uploadError } = await admin.storage.from("holerites-importados").upload(path, bytes, { contentType: "application/pdf", upsert: false });
+        if (uploadError) throw uploadError;
+
         if (existing) {
-          if (!sobrescrever) {
-            pulados++;
-            continue;
-          }
-          const { data: assinatura, error: errAssinatura } = await supa
-            .from("holerite_assinaturas")
-            .select("id")
-            .eq("folha_pagamento_id", existing.id)
-            .eq("status", "assinado")
-            .limit(1)
-            .maybeSingle();
-          if (errAssinatura) {
-            erros.push(`Erro ao verificar assinatura do holerite ${h.mes}/${h.ano}: ${errAssinatura.message}`);
-            pulados++;
-            continue;
-          }
-          if (assinatura || existing.status === "aprovado" || existing.status === "pago") {
-            erros.push(
-              `Holerite ${h.mes}/${h.ano} já assinado, aprovado ou pago — não foi sobrescrito`
-            );
-            pulados++;
-            continue;
-          }
-          await supa.from("folha_pagamento_itens").delete().eq("folha_pagamento_id", existing.id);
-          const { error: errDel } = await supa.from("folha_pagamento").delete().eq("id", existing.id);
-          if (errDel) {
-            erros.push(`Erro ao remover holerite anterior: ${errDel.message}`);
-            continue;
-          }
-          foiSobrescrito = true;
-        }
-
-        const { data: folha, error: errFolha } = await supa
-          .from("folha_pagamento")
-          .insert({
-            employee_id: h.employee_id,
-            empresa_id: h.empresa_id,
-            mes: h.mes,
-            ano: h.ano,
-            tipo_folha: tipoFolha,
-            valor_bruto: toNum(h.valor_bruto),
-            descontos: toNum(h.descontos_total),
-            desconto: 0,
-            valor_liquido: toNum(h.valor_liquido),
-            status: liberar_para_assinatura ? "final" : "rascunho",
-            observacoes: h.observacoes || "Importado via PDF (IA)",
+          const { error: updateError } = await admin.from("holerite_documentos").update({
+            empresa_id: item.empresa_id,
+            arquivo_nome: nome_arquivo,
+            arquivo_path: path,
+            status: "pendente",
+            protocolo: null,
+            hash_documento: null,
+            hash_assinatura: null,
+            pdf_assinado_path: null,
+            selfie_path: null,
+            assinatura_imagem_path: null,
+            data_visualizacao: null,
+            data_assinatura: null,
+          }).eq("id", existing.id);
+          if (updateError) throw updateError;
+          await admin.storage.from("holerites-importados").remove([existing.arquivo_path]);
+          sobrescritos++;
+        } else {
+          const { error: insertError } = await admin.from("holerite_documentos").insert({
+            employee_id: item.employee_id,
+            empresa_id: item.empresa_id,
+            mes: item.mes,
+            ano: item.ano,
+            tipo_folha: item.tipo_folha,
+            arquivo_nome: nome_arquivo,
+            arquivo_path: path,
+            status: "pendente",
             created_by: userId,
-          })
-          .select("id")
-          .single();
-
-        if (errFolha || !folha) {
-          erros.push(`Erro ao criar folha (emp=${h.employee_id} ${h.mes}/${h.ano}): ${errFolha?.message}`);
-          continue;
+          });
+          if (insertError) throw insertError;
+          vinculados++;
         }
-
-        const itens = [
-          ...(h.proventos || [])
-            .filter((p) => p.variavel_id && toNum(p.valor) > 0)
-            .map((p) => ({ folha_pagamento_id: folha.id, variavel_id: p.variavel_id!, valor: toNum(p.valor) })),
-          ...(h.descontos || [])
-            .filter((d) => d.variavel_id && toNum(d.valor) > 0)
-            .map((d) => ({ folha_pagamento_id: folha.id, variavel_id: d.variavel_id!, valor: toNum(d.valor) })),
-        ];
-        const somaDescontosMapeados = (h.descontos || [])
-          .filter((d) => d.variavel_id)
-          .reduce((sum, d) => sum + toNum(d.valor), 0);
-        const descontoNaoMapeado = Math.round((toNum(h.descontos_total) - somaDescontosMapeados) * 100) / 100;
-        if (descontoNaoMapeado > 0.009) {
-          const fallbackId = await getFallbackVariavel("desconto", h.empresa_id, "9999", "OUTROS DESCONTOS");
-          itens.push({ folha_pagamento_id: folha.id, variavel_id: fallbackId, valor: descontoNaoMapeado });
-        }
-        if (itens.length) {
-          const { error: errItens } = await supa.from("folha_pagamento_itens").insert(itens);
-          if (errItens) erros.push(`Erro ao inserir itens: ${errItens.message}`);
-        }
-
-        if (foiSobrescrito) sobrescritos++;
-        else criados++;
-        if (liberar_para_assinatura) liberados++;
-      } catch (e: any) {
-        erros.push(e?.message || "Erro desconhecido");
+      } catch (error) {
+        erros.push(error instanceof Error ? error.message : "Erro ao disponibilizar holerite");
       }
     }
 
-    return new Response(
-      JSON.stringify({
-        criados,
-        sobrescritos,
-        vinculados: criados + sobrescritos,
-        liberados,
-        pulados,
-        total_erros: erros.length,
-        erros,
-      }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
-  } catch (e: any) {
-    console.error("[holerite-importar-pdf-confirmar]", e);
-    return new Response(
-      JSON.stringify({ error: e?.message || "Erro interno" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return new Response(JSON.stringify({ vinculados: vinculados + sobrescritos, criados: vinculados, sobrescritos, liberados: vinculados + sobrescritos, pulados, total_erros: erros.length, erros }), {
+      status: 200,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  } catch (error) {
+    return new Response(JSON.stringify({ error: error instanceof Error ? error.message : "Erro interno" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
 });
