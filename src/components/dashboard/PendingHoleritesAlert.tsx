@@ -19,12 +19,20 @@ const PendingHoleritesAlert = () => {
         .eq("user_id", user.id)
         .maybeSingle();
       if (!emp) return;
+      const { count: importedCount } = await supabase
+        .from("holerite_documentos" as any)
+        .select("id", { count: "exact", head: true })
+        .eq("employee_id", emp.id)
+        .eq("status", "pendente");
       const { data: pags } = await supabase
         .from("folha_pagamento")
         .select("id")
         .eq("employee_id", emp.id)
         .neq("status", "rascunho");
-      if (!pags?.length) return;
+      if (!pags?.length) {
+        setCount(importedCount || 0);
+        return;
+      }
       const { data: ass } = await supabase
         .from("holerite_assinaturas")
         .select("folha_pagamento_id, status")
@@ -32,7 +40,7 @@ const PendingHoleritesAlert = () => {
       const assinados = new Set(
         (ass || []).filter((a) => a.status === "assinado").map((a) => a.folha_pagamento_id)
       );
-      setCount(pags.filter((p) => !assinados.has(p.id)).length);
+      setCount(pags.filter((p) => !assinados.has(p.id)).length + (importedCount || 0));
     })();
   }, []);
 
