@@ -93,7 +93,6 @@ export function ImportarHoleritesTab({ onImportComplete }: ImportarHoleritesTabP
   const [resultados, setResultados] = useState<ExtractedHolerite[]>([]);
   const [preview, setPreview] = useState<ExtractedHolerite | null>(null);
   const [sobrescrever, setSobrescrever] = useState(false);
-  const [liberarParaAssinatura, setLiberarParaAssinatura] = useState(true);
   const [cadastroOpen, setCadastroOpen] = useState(false);
   const [novasVariaveis, setNovasVariaveis] = useState<Array<{
     key: string;
@@ -360,9 +359,13 @@ export function ImportarHoleritesTab({ onImportComplete }: ImportarHoleritesTabP
     }
     setSaving(true);
     try {
+      if (!file) {
+        throw new Error("Selecione o PDF original para disponibilizar aos funcionários");
+      }
+      const pdfBase64 = await fileToBase64(file);
       const { data, error } = await supabase.functions.invoke(
         "holerite-importar-pdf-confirmar",
-        { body: { holerites: aImportar, sobrescrever, liberar_para_assinatura: liberarParaAssinatura } }
+        { body: { holerites: aImportar, sobrescrever, pdf_base64: pdfBase64, nome_arquivo: file.name } }
       );
       if (error) {
         // Tenta extrair mensagem real do body de erro da edge function
@@ -386,16 +389,13 @@ export function ImportarHoleritesTab({ onImportComplete }: ImportarHoleritesTabP
       const totalErros = data.total_erros ?? data.erros?.length ?? 0;
       toast.success([
         `${vinculados} vinculado(s)`,
-        liberarParaAssinatura ? `${liberados} liberado(s)` : `${vinculados} salvo(s) como rascunho`,
+        `${liberados} liberado(s) para assinatura`,
         `${data.pulados || 0} ignorado(s)`,
         `${totalErros} erro(s)`,
       ].join(", "));
       if (data.erros?.length) {
         console.warn("Erros:", data.erros);
         toast.warning(`Avisos: ${data.erros.slice(0, 3).join(" | ")}`);
-      }
-      if ((data.criados || 0) > 0 || (data.sobrescritos || 0) > 0) {
-        onImportComplete?.(aImportar);
       }
       setResultados([]);
       setFile(null);
@@ -420,7 +420,7 @@ export function ImportarHoleritesTab({ onImportComplete }: ImportarHoleritesTabP
     let jaExiste = false;
     if (temPeriodo) {
       const { data: exist } = await supabase
-        .from("folha_pagamento")
+        .from("holerite_documentos" as any)
         .select("id")
         .eq("employee_id", emp.id)
         .eq("mes", atual.mes as number)
@@ -741,11 +741,7 @@ export function ImportarHoleritesTab({ onImportComplete }: ImportarHoleritesTabP
             {resultados.length > 0 && (
               <Button onClick={handleImportar} disabled={saving || totalSelecionados === 0} variant="default">
                 <Save className="w-4 h-4 mr-2" />
-                {saving
-                  ? "Importando..."
-                  : liberarParaAssinatura
-                    ? `Importar e liberar ${totalSelecionados}`
-                    : `Importar ${totalSelecionados} como rascunho`}
+                  {saving ? "Disponibilizando..." : `Disponibilizar ${totalSelecionados} para assinatura`}
               </Button>
             )}
             {naoMapeadasCount > 0 && (
@@ -812,19 +808,9 @@ export function ImportarHoleritesTab({ onImportComplete }: ImportarHoleritesTabP
           {resultados.length > 0 && (
             <>
               <div className="grid gap-3 rounded border bg-muted/30 p-3 md:grid-cols-2">
-                <div className="flex items-start gap-2">
-                  <Checkbox
-                    id="liberar-assinatura-toggle"
-                    checked={liberarParaAssinatura}
-                    onCheckedChange={(v) => setLiberarParaAssinatura(!!v)}
-                  />
-                  <Label htmlFor="liberar-assinatura-toggle" className="cursor-pointer text-sm leading-5">
-                    Liberar para assinatura e download
-                    <span className="block font-normal text-muted-foreground">
-                      Os funcionários poderão acessar os holerites assim que a importação terminar.
-                    </span>
-                  </Label>
-                </div>
+                <p className="text-sm leading-5 text-muted-foreground">
+                  O PDF será disponibilizado ao funcionário sem alterar cálculos ou lançamentos da folha.
+                </p>
                 <div className="flex items-start gap-2">
                   <Checkbox
                     id="sobrescrever-toggle"
@@ -835,7 +821,7 @@ export function ImportarHoleritesTab({ onImportComplete }: ImportarHoleritesTabP
                     Sobrescrever holerites já existentes
                     {totalJaExiste > 0 && (
                       <span className="block font-normal text-muted-foreground">
-                        {totalJaExiste} já existente{totalJaExiste > 1 ? "s" : ""}; assinados ou pagos serão preservados.
+                        {totalJaExiste} já existente{totalJaExiste > 1 ? "s" : ""}; documentos assinados serão preservados.
                       </span>
                     )}
                   </Label>

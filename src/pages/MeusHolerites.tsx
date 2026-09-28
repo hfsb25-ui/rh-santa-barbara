@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button";
 import { FileCheck2, PenLine, Eye, ArrowLeft, Download } from "lucide-react";
 import { AssinaturaHoleriteWizard } from "@/components/holerites-assinatura/AssinaturaHoleriteWizard";
 import { AuditoriaHoleriteDialog } from "@/components/holerites-assinatura/AuditoriaHoleriteDialog";
+import { AssinaturaDocumentoHoleriteWizard } from "@/components/holerites-assinatura/AssinaturaDocumentoHoleriteWizard";
+import { toast } from "sonner";
 
 const MESES = [
   "", "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
@@ -23,6 +25,8 @@ export default function MeusHolerites() {
   const [selected, setSelected] = useState<any>(null);
   const [showWizard, setShowWizard] = useState(false);
   const [auditId, setAuditId] = useState<string | null>(null);
+  const [documentos, setDocumentos] = useState<any[]>([]);
+  const [selectedDocumento, setSelectedDocumento] = useState<any>(null);
 
   useEffect(() => {
     load();
@@ -45,6 +49,13 @@ export default function MeusHolerites() {
       return;
     }
     setEmployee(emp);
+    const { data: docs } = await supabase
+      .from("holerite_documentos" as any)
+      .select("*")
+      .eq("employee_id", emp.id)
+      .order("ano", { ascending: false })
+      .order("mes", { ascending: false });
+    setDocumentos((docs as any[]) || []);
     if (emp.empresa_id) {
       const { data: em } = await supabase
         .from("empresas")
@@ -98,6 +109,45 @@ export default function MeusHolerites() {
         </Card>
       ) : (
         <>
+          {documentos.filter((documento) => documento.status !== "assinado").length > 0 && (
+            <Card className="border-orange-300 bg-orange-50/40">
+              <CardHeader><CardTitle className="flex items-center gap-2 text-base"><PenLine className="h-4 w-4 text-orange-600" /> PDFs pendentes de assinatura</CardTitle></CardHeader>
+              <CardContent className="space-y-2">
+                {documentos.filter((documento) => documento.status !== "assinado").map((documento) => (
+                  <div key={documento.id} className="flex items-center justify-between gap-3 rounded-lg border bg-background p-3">
+                    <div><div className="font-medium">{MESES[documento.mes]}/{documento.ano}</div><div className="text-sm text-muted-foreground">{documento.arquivo_nome}</div></div>
+                    <Button onClick={() => setSelectedDocumento(documento)}><PenLine className="mr-2 h-4 w-4" /> Assinar</Button>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          )}
+
+          {documentos.some((documento) => documento.status === "assinado") && (
+            <Card>
+              <CardHeader><CardTitle className="flex items-center gap-2 text-base"><FileCheck2 className="h-4 w-4 text-green-600" /> PDFs assinados</CardTitle></CardHeader>
+              <CardContent className="space-y-2">
+                {documentos.filter((documento) => documento.status === "assinado").map((documento) => (
+                  <div key={documento.id} className="flex items-center justify-between gap-3 rounded-lg border p-3">
+                    <div><div className="flex items-center gap-2 font-medium">{MESES[documento.mes]}/{documento.ano}<Badge variant="secondary" className="bg-green-100 text-green-800">Assinado</Badge></div><div className="text-xs font-mono text-muted-foreground">{documento.protocolo}</div></div>
+                    <Button variant="outline" onClick={async () => {
+                      const path = documento.pdf_assinado_path || documento.arquivo_path;
+                      const bucket = documento.pdf_assinado_path ? "holerites-assinados" : "holerites-importados";
+                      const { data, error } = await supabase.storage.from(bucket).download(path);
+                      if (error || !data) return toast.error("Não foi possível baixar o holerite");
+                      const url = URL.createObjectURL(data);
+                      const anchor = document.createElement("a");
+                      anchor.href = url;
+                      anchor.download = documento.arquivo_nome;
+                      anchor.click();
+                      setTimeout(() => URL.revokeObjectURL(url), 1000);
+                    }}><Download className="mr-2 h-4 w-4" /> Baixar</Button>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          )}
+
           {pendentes.length > 0 && (
             <Card className="border-orange-300 bg-orange-50/40">
               <CardHeader>
@@ -204,6 +254,15 @@ export default function MeusHolerites() {
           employeeId={employee.id}
           empresaId={empresa.id || ""}
           onSigned={() => load()}
+        />
+      )}
+
+      {selectedDocumento && (
+        <AssinaturaDocumentoHoleriteWizard
+          open={!!selectedDocumento}
+          onOpenChange={(open) => { if (!open) { setSelectedDocumento(null); load(); } }}
+          documento={selectedDocumento}
+          onSigned={load}
         />
       )}
 
