@@ -1,4 +1,5 @@
-import { createClient, corsHeaders } from "npm:@supabase/supabase-js@2";
+import { createClient } from "npm:@supabase/supabase-js@2";
+import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { z } from "npm:zod@3.25.76";
 
 const BodySchema = z.object({
@@ -59,7 +60,7 @@ Deno.serve(async (req) => {
     const signaturePath = `${basePath}/assinatura.png`;
     const uploads = await Promise.all([
       admin.storage.from("holerites-assinados").upload(pdfPath, pdfBytes, { contentType: "application/pdf", upsert: false }),
-      admin.storage.from("holerites-assinados").upload(selfiePath, selfieBytes, { contentType: "image/jpeg", upsert: false }),
+      admin.storage.from("holerites-assinados").upload(selfiePath, selfieBytes, { contentType: "image/png", upsert: false }),
       admin.storage.from("holerites-assinados").upload(signaturePath, signatureBytes, { contentType: "image/png", upsert: false }),
     ]);
     const uploadError = uploads.find((result) => result.error)?.error;
