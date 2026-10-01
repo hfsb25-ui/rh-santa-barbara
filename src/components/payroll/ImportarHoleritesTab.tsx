@@ -664,7 +664,7 @@ export function ImportarHoleritesTab({ onImportComplete }: ImportarHoleritesTabP
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Sparkles className="w-5 h-5 text-primary" />
-            Importar Holerites por PDF
+            Importar holerites para assinatura
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -741,7 +741,7 @@ export function ImportarHoleritesTab({ onImportComplete }: ImportarHoleritesTabP
             {resultados.length > 0 && (
               <Button onClick={handleImportar} disabled={saving || totalSelecionados === 0} variant="default">
                 <Save className="w-4 h-4 mr-2" />
-                  {saving ? "Disponibilizando..." : `Disponibilizar ${totalSelecionados} para assinatura`}
+                  {saving ? "Importando para assinatura..." : `Importar ${totalSelecionados} para assinatura`}
               </Button>
             )}
             {naoMapeadasCount > 0 && (

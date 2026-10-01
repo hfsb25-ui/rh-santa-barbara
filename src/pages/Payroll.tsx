@@ -1024,7 +1024,7 @@ const Payroll = () => {
               <TabsTrigger value="lancamentos">Lançamentos</TabsTrigger>
               <TabsTrigger value="historico">Histórico</TabsTrigger>
               <TabsTrigger value="variaveis">Variáveis</TabsTrigger>
-              <TabsTrigger value="importar">Importar PDF</TabsTrigger>
+              <TabsTrigger value="importar">Importar para assinatura</TabsTrigger>
               <TabsTrigger value="diferenca">Holerite Diferença</TabsTrigger>
               <TabsTrigger value="auditoria">Auditoria & Fiscalização</TabsTrigger>
             </TabsList>
