@@ -1,4 +1,6 @@
-import { useState, useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
+import * as pdfjsLib from "pdfjs-dist";
+import workerSrc from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,139 +10,117 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Upload, Sparkles, Save, AlertCircle, CheckCircle2, XCircle, Eye, Plus, Clock, Loader2 } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { FileCheck2, Eye, Loader2, Save, Upload } from "lucide-react";
 import { toast } from "sonner";
-import { Progress } from "@/components/ui/progress";
 
-type JobStatus = "idle" | "enfileirado" | "processando" | "concluido" | "erro";
+(pdfjsLib as typeof pdfjsLib & { GlobalWorkerOptions: { workerSrc: string } }).GlobalWorkerOptions.workerSrc = workerSrc;
 
 const MESES = ["", "Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
 
-interface Empresa { id: string; nome: string }
-interface Employee { id: string; nome_completo: string; cpf: string | null; empresa_id: string | null }
-
-interface Rubrica {
-  codigo?: string | null;
-  descricao?: string | null;
-  valor: number;
-  variavel_id?: string | null;
-  variavel_nome?: string | null;
+interface Empresa {
+  id: string;
+  nome: string;
 }
 
-interface ExtractedHolerite {
-  pagina: number;
+interface Employee {
+  id: string;
+  nome_completo: string;
   cpf: string | null;
-  cpf_raw?: string;
-  nome: string;
+  empresa_id: string | null;
+}
+
+type PageStatus = "aguardando_vinculo" | "ok" | "ja_existe" | "sem_periodo";
+
+interface PageHolerite {
+  pagina: number;
+  employee_id: string | null;
+  employee_nome: string | null;
+  empresa_id: string | null;
   mes: number | null;
   ano: number | null;
   tipo_folha: string;
-  empresa_nome?: string | null;
-  empresa_id: string | null;
-  employee_id: string | null;
-  employee_nome: string | null;
-  valor_bruto: number;
-  descontos_total: number;
-  valor_liquido: number;
-  proventos: Rubrica[];
-  descontos: Rubrica[];
-  status: "ok" | "sem_cpf" | "cpf_nao_encontrado" | "ja_existe" | "sem_periodo";
-  selecionado?: boolean;
+  status: PageStatus;
+  selecionado: boolean;
+}
+
+interface ImportarHoleritesTabProps {
+  onImportComplete?: (holerites: unknown[]) => void;
 }
 
 function fileToBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
-    reader.onload = () => resolve(reader.result as string);
+    reader.onload = () => resolve(String(reader.result));
     reader.onerror = reject;
     reader.readAsDataURL(file);
   });
 }
 
-function statusBadge(s: ExtractedHolerite["status"]) {
-  switch (s) {
-    case "ok":
-      return <Badge className="bg-green-100 text-green-800 hover:bg-green-100">Reconhecido</Badge>;
-    case "cpf_nao_encontrado":
-      return <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100">CPF não cadastrado</Badge>;
-    case "sem_cpf":
-      return <Badge className="bg-orange-100 text-orange-800 hover:bg-orange-100">CPF não lido</Badge>;
-    case "ja_existe":
-      return <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100">Já existe</Badge>;
-    case "sem_periodo":
-      return <Badge variant="outline">Sem mês/ano</Badge>;
-  }
+function statusBadge(status: PageStatus) {
+  if (status === "ok") return <Badge className="bg-green-100 text-green-800 hover:bg-green-100">Pronto</Badge>;
+  if (status === "ja_existe") return <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100">Já existe</Badge>;
+  if (status === "sem_periodo") return <Badge variant="outline">Defina o período</Badge>;
+  return <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100">Escolha o funcionário</Badge>;
 }
 
-interface ImportarHoleritesTabProps {
-  onImportComplete?: (holerites: ExtractedHolerite[]) => void;
-}
-
-export function ImportarHoleritesTab({ onImportComplete }: ImportarHoleritesTabProps = {}) {
+export function ImportarHoleritesTab(_props: ImportarHoleritesTabProps = {}) {
   const [empresas, setEmpresas] = useState<Empresa[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
-  const [empresaDefault, setEmpresaDefault] = useState<string>("");
-  const [mesDefault, setMesDefault] = useState<number>(new Date().getMonth() + 1);
-  const [anoDefault, setAnoDefault] = useState<number>(new Date().getFullYear());
+  const [empresaDefault, setEmpresaDefault] = useState("");
+  const [mesDefault, setMesDefault] = useState(new Date().getMonth() + 1);
+  const [anoDefault, setAnoDefault] = useState(new Date().getFullYear());
   const [file, setFile] = useState<File | null>(null);
+  const [paginas, setPaginas] = useState<PageHolerite[]>([]);
   const [processing, setProcessing] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [resultados, setResultados] = useState<ExtractedHolerite[]>([]);
-  const [preview, setPreview] = useState<ExtractedHolerite | null>(null);
   const [sobrescrever, setSobrescrever] = useState(false);
-  const [cadastroOpen, setCadastroOpen] = useState(false);
-  const [novasVariaveis, setNovasVariaveis] = useState<Array<{
-    key: string;
-    codigo: string;
-    nome: string;
-    tipo: "provento" | "desconto";
-    selecionado: boolean;
-  }>>([]);
-  const [salvandoVars, setSalvandoVars] = useState(false);
-  const [jobStatus, setJobStatus] = useState<JobStatus>("idle");
-  const [jobProgress, setJobProgress] = useState(0);
-  const [jobElapsed, setJobElapsed] = useState(0);
-  const [jobMessage, setJobMessage] = useState<string>("");
-  const [jobError, setJobError] = useState<string>("");
+  const [previewPage, setPreviewPage] = useState<number | null>(null);
 
-  // Tick do tempo decorrido + barra de progresso estimada (assintótica até 95%)
-  useEffect(() => {
-    if (jobStatus !== "enfileirado" && jobStatus !== "processando") return;
-    const start = Date.now();
-    const itv = setInterval(() => {
-      const elapsed = Math.floor((Date.now() - start) / 1000);
-      setJobElapsed(elapsed);
-      // Curva assintótica: chega rápido a ~60% e desacelera até 95%
-      const estimated = Math.min(95, 100 * (1 - Math.exp(-elapsed / 60)));
-      setJobProgress((p) => Math.max(p, estimated));
-    }, 500);
-    return () => clearInterval(itv);
-  }, [jobStatus]);
+  const previewUrl = useMemo(() => (file ? URL.createObjectURL(file) : ""), [file]);
 
-  const isSelecionavel = (s: ExtractedHolerite["status"]) =>
-    s === "ok" || (s === "ja_existe" && sobrescrever);
-
-  // Quando alterna sobrescrever, marca/desmarca automaticamente os "ja_existe"
-  useEffect(() => {
-    setResultados((arr) =>
-      arr.map((r) =>
-        r.status === "ja_existe" ? { ...r, selecionado: sobrescrever } : r
-      )
-    );
-  }, [sobrescrever]);
+  useEffect(() => () => {
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+  }, [previewUrl]);
 
   useEffect(() => {
-    (async () => {
-      const { data: emp } = await supabase.from("empresas").select("id, nome").order("nome");
-      setEmpresas(emp || []);
-      const { data: e } = await supabase
-        .from("employees")
-        .select("id, nome_completo, cpf, empresa_id")
-        .order("nome_completo");
-      setEmployees(e || []);
+    void (async () => {
+      const [{ data: empresasData }, { data: employeesData }] = await Promise.all([
+        supabase.from("empresas").select("id, nome").order("nome"),
+        supabase.from("employees").select("id, nome_completo, cpf, empresa_id").order("nome_completo"),
+      ]);
+      setEmpresas(empresasData || []);
+      setEmployees(employeesData || []);
     })();
   }, []);
+
+  const employeesDisponiveis = empresaDefault
+    ? employees.filter((employee) => employee.empresa_id === empresaDefault)
+    : employees;
+
+  const isSelecionavel = (pagina: PageHolerite) =>
+    pagina.status === "ok" || (pagina.status === "ja_existe" && sobrescrever);
+
+  useEffect(() => {
+    setPaginas((atuais) => atuais.map((pagina) => ({
+      ...pagina,
+      selecionado: pagina.status === "ok" || (pagina.status === "ja_existe" && sobrescrever),
+    })));
+  }, [sobrescrever]);
+
+  async function verificarExistente(employeeId: string, mes: number | null, ano: number | null) {
+    if (!mes || !ano) return false;
+    const { data, error } = await supabase
+      .from("holerite_documentos" as never)
+      .select("id")
+      .eq("employee_id", employeeId)
+      .eq("mes", mes)
+      .eq("ano", ano)
+      .eq("tipo_folha", "salario")
+      .maybeSingle();
+    if (error) throw error;
+    return Boolean(data);
+  }
 
   async function handleProcessar() {
     if (!file) {
@@ -148,640 +128,261 @@ export function ImportarHoleritesTab({ onImportComplete }: ImportarHoleritesTabP
       return;
     }
     setProcessing(true);
-    setResultados([]);
-    setJobStatus("enfileirado");
-    setJobProgress(2);
-    setJobElapsed(0);
-    setJobError("");
-    setJobMessage("Enviando PDF para o servidor...");
+    setPaginas([]);
     try {
-      const base64 = await fileToBase64(file);
-      setJobMessage("Aguardando início do processamento...");
-      const { data, error } = await supabase.functions.invoke("holerite-importar-pdf", {
-        body: {
-          pdf_base64: base64,
-          nome_arquivo: file.name,
-          mes_default: mesDefault,
-          ano_default: anoDefault,
-          empresa_id_default: empresaDefault || null,
-        },
-      });
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
-      const jobId: string | undefined = data?.job_id;
-      if (!jobId) throw new Error("Resposta inválida do servidor");
-
-      setJobStatus("processando");
-      setJobMessage("IA extraindo dados do PDF...");
-
-      // Polling do job (até 10 minutos)
-      const inicio = Date.now();
-      const TIMEOUT_MS = 10 * 60 * 1000;
-      let resultado: any = null;
-      while (Date.now() - inicio < TIMEOUT_MS) {
-        await new Promise((r) => setTimeout(r, 4000));
-        const { data: job, error: errJob } = await supabase
-          .from("holerite_import_jobs" as any)
-          .select("status, resultado, erro")
-          .eq("id", jobId)
-          .maybeSingle();
-        if (errJob) throw errJob;
-        const j: any = job;
-        const parcial = j?.resultado || {};
-        if (j?.status === "processando" && parcial.total_lotes) {
-          const pct = Math.min(98, Math.round((Number(parcial.lotes_processados || 0) / Number(parcial.total_lotes)) * 100));
-          setJobProgress(Math.max(8, pct));
-          setJobMessage(
-            `Processando lote ${parcial.lotes_processados || 0}/${parcial.total_lotes} — ${parcial.holerites_parciais || 0} holerite(s) encontrado(s)`
-          );
-        }
-        if (j?.status === "concluido") {
-          resultado = j.resultado;
-          break;
-        }
-        if (j?.status === "erro") {
-          throw new Error(j.erro || "Erro ao processar PDF");
-        }
-      }
-      if (!resultado) throw new Error("Tempo esgotado ao processar o PDF. Tente um arquivo menor.");
-
-      const hols: ExtractedHolerite[] = (resultado.holerites || []).map((h: ExtractedHolerite) => ({
-        ...h,
-        selecionado: h.status === "ok",
+      const bytes = new Uint8Array(await file.arrayBuffer());
+      const pdf = await pdfjsLib.getDocument({ data: bytes }).promise;
+      const novasPaginas: PageHolerite[] = Array.from({ length: pdf.numPages }, (_, index) => ({
+        pagina: index + 1,
+        employee_id: null,
+        employee_nome: null,
+        empresa_id: empresaDefault || null,
+        mes: mesDefault,
+        ano: anoDefault,
+        tipo_folha: "salario",
+        status: "aguardando_vinculo",
+        selecionado: false,
       }));
-      setResultados(hols);
-      setJobStatus("concluido");
-      setJobProgress(100);
-      setJobMessage(`${hols.length} holerite(s) extraído(s)`);
-      if (resultado.avisos?.length) {
-        toast.warning(`${resultado.avisos.length} lote(s) tiveram falha, mas ${hols.length} holerite(s) foram extraídos.`);
-      }
-      toast.success(`${hols.length} holerite(s) extraído(s)`);
-    } catch (e: any) {
-      console.error(e);
-      setJobStatus("erro");
-      setJobError(e?.message || "Erro ao processar PDF");
-      toast.error(e?.message || "Erro ao processar PDF");
+      setPaginas(novasPaginas);
+      toast.success(`${pdf.numPages} página(s) separada(s). Vincule cada uma ao funcionário correto.`);
+    } catch (error) {
+      console.error(error);
+      toast.error("Não foi possível abrir este PDF. Verifique se o arquivo não está protegido.");
     } finally {
       setProcessing(false);
     }
   }
+
+  async function vincularManual(index: number, employeeId: string) {
+    const employee = employees.find((item) => item.id === employeeId);
+    const pagina = paginas[index];
+    if (!employee || !pagina) return;
+
+    try {
+      const jaExiste = await verificarExistente(employeeId, pagina.mes, pagina.ano);
+      const status: PageStatus = !pagina.mes || !pagina.ano ? "sem_periodo" : jaExiste ? "ja_existe" : "ok";
+      setPaginas((atuais) => atuais.map((item, itemIndex) => itemIndex === index ? {
+        ...item,
+        employee_id: employee.id,
+        employee_nome: employee.nome_completo,
+        empresa_id: employee.empresa_id,
+        status,
+        selecionado: status === "ok" || (status === "ja_existe" && sobrescrever),
+      } : item));
+      if (jaExiste) toast.warning(`${employee.nome_completo}: já existe um holerite nessa competência.`);
+    } catch (error) {
+      console.error(error);
+      toast.error("Não foi possível verificar o holerite deste funcionário");
+    }
+  }
+
+  async function atualizarPeriodo(index: number, patch: { mes?: number | null; ano?: number | null }) {
+    const pagina = paginas[index];
+    if (!pagina) return;
+    const mes = patch.mes !== undefined ? patch.mes : pagina.mes;
+    const ano = patch.ano !== undefined ? patch.ano : pagina.ano;
+    let status: PageStatus = pagina.employee_id ? "ok" : "aguardando_vinculo";
+    if (!mes || !ano) status = "sem_periodo";
+    else if (pagina.employee_id && await verificarExistente(pagina.employee_id, mes, ano)) status = "ja_existe";
+
+    setPaginas((atuais) => atuais.map((item, itemIndex) => itemIndex === index ? {
+      ...item,
+      mes,
+      ano,
+      status,
+      selecionado: status === "ok" || (status === "ja_existe" && sobrescrever),
+    } : item));
+  }
+
   async function handleImportar() {
-    const aImportar = resultados.filter((r) => r.selecionado && isSelecionavel(r.status));
-    if (aImportar.length === 0) {
-      toast.error("Nenhum holerite válido selecionado");
+    const selecionadas = paginas.filter((pagina) => pagina.selecionado && isSelecionavel(pagina));
+    if (!file || selecionadas.length === 0) {
+      toast.error("Vincule e selecione ao menos uma página");
       return;
     }
+    if (selecionadas.some((pagina) => !pagina.employee_id || !pagina.empresa_id || !pagina.mes || !pagina.ano)) {
+      toast.error("Todas as páginas selecionadas precisam de funcionário e competência");
+      return;
+    }
+
     setSaving(true);
     try {
-      if (!file) {
-        throw new Error("Selecione o PDF original para disponibilizar aos funcionários");
-      }
       const pdfBase64 = await fileToBase64(file);
-      const { data, error } = await supabase.functions.invoke(
-        "holerite-importar-pdf-confirmar",
-        { body: { holerites: aImportar, sobrescrever, pdf_base64: pdfBase64, nome_arquivo: file.name } }
-      );
+      const { data, error } = await supabase.functions.invoke("holerite-importar-pdf-confirmar", {
+        body: { holerites: selecionadas, sobrescrever, pdf_base64: pdfBase64, nome_arquivo: file.name },
+      });
       if (error) {
-        // Tenta extrair mensagem real do body de erro da edge function
-        let realMsg = error.message || "Erro ao importar";
+        let message = error.message || "Erro ao importar";
         try {
-          const ctx: any = (error as any).context;
-          if (ctx && typeof ctx.json === "function") {
-            const body = await ctx.json();
-            if (body?.error) realMsg = body.error;
-          } else if (ctx && typeof ctx.text === "function") {
-            const txt = await ctx.text();
-            if (txt) realMsg = txt;
-          }
-        } catch {}
-        console.error("[importar] erro detalhado:", error, realMsg);
-        throw new Error(realMsg);
+          const context = (error as { context?: { json?: () => Promise<{ error?: string }> } }).context;
+          const body = context?.json ? await context.json() : null;
+          if (body?.error) message = body.error;
+        } catch {
+          // Mantém a mensagem original quando o corpo não for JSON.
+        }
+        throw new Error(message);
       }
       if (data?.error) throw new Error(data.error);
-      const vinculados = data.vinculados ?? ((data.criados || 0) + (data.sobrescritos || 0));
-      const liberados = data.liberados || 0;
-      const totalErros = data.total_erros ?? data.erros?.length ?? 0;
-      toast.success([
-        `${vinculados} vinculado(s)`,
-        `${liberados} liberado(s) para assinatura`,
-        `${data.pulados || 0} ignorado(s)`,
-        `${totalErros} erro(s)`,
-      ].join(", "));
-      if (data.erros?.length) {
-        console.warn("Erros:", data.erros);
-        toast.warning(`Avisos: ${data.erros.slice(0, 3).join(" | ")}`);
-      }
-      setResultados([]);
+
+      const vinculados = data?.vinculados ?? 0;
+      const pulados = data?.pulados ?? 0;
+      const erros = data?.total_erros ?? 0;
+      toast.success(`${vinculados} holerite(s) disponibilizado(s), ${pulados} ignorado(s), ${erros} erro(s).`);
+      setPaginas([]);
       setFile(null);
-    } catch (e: any) {
-      toast.error(e?.message || "Erro ao importar");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Erro ao importar");
     } finally {
       setSaving(false);
     }
   }
 
-  async function vincularManual(idx: number, employeeId: string) {
-    const emp = employees.find((e) => e.id === employeeId);
-    if (!emp) return;
-    // Snapshot do row atual para checagem async
-    const atual = resultados[idx];
-    const empresaId = atual.empresa_id || emp.empresa_id || empresaDefault || null;
-    const temPeriodo = !!(atual.mes && atual.ano);
-    const tipoFolha = atual.tipo_folha || "salario";
-
-    // Checa se já existe holerite para esse funcionário/período/tipo
-    let jaExiste = false;
-    if (temPeriodo) {
-      const { data: exist } = await supabase
-        .from("holerite_documentos" as any)
-        .select("id")
-        .eq("employee_id", emp.id)
-        .eq("mes", atual.mes as number)
-        .eq("ano", atual.ano as number)
-        .eq("tipo_folha", tipoFolha)
-        .maybeSingle();
-      jaExiste = !!exist;
-    }
-
-    setResultados((arr) => {
-      const novo = [...arr];
-      const status: ExtractedHolerite["status"] = !temPeriodo
-        ? "sem_periodo"
-        : jaExiste
-        ? "ja_existe"
-        : "ok";
-      const selecionado = status === "ok" || (status === "ja_existe" && sobrescrever);
-      novo[idx] = {
-        ...novo[idx],
-        employee_id: emp.id,
-        employee_nome: emp.nome_completo,
-        empresa_id: empresaId,
-        status,
-        selecionado,
-      };
-      return novo;
-    });
-
-    if (jaExiste) {
-      toast.warning(
-        `${emp.nome_completo}: já existe holerite para ${atual.mes}/${atual.ano}. Ative "Sobrescrever" para reimportar.`
-      );
-    } else if (!temPeriodo) {
-      toast.warning(`${emp.nome_completo}: sem mês/ano detectado — defina antes de importar.`);
-    }
-  }
-
-  async function atualizarPeriodo(idx: number, patch: { mes?: number | null; ano?: number | null }) {
-    const atual = resultados[idx];
-    if (!atual) return;
-    const mesFinal = patch.mes !== undefined ? patch.mes : atual.mes;
-    const anoFinal = patch.ano !== undefined ? patch.ano : atual.ano;
-    const temPeriodo = !!(mesFinal && anoFinal);
-    const tipoFolha = atual.tipo_folha || "salario";
-
-    let jaExiste = false;
-    if (atual.employee_id && temPeriodo) {
-      const { data: exist } = await supabase
-        .from("folha_pagamento")
-        .select("id")
-        .eq("employee_id", atual.employee_id)
-        .eq("mes", mesFinal as number)
-        .eq("ano", anoFinal as number)
-        .eq("tipo_folha", tipoFolha)
-        .maybeSingle();
-      jaExiste = !!exist;
-    }
-
-    setResultados((arr) => {
-      const novo = [...arr];
-      const baseStatus = novo[idx].status;
-      const status: ExtractedHolerite["status"] = !temPeriodo
-        ? "sem_periodo"
-        : !novo[idx].employee_id
-        ? baseStatus === "sem_cpf"
-          ? "sem_cpf"
-          : "cpf_nao_encontrado"
-        : jaExiste
-        ? "ja_existe"
-        : "ok";
-      novo[idx] = {
-        ...novo[idx],
-        mes: mesFinal,
-        ano: anoFinal,
-        status,
-        selecionado: status === "ok" || (status === "ja_existe" && sobrescrever),
-      };
-      return novo;
-    });
-  }
-
-  const totalOk = resultados.filter((r) => r.status === "ok").length;
-  const totalJaExiste = resultados.filter((r) => r.status === "ja_existe").length;
-  const totalSelecionados = resultados.filter((r) => r.selecionado && isSelecionavel(r.status)).length;
-
-  // Agrupa rubricas não mapeadas (chave = tipo + descrição normalizada)
-  function coletarNaoMapeadas() {
-    const norm = (s: string) => (s || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
-    const map = new Map<string, { codigo: string; nome: string; tipo: "provento" | "desconto" }>();
-    for (const r of resultados) {
-      for (const p of r.proventos) {
-        if (!p.variavel_id && p.descricao) {
-          const k = `provento|${norm(p.descricao)}`;
-          if (!map.has(k)) map.set(k, { codigo: p.codigo || "", nome: p.descricao.toUpperCase(), tipo: "provento" });
-        }
-      }
-      for (const d of r.descontos) {
-        if (!d.variavel_id && d.descricao) {
-          const k = `desconto|${norm(d.descricao)}`;
-          if (!map.has(k)) map.set(k, { codigo: d.codigo || "", nome: d.descricao.toUpperCase(), tipo: "desconto" });
-        }
-      }
-    }
-    return Array.from(map.entries()).map(([key, v]) => ({ key, ...v, selecionado: true }));
-  }
-
-  const naoMapeadasCount = coletarNaoMapeadas().length;
-
-  function abrirCadastro() {
-    setNovasVariaveis(coletarNaoMapeadas());
-    setCadastroOpen(true);
-  }
-
-  async function confirmarCadastro() {
-    const aCriar = novasVariaveis.filter((v) => v.selecionado && v.nome.trim());
-    if (aCriar.length === 0) {
-      toast.error("Selecione ao menos uma variável");
-      return;
-    }
-    setSalvandoVars(true);
-    try {
-      // Monta payload normalizado
-      const rawPayload = aCriar.map((v) => ({
-        nome: v.nome.trim().toUpperCase(),
-        codigo: v.codigo.trim() || null,
-        tipo: v.tipo,
-        ativo: true,
-        empresa_id: empresaDefault || null,
-      }));
-
-      // Dedupe interno: por (codigo+tipo) quando há código, senão por (nome+tipo)
-      const seen = new Set<string>();
-      const payload: typeof rawPayload = [];
-      for (const p of rawPayload) {
-        const key = p.codigo
-          ? `c:${p.tipo}:${p.codigo.toLowerCase()}`
-          : `n:${p.tipo}:${p.nome.toLowerCase()}`;
-        if (seen.has(key)) continue;
-        seen.add(key);
-        payload.push(p);
-      }
-
-      // Busca códigos já existentes no banco para atualizar (não inserir duplicado)
-      const codigosNovos = payload.map((p) => p.codigo).filter((c): c is string => !!c);
-      let existentes: any[] = [];
-      if (codigosNovos.length > 0) {
-        const { data: jaExistem } = await supabase
-          .from("variaveis_folha")
-          .select("id, nome, codigo, tipo")
-          .in("codigo", codigosNovos);
-        existentes = jaExistem || [];
-      }
-      const mapaExistentes = new Map(
-        existentes.map((e) => [(e.codigo || "").toLowerCase(), e])
-      );
-
-      // Atualiza variáveis já existentes com os novos dados
-      let atualizadas = 0;
-      const atualizadasInfo: any[] = [];
-      for (const p of payload) {
-        if (!p.codigo) continue;
-        const exist = mapaExistentes.get(p.codigo.toLowerCase());
-        if (!exist) continue;
-        const { error: upErr, data: upData } = await supabase
-          .from("variaveis_folha")
-          .update({ nome: p.nome, tipo: p.tipo, ativo: true })
-          .eq("id", exist.id)
-          .select("id, nome, codigo, tipo")
-          .maybeSingle();
-        if (!upErr && upData) {
-          atualizadas++;
-          atualizadasInfo.push(upData);
-        } else if (upData === null) {
-          atualizadasInfo.push({ ...exist, nome: p.nome, tipo: p.tipo });
-        }
-      }
-
-      const aInserir = payload.filter(
-        (p) => !p.codigo || !mapaExistentes.has(p.codigo.toLowerCase())
-      );
-
-      let criadas: any[] = [];
-      if (aInserir.length > 0) {
-        const { data, error } = await supabase
-          .from("variaveis_folha")
-          .insert(aInserir)
-          .select("id, nome, codigo, tipo");
-        if (error) throw error;
-        criadas = data || [];
-      }
-
-      // Pool para mapeamento = criadas + atualizadas
-      const pool = [...criadas, ...atualizadasInfo];
-
-
-      // Re-mapeia rubricas em memória
-      const norm = (s: string) => (s || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
-      function findCriada(tipo: "provento" | "desconto", codigo?: string | null, descricao?: string | null) {
-        const filtered = pool.filter((c) => c.tipo === tipo);
-        if (codigo) {
-          const byCode = filtered.find((c) => (c.codigo || "").toLowerCase() === codigo.toLowerCase());
-          if (byCode) return byCode;
-        }
-        if (descricao) {
-          const t = norm(descricao);
-          return filtered.find((c) => norm(c.nome) === t) || null;
-        }
-        return null;
-      }
-      setResultados((arr) =>
-        arr.map((r) => ({
-          ...r,
-          proventos: r.proventos.map((p) =>
-            p.variavel_id ? p : (() => {
-              const v = findCriada("provento", p.codigo, p.descricao);
-              return v ? { ...p, variavel_id: v.id, variavel_nome: v.nome } : p;
-            })()
-          ),
-          descontos: r.descontos.map((d) =>
-            d.variavel_id ? d : (() => {
-              const v = findCriada("desconto", d.codigo, d.descricao);
-              return v ? { ...d, variavel_id: v.id, variavel_nome: v.nome } : d;
-            })()
-          ),
-        }))
-      );
-      const msgUp = atualizadas > 0 ? ` · ${atualizadas} atualizada(s)` : "";
-      toast.success(`${criadas.length} variável(is) cadastrada(s)${msgUp}`);
-      setCadastroOpen(false);
-    } catch (e: any) {
-      toast.error(e?.message || "Erro ao cadastrar variáveis");
-    } finally {
-      setSalvandoVars(false);
-    }
-  }
-
+  const totalSelecionados = paginas.filter((pagina) => pagina.selecionado && isSelecionavel(pagina)).length;
+  const totalVinculados = paginas.filter((pagina) => pagina.employee_id).length;
+  const totalJaExiste = paginas.filter((pagina) => pagina.status === "ja_existe").length;
 
   return (
     <div className="space-y-4">
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Sparkles className="w-5 h-5 text-primary" />
+            <FileCheck2 className="h-5 w-5 text-primary" />
             Importar holerites para assinatura
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+          <p className="text-sm text-muted-foreground">
+            Cada página será um holerite separado. Depois, escolha manualmente o funcionário de cada página.
+          </p>
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
             <div>
-              <Label>Empresa padrão</Label>
+              <Label>Empresa</Label>
               <Select value={empresaDefault} onValueChange={setEmpresaDefault}>
-                <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder="Todas" /></SelectTrigger>
                 <SelectContent>
-                  {empresas.map((e) => (
-                    <SelectItem key={e.id} value={e.id}>{e.nome}</SelectItem>
-                  ))}
+                  {empresas.map((empresa) => <SelectItem key={empresa.id} value={empresa.id}>{empresa.nome}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
             <div>
-              <Label>Mês padrão</Label>
-              <Select value={String(mesDefault)} onValueChange={(v) => setMesDefault(Number(v))}>
+              <Label>Mês</Label>
+              <Select value={String(mesDefault)} onValueChange={(value) => setMesDefault(Number(value))}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
-                    <SelectItem key={m} value={String(m)}>{MESES[m]}</SelectItem>
+                  {Array.from({ length: 12 }, (_, index) => index + 1).map((mes) => (
+                    <SelectItem key={mes} value={String(mes)}>{MESES[mes]}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
             <div>
-              <Label>Ano padrão</Label>
-              <Input type="number" value={anoDefault} onChange={(e) => setAnoDefault(Number(e.target.value))} />
+              <Label>Ano</Label>
+              <Input type="number" value={anoDefault} onChange={(event) => setAnoDefault(Number(event.target.value))} />
             </div>
             <div>
               <Label>Arquivo PDF</Label>
               <Input
                 type="file"
                 accept="application/pdf"
-                onChange={(e) => setFile(e.target.files?.[0] || null)}
+                onChange={(event) => {
+                  setFile(event.target.files?.[0] || null);
+                  setPaginas([]);
+                }}
               />
             </div>
           </div>
 
-          <div className="flex gap-2 flex-wrap">
+          <div className="flex flex-wrap gap-2">
             <Button onClick={handleProcessar} disabled={!file || processing}>
-              <Upload className="w-4 h-4 mr-2" />
-              {processing ? "Processando holerites..." : "Processar holerites"}
+              {processing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
+              {processing ? "Separando páginas..." : "Separar páginas"}
             </Button>
-
-            {resultados.length > 0 && (
-              <Button onClick={handleImportar} disabled={saving || totalSelecionados === 0} variant="default">
-                <Save className="w-4 h-4 mr-2" />
-                  {saving ? "Importando para assinatura..." : `Importar ${totalSelecionados} para assinatura`}
-              </Button>
-            )}
-            {naoMapeadasCount > 0 && (
-              <Button onClick={abrirCadastro} variant="outline">
-                <Plus className="w-4 h-4 mr-2" />
-                Cadastrar {naoMapeadasCount} variável(is) não mapeada(s)
+            {paginas.length > 0 && (
+              <Button onClick={handleImportar} disabled={saving || totalSelecionados === 0}>
+                {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                {saving ? "Importando..." : `Importar ${totalSelecionados} para assinatura`}
               </Button>
             )}
           </div>
 
-
-          {jobStatus !== "idle" && (
-            <div className="rounded-lg border p-4 space-y-3 bg-card">
-              <div className="flex items-center justify-between gap-2 flex-wrap">
-                <div className="flex items-center gap-2">
-                  {jobStatus === "enfileirado" && (
-                    <Badge className="bg-slate-100 text-slate-800 hover:bg-slate-100 gap-1">
-                      <Clock className="w-3 h-3" /> Enfileirado
-                    </Badge>
-                  )}
-                  {jobStatus === "processando" && (
-                    <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100 gap-1">
-                      <Loader2 className="w-3 h-3 animate-spin" /> Processando
-                    </Badge>
-                  )}
-                  {jobStatus === "concluido" && (
-                    <Badge className="bg-green-100 text-green-800 hover:bg-green-100 gap-1">
-                      <CheckCircle2 className="w-3 h-3" /> Concluído
-                    </Badge>
-                  )}
-                  {jobStatus === "erro" && (
-                    <Badge className="bg-red-100 text-red-800 hover:bg-red-100 gap-1">
-                      <XCircle className="w-3 h-3" /> Erro
-                    </Badge>
-                  )}
-                  <span className="text-sm text-muted-foreground">
-                    {jobStatus === "erro" ? jobError : jobMessage}
-                  </span>
-                </div>
-                {(jobStatus === "enfileirado" || jobStatus === "processando") && (
-                  <span className="text-xs text-muted-foreground tabular-nums">
-                    {Math.floor(jobElapsed / 60)}:{String(jobElapsed % 60).padStart(2, "0")} decorridos
-                  </span>
-                )}
+          {paginas.length > 0 && (
+            <div className="grid gap-3 rounded border bg-muted/30 p-3 md:grid-cols-2">
+              <div className="text-sm">
+                <b>{paginas.length}</b> página(s) separada(s) · <b>{totalVinculados}</b> vinculada(s)
               </div>
-              <Progress
-                value={jobStatus === "erro" ? 100 : jobProgress}
-                className={
-                  jobStatus === "erro"
-                    ? "[&>div]:bg-destructive"
-                    : jobStatus === "concluido"
-                    ? "[&>div]:bg-green-600"
-                    : ""
-                }
-              />
-              {(jobStatus === "enfileirado" || jobStatus === "processando") && (
-                <p className="text-xs text-muted-foreground">
-                  O processamento continua em segundo plano. Pode levar alguns minutos para PDFs grandes.
-                </p>
-              )}
+              <div className="flex items-start gap-2">
+                <Checkbox id="sobrescrever-toggle" checked={sobrescrever} onCheckedChange={(value) => setSobrescrever(Boolean(value))} />
+                <Label htmlFor="sobrescrever-toggle" className="cursor-pointer text-sm leading-5">
+                  Sobrescrever holerites já existentes
+                  {totalJaExiste > 0 && <span className="block font-normal text-muted-foreground">Documentos assinados serão preservados.</span>}
+                </Label>
+              </div>
             </div>
-          )}
-
-          {resultados.length > 0 && (
-            <>
-              <div className="grid gap-3 rounded border bg-muted/30 p-3 md:grid-cols-2">
-                <p className="text-sm leading-5 text-muted-foreground">
-                  O PDF será disponibilizado ao funcionário sem alterar cálculos ou lançamentos da folha.
-                </p>
-                <div className="flex items-start gap-2">
-                  <Checkbox
-                    id="sobrescrever-toggle"
-                    checked={sobrescrever}
-                    onCheckedChange={(v) => setSobrescrever(!!v)}
-                  />
-                  <Label htmlFor="sobrescrever-toggle" className="cursor-pointer text-sm leading-5">
-                    Sobrescrever holerites já existentes
-                    {totalJaExiste > 0 && (
-                      <span className="block font-normal text-muted-foreground">
-                        {totalJaExiste} já existente{totalJaExiste > 1 ? "s" : ""}; documentos assinados serão preservados.
-                      </span>
-                    )}
-                  </Label>
-                </div>
-              </div>
-              <div className="flex gap-4 text-sm">
-                <span>Total: <b>{resultados.length}</b></span>
-                <span className="text-green-700">Reconhecidos: <b>{totalOk}</b></span>
-                <span className="text-blue-700">Já existem: <b>{totalJaExiste}</b></span>
-                <span className="text-yellow-700">Pendentes: <b>{resultados.length - totalOk - totalJaExiste}</b></span>
-              </div>
-            </>
           )}
         </CardContent>
       </Card>
 
-      {resultados.length > 0 && (
+      {paginas.length > 0 && (
         <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Resultados extraídos</CardTitle>
-          </CardHeader>
+          <CardHeader><CardTitle className="text-base">Vincular páginas aos funcionários</CardTitle></CardHeader>
           <CardContent className="p-0">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-10"></TableHead>
-                  <TableHead>Pág</TableHead>
-                  <TableHead>CPF</TableHead>
+                  <TableHead className="w-10" />
+                  <TableHead>Página</TableHead>
                   <TableHead>Funcionário</TableHead>
-                  <TableHead>Mês/Ano</TableHead>
-                  <TableHead className="text-right">Bruto</TableHead>
-                  <TableHead className="text-right">Líquido</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-center">Ações</TableHead>
+                  <TableHead>Competência</TableHead>
+                  <TableHead>Situação</TableHead>
+                  <TableHead className="text-center">Visualizar</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {resultados.map((r, idx) => (
-                  <TableRow key={idx}>
+                {paginas.map((pagina, index) => (
+                  <TableRow key={pagina.pagina}>
                     <TableCell>
                       <Checkbox
-                        checked={!!r.selecionado}
-                        disabled={!isSelecionavel(r.status)}
-                        onCheckedChange={(v) =>
-                          setResultados((arr) => {
-                            const n = [...arr];
-                            n[idx] = { ...n[idx], selecionado: !!v };
-                            return n;
-                          })
-                        }
+                        checked={pagina.selecionado}
+                        disabled={!isSelecionavel(pagina)}
+                        onCheckedChange={(value) => setPaginas((atuais) => atuais.map((item, itemIndex) => itemIndex === index ? { ...item, selecionado: Boolean(value) } : item))}
                       />
                     </TableCell>
-                    <TableCell>{r.pagina}</TableCell>
-                    <TableCell className="font-mono text-xs">{r.cpf || r.cpf_raw || "—"}</TableCell>
-                    <TableCell>
-                      {r.employee_nome ? (
-                        <span className="font-medium">{r.employee_nome}</span>
-                      ) : (
-                        <Select onValueChange={(v) => vincularManual(idx, v)}>
-                          <SelectTrigger className="h-8 text-xs">
-                            <SelectValue placeholder={r.nome || "Vincular..."} />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {employees.map((e) => (
-                              <SelectItem key={e.id} value={e.id}>
-                                {e.nome_completo} {e.cpf ? `(${e.cpf})` : ""}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      )}
+                    <TableCell className="font-medium">{pagina.pagina}</TableCell>
+                    <TableCell className="min-w-72">
+                      <Select value={pagina.employee_id || ""} onValueChange={(value) => void vincularManual(index, value)}>
+                        <SelectTrigger className="h-9"><SelectValue placeholder="Escolha o funcionário" /></SelectTrigger>
+                        <SelectContent>
+                          {employeesDisponiveis.map((employee) => (
+                            <SelectItem key={employee.id} value={employee.id}>
+                              {employee.nome_completo}{employee.cpf ? ` · ${employee.cpf}` : ""}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </TableCell>
                     <TableCell>
-                      <div className="flex items-center gap-2 min-w-44">
-                        <Select
-                          value={r.mes ? String(r.mes) : ""}
-                          onValueChange={(v) => atualizarPeriodo(idx, { mes: Number(v) })}
-                        >
-                          <SelectTrigger className="h-8 w-20 text-xs">
-                            <SelectValue placeholder="Mês" />
-                          </SelectTrigger>
+                      <div className="flex min-w-44 items-center gap-2">
+                        <Select value={pagina.mes ? String(pagina.mes) : ""} onValueChange={(value) => void atualizarPeriodo(index, { mes: Number(value) })}>
+                          <SelectTrigger className="h-9 w-20"><SelectValue placeholder="Mês" /></SelectTrigger>
                           <SelectContent>
-                            {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
-                              <SelectItem key={m} value={String(m)}>{MESES[m]}</SelectItem>
+                            {Array.from({ length: 12 }, (_, monthIndex) => monthIndex + 1).map((mes) => (
+                              <SelectItem key={mes} value={String(mes)}>{MESES[mes]}</SelectItem>
                             ))}
                           </SelectContent>
                         </Select>
                         <Input
                           type="number"
-                          className="h-8 w-20 text-xs"
-                          value={r.ano ?? ""}
-                          onChange={(e) => {
-                            const value = e.target.value ? Number(e.target.value) : null;
-                            setResultados((arr) => {
-                              const n = [...arr];
-                              n[idx] = { ...n[idx], ano: value };
-                              return n;
-                            });
-                          }}
-                          onBlur={(e) => atualizarPeriodo(idx, { ano: e.target.value ? Number(e.target.value) : null })}
+                          className="h-9 w-24"
+                          value={pagina.ano ?? ""}
+                          onChange={(event) => setPaginas((atuais) => atuais.map((item, itemIndex) => itemIndex === index ? { ...item, ano: event.target.value ? Number(event.target.value) : null } : item))}
+                          onBlur={(event) => void atualizarPeriodo(index, { ano: event.target.value ? Number(event.target.value) : null })}
                         />
                       </div>
                     </TableCell>
-                    <TableCell className="text-right">
-                      R$ {r.valor_bruto.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
-                    </TableCell>
-                    <TableCell className="text-right font-semibold">
-                      R$ {r.valor_liquido.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
-                    </TableCell>
-                    <TableCell>{statusBadge(r.status)}</TableCell>
+                    <TableCell>{statusBadge(pagina.status)}</TableCell>
                     <TableCell className="text-center">
-                      <Button variant="ghost" size="sm" onClick={() => setPreview(r)}>
-                        <Eye className="w-4 h-4" />
+                      <Button variant="ghost" size="icon" onClick={() => setPreviewPage(pagina.pagina)} title={`Visualizar página ${pagina.pagina}`}>
+                        <Eye className="h-4 w-4" />
                       </Button>
                     </TableCell>
                   </TableRow>
@@ -792,188 +393,16 @@ export function ImportarHoleritesTab({ onImportComplete }: ImportarHoleritesTabP
         </Card>
       )}
 
-      <Dialog open={!!preview} onOpenChange={(o) => !o && setPreview(null)}>
-        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Dados extraídos — Página {preview?.pagina}</DialogTitle>
-          </DialogHeader>
-          {preview && (
-            <div className="space-y-4 text-sm">
-              <div className="grid grid-cols-2 gap-2">
-                <div><b>CPF:</b> {preview.cpf || preview.cpf_raw || "—"}</div>
-                <div><b>Nome:</b> {preview.nome}</div>
-                <div><b>Empresa:</b> {preview.empresa_nome || "—"}</div>
-                <div><b>Período:</b> {preview.mes && preview.ano ? `${MESES[preview.mes]}/${preview.ano}` : "—"}</div>
-                <div><b>Tipo:</b> {preview.tipo_folha}</div>
-              </div>
-
-              <div>
-                <h4 className="font-semibold text-green-700 mb-1">Proventos</h4>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Cód</TableHead>
-                      <TableHead>Descrição</TableHead>
-                      <TableHead>Variável</TableHead>
-                      <TableHead className="text-right">Valor</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {preview.proventos.map((p, i) => (
-                      <TableRow key={i}>
-                        <TableCell>{p.codigo || "—"}</TableCell>
-                        <TableCell>{p.descricao}</TableCell>
-                        <TableCell className={p.variavel_id ? "text-green-700" : "text-yellow-700"}>
-                          {p.variavel_nome || "Não mapeada"}
-                        </TableCell>
-                        <TableCell className="text-right">R$ {p.valor.toFixed(2)}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-
-              <div>
-                <h4 className="font-semibold text-red-700 mb-1">Descontos</h4>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Cód</TableHead>
-                      <TableHead>Descrição</TableHead>
-                      <TableHead>Variável</TableHead>
-                      <TableHead className="text-right">Valor</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {preview.descontos.map((d, i) => (
-                      <TableRow key={i}>
-                        <TableCell>{d.codigo || "—"}</TableCell>
-                        <TableCell>{d.descricao}</TableCell>
-                        <TableCell className={d.variavel_id ? "text-green-700" : "text-yellow-700"}>
-                          {d.variavel_nome || "Não mapeada"}
-                        </TableCell>
-                        <TableCell className="text-right">R$ {d.valor.toFixed(2)}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-
-              <div className="flex justify-between border-t pt-2 font-semibold">
-                <span>Bruto: R$ {preview.valor_bruto.toFixed(2)}</span>
-                <span>Descontos: R$ {preview.descontos_total.toFixed(2)}</span>
-                <span>Líquido: R$ {preview.valor_liquido.toFixed(2)}</span>
-              </div>
-
-              {(preview.proventos.some((p) => !p.variavel_id) || preview.descontos.some((d) => !d.variavel_id)) && (
-                <div className="flex items-start gap-2 p-3 bg-yellow-50 border border-yellow-200 rounded text-yellow-800">
-                  <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
-                  <span className="text-xs">
-                    Algumas rubricas não foram mapeadas para variáveis cadastradas. Elas serão ignoradas na importação dos itens. Cadastre as variáveis em "Variáveis" e reprocesse, ou importe os totais mesmo assim.
-                  </span>
-                </div>
-              )}
-            </div>
+      <Dialog open={previewPage !== null} onOpenChange={(open) => !open && setPreviewPage(null)}>
+        <DialogContent className="max-w-4xl">
+          <DialogHeader><DialogTitle>Holerite da página {previewPage}</DialogTitle></DialogHeader>
+          {previewUrl && previewPage && (
+            <iframe
+              title={`Página ${previewPage} do PDF`}
+              src={`${previewUrl}#page=${previewPage}&view=FitH`}
+              className="h-[70vh] w-full rounded border"
+            />
           )}
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={cadastroOpen} onOpenChange={setCadastroOpen}>
-        <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Cadastrar variáveis não mapeadas</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-3">
-            <p className="text-sm text-muted-foreground">
-              As rubricas abaixo foram identificadas no PDF mas não existem em "Variáveis de Folha".
-              Revise os dados e autorize o cadastro. Após cadastrar, o sistema re-mapeia automaticamente
-              os holerites em memória.
-            </p>
-            {novasVariaveis.length === 0 ? (
-              <p className="text-sm text-center py-6 text-muted-foreground">Nenhuma rubrica pendente.</p>
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-10"></TableHead>
-                    <TableHead>Tipo</TableHead>
-                    <TableHead>Código</TableHead>
-                    <TableHead>Nome</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {novasVariaveis.map((v, idx) => (
-                    <TableRow key={v.key}>
-                      <TableCell>
-                        <Checkbox
-                          checked={v.selecionado}
-                          onCheckedChange={(c) =>
-                            setNovasVariaveis((arr) => {
-                              const n = [...arr];
-                              n[idx] = { ...n[idx], selecionado: !!c };
-                              return n;
-                            })
-                          }
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <Select
-                          value={v.tipo}
-                          onValueChange={(t: "provento" | "desconto") =>
-                            setNovasVariaveis((arr) => {
-                              const n = [...arr];
-                              n[idx] = { ...n[idx], tipo: t };
-                              return n;
-                            })
-                          }
-                        >
-                          <SelectTrigger className="h-8 w-32">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="provento">Provento</SelectItem>
-                            <SelectItem value="desconto">Desconto</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </TableCell>
-                      <TableCell>
-                        <Input
-                          className="h-8 w-24"
-                          value={v.codigo}
-                          onChange={(e) =>
-                            setNovasVariaveis((arr) => {
-                              const n = [...arr];
-                              n[idx] = { ...n[idx], codigo: e.target.value };
-                              return n;
-                            })
-                          }
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <Input
-                          className="h-8"
-                          value={v.nome}
-                          onChange={(e) =>
-                            setNovasVariaveis((arr) => {
-                              const n = [...arr];
-                              n[idx] = { ...n[idx], nome: e.target.value };
-                              return n;
-                            })
-                          }
-                        />
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            )}
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setCadastroOpen(false)}>Cancelar</Button>
-            <Button onClick={confirmarCadastro} disabled={salvandoVars || novasVariaveis.length === 0}>
-              {salvandoVars ? "Cadastrando..." : "Autorizar cadastro"}
-            </Button>
-          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
