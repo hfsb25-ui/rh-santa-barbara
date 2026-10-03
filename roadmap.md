@@ -1,2 +1,2 @@
 
-- [ ] Garantir que somente holerites em PDF sejam disponibilizados para assinatura.
+- [x] Garantir que somente holerites em PDF sejam disponibilizados para assinatura.

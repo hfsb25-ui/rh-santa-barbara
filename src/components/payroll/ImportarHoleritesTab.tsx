@@ -57,6 +57,10 @@ function fileToBase64(file: File): Promise<string> {
   });
 }
 
+function isPdfFile(file: File): boolean {
+  return file.type === "application/pdf" && file.name.toLowerCase().endsWith(".pdf");
+}
+
 function statusBadge(status: PageStatus) {
   if (status === "ok") return <Badge className="bg-green-100 text-green-800 hover:bg-green-100">Pronto</Badge>;
   if (status === "ja_existe") return <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100">Já existe</Badge>;
@@ -125,6 +129,12 @@ export function ImportarHoleritesTab(_props: ImportarHoleritesTabProps = {}) {
   async function handleProcessar() {
     if (!file) {
       toast.error("Selecione um PDF primeiro");
+      return;
+    }
+    if (!isPdfFile(file)) {
+      setFile(null);
+      setPaginas([]);
+      toast.error("Somente holerites em PDF podem ser disponibilizados");
       return;
     }
     setProcessing(true);
@@ -198,6 +208,10 @@ export function ImportarHoleritesTab(_props: ImportarHoleritesTabProps = {}) {
     const selecionadas = paginas.filter((pagina) => pagina.selecionado && isSelecionavel(pagina));
     if (!file || selecionadas.length === 0) {
       toast.error("Vincule e selecione ao menos uma página");
+      return;
+    }
+    if (!isPdfFile(file)) {
+      toast.error("Somente holerites em PDF podem ser disponibilizados");
       return;
     }
     if (selecionadas.some((pagina) => !pagina.employee_id || !pagina.empresa_id || !pagina.mes || !pagina.ano)) {
@@ -283,9 +297,17 @@ export function ImportarHoleritesTab(_props: ImportarHoleritesTabProps = {}) {
               <Label>Arquivo PDF</Label>
               <Input
                 type="file"
-                accept="application/pdf"
+                accept="application/pdf,.pdf"
                 onChange={(event) => {
-                  setFile(event.target.files?.[0] || null);
+                  const selectedFile = event.target.files?.[0] || null;
+                  if (selectedFile && !isPdfFile(selectedFile)) {
+                    event.target.value = "";
+                    setFile(null);
+                    setPaginas([]);
+                    toast.error("Somente holerites em PDF podem ser disponibilizados");
+                    return;
+                  }
+                  setFile(selectedFile);
                   setPaginas([]);
                 }}
               />
