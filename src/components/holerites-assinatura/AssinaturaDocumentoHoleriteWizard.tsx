@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Check, ChevronRight, Download, Loader2, MapPin } from "lucide-react";
+import { Check, Download, Loader2, MapPin } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -23,15 +23,6 @@ interface Props {
   onSigned?: () => void;
 }
 
-function blobToBase64(blob: Blob): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onloadend = () => resolve(String(reader.result));
-    reader.onerror = reject;
-    reader.readAsDataURL(blob);
-  });
-}
-
 function downloadBlob(blob: Blob, name: string) {
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement("a");
@@ -43,8 +34,6 @@ function downloadBlob(blob: Blob, name: string) {
 
 export function AssinaturaDocumentoHoleriteWizard({ open, onOpenChange, documento, onSigned }: Props) {
   const [step, setStep] = useState(0);
-  const [pdfBlob, setPdfBlob] = useState<Blob | null>(null);
-  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [aceite, setAceite] = useState(false);
   const [selfie, setSelfie] = useState<string | null>(null);
   const [geo, setGeo] = useState<{ lat: number; lng: number } | null>(null);
@@ -60,25 +49,7 @@ export function AssinaturaDocumentoHoleriteWizard({ open, onOpenChange, document
     setGeo(null);
     setGeoConsent(false);
     setResult(null);
-    let active = true;
-    let objectUrl = "";
-    supabase.storage.from("holerites-importados").download(documento.arquivo_path).then(({ data, error }) => {
-      if (!active) return;
-      if (error || !data) {
-        toast.error("Não foi possível abrir o holerite");
-        return;
-      }
-      setPdfBlob(data);
-      objectUrl = URL.createObjectURL(data);
-      setPdfUrl(objectUrl);
-    });
-    return () => {
-      active = false;
-      if (objectUrl) URL.revokeObjectURL(objectUrl);
-      setPdfUrl(null);
-      setPdfBlob(null);
-    };
-  }, [open, documento.arquivo_path]);
+  }, [open]);
 
   async function requestGeo() {
     if (!navigator.geolocation) return null;
@@ -90,7 +61,7 @@ export function AssinaturaDocumentoHoleriteWizard({ open, onOpenChange, document
   }
 
   async function sign(signature: string) {
-    if (!selfie || !pdfBlob) return toast.error("Faltam dados para assinar");
+    if (!selfie) return toast.error("Faltam dados para assinar");
     setSubmitting(true);
     try {
       const ua = navigator.userAgent;
@@ -116,24 +87,28 @@ export function AssinaturaDocumentoHoleriteWizard({ open, onOpenChange, document
     }
   }
 
+  async function downloadSigned() {
+    const path = result?.pdf_path;
+    if (!path) return toast.error("PDF assinado indisponível");
+    const { data, error } = await supabase.storage.from("holerites-assinados").download(path);
+    if (error || !data) return toast.error("Não foi possível baixar o holerite");
+    downloadBlob(data, documento.arquivo_nome);
+  }
+
   return <Dialog open={open} onOpenChange={onOpenChange}>
     <DialogContent className="max-h-[92vh] max-w-3xl overflow-y-auto">
       <DialogHeader><DialogTitle>Assinatura do holerite</DialogTitle></DialogHeader>
-      {step === 0 && <div className="space-y-3">
-        {pdfUrl ? <iframe src={pdfUrl} title="Holerite" className="h-[480px] w-full rounded border" /> : <div className="flex h-[480px] items-center justify-center rounded border"><Loader2 className="h-6 w-6 animate-spin" /></div>}
-        <div className="flex justify-end"><Button disabled={!pdfUrl} onClick={() => setStep(1)}>Continuar <ChevronRight className="ml-1 h-4 w-4" /></Button></div>
-      </div>}
-      {step === 1 && <div className="space-y-4">
-        <p className="text-sm">Declaro que li o holerite de {String(documento.mes).padStart(2, "0")}/{documento.ano} e concordo com o registro eletrônico da assinatura.</p>
-        <label className="flex items-start gap-2"><Checkbox checked={aceite} onCheckedChange={(value) => setAceite(!!value)} /><span className="text-sm">Li e concordo com o documento.</span></label>
+      {step === 0 && <div className="space-y-4">
+        <p className="text-sm">Confirme o recebimento do holerite de {String(documento.mes).padStart(2, "0")}/{documento.ano}. O PDF será liberado após a assinatura digital.</p>
+        <label className="flex items-start gap-2"><Checkbox checked={aceite} onCheckedChange={(value) => setAceite(!!value)} /><span className="text-sm">Confirmo que desejo assinar digitalmente este holerite.</span></label>
         <label className="flex items-start gap-2"><Checkbox checked={geoConsent} onCheckedChange={async (value) => { setGeoConsent(!!value); if (value) { const location = await requestGeo(); setGeo(location); if (!location) setGeoConsent(false); } else setGeo(null); }} /><span className="flex items-center gap-1 text-sm"><MapPin className="h-4 w-4" /> Registrar minha localização (opcional)</span></label>
-        <div className="flex justify-between"><Button variant="outline" onClick={() => setStep(0)}>Voltar</Button><Button disabled={!aceite} onClick={() => setStep(2)}>Continuar</Button></div>
+        <div className="flex justify-end"><Button disabled={!aceite} onClick={() => setStep(2)}>Continuar</Button></div>
       </div>}
-      {step === 2 && <SelfieCapture onCapture={(value) => { setSelfie(value); setStep(3); }} onCancel={() => setStep(1)} />}
+      {step === 2 && <SelfieCapture onCapture={(value) => { setSelfie(value); setStep(3); }} onCancel={() => setStep(0)} />}
       {step === 3 && <div className="space-y-3"><SignatureCanvas title="Sua assinatura" onSave={sign} onCancel={() => setStep(2)} />{submitting && <p className="flex items-center justify-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Registrando assinatura...</p>}</div>}
       {step === 4 && result && <div className="space-y-4">
         <div className="rounded border border-green-200 bg-green-50 p-4"><p className="flex items-center gap-2 font-semibold text-green-800"><Check className="h-5 w-5" /> Holerite assinado com sucesso!</p><p className="mt-2 text-sm"><strong>Protocolo:</strong> {result.protocolo}</p></div>
-        <div className="flex justify-between"><Button variant="outline" onClick={() => pdfBlob && downloadBlob(pdfBlob, documento.arquivo_nome)}><Download className="mr-2 h-4 w-4" /> Baixar holerite</Button><Button onClick={() => onOpenChange(false)}>Fechar</Button></div>
+        <div className="flex justify-between"><Button variant="outline" onClick={() => void downloadSigned()}><Download className="mr-2 h-4 w-4" /> Baixar holerite</Button><Button onClick={() => onOpenChange(false)}>Fechar</Button></div>
       </div>}
     </DialogContent>
   </Dialog>;

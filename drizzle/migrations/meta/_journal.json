@@ -1,0 +1,13 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1791056186656,
+      "tag": "0000_restrict_imported_payslips_until_signed",
+      "breakpoints": true
+    }
+  ]
+}
