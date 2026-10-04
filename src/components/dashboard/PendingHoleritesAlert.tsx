@@ -27,24 +27,7 @@ const PendingHoleritesAlert = () => {
         .eq("employee_id", emp.id)
         .eq("status", "pendente")
         .or(COMPETENCIA_INICIAL_COLABORADOR);
-      const { data: pags } = await supabase
-        .from("folha_pagamento")
-        .select("id")
-        .eq("employee_id", emp.id)
-        .neq("status", "rascunho")
-        .or(COMPETENCIA_INICIAL_COLABORADOR);
-      if (!pags?.length) {
-        setCount(importedCount || 0);
-        return;
-      }
-      const { data: ass } = await supabase
-        .from("holerite_assinaturas")
-        .select("folha_pagamento_id, status")
-        .in("folha_pagamento_id", pags.map((p) => p.id));
-      const assinados = new Set(
-        (ass || []).filter((a) => a.status === "assinado").map((a) => a.folha_pagamento_id)
-      );
-      setCount(pags.filter((p) => !assinados.has(p.id)).length + (importedCount || 0));
+      setCount(importedCount || 0);
     })();
   }, []);
 
