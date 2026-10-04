@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { FileSignature } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
+const COMPETENCIA_INICIAL_COLABORADOR = "ano.gt.2026,and(ano.eq.2026,mes.gte.9)";
+
 const PendingHoleritesAlert = () => {
   const navigate = useNavigate();
   const [count, setCount] = useState(0);
@@ -23,12 +25,14 @@ const PendingHoleritesAlert = () => {
         .from("holerite_documentos" as any)
         .select("id", { count: "exact", head: true })
         .eq("employee_id", emp.id)
-        .eq("status", "pendente");
+        .eq("status", "pendente")
+        .or(COMPETENCIA_INICIAL_COLABORADOR);
       const { data: pags } = await supabase
         .from("folha_pagamento")
         .select("id")
         .eq("employee_id", emp.id)
-        .neq("status", "rascunho");
+        .neq("status", "rascunho")
+        .or(COMPETENCIA_INICIAL_COLABORADOR);
       if (!pags?.length) {
         setCount(importedCount || 0);
         return;

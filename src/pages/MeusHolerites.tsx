@@ -15,6 +15,8 @@ const MESES = [
   "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro",
 ];
 
+const COMPETENCIA_INICIAL_COLABORADOR = "ano.gt.2026,and(ano.eq.2026,mes.gte.9)";
+
 export default function MeusHolerites() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
@@ -53,6 +55,7 @@ export default function MeusHolerites() {
       .from("holerite_documentos" as any)
       .select("*")
       .eq("employee_id", emp.id)
+      .or(COMPETENCIA_INICIAL_COLABORADOR)
       .order("ano", { ascending: false })
       .order("mes", { ascending: false });
     setDocumentos((docs as any[]) || []);
@@ -71,6 +74,7 @@ export default function MeusHolerites() {
       `)
       .eq("employee_id", emp.id)
       .neq("status", "rascunho")
+      .or(COMPETENCIA_INICIAL_COLABORADOR)
       .order("ano", { ascending: false })
       .order("mes", { ascending: false });
     const filtrados = (pags || []).filter((p) => p.tipo_folha !== "diferenca");
