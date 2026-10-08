@@ -224,7 +224,9 @@ export function AppSidebar({ allowedModules = null }: AppSidebarProps) {
   const location = useLocation();
   const collapsed = state === "collapsed";
 
-  const isActive = (url: string) => location.pathname === url;
+  const isActive = (url: string, hash?: string) =>
+    location.pathname === url &&
+    (url !== "/dashboard" || location.hash === (hash ?? ""));
   const canSee = (url: string) => {
     if (!allowedModules) return true;
     if (url === "/admin-users") return false; // só gestor cadastra
@@ -264,14 +266,14 @@ export function AppSidebar({ allowedModules = null }: AppSidebarProps) {
                   <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton
                       asChild
-                      isActive={isActive(item.url)}
+                       isActive={isActive(item.url, "hash" in item ? item.hash : undefined)}
                       tooltip={item.title}
                     >
                       <NavLink
-                        to={item.url}
+                         to={item.url + ("hash" in item ? item.hash : "")}
                         end
                         className="flex items-center gap-3 rounded-lg px-3 py-2 text-sidebar-foreground/70 transition-all duration-200 hover:text-sidebar-foreground hover:bg-sidebar-accent"
-                        activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+                         activeClassName={isActive(item.url, "hash" in item ? item.hash : undefined) ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium" : undefined}
                       >
                         <item.icon className="h-4 w-4 shrink-0" />
                         <span className="text-[13px]">{item.title}</span>
