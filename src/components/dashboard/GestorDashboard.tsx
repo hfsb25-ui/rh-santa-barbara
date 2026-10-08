@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { parseDateOnly, todayISO, toISODateLocal} from "@/lib/date";
 import { User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -73,6 +73,7 @@ interface GestorDashboardProps {
 
 const GestorDashboard = ({ user }: GestorDashboardProps) => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchQuery, setSearchQuery] = useState("");
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [showTimeOffDialog, setShowTimeOffDialog] = useState(false);
@@ -93,7 +94,13 @@ const GestorDashboard = ({ user }: GestorDashboardProps) => {
   const [employeesOnVacation, setEmployeesOnVacation] = useState<any[]>([]);
   const [period, setPeriod] = useState("current");
   const [loadingMetrics, setLoadingMetrics] = useState(true);
-  const [activeTab, setActiveTab] = useState("overview");
+  const requestedTab = location.hash.slice(1);
+  const activeTab = ["funcionarios", "charts", "estrategico", "stock", "attendance"].includes(requestedTab)
+    ? requestedTab
+    : "overview";
+  const setActiveTab = (tab: string) => {
+    navigate({ pathname: "/dashboard", hash: tab === "overview" ? "" : `#${tab}` });
+  };
   
   // Metrics state
   const [metricsData, setMetricsData] = useState<any>(null);
@@ -544,10 +551,14 @@ const GestorDashboard = ({ user }: GestorDashboardProps) => {
 
         {/* Navigation Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="inline-flex lg:grid w-full lg:grid-cols-5 overflow-x-auto tabs-scroll">
+          <TabsList className="inline-flex lg:grid w-full lg:grid-cols-6 overflow-x-auto tabs-scroll">
             <TabsTrigger value="overview" className="flex items-center gap-2 flex-shrink-0 min-w-fit">
               <LayoutDashboard className="w-4 h-4" />
               Visão Geral
+            </TabsTrigger>
+            <TabsTrigger value="funcionarios" className="flex items-center gap-2 flex-shrink-0 min-w-fit">
+              <Users className="w-4 h-4" />
+              Funcionários
             </TabsTrigger>
             <TabsTrigger value="charts" className="flex items-center gap-2 flex-shrink-0 min-w-fit">
               <BarChart3 className="w-4 h-4" />
@@ -799,6 +810,10 @@ const GestorDashboard = ({ user }: GestorDashboardProps) => {
               </div>
             </div>
 
+          </TabsContent>
+
+          <TabsContent value="funcionarios" className="space-y-6">
+            <h1 className="text-2xl font-bold">Funcionários</h1>
             {/* Search and Employee List */}
             <div className="space-y-4">
               <div className="flex items-center gap-3">

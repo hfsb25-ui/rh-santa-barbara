@@ -12,7 +12,7 @@ import {
 
 const allMenuItems = [
   { title: "Visão Geral", url: "/dashboard", icon: LayoutDashboard, keywords: "dashboard inicio home" },
-  { title: "Funcionários", url: "/dashboard", icon: Users, keywords: "empregados colaboradores pessoas" },
+  { title: "Funcionários", url: "/dashboard#funcionarios", icon: Users, keywords: "empregados colaboradores pessoas" },
   { title: "Gestores", url: "/managers", icon: Shield, keywords: "administradores gerentes" },
   { title: "Funções", url: "/funcoes", icon: Briefcase, keywords: "cargos posições" },
   { title: "People Manager", url: "/people-manager", icon: UsersRound, keywords: "gestão pessoas organograma" },
