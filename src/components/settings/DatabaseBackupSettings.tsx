@@ -20,16 +20,23 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import JSZip from "jszip";
 
 interface ImportResult {
   success: boolean;
   results: Record<string, { inserted: number; errors: string[] }>;
 }
 
+interface StorageExportManifest {
+  files: Array<{ bucket: string; path: string; signedUrl: string }>;
+  emptyBuckets: string[];
+}
+
 export function DatabaseBackupSettings() {
   const [isExporting, setIsExporting] = useState(false);
   const [isExportingSql, setIsExportingSql] = useState(false);
   const [isExportingSchema, setIsExportingSchema] = useState(false);
+  const [isExportingBuckets, setIsExportingBuckets] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
   const [importMode, setImportMode] = useState<"merge" | "replace">("merge");
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
@@ -177,6 +184,63 @@ export function DatabaseBackupSettings() {
     }
   };
 
+  const handleExportBuckets = async () => {
+    setIsExportingBuckets(true);
+    setProgress(5);
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast.error("Você precisa estar logado para exportar");
+        return;
+      }
+
+      const { data, error } = await supabase.functions.invoke("export-storage-buckets", {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
+      if (error) throw error;
+
+      const manifest = data as StorageExportManifest;
+      if (!Array.isArray(manifest?.files) || !Array.isArray(manifest?.emptyBuckets)) {
+        throw new Error("A lista de arquivos não foi gerada corretamente");
+      }
+
+      const zip = new JSZip();
+      for (const bucket of manifest.emptyBuckets) zip.folder(bucket);
+
+      for (let index = 0; index < manifest.files.length; index += 1) {
+        const file = manifest.files[index];
+        const response = await fetch(file.signedUrl);
+        if (!response.ok) throw new Error(`Falha ao baixar ${file.bucket}/${file.path}`);
+        zip.file(`${file.bucket}/${file.path}`, await response.blob());
+        setProgress(10 + Math.round(((index + 1) / Math.max(manifest.files.length, 1)) * 75));
+      }
+
+      setProgress(90);
+      const blob = await zip.generateAsync(
+        { type: "blob", compression: "DEFLATE", compressionOptions: { level: 6 } },
+        (metadata) => setProgress(90 + Math.round(metadata.percent / 10)),
+      );
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = `arquivos-buckets-${format(new Date(), "yyyy-MM-dd-HHmm")}.zip`;
+      document.body.appendChild(anchor);
+      anchor.click();
+      document.body.removeChild(anchor);
+      URL.revokeObjectURL(url);
+
+      setProgress(100);
+      toast.success(`${manifest.files.length} arquivo(s) exportado(s) em um ZIP`);
+    } catch (error: any) {
+      console.error("Erro ao exportar buckets:", error);
+      toast.error(`Erro ao exportar arquivos: ${error.message}`);
+    } finally {
+      setIsExportingBuckets(false);
+      setProgress(0);
+    }
+  };
+
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -289,19 +353,19 @@ export function DatabaseBackupSettings() {
             </ul>
           </div>
 
-          {(isExporting || isExportingSql || isExportingSchema) && (
+          {(isExporting || isExportingSql || isExportingSchema || isExportingBuckets) && (
             <div className="space-y-2">
               <Progress value={progress} />
               <p className="text-sm text-muted-foreground text-center">
-                {isExportingSchema ? "Preparando estrutura SQL" : isExportingSql ? "Preparando arquivo SQL" : "Exportando dados"}... {progress}%
+                {isExportingBuckets ? "Exportando arquivos" : isExportingSchema ? "Preparando estrutura SQL" : isExportingSql ? "Preparando arquivo SQL" : "Exportando dados"}... {progress}%
               </p>
             </div>
           )}
 
-          <div className="grid gap-3 sm:grid-cols-3">
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             <Button
               onClick={handleExport}
-              disabled={isExporting || isExportingSql || isExportingSchema}
+              disabled={isExporting || isExportingSql || isExportingSchema || isExportingBuckets}
               className="w-full"
             >
               <Download className="w-4 h-4 mr-2" />
@@ -309,7 +373,7 @@ export function DatabaseBackupSettings() {
             </Button>
             <Button
               onClick={handleExportSql}
-              disabled={isExporting || isExportingSql || isExportingSchema}
+              disabled={isExporting || isExportingSql || isExportingSchema || isExportingBuckets}
               variant="outline"
               className="w-full"
             >
@@ -318,19 +382,28 @@ export function DatabaseBackupSettings() {
             </Button>
             <Button
               onClick={handleExportSchema}
-              disabled={isExporting || isExportingSql || isExportingSchema}
+              disabled={isExporting || isExportingSql || isExportingSchema || isExportingBuckets}
               variant="outline"
               className="w-full"
             >
               <Blocks className="w-4 h-4 mr-2" />
               {isExportingSchema ? "Gerando estrutura..." : "Exportar estrutura SQL"}
             </Button>
+            <Button
+              onClick={handleExportBuckets}
+              disabled={isExporting || isExportingSql || isExportingSchema || isExportingBuckets}
+              variant="outline"
+              className="w-full"
+            >
+              <Download className="w-4 h-4 mr-2" />
+              {isExportingBuckets ? "Exportando arquivos..." : "Exportar todos os buckets"}
+            </Button>
           </div>
 
           <div className="flex items-start gap-2 rounded-md border bg-muted/40 p-3 text-xs text-muted-foreground">
             <Database className="mt-0.5 h-4 w-4 shrink-0" />
             <p>
-              Exporte primeiro a estrutura e depois os dados para migrar. Usuários de acesso, arquivos enviados e chaves secretas não são incluídos.
+              Exporte primeiro a estrutura e depois os dados para migrar. O botão de buckets baixa os arquivos enviados em um ZIP separado; usuários de acesso e chaves secretas não são incluídos.
             </p>
           </div>
         </CardContent>
